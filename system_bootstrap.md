@@ -1,4 +1,4 @@
-﻿system_bootstrap
+﻿﻿system_bootstrap
 
 
 Status
@@ -107,6 +107,91 @@ Brand Core Operational Precedence Rule
 - JSON Asset Registry must not be treated as the primary operational read home for those asset classes
 - JSON Asset Registry remains authoritative only for:
   - derived_json_artifact
+
+Brand-Core Asset Home Non-Replacement Clause
+
+- the runtime durable-payload sink rule for `JSON Asset Registry` applies only to:
+  - `derived_json_artifact`
+  - durable terminal payload traces
+  - runtime evidence payload classes
+- this durable-payload sink rule must not override Brand Core authoritative-home governance for:
+  - profile assets
+  - playbook assets
+  - import template assets
+  - composed payload assets
+  - workbook assets
+- when both rules are present, system_bootstrap must preserve:
+  - `Brand Core Registry` as authoritative operational home for brand-core asset classes
+  - `JSON Asset Registry` as authoritative only for `derived_json_artifact` and runtime payload-trace classes
+- serialized JSON form or durable payload persistence alone must not reclassify a brand-core asset into `JSON Asset Registry`
+
+Brand Core Asset Intake Orchestration Rule
+
+- system_bootstrap must orchestrate brand-core asset creation as intake-first governed execution and must not directly promote a proposed asset into authoritative registry home
+- staged brand-core asset execution must:
+  1. classify `asset_class`
+  2. validate `authoritative_home`
+  3. validate `write_target`
+  4. validate `mirror_policy`
+  5. validate read-home compatibility
+  6. write intake evidence when permitted
+  7. preserve promotion prerequisites
+  8. return intake decision classification
+- valid intake decision classes must include:
+  - `accepted`
+  - `rejected`
+  - `blocked_unclassified_asset`
+  - `pending_validation`
+  - `example_only`
+
+Brand Core Write-Target Orchestration Rule
+
+- system_bootstrap must treat `Brand Core Write Rules` as the authoritative write-target contract for brand-core asset writes
+- system_bootstrap must preserve:
+  - workbook assets -> `Brand Core Registry`
+  - brand-core serialized assets -> `Brand Core Registry`
+  - derived JSON artifacts -> `JSON Asset Registry`
+- system_bootstrap must not classify execution as recovered/validated/complete when authoritative home or write target remains unresolved
+
+Publish Preparation Store Controlled Extension Commit Rule
+
+- system_bootstrap must orchestrate publish-preparation workbook growth as intake-first controlled extension execution
+- staged workbook extension execution must:
+  1. validate accepted intake row
+  2. validate workbook extension asset class
+  3. validate authoritative home
+  4. validate write target through `Brand Core Write Rules`
+  5. validate mirror policy
+  6. execute controlled workbook mutation when permitted
+  7. verify workbook readback
+  8. update workbook-local index/readme surfaces when applicable
+- ad hoc workbook mutation is forbidden
+- final classification must remain degraded or blocked when:
+  - intake acceptance is absent
+  - write-target validation is unresolved
+  - readback verification fails
+
+Publish Preparation Store Intake-First Growth Preservation Rule
+
+- system_bootstrap must not treat workbook extension intent as direct mutation authority
+- any new governed tab, staging surface, or workbook-bound publish-preparation structure must first resolve through:
+  1. `Brand Core Asset Intake`
+  2. `Brand Core Write Rules`
+  3. accepted intake decision
+  4. controlled commit validation
+- recovered, validated, or equivalent full-success wording is forbidden for workbook growth when:
+  - intake evidence is missing
+  - write-target validation is unresolved
+  - controlled commit evidence is missing
+  - workbook readback verification is missing
+
+Legacy JSON Mirror Orchestration Rule
+
+- system_bootstrap must treat `JSON Asset Registry` rows for brand-core asset classes as:
+  - `legacy_non_authoritative_mirror`
+  - `trace_or_context_only`
+- `JSON Asset Registry` remains authoritative only for:
+  - `derived_json_artifact`
 
 Engines Registry Identity Gate Rule
 
@@ -5060,6 +5145,21 @@ This preference order must be preserved:
 materialized active row > resolver-backed generated candidate > generic fallback
 
 
+
+---
+
+Brand-Core Asset Home Non-Replacement Clause
+
+- the WordPress runtime JSON payload sink rule applies to:
+  - derived JSON artifacts
+  - durable terminal payload traces
+  - runtime evidence payload classes
+- this rule does not override Brand Core authoritative-home governance for:
+  - profiles
+  - playbooks
+  - import templates
+  - composed payload assets
+  - workbook assets
 
 ---
 

@@ -1750,6 +1750,63 @@ module_loader must return:
 - graph_requirements when applicable
 - promotion_readiness_status
 
+Brand Core Asset Intake Loading Rule
+
+- when governed addition intent resolves to a brand-core asset write, module_loader must prepare intake-first loading before execution proceeds
+- module_loader must resolve and return when applicable:
+  - `asset_class`
+  - `authoritative_home_candidate`
+  - `write_target_candidate`
+  - `mirror_policy_candidate`
+  - `brand_core_asset_intake_status`
+  - `brand_core_write_rules_status`
+  - `intake_decision_status`
+- module_loader must not mark execution-ready brand-core mutation when:
+  - `asset_class` is unresolved
+  - `authoritative_home_candidate` is unresolved
+  - `write_target_candidate` is unresolved
+  - `mirror_policy_candidate` is unresolved
+  - intake decision is not `accepted`
+
+Brand Core Write-Rule Loading Rule
+
+- module_loader must treat `Brand Core Write Rules` as the authoritative policy surface for write-target determination
+- module_loader must return when applicable:
+  - `write_target_policy_surface_id`
+  - `write_target_resolution_status`
+  - `derived_json_artifact_exception_status`
+- module_loader must preserve:
+  - workbook assets -> `Brand Core Registry`
+  - brand-core serialized assets -> `Brand Core Registry`
+  - derived JSON artifacts -> `JSON Asset Registry`
+  - legacy JSON mirrors -> non-authoritative context only
+
+Publish Preparation Store Extension Loading Rule
+
+- when governed execution proposes a publish-preparation workbook extension, module_loader must prepare:
+  - `publish_preparation_extension_status`
+  - `workbook_extension_intake_status`
+  - `workbook_extension_commit_status`
+  - `workbook_extension_write_target_status`
+- module_loader must not mark workbook extension commit ready when:
+  - intake decision is not `accepted`
+  - authoritative home is unresolved
+  - write target is unresolved
+  - mirror policy is unresolved
+  - workbook extension classification is unresolved
+
+Legacy JSON Mirror Loading Rule
+
+- for profile, playbook, import template, composed payload, and workbook asset classes:
+  - module_loader must resolve `Brand Core Registry` as primary read home
+  - module_loader may load `JSON Asset Registry` rows only as:
+    - `legacy_non_authoritative_mirror`
+    - `trace_context`
+- module_loader must return when applicable:
+  - `primary_read_home`
+  - `legacy_mirror_present`
+  - `legacy_mirror_deprioritized`
+
 Graph Intelligence Loading Rule
 
 When graph-based validation, prediction, or auto-routing is active, module_loader must resolve:

@@ -101,6 +101,58 @@ Brand-Core Asset Read Routing Rule
 - JSON Asset Registry may remain primary only when:
   - asset_class = derived_json_artifact
 
+Brand Core Asset Intake Routing Rule
+
+- when intent includes:
+  - add asset
+  - add brand-core asset
+  - register profile
+  - register playbook
+  - register import template
+  - add workbook asset
+  - add composed payload
+  prompt_router must route first to `Brand Core Asset Intake` rather than direct registry mutation
+- routing output must preserve:
+  - `brand_core_asset_intake_required = true`
+  - `asset_classification_required = true`
+  - `authoritative_home_resolution_required = true`
+  - `write_target_resolution_required = true`
+  - `mirror_policy_assignment_required = true`
+  - `promotion_blocked_until_intake_accepted = true`
+
+Brand Core Write-Rule Routing Rule
+
+- after intake classification, prompt_router must route write-target resolution through `Brand Core Write Rules`
+- routing output must preserve:
+  - `brand_core_write_rules_required = true`
+  - `write_target_policy_surface = Brand Core Write Rules`
+  - `derived_json_artifact_exception_only = true`
+
+Publish Preparation Store Extension Routing Rule
+
+- when intent includes:
+  - add tab to publish preparation workbook
+  - extend publish preparation store
+  - add staging surface
+  - add publish-preparation structure
+  prompt_router must route first to:
+  1. `Brand Core Asset Intake`
+  2. `Brand Core Write Rules`
+  before any workbook mutation is treated as governed
+- routing output must preserve:
+  - `publish_preparation_extension_intake_required = true`
+  - `publish_preparation_extension_commit_control_required = true`
+  - `ad_hoc_workbook_growth_forbidden = true`
+
+Legacy JSON Mirror Deprioritization Routing Rule
+
+- when both `Brand Core Registry` and `JSON Asset Registry` contain the same logical asset key for a brand-core asset class, prompt_router must prefer `Brand Core Registry`
+- JSON Asset Registry rows for those asset classes must be treated as:
+  - `legacy_non_authoritative_mirror`
+  - `trace_context_only`
+- JSON Asset Registry may remain primary only when:
+  - `asset_class = derived_json_artifact`
+
 Brand Onboarding Decision Classification Rule
 
 - routing output for governed brand onboarding must classify into one or more of:
