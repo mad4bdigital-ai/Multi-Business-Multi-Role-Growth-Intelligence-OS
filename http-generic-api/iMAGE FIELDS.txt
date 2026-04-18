@@ -1,0 +1,9 @@
+Image Featured
+Image Alt Text
+Image Description
+Image Caption
+Image URL
+Image Filename
+Image Path
+Image ID
+Image Title

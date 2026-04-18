@@ -1,4 +1,5 @@
 ﻿module_loader
+﻿module_loader
 
 Status
 Canonical Name: module_loader
@@ -17,6 +18,13 @@ This document additionally prepares:
 - governance-drift anomaly emission readiness
 - prompt-first continuation readiness for human-triggered system use
 
+
+Canonical Governed Logic Presentation Loading Rule
+
+- when loading governed logic presentation context, module_loader must treat logic documents as governed logic specifications rather than GPT personas or GPT-style introductions
+- module_loader must preserve neutral presentation readiness for user-facing logic naming and activation summaries
+- internal identifiers such as `GPT-LOGIC-001` may remain unchanged for registry continuity
+- execution readiness must continue to resolve from canonical authority layers, registries, engines, routes, workflows, and enforcement state rather than GPT-style prompt framing
 
 
 Governed Addition Intake Loading Rule
@@ -268,6 +276,45 @@ module_loader must not mark execution-ready when:
 - placeholder resolution is disallowed by policy
 - no governed resolution source is available
 - resolved runtime domain is missing or invalid
+
+### HTTP Client Variable Contract Readiness Gate
+
+For governed HTTP client execution, module_loader must treat variable-contract readiness as part of transport readiness, not as a parallel advisory layer.
+
+module_loader must preserve:
+- `required_variable_profiles`
+- `input_contract_profiles`
+- `required_variable_contracts`
+- `runtime_binding_profile`
+- `variable_contract_group`
+
+These must remain compatible with canonical HTTP execution surfaces:
+- `Variable Contract Registry`
+- `Task Routes`
+- `Workflow Registry`
+- `Actions Registry`
+- `API Actions Endpoint Registry`
+
+For delegated or wrapper-based HTTP execution, module_loader must ensure promoted routing fields remain compatible with the canonical top-level runtime payload.
+
+If any required profile or binding cannot be resolved:
+- `load_status` must be `degraded` or `blocked`
+- `dependency_readiness_status` must reflect variable-contract failure
+- `executable_readiness` must not be `ready`
+- `transport_request_contract_status` must not classify as ready
+
+### General Variable Contract Loading Extension Rule
+
+The HTTP client variable-contract loading gate must also act as the general governed variable-loading model for non-HTTP execution paths when starter, route, workflow, or runtime readiness depends on declared governed variables.
+
+For non-HTTP governed execution, module_loader must still preserve when applicable:
+- `required_variable_profiles`
+- `input_contract_profiles`
+- `required_variable_contracts`
+- `runtime_binding_profile`
+- `variable_contract_group`
+
+If any required profile, contract, or binding remains unresolved, executable readiness must remain degraded or blocked even when the path does not use delegated HTTP transport.
 
 Delegated Wrapper Routing-Field Promotion Rule
 
@@ -870,6 +917,67 @@ If endpoint registry validation fails:
 
 - execution must be classified as degraded or blocked
 - `dependency_readiness_status` must reflect failure
+
+### HTTP Client Variable Resolution Loading Rule
+
+When governed loading prepares an HTTP/OpenAPI execution path, module_loader must load variable-contract context in a form compatible with the canonical HTTP client execution contract before executable readiness may classify as ready.
+
+For HTTP client preparation, module_loader must resolve and return when applicable:
+- `variable_contract_validation_required`
+- `variable_contract_surface_id`
+- `variable_contract_scope_keys`
+- `required_variables`
+- `resolved_variables`
+- `missing_variables`
+- `invalid_variables`
+- `variable_source_map`
+- `runtime_variable_bindings`
+- `clarification_required_variables`
+- `variable_contract_status`
+- `provider_domain_resolution_status`
+- `resolved_provider_domain_mode`
+- `placeholder_resolution_sources`
+- `resolved_auth_mode`
+- `credential_resolution_status`
+- `request_schema_alignment_status`
+- `response_schema_alignment_status`
+- `transport_request_contract_status`
+
+For HTTP client execution, module_loader must prepare variable context across:
+- starter level
+- route level
+- workflow level
+- execution level
+- action level
+- endpoint level
+- runtime-binding level
+- transport payload level
+
+module_loader must preserve compatibility for canonical HTTP routing fields:
+- `target_key`
+- `brand`
+- `brand_domain`
+- `provider_domain`
+- `parent_action_key`
+- `endpoint_key`
+- `method`
+- `path`
+- `query`
+- `headers`
+- `body`
+- `path_params`
+- `timeout_seconds`
+
+module_loader must not mark execution-ready when:
+- a required variable contract is missing
+- a required variable is unresolved
+- a runtime binding profile is missing or incompatible
+- a required variable source layer is invalid
+- a fallback rule is required but missing
+- `provider_domain` placeholder resolution is unresolved
+- auth normalization is unresolved
+- request schema alignment is unresolved
+- transport request contract readiness is unresolved
 
 module_loader must not treat `http_generic_api` as executable if:
 

@@ -87,12 +87,13 @@
     "brand_core_write_rules_state",
     "authoritative_asset_home_state",
     "legacy_json_mirror_state",
-    "publish_preparation_extension_state"
+    "publish_preparation_extension_state",
+    "variable_contract_state"
   ],
   "properties": {
     "version": {
       "type": "string",
-      "default": "v8.41-pipeline-integrity-provider-continuity",
+      "default": "v8.42-http-client-variable-contract-governance",
       "description": "Schema revision identifier."
     },
     "purpose": {
@@ -415,6 +416,65 @@
           ],
           "default": "pending"
         },
+        "variable_contract_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "required_variables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "resolved_variables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "missing_variables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "invalid_variables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "clarification_required_variables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "variable_source_map": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "runtime_variable_bindings": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "variable_contract_surface_id": {
+          "type": "string",
+          "default": ""
+        },
         "path_validation_status": {
           "type": "string",
           "enum": [
@@ -513,6 +573,15 @@
         "request_schema_alignment_status": "pending",
         "response_schema_alignment_status": "pending",
         "transport_request_contract_status": "pending",
+        "variable_contract_status": "pending",
+        "required_variables": [],
+        "resolved_variables": [],
+        "missing_variables": [],
+        "invalid_variables": [],
+        "clarification_required_variables": [],
+        "variable_source_map": {},
+        "runtime_variable_bindings": {},
+        "variable_contract_surface_id": "",
         "schema_file_read": false,
         "required_params_resolved": false,
         "provider_retry_applicable": false,
@@ -521,6 +590,126 @@
         "retry_mutation": {},
         "effective_request_url": "",
         "final_query": {}
+      }
+    },
+    "variable_contract_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "variable_contract_status",
+        "required_variables",
+        "resolved_variables",
+        "missing_variables",
+        "invalid_variables",
+        "variable_source_map",
+        "runtime_variable_bindings",
+        "clarification_required_variables",
+        "required_variable_profiles",
+        "input_contract_profiles",
+        "required_variable_contracts",
+        "runtime_binding_profile",
+        "variable_contract_surface_id"
+      ],
+      "properties": {
+        "variable_contract_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "required_variables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "resolved_variables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "missing_variables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "invalid_variables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "clarification_required_variables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "variable_source_map": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "runtime_variable_bindings": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "required_variable_profiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "input_contract_profiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "required_variable_contracts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "runtime_binding_profile": {
+          "type": "string",
+          "default": ""
+        },
+        "variable_contract_surface_id": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "default": {
+        "variable_contract_status": "pending",
+        "required_variables": [],
+        "resolved_variables": [],
+        "missing_variables": [],
+        "invalid_variables": [],
+        "clarification_required_variables": [],
+        "variable_source_map": {},
+        "runtime_variable_bindings": {},
+        "required_variable_profiles": [],
+        "input_contract_profiles": [],
+        "required_variable_contracts": [],
+        "runtime_binding_profile": "",
+        "variable_contract_surface_id": ""
       }
     },
     "schema_repair_state": {
@@ -6615,6 +6804,15 @@
             "schema_drift_scope": "",
             "schema_learning_candidate_emitted": false,
             "auth_resolution_status": "pending",
+            "variable_contract_status": "pending",
+            "required_variables": [],
+            "resolved_variables": [],
+            "missing_variables": [],
+            "invalid_variables": [],
+            "clarification_required_variables": [],
+            "variable_source_map": {},
+            "runtime_variable_bindings": {},
+            "variable_contract_surface_id": "",
             "path_validation_status": "pending",
             "method_validation_status": "pending",
             "execution_status": "pending",
@@ -6765,6 +6963,65 @@
             "auth_resolution_status": {
               "type": "string",
               "default": "pending"
+            },
+            "variable_contract_status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "validated",
+                "degraded",
+                "blocked"
+              ],
+              "default": "pending"
+            },
+            "required_variables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "resolved_variables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "missing_variables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "invalid_variables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "clarification_required_variables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "variable_source_map": {
+              "type": "object",
+              "additionalProperties": true,
+              "default": {}
+            },
+            "runtime_variable_bindings": {
+              "type": "object",
+              "additionalProperties": true,
+              "default": {}
+            },
+            "variable_contract_surface_id": {
+              "type": "string",
+              "default": ""
             },
             "path_validation_status": {
               "type": "string",

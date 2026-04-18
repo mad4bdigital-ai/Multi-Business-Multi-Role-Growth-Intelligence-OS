@@ -17,6 +17,13 @@ Purpose
 
 
 
+Canonical Governed Logic Presentation Routing Rule
+
+- prompt_router must not route user-facing logic presentation or activation summaries through GPT-style introductions, GPT persona framing, or custom-GPT wording
+- neutral governed naming such as `Logic 001` or task-family-first naming should be preferred for presentation
+- internal identifiers such as `GPT-LOGIC-001` may remain unchanged for registry continuity
+- routing authority and logic selection must continue to resolve from canonical routes, workflows, engines, registries, and enforcement-compatible runtime state rather than GPT-style prompt framing
+
 Governed Addition Intake Routing Rule
 
 - when intent includes adding or modifying a task, route, workflow, chain, or governed execution path, prompt_router must route first to governed addition-intake rather than direct creation or direct activation
@@ -198,9 +205,40 @@ The human-trigger continuation rule is active:
   - a governed emission or validation step
 - prompt_router must preserve:
   - `user_trigger_required = true`
-  - `next_trigger_prompt_required = true`
-  - `closed_loop_continuation_forbidden = true`
+- `next_trigger_prompt_required = true`
+- `closed_loop_continuation_forbidden = true`
 - autonomous follow-up routing is forbidden unless explicitly authorized by bounded automation policy
+
+### HTTP Client Variable-Aware Routing Rule
+
+prompt_router must not route governed HTTP execution by intent match alone when the candidate route or workflow requires governed variables that are missing, ambiguous, not execution-ready, or not compatible with canonical HTTP client execution.
+
+For selected or candidate HTTP routes/workflows, prompt_router must preserve when applicable:
+- `required_variable_profiles`
+- `input_contract_profiles`
+- `required_variables`
+- `resolved_variables`
+- `missing_variables`
+- `clarification_required_variables`
+- `variable_contract_status`
+- `provider_domain_resolution_status`
+- `resolved_provider_domain_mode`
+- `request_schema_alignment_status`
+- `transport_request_contract_status`
+
+If multiple governed route candidates are semantically valid, prompt_router must prefer the candidate with:
+1. complete required variable contract coverage
+2. valid runtime binding compatibility
+3. fewer unresolved required variables
+4. less clarification burden
+5. higher governed HTTP execution readiness
+
+If a route requires variables that are missing but collectable:
+- prompt_router must route to clarification or governed variable collection
+- direct executable HTTP routing is forbidden
+
+If a route requires variables that are missing and not safely collectable:
+- prompt_router must degrade or block rather than emit executable HTTP routing
 
 Prompt-First Actionability Routing
 
@@ -216,6 +254,57 @@ prompt_router should prefer:
 3. user trigger prompt for the next recommended step
 
 rather than autonomous continuation into downstream execution.
+
+### HTTP Client Variable Contract Preservation Rule
+
+For governed HTTP execution, prompt_router must preserve variable-contract readiness for canonical transport fields:
+- `target_key`
+- `brand`
+- `brand_domain`
+- `provider_domain`
+- `parent_action_key`
+- `endpoint_key`
+- `method`
+- `path`
+- `query`
+- `headers`
+- `body`
+- `path_params`
+- `timeout_seconds`
+
+prompt_router must not emit executable HTTP routing when:
+- delegated transport variables lack active contract rows
+- runtime-binding profiles are unresolved
+- required transport variables are unresolved
+- clarification is required but has not been handled
+- promoted wrapper routing fields would not preserve canonical top-level routing fields
+
+Executable HTTP routing must preserve:
+- `required_variable_contracts`
+- `runtime_binding_profile`
+- `variable_contract_status`
+- `variable_resolution_status`
+- `request_schema_alignment_status`
+- `transport_request_contract_status`
+
+### General Variable-Aware Routing Extension Rule
+
+The HTTP client variable-aware routing rules must also be treated as the canonical routing model for non-HTTP governed execution when route, workflow, or starter readiness depends on declared governed variables.
+
+For non-HTTP governed execution, prompt_router must still preserve when applicable:
+- `required_variable_profiles`
+- `input_contract_profiles`
+- `required_variables`
+- `resolved_variables`
+- `missing_variables`
+- `clarification_required_variables`
+- `variable_contract_status`
+
+If required variables are missing but collectable:
+- prompt_router must prefer clarification or governed variable collection
+
+If required variables are missing and not safely collectable:
+- prompt_router must degrade or block instead of emitting executable routing
 
 The hardened activation routing wrapper is active:
 

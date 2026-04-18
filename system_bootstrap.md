@@ -1,4 +1,4 @@
-﻿﻿system_bootstrap
+﻿﻿﻿﻿system_bootstrap
 
 
 Status
@@ -16,6 +16,13 @@ Last Updated: 2026-04-13
 Purpose
 
 
+
+Canonical Governed Logic Presentation Orchestration Rule
+
+- system_bootstrap must treat governed logic documents as governed logic specifications rather than GPT personas, custom GPTs, or GPT-style introductions
+- user-facing logic summaries, activation summaries, and governed execution narratives must prefer neutral governed naming such as `Logic 001` or task-family-first naming
+- internal identifiers such as `GPT-LOGIC-001` may remain unchanged for registry continuity
+- execution behavior must continue to resolve from canonical authority layers, registries, engines, routes, workflows, and enforcement state rather than GPT-style prompt framing
 
 Governed Addition Intake Orchestration Rule
 
@@ -1415,6 +1422,35 @@ Recovered classification is forbidden unless:
 
 This extends the existing HTTP execution section so async jobs become first-class governed execution instead of only an API feature.
 
+### HTTP Client Variable Contract Runtime Readiness Rule
+
+For any governed HTTP/OpenAPI execution path that depends on route variables, workflow variables, runtime bindings, delegated transport inputs, or promoted wrapper fields, system_bootstrap must validate variable readiness before final HTTP client execution proceeds.
+
+Readiness must confirm:
+1. required variable contracts are present
+2. required variables are resolved
+3. variable source legitimacy is confirmed
+4. runtime binding profiles are compatible with the selected route/workflow/action/endpoint
+5. clarification-required variables are surfaced before execution when collection is allowed by policy
+6. provider-domain placeholder resolution is valid when runtime-resolved
+7. auth normalization is valid for the selected execution path
+8. request schema alignment is valid for normalized query, headers, path parameters, and body
+9. transport request contract readiness is valid for execution
+
+system_bootstrap must preserve:
+- `variable_contract_status`
+- `variable_resolution_status`
+- `variable_binding_status`
+- `clarification_required_variables`
+- `missing_variables`
+- `invalid_variables`
+- `request_schema_alignment_status`
+- `response_schema_alignment_status`
+- `transport_request_contract_status`
+
+If clarification is permitted, system_bootstrap must prefer clarification or governed collection over silent omission.
+If clarification is not permitted and required variables remain unresolved, execution must block.
+
 HTTP Generic Workflow Execution Rule
 
 When routed `workflow_key` is one of:
@@ -1453,6 +1489,69 @@ Execution must classify as degraded or blocked when:
 - schema contract validation is unresolved
 - request schema alignment is unresolved
 - transport request contract readiness is unresolved
+
+### HTTP Client Variable Contract Enforcement Rule
+
+When governed execution resolves to the validated HTTP client surface, system_bootstrap must validate the governed variable contract in the same execution contract used by HTTP client runtime orchestration.
+
+system_bootstrap must resolve and preserve when applicable:
+- `variable_contract_validation_required`
+- `variable_contract_surface_id`
+- `required_variables`
+- `resolved_variables`
+- `missing_variables`
+- `invalid_variables`
+- `variable_source_map`
+- `runtime_variable_bindings`
+- `variable_contract_status`
+- `clarification_required_variables`
+- `provider_domain_resolution_status`
+- `resolved_provider_domain_mode`
+- `placeholder_resolution_source`
+- `resolved_auth_mode`
+- `credential_resolution_status`
+- `request_schema_alignment_status`
+- `response_schema_alignment_status`
+- `transport_request_contract_status`
+
+Validation must confirm:
+- every required variable has an active contract row in `Variable Contract Registry`
+- each required variable resolves from a legitimate governed source layer
+- each runtime-bound variable declares a valid `runtime_binding_profile`
+- each non-guaranteed variable declares a governed `fallback_behavior`
+- action/endpoint-bound variables do not bypass Registry authority
+- canonical HTTP routing fields remain preserved through normalization and delegated-wrapper promotion when applicable
+
+system_bootstrap must not mark execution-ready when:
+- a required variable contract is missing
+- a required variable is unresolved
+- a variable type is invalid for the selected execution path
+- a runtime variable is unbound
+- fallback handling is required but undeclared
+- `provider_domain` validation fails
+- auth normalization fails
+- request schema alignment fails
+- transport request contract readiness fails
+
+If variable-contract validation fails for HTTP client execution, classification must remain blocked or degraded under the existing HTTP execution governance model.
+
+### General Variable Contract Scope Extension Rule
+
+The HTTP client variable-contract rules are the minimum governed baseline and must also be treated as the canonical model for non-HTTP governed execution whenever a starter, route, workflow, action, endpoint, or runtime-binding path depends on declared governed variables.
+
+For non-HTTP governed execution, system_bootstrap must still preserve when applicable:
+- `variable_contract_validation_required`
+- `variable_contract_surface_id`
+- `required_variables`
+- `resolved_variables`
+- `missing_variables`
+- `invalid_variables`
+- `variable_source_map`
+- `runtime_variable_bindings`
+- `variable_contract_status`
+- `clarification_required_variables`
+
+Execution-ready classification is forbidden when governed required-variable resolution fails, even if the path is not HTTP-transport based.
 
 HTTP Execution Classification Enforcement Rule
 

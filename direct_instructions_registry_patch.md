@@ -22,6 +22,13 @@ This patch additionally enforces:
 - governed governance-drift anomaly emission
 
 
+Canonical Governed Logic Presentation Rule
+
+- governed logic specifications must not be presented as GPT personas, custom GPTs, or GPT-style introductions in user-facing or activation-facing summaries
+- neutral governed naming such as `Logic 001` or task-family-first naming should be preferred for presentation
+- internal identifiers such as `GPT-LOGIC-001` may remain unchanged for registry continuity
+- governed execution behavior must resolve from canonical authority layers, registries, engines, routes, workflows, and enforcement state rather than GPT-style prompt framing
+
 
 Governed Workflow and Task Addition Authority Rule
 
@@ -436,6 +443,23 @@ The following instruction is mandatory:
 - partial request execution is forbidden
 - guessing or inferring missing required parameters is forbidden
 
+### HTTP Client Action And Endpoint Variable Contract Rule
+
+Actions Registry and API Actions Endpoint Registry must preserve governed variable-contract linkage for executable HTTP parameters.
+
+Required governed linkage fields must include or govern equivalents that resolve:
+- `required_variable_contracts`
+- `runtime_binding_profile`
+
+Validation must enforce:
+- action-bound required variables resolve through active variable-contract rows
+- endpoint-bound required variables resolve through active variable-contract rows
+- delegated HTTP routing fields (`target_key`, `brand`, `brand_domain`, `provider_domain`, `method`, `path`, `query`, `headers`, `body`) must not bypass governed variable authority
+- wrapper-field promotion must not break canonical top-level routing integrity
+- native runtime actions must preserve valid runtime binding profiles when required by policy
+
+Rows missing required variable-contract linkage must not classify as execution-ready.
+
 HTTP Execution Classification Repair Rule
 
 The repaired execution classification rule is active:
@@ -446,6 +470,30 @@ The repaired execution classification rule is active:
 - `http_delegated` endpoints must not execute unless `primary_executor = http_client_backend`
 - inventory-only or non-primary endpoint rows must not be treated as direct execution-ready
 - delegated transport must not proceed when required `transport_action_key` is unresolved or unsupported
+
+### HTTP Client Variable Contract Authority Rule
+
+No governed HTTP execution path may rely on implicit variables when variable-contract authority is required.
+
+The system must treat `Variable Contract Registry` as the authoritative source for:
+- required variable declaration
+- variable type declaration
+- variable source legitimacy
+- fallback behavior
+- runtime binding profile
+- contract grouping
+
+Direct HTTP execution is forbidden when:
+- a required variable has no active contract row
+- a required action or endpoint parameter is passed without governed contract coverage
+- a runtime-bound variable lacks a valid runtime binding profile
+- a non-guaranteed variable requires fallback behavior but none is declared
+- canonical HTTP routing fields are supplied in a way that bypasses governed contract authority
+
+The system must not:
+- invent undeclared required variables
+- silently pass undeclared execution parameters to actions or endpoints
+- downgrade missing variable-contract authority into normal HTTP execution readiness
 
 HTTP Connector-Scoped Resilience Authority Rule
 
