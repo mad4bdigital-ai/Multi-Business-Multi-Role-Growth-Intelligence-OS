@@ -71,6 +71,40 @@ Candidate Promotion Guard Rule
   or equivalent non-active candidate-safe state by policy
 - active/recovered/full-success language is forbidden for governed additions still in candidate validation
 
+
+Patch Deployment Parity Verification Orchestration Rule
+
+- system_bootstrap must orchestrate patch-file verification, canonical-merge verification, registry-alignment verification, and live runtime deployment verification as separate governed evidence classes
+- file-level comparison alone must not be treated as proof that a patch is active in the live runtime deployment
+- when a user asks whether a patch, canonical update, or server patch is deployed live, system_bootstrap must execute staged patch-deployment parity verification and must not stop at file-only comparison
+- staged patch-deployment parity verification must:
+  1. classify patch inspection scope
+  2. validate patch artifact applicability to the target canonical or server file
+  3. validate canonical merge state
+  4. validate registry alignment when registry-governed surfaces are implicated
+  5. validate live runtime deployment evidence when the request asks for live confirmation
+  6. classify strongest achieved evidence scope
+  7. return patch parity status without overstating certainty
+- governed patch evidence classes must use:
+  - patch_file_diff
+  - canonical_merge_verification
+  - registry_alignment_verification
+  - runtime_deployment_verification
+- governed patch parity result classes must use:
+  - file_verified_only
+  - canonical_verified_only
+  - registry_aligned_only
+  - runtime_confirmed
+  - degraded_missing_runtime_confirmation
+- when live runtime deployment confirmation is requested but authoritative runtime evidence is absent, final classification must remain degraded, partial, or equivalent non-deployed wording by policy
+- authoritative live runtime deployment confirmation for patch parity must derive from runtime execution evidence and must not be inferred from patch-file diff, canonical merge, or registry alignment alone
+- when runtime confirmation is required, system_bootstrap must preserve:
+  - patch_verification_scope
+  - runtime_deployment_confirmed
+  - patch_parity_status
+  - authoritative_runtime_evidence_source
+  - runtime_confirmation_evidence_class
+
 Governed Brand Onboarding Orchestration Rule
 
 - system_bootstrap must orchestrate governed brand onboarding as a staged three-layer execution and must not directly promote a new brand into active state
