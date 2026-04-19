@@ -38,7 +38,7 @@ function decodeGithubBase64ToBuffer(value) {
   return Buffer.from(String(value || "").replace(/\s+/g, ""), "base64");
 }
 
-export function encodeGitHubContentPath(value) {
+function encodeGitHubContentPath(value) {
   return String(value || "")
     .split("/")
     .filter(Boolean)
@@ -46,7 +46,7 @@ export function encodeGitHubContentPath(value) {
     .join("/");
 }
 
-export async function proxyGitHubJson({
+async function proxyGitHubJson({
   method = "GET",
   pathname,
   searchParams,
@@ -90,7 +90,7 @@ export async function proxyGitHubJson({
   };
 }
 
-export function githubErrorResponse(res, upstream, codeBase, fallbackMessage) {
+function githubErrorResponse(res, upstream, codeBase, fallbackMessage) {
   return res.status(upstream.status || 502).json({
     ok: false,
     error: {

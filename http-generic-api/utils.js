@@ -535,3 +535,118 @@ export function nowIsoSafe() {
     return "";
   }
 }
+
+export function extractJsonAssetPayloadBody(args = {}) {
+  const body = args.response_body;
+  if (body && typeof body === "object" && !Array.isArray(body)) {
+    if (Object.prototype.hasOwnProperty.call(body, "data")) {
+      return body.data;
+    }
+  }
+  return body ?? null;
+}
+
+export function normalizeJsonObjectOrEmpty(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value;
+}
+
+export function isWordpressCptSchemaPreflightEndpoint(endpointKey = "") {
+  const key = String(endpointKey || "").trim();
+  return new Set([
+    "wordpress_get_cpt_runtime_type",
+    "jetengine_get_post_type_config",
+    "jetengine_get_meta_boxes",
+    "wordpress_get_cpt_sample_pattern",
+    "wordpress_get_taxonomy_runtime",
+    "wordpress_list_taxonomy_terms",
+    "wordpress_get_tag_terms",
+    "wordpress_get_category_terms"
+  ]).has(key);
+}
+
+export function buildWordpressCptSchemaPreflightAssetKey(args = {}) {
+  const brandNormalized = String(
+    args.normalized_brand_name || args.brand_name || "unknown_brand"
+  )
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "unknown_brand";
+
+  const targetKey =
+    String(args.target_key || "unknown_target").trim() || "unknown_target";
+  const cptSlug =
+    String(args.cpt_slug || args.post_type || args.type || args.rest_base || "unknown_cpt")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, "_") || "unknown_cpt";
+
+  return `${brandNormalized}__${targetKey}__${cptSlug}__wordpress_cpt_schema_preflight_v1`;
+}
+
+export function buildWordpressCptSchemaPreflightPayload(args = {}) {
+  const rawPayload = extractJsonAssetPayloadBody(args);
+  const payloadObject =
+    rawPayload && typeof rawPayload === "object" && !Array.isArray(rawPayload)
+      ? rawPayload
+      : {};
+
+  const identity = {
+    brand_name: String(args.brand_name || "").trim(),
+    brand_domain: String(args.brand_domain || "").trim(),
+    target_key: String(args.target_key || "").trim(),
+    base_url: String(args.base_url || "").trim(),
+    site_type: "wordpress",
+    cpt_slug: String(args.cpt_slug || args.post_type || args.type || "").trim(),
+    rest_base: String(args.rest_base || "").trim(),
+    asset_key: buildWordpressCptSchemaPreflightAssetKey(args)
+  };
+
+  const source_resolution = {
+    brand_registry_resolved: !!args.brand_name || !!args.target_key,
+    site_runtime_inventory_resolved: !!args.base_url,
+    wordpress_rest_type_resolved:
+      String(args.endpoint_key || "").trim() === "wordpress_get_cpt_runtime_type" ||
+      payloadObject.wordpress_rest_type_resolved === true,
+    jetengine_config_resolved:
+      String(args.endpoint_key || "").trim() === "jetengine_get_post_type_config" ||
+      payloadObject.jetengine_config_resolved === true,
+    taxonomy_runtime_resolved:
+      String(args.endpoint_key || "").trim() === "wordpress_get_taxonomy_runtime" ||
+      payloadObject.taxonomy_runtime_resolved === true,
+    sample_pattern_mode: String(
+      args.sample_pattern_mode || payloadObject.sample_pattern_mode || ""
+    ).trim(),
+    sample_pattern_used:
+      String(args.endpoint_key || "").trim() === "wordpress_get_cpt_sample_pattern" ||
+      payloadObject.sample_pattern_used === true
+  };
+
+  const playbook_inference = {
+    brand_playbook_asset_key: String(args.brand_playbook_asset_key || "").trim(),
+    brand_playbook_sheet_gid: String(args.brand_playbook_sheet_gid || "").trim(),
+    playbook_coverage_status: String(args.playbook_coverage_status || "not_applicable").trim(),
+    playbook_backfill_required: String(args.playbook_backfill_required || "FALSE").trim(),
+    fallback_template_mode: String(args.fallback_template_mode || "runtime_contract_only").trim(),
+    coverage_gap_notes: String(args.coverage_gap_notes || "").trim()
+  };
+
+  return {
+    identity,
+    source_resolution,
+    field_contract: normalizeJsonObjectOrEmpty(
+      args.field_contract || payloadObject.field_contract || payloadObject.fields
+    ),
+    taxonomy_contract: normalizeJsonObjectOrEmpty(
+      args.taxonomy_contract || payloadObject.taxonomy_contract
+    ),
+    formatter_hints: normalizeJsonObjectOrEmpty(
+      args.formatter_hints || payloadObject.formatter_hints
+    ),
+    playbook_inference,
+    readiness_result: normalizeJsonObjectOrEmpty(
+      args.readiness_result || payloadObject.readiness_result
+    )
+  };
+}
