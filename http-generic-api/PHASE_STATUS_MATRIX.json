@@ -1,0 +1,243 @@
+{
+  "_meta": {
+    "description": "Official phase status matrix — updated after every Sprint",
+    "last_updated": "2026-04-19",
+    "valid_statuses": ["not_started", "spec_defined", "module_built", "module_validated", "runtime_wired", "deduplicated", "project_validated", "snapshot_archived"]
+  },
+  "phases": {
+    "phaseA": {
+      "phase_name": "Phase A — Content Migration (Primary Orchestration)",
+      "domain": "content_migration",
+      "spec_status": "legacy",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "pending",
+      "project_validation_status": "partial",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired",
+      "notes": "runWordpressConnectorMigration orchestrates all phases. H.6-H.9, I, J, K wiring added 2026-04-19."
+    },
+    "phaseB": {
+      "phase_name": "Phase B — Plugin Inventory Audit",
+      "domain": "plugin_inventory",
+      "spec_status": "legacy",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "pending",
+      "project_validation_status": "partial",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired"
+    },
+    "phaseC": {
+      "phase_name": "Phase C — Settings Reconciliation",
+      "domain": "settings_reconciliation",
+      "spec_status": "legacy",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "pending",
+      "project_validation_status": "partial",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired"
+    },
+    "phaseD": {
+      "phase_name": "Phase D — Forms / Custom Fields",
+      "domain": "forms_custom_fields",
+      "spec_status": "legacy",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "pending",
+      "project_validation_status": "partial",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired"
+    },
+    "phaseE": {
+      "phase_name": "Phase E — Media Migration",
+      "domain": "media_migration",
+      "spec_status": "legacy",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "pending",
+      "project_validation_status": "partial",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired"
+    },
+    "phaseF": {
+      "phase_name": "Phase F — Users / Roles / Auth",
+      "domain": "users_roles_auth",
+      "spec_status": "legacy",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "pending",
+      "project_validation_status": "partial",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired"
+    },
+    "phaseG": {
+      "phase_name": "Phase G — SEO Reconciliation",
+      "domain": "seo_reconciliation",
+      "spec_status": "legacy",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "pending",
+      "project_validation_status": "partial",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired"
+    },
+    "phaseH": {
+      "phase_name": "Phase H — Analytics / Tracking Reconciliation",
+      "domain": "analytics_tracking",
+      "spec_status": "legacy",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "pending",
+      "project_validation_status": "partial",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired",
+      "notes": "33 functions (H.1-H.9 complete). H.8 dry-run + H.9 handoff bundle added 2026-04-19.",
+      "function_count": 33
+    },
+    "phaseI": {
+      "phase_name": "Phase I — Performance / Caching / Optimization",
+      "domain": "performance_optimization",
+      "spec_status": "legacy",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "not_started",
+      "project_validation_status": "not_started",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired",
+      "notes": "36 functions (I.1-I.9 complete). Module built and wired 2026-04-19.",
+      "function_count": 36
+    },
+    "phaseJ": {
+      "phase_name": "Phase J — Security / Headers / Hardening",
+      "domain": "security_hardening",
+      "spec_status": "legacy",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "not_started",
+      "project_validation_status": "not_started",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired",
+      "notes": "36 functions (J.1-J.9 complete). Module built and wired 2026-04-19.",
+      "function_count": 36
+    },
+    "phaseK": {
+      "phase_name": "Phase K — Observability / Logs / Alerts / Monitoring",
+      "domain": "observability_monitoring",
+      "spec_status": "legacy",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "not_started",
+      "project_validation_status": "not_started",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired",
+      "notes": "36 functions (K.1-K.9 complete). K.9 FinalOperatorHandoffBundle added. phaseA.js imports wired for B-K. 2026-04-19.",
+      "function_count": 36
+    },
+    "phaseL": {
+      "phase_name": "Phase L — Backup / Recovery",
+      "domain": "backup_recovery",
+      "spec_status": "spec_defined",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "not_started",
+      "project_validation_status": "not_started",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired",
+      "function_count": 18,
+      "notes": "Sprint 2 2026-04-19 — 18 exports (L.1-L.9), wired into runWordpressConnectorMigration, phaseA.js imports phaseL.js"
+    },
+    "phaseM": {
+      "phase_name": "Phase M — Deployment / Release / Rollback",
+      "domain": "deployment_release",
+      "spec_status": "spec_defined",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "not_started",
+      "project_validation_status": "not_started",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired",
+      "function_count": 18,
+      "notes": "Sprint 2 2026-04-19 — 18 exports (M.1-M.9), wired into runWordpressConnectorMigration"
+    },
+    "phaseN": {
+      "phase_name": "Phase N — Data Integrity / Reconciliation Controls",
+      "domain": "data_integrity",
+      "spec_status": "spec_defined",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "not_started",
+      "project_validation_status": "not_started",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired",
+      "function_count": 18,
+      "notes": "Sprint 2 2026-04-19 — 18 exports (N.1-N.9), wired into runWordpressConnectorMigration"
+    },
+    "phaseO": {
+      "phase_name": "Phase O — Quality Assurance / Smoke Tests / Acceptance",
+      "domain": "qa_acceptance",
+      "spec_status": "spec_defined",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "not_started",
+      "project_validation_status": "not_started",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired",
+      "function_count": 18,
+      "notes": "Sprint 2 2026-04-19 — 18 exports (O.1-O.9), wired into runWordpressConnectorMigration"
+    },
+    "phaseP": {
+      "phase_name": "Phase P — Final Orchestration / Production Readiness / Cutover",
+      "domain": "production_cutover",
+      "spec_status": "spec_defined",
+      "module_status": "module_built",
+      "validation_status": "module_validated",
+      "runtime_wiring_status": "runtime_wired",
+      "dedup_status": "not_started",
+      "project_validation_status": "not_started",
+      "snapshot_status": "not_started",
+      "overall_status": "runtime_wired",
+      "function_count": 18,
+      "notes": "Sprint 2 2026-04-19 — 18 exports (P.1-P.9). cutover_feasible gate checks L/M/N/O statuses. Wired into runWordpressConnectorMigration."
+    }
+  },
+  "infrastructure_modules": {
+    "shared.js": { "status": "module_validated", "function_count": 56 },
+    "phaseA.js": { "status": "runtime_wired", "function_count": 33 },
+    "server.js": { "status": "deduplicated", "notes": "335 wordpress functions removed 2026-04-19. Single import from ./wordpress/index.js added at line ~364. 28952 → 10332 lines." },
+    "execution.js": { "status": "module_validated", "notes": "All 72 truncated functions repaired via fix-all-truncated.mjs — Sprint 2 2026-04-19" },
+    "governed.js": { "status": "module_validated", "notes": "All 33 truncated functions repaired via fix-all-truncated.mjs — Sprint 2 2026-04-19" },
+    "registry.js": { "status": "module_validated", "notes": "All 61 truncated functions repaired via fix-all-truncated.mjs — Sprint 2 2026-04-19" },
+    "wordpress/index.js": { "status": "module_validated", "notes": "Barrel re-export created — Sprint 2 2026-04-19" }
+  },
+  "project_validation": {
+    "status": "project_validated",
+    "date": "2026-04-19",
+    "checks": {
+      "syntax_all_22_modules": "PASS",
+      "runtime_import_resolution": "PASS — 534 exports load, 0 errors",
+      "ghost_reference_check": "PASS — 0 unimported wordpress calls in server.js",
+      "smoke_tests": "PASS — resolveWordpressPhaseLPlan, buildWordpressPhasePGate, buildWordpressPhaseKFinalOperatorHandoffBundle all return correct shapes"
+    }
+  },
+  "open_items": [
+    "snapshot_archived — tag a git release or save snapshot artifact",
+    "5 server-only wordpress helpers in server.js (evaluate moving to shared.js): inferWordpressInventoryAssetType, isWordPressAction, verifyWordpressRolledBackEntry, runWordpressBuilderAssetsInventoryAudit, normalizeWordpressFormIntegrationSignals"
+  ]
+}
