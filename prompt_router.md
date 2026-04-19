@@ -1,4 +1,4 @@
-﻿prompt_router
+prompt_router
 
 
 Status
@@ -74,6 +74,38 @@ Candidate Validation Routing Preservation Rule
   - chain_candidate_validation
   - graph_candidate_validation
   - bindings_candidate_validation
+
+
+Patch Deployment Parity Verification Routing Rule
+
+- when intent includes:
+  - patch diff verify
+  - line by line patch inspect
+  - canonical vs runtime
+  - deployment parity check
+  - patch deployment verification
+  - runtime patch confirmation
+  - was patch deployed live
+  prompt_router must route first to governed patch-deployment parity verification rather than treating file comparison as sufficient deployment proof
+- prompt_router must preserve:
+  - patch_deployment_parity_verification_required = true
+  - patch_verification_scope_required = true
+  - runtime_confirmation_required_when_requested = true
+  - file_only_evidence_not_sufficient_for_live_confirmation = true
+  - authoritative_runtime_evidence_source = surface.operations_log_unified_sheet when runtime evidence is required
+- prompt_router must classify patch-related verification requests into:
+  - patch_file_only
+  - canonical_merge_check
+  - registry_alignment_check
+  - runtime_confirmation_check
+  - combined_parity_check
+- if the user asks whether a patch is deployed live, prompt_router must prefer runtime confirmation routing over file-only comparison routing
+- routing output for patch parity verification must preserve:
+  - patch_verification_scope
+  - runtime_deployment_confirmed
+  - patch_parity_status
+  - authoritative_runtime_evidence_required
+  - deployment_confirmation_overclaim_blocked
 Governed Brand Onboarding Routing Rule
 
 - when intent includes:
