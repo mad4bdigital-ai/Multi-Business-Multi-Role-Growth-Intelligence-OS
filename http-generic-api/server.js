@@ -258,7 +258,6 @@ import {
   buildWordpressAuthSurfaceMutationPayloadFromCandidate,
   buildWordpressAuthSurfaceReconciliationPayloadRow,
   buildWordpressAuthSurfaceRows,
-  buildWordpressBuilderAuditRow,
   buildWordpressBuilderDependencyEdges,
   buildWordpressBuilderDryRunPayloadRow,
   buildWordpressBuilderFamilyMappingTemplate,
@@ -493,7 +492,6 @@ import {
   isWordpressPublishablePhaseAType,
   listDifference,
   listIntersection,
-  listWordpressEntriesByType,
   mapWordpressSourceEntryToMutationPayload,
   normalizeSiteMigrationPayload,
   normalizeWordpressAuthValue,
@@ -3454,110 +3452,6 @@ async function hostingerSshRuntimeRead({ input = {} }) {
   );
 }
 
-
-async function runWordpressBuilderAssetsInventoryAudit(args = {}) {
-  const {
-    payload = {},
-    wpContext = {},
-    phaseBPlan = {},
-    phaseBGate = {}
-  } = args;
-
-  if (phaseBGate.phase_b_gate_ready !== true) {
-    return {
-      phase_b_inventory_status: "blocked",
-      audit_rows: [],
-      inventory_counts: [],
-      failures: [
-        {
-          code: "phase_b_builder_audit_blocked",
-          message: "Phase B builder audit blocked by phase_b_gate.",
-          blocking_reasons: phaseBGate.blocking_reasons || []
-        }
-      ]
-    };
-  }
-
-  const auditRows = [];
-  const inventoryCounts = [];
-  const failures = [];
-
-  for (const postType of phaseBPlan.post_types || []) {
-    try {
-      const itemsRaw = await listWordpressEntriesByType({
-        siteRef: wpContext.source,
-        postType,
-        authRequired: false
-      });
-
-      const items = itemsRaw.slice(0, phaseBPlan.max_items_per_type);
-      const keptItems = phaseBPlan.include_inactive
-        ? items
-        : items.filter(item => {
-            const status = String(item?.status || "").trim().toLowerCase();
-            return !status || status === "publish" || status === "draft";
-          });
-
-      for (const item of keptItems) {
-        auditRows.push(
-          buildWordpressBuilderAuditRow({
-            postType,
-            item,
-            payload
-          })
-        );
-      }
-
-      inventoryCounts.push({
-        post_type: postType,
-        discovered_count: itemsRaw.length,
-        retained_count: keptItems.length,
-        audit_only: phaseBPlan.audit_only === true
-      });
-    } catch (err) {
-      failures.push({
-        post_type: postType,
-        code: err?.code || "wordpress_builder_inventory_failed",
-        message: err?.message || "WordPress builder inventory audit failed."
-      });
-    }
-  }
-
-  return {
-    phase_b_inventory_status:
-      failures.length === 0 ? "completed" : "completed_with_failures",
-    audit_rows: auditRows,
-    inventory_counts: inventoryCounts,
-    failures
-  };
-}
-
-const WORDPRESS_PHASE_D_FORM_TYPES = new Set([
-  "wpcf7_contact_form",
-  "wpforms",
-  "fluentform",
-  "gf_form",
-  "elementor_form",
-  "formidable_form"
-]);
-
-function normalizeWordpressFormIntegrationSignals(signals = {}) {
-  const safeSignals =
-    signals && typeof signals === "object" && !Array.isArray(signals)
-      ? signals
-      : {};
-
-  return {
-    has_email_routing: safeSignals.has_email_routing === true,
-    has_webhook: safeSignals.has_webhook === true,
-    has_recaptcha: safeSignals.has_recaptcha === true,
-    has_smtp_dependency: safeSignals.has_smtp_dependency === true,
-    has_crm_integration: safeSignals.has_crm_integration === true,
-    has_payment_integration: safeSignals.has_payment_integration === true,
-    has_file_upload: safeSignals.has_file_upload === true,
-    has_conditional_logic: safeSignals.has_conditional_logic === true
-  };
-}
 
 const siteMigrationTransports = {
   wordpress_connector: runWordpressConnectorMigration,
