@@ -1,32 +1,158 @@
-# System Architecture
+# Multi-Business Multi-Role Growth Intelligence OS
 
-## Purpose
-This document outlines the architecture of the Multi Business Multi Role Growth Intelligence Operating System (OS). The aim is to provide a structured overview of the system's functionality and components to facilitate understanding and collaboration.
+This repository is a governed, registry-driven execution system. It is not primarily a generic web application stack, even though it contains application runtime code.
 
-## Key Components
-1. **User Interface (UI)**: 
-   - The frontend where users interact with the application.
+The architecture is centered on canonical authority documents, registry-backed execution control, validation-first runtime behavior, and governed logging/writeback.
 
-2. **Backend Services**: 
-   - Responsible for application logic and data handling.
-   - Microservices architecture to ensure scalability.
+## Canonical authority order
 
-3. **Database Layer**: 
-   - Persistent storage for user data and application state.
-   - Employs both SQL and NoSQL databases for flexibility.
+When understanding or changing this repository, use the following authority order:
 
-4. **APIs**: 
-   - Expose functionality to external applications and services.
-   - RESTful and GraphQL interfaces for versatile access to resources.
+1. `system_bootstrap.md`
+2. `memory_schema.json`
+3. `direct_instructions_registry_patch.md`
+4. `module_loader.md`
+5. `prompt_router.md`
 
-5. **Integration Middleware**: 
-   - Handles communication between different components and third-party services.
+Supporting but secondary:
+- runtime implementation files
+- `http-generic-api/*`
+- this `README.md`
 
-6. **Monitoring and Logging**: 
-   - Tools and practices to ensure system health and performance monitoring.
-   
-7. **Security**: 
-   - Mechanisms to protect data and ensure authorized access only.
+If this README conflicts with canonicals, the canonicals win.
 
-8. **Continuous Integration/Continuous Deployment (CI/CD)**: 
-   - Automation of testing and deployment processes for rapid development cycles.
+## Core execution model
+
+The intended execution chain is:
+
+1. `prompt_router`
+2. `module_loader`
+3. `system_bootstrap`
+4. runtime tool or connector execution
+5. governed logging and writeback
+6. durable memory persistence through `memory_schema.json`
+
+Execution is expected to be:
+- governed
+- registry-centered
+- validation-first
+- evidence-preserving
+
+Execution without validation evidence is not considered complete.
+
+## Architecture overview
+
+### Canonical governance layer
+
+The root canonical files define:
+- routing expectations
+- loading and readiness expectations
+- activation and bootstrap rules
+- hard enforcement constraints
+- durable memory structure
+
+These documents are the real architecture spine of the project.
+
+### Registry-centered authority layer
+
+Important governed surfaces include:
+- `Registry Surfaces Catalog`
+- `Validation & Repair Registry`
+- `Task Routes`
+- `Workflow Registry`
+- `Actions Registry`
+- `API Actions Endpoint Registry`
+- `Execution Policy Registry`
+- `Execution Log Unified`
+- `JSON Asset Registry`
+- `Brand Registry`
+- `Hosting Account Registry`
+- `Brand Core Registry`
+
+Runtime behavior should prefer live registry truth over local assumptions, stale memory, or narrative summaries.
+
+### Runtime implementation layer
+
+The main runtime subtree currently visible is [`http-generic-api`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api>).
+
+That subtree currently contains:
+- the main route/orchestration runtime in `server.js`
+- connector support modules
+- governed registry and writeback helpers
+- async job orchestration
+- a modularized WordPress migration subsystem
+
+### Connector and subsystem layer
+
+`http-generic-api` is the clearest connector-style boundary in the repo today. It demonstrates:
+- policy-enforced transport execution
+- explicit connector-oriented boundaries
+- registry-backed execution decisions
+- governed logging and sink handling
+
+Its WordPress subsystem is split into:
+- shared helpers
+- a top-level orchestrator in `wordpress/phaseA.js`
+- phase modules `B` through `P` for governed migration domains
+
+## Current repository status
+
+The project is mid-upgrade toward fuller canonical/runtime alignment.
+
+Current visible realities include:
+- root documentation still being aligned to canonicals
+- a large central runtime surface in `http-generic-api/server.js`
+- partial but meaningful modularization already completed in `http-generic-api/wordpress/`
+- governed sink handling for `Execution Log Unified` and `JSON Asset Registry`
+
+## Upgrade direction
+
+The current upgrade direction is defined in:
+- [`project_upgrade_end_to_end_plan.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/project_upgrade_end_to_end_plan.md>)
+- [`project_upgrade_preparation_baseline.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/project_upgrade_preparation_baseline.md>)
+
+The practical priorities are:
+- canonical/runtime alignment
+- documentation alignment
+- normalization of runtime state
+- decomposition of oversized runtime surfaces by authority boundary
+- stronger governed validation and regression coverage
+
+## Documentation map
+
+Primary documents:
+- [`system_bootstrap.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/system_bootstrap.md>)
+- [`memory_schema.json`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/memory_schema.json>)
+- [`direct_instructions_registry_patch.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/direct_instructions_registry_patch.md>)
+- [`module_loader.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/module_loader.md>)
+- [`prompt_router.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/prompt_router.md>)
+
+Upgrade and preparation:
+- [`project_upgrade_end_to_end_plan.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/project_upgrade_end_to_end_plan.md>)
+- [`project_upgrade_preparation_baseline.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/project_upgrade_preparation_baseline.md>)
+- [`canonical_validation_checklist.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/canonical_validation_checklist.md>)
+- [`runtime_boundary_map.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/runtime_boundary_map.md>)
+- [`governed_mutation_playbook.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/governed_mutation_playbook.md>)
+
+Agent-facing guide:
+- [`AI_Agent_Knowledge_Guide.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/AI_Agent_Knowledge_Guide.md>)
+
+## Working rules for contributors and agents
+
+- Read canonicals before proposing major runtime changes.
+- Do not treat README text as authority when canonicals disagree.
+- Preserve governed terminology and explicit status classification.
+- Treat logging and writeback as part of execution, not afterthoughts.
+- Prefer validation evidence over narrative certainty.
+- Keep module boundaries explicit.
+- Avoid bypassing the canonical chain with route-local improvisation.
+
+## Immediate next implementation focus
+
+The recommended next implementation steps are:
+- complete documentation alignment
+- define the normalization-layer target contract
+- decompose runtime ownership by authority boundary
+- expand validation coverage and drift detection
+
+This repository should be approached as a governed operating model with executable runtime modules, not as a conventional app-first project.

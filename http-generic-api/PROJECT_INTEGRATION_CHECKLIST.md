@@ -1,6 +1,6 @@
 # Project Integration Checklist
 **Governance document — updated after each Sprint**  
-Last updated: 2026-04-19 (v2.1.0-runtime-clean)
+Last updated: 2026-04-19 (v2.2.0-server-decomposed)
 
 ---
 
@@ -65,28 +65,41 @@ Last updated: 2026-04-19 (v2.1.0-runtime-clean)
   buildMutationPayloadArtifact, simulateDryRunRow, buildDryRunExecutionSimulator,
   buildDryRunExecutionArtifact, buildFinalOperatorHandoffBundle
 
+### Sprint 3 — server.js Decomposition
+- [x] authCredentialResolution.js extracted (normalizeAuthContract, findHostingAccountByKey, resolveAccountKey, resolveSecretFromReference, enforceSupportedAuthMode, etc.)
+- [x] httpRequestUtils.js extracted (normalizeMethod, normalizePath, applyPathParams, pathTemplateToRegex, ensureMethodAndPathMatchEndpoint)
+- [x] jobUtils.js extracted (nowIso, normalizeJobId, normalizeJobStatus, buildJobId, validateAsyncJobRequest, nextRetryDelayMs, etc.)
+- [x] driveFileLoader.js extracted (fetchSchemaContract, fetchOAuthConfigContract)
+- [x] sheetHelpers.js extracted (headerMap, getCell)
+- [x] googleSheets.js extracted (getGoogleClients, fetchRange, assertSheetExistsInSpreadsheet, readLiveSheetShape, etc.)
+- [x] siteInventoryRegistry.js extracted (loadSiteRuntimeInventoryRegistry, loadSiteSettingsInventoryRegistry, loadPluginInventoryRegistry)
+- [x] jobRunner.js extracted with configureJobRunner factory (toJobSummary, buildWebhookPayload, sendJobWebhook, executeSameServiceNativeEndpoint, executeJobThroughHttpEndpoint, dispatchEndpointKeyExecution, shouldRetryJobFailure, inferLocalDispatchHttpStatus, createSiteMigrationJobRecord)
+- [x] Dead code removed: WordPress phase constants, toPositiveInt, sleep, chunkArray, nowIsoSafe, verifyWordpressRolledBackEntry, normalizeStringList, runWordpressBuilderAssetsInventoryAudit, normalizeWordpressFormIntegrationSignals
+- [x] server.js: 10,332 → 4,961 lines after Sprint 3 decomposition
+
 ### Project-Wide Validation
-- [x] All 22 .js files pass `node --check`
+- [x] All .js files pass `node --check`
 - [x] All cross-imports resolve (0 ReferenceErrors at runtime)
 - [x] Runtime wiring coverage: all phase calls present in runWordpressConnectorMigration
 - [x] Duplicate symbol scan: 0 remaining duplicates
+- [x] Integration test harness: 63 tests pass (30 unit + 33 integration including runWordpressConnectorMigration dry-run)
+- [x] Per-phase governance advancement: all phases A–P at snapshot_archived
 
 ### Archive
 - [x] v2.0.0-wordpress-modular — Sprint 2 extraction complete (commit 37cefb0)
 - [x] v2.1.0-runtime-clean — 0 ReferenceErrors, all imports resolved (commit 0db68d7)
+- [x] v2.2.0-server-decomposed — Sprint 3 server.js module extraction complete (2026-04-19)
 
 ---
 
-## Open Items (Post v2.1.0)
+## Open Items (Post v2.2.0)
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Integration test harness | Medium | End-to-end test for runWordpressConnectorMigration with mock payload |
-| Per-phase governance advancement | Low | Advance A–P from runtime_wired → deduplicated → project_validated → snapshot_archived in matrix |
 | `inferWordpressInventoryAssetType` in server.js | Low | Used locally in server.js; evaluate if it belongs in shared.js |
 
 ---
 
 ## Current Blockers
 
-None. Project is in a production-ready state as of v2.1.0-runtime-clean.
+None. Project is in a production-ready state as of v2.2.0-server-decomposed.
