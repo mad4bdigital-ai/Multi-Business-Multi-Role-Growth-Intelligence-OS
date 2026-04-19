@@ -2,7 +2,6 @@
 import express from "express";
 import { google } from "googleapis";
 import crypto from "node:crypto";
-import YAML from "yaml";
 import { promises as fs } from "fs";
 import {
   redis, jobQueue, createWorker, closeQueue,
@@ -138,6 +137,10 @@ import {
   buildExecutionPayloadFromJobRequest as buildExecutionPayloadFromJobRequestCore,
   validateAsyncJobRequest as validateAsyncJobRequestCore
 } from "./jobUtils.js";
+import {
+  fetchSchemaContract as fetchSchemaContractCore,
+  fetchOAuthConfigContract as fetchOAuthConfigContractCore
+} from "./driveFileLoader.js";
 import {
   assertHostingerTargetTier,
   isDelegatedHttpExecuteWrapper,
@@ -3118,97 +3121,8 @@ function enforceSupportedAuthMode(p, m) { return enforceSupportedAuthModeCore(p,
 function pathTemplateToRegex(t) { return pathTemplateToRegexCore(t); }
 function ensureMethodAndPathMatchEndpoint(e, m, p, pp) { return ensureMethodAndPathMatchEndpointCore(e, m, p, pp); }
 
-async function fetchSchemaContract(drive, fileId) {
-  if (!fileId) {
-    const err = new Error("Missing openai_schema_file_id.");
-    err.code = "schema_binding_missing";
-    err.status = 403;
-    throw err;
-  }
-
-  const meta = await drive.files.get({
-    fileId,
-    fields: "id,name,mimeType"
-  });
-
-  const { mimeType = "", name = "" } = meta.data || {};
-  let raw = "";
-
-  if (mimeType.startsWith("application/vnd.google-apps")) {
-    const exported = await drive.files.export(
-      { fileId, mimeType: "text/plain" },
-      { responseType: "text" }
-    );
-    raw = String(exported.data || "");
-  } else {
-    const content = await drive.files.get(
-      { fileId, alt: "media" },
-      { responseType: "text" }
-    );
-    raw = String(content.data || "");
-  }
-
-  let parsed;
-  try {
-    if (name.endsWith(".json") || mimeType.includes("json")) {
-      parsed = JSON.parse(raw);
-    } else {
-      parsed = YAML.parse(raw);
-    }
-  } catch {
-    const err = new Error(`Unable to parse schema file ${fileId}.`);
-    err.code = "schema_parse_failed";
-    err.status = 500;
-    throw err;
-  }
-
-  return { fileId, name, mimeType, raw, parsed };
-}
-
-async function fetchOAuthConfigContract(drive, action) {
-  const fileId = String(action.oauth_config_file_id || "").trim();
-  if (!fileId) return null;
-
-  try {
-    const meta = await drive.files.get({ fileId, fields: "id,name,mimeType" });
-    const { mimeType = "", name = "" } = meta.data || {};
-    let raw = "";
-
-    if (mimeType.startsWith("application/vnd.google-apps")) {
-      const exported = await drive.files.export(
-        { fileId, mimeType: "text/plain" },
-        { responseType: "text" }
-      );
-      raw = String(exported.data || "");
-    } else {
-      const content = await drive.files.get(
-        { fileId, alt: "media" },
-        { responseType: "text" }
-      );
-      raw = String(content.data || "");
-    }
-
-    let parsed;
-    try {
-      if (name.endsWith(".json") || mimeType.includes("json")) {
-        parsed = JSON.parse(raw);
-      } else {
-        parsed = YAML.parse(raw);
-      }
-    } catch {
-      parsed = JSON.parse(raw);
-    }
-
-    return { fileId, name, mimeType, raw, parsed };
-  } catch (err) {
-    debugLog("OAUTH_CONFIG_READ_FAILED:", {
-      action_key: action.action_key,
-      oauth_config_file_id: fileId,
-      message: err?.message || String(err)
-    });
-    return null;
-  }
-}
+async function fetchSchemaContract(drive, fileId) { return fetchSchemaContractCore(drive, fileId); }
+async function fetchOAuthConfigContract(drive, action) { return fetchOAuthConfigContractCore(drive, action); }
 
 function resolveSchemaOperation(schema, method, path) {
   return resolveSchemaOperationCore(schema, method, path, { pathTemplateToRegex });
