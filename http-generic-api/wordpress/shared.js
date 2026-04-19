@@ -2212,3 +2212,91 @@ export async function executeSiteMigrationJob(job) {
     };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Missing symbols — moved from server.js to resolve ReferenceErrors in modules
+// ---------------------------------------------------------------------------
+
+export function normalizeWordpressPhaseAType(value = "") {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, "_");
+}
+
+export const WORDPRESS_PHASE_A_ALLOWED_TYPES = new Set(["post", "page", "category", "tag"]);
+
+export const WORDPRESS_PHASE_A_BLOCKED_TYPES = new Set([
+  "attachment", "elementor_library", "wp_template", "wp_template_part",
+  "wp_navigation", "popup", "global_widget", "acf-field-group", "acf-field",
+  "wpforms", "fluentform", "contact-form-7", "seedprod", "mailpoet_page"
+]);
+
+export const WORDPRESS_PHASE_B_BUILDER_TYPES = new Set([
+  "elementor_library", "wp_template", "wp_template_part", "wp_navigation",
+  "popup", "global_widget", "reusable_block", "wp_block"
+]);
+
+export const WORDPRESS_PHASE_D_FORM_TYPES = new Set([
+  "wpcf7_contact_form", "wpforms", "fluentform", "gf_form",
+  "elementor_form", "formidable_form"
+]);
+
+export const WORDPRESS_MUTATION_PUBLISH_STATUSES = new Set([
+  "draft", "publish", "pending", "private", "future"
+]);
+
+export function toPositiveInt(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.floor(n);
+}
+
+export function nowIsoSafe() {
+  try { return new Date().toISOString(); } catch { return ""; }
+}
+
+export function normalizeStringList(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map(item => String(item || "").trim()).filter(Boolean);
+}
+
+export function normalizeProviderDomain(providerDomain) {
+  if (!providerDomain || typeof providerDomain !== "string") {
+    const err = new Error("provider_domain is required.");
+    err.code = "invalid_request"; err.status = 400; throw err;
+  }
+  let url;
+  try { url = new URL(providerDomain); } catch {
+    const err = new Error("provider_domain must be a valid absolute URL.");
+    err.code = "invalid_request"; err.status = 400; throw err;
+  }
+  if (!["https:", "http:"].includes(url.protocol)) {
+    const err = new Error("provider_domain must use http or https.");
+    err.code = "invalid_request"; err.status = 400; throw err;
+  }
+  url.hash = "";
+  return url.toString().replace(/\/+$/, "");
+}
+
+export function normalizeWordpressFormIntegrationSignals(signals = {}) {
+  const s = signals && typeof signals === "object" && !Array.isArray(signals) ? signals : {};
+  return {
+    has_email_routing: s.has_email_routing === true,
+    has_webhook: s.has_webhook === true,
+    has_recaptcha: s.has_recaptcha === true,
+    has_smtp_dependency: s.has_smtp_dependency === true,
+    has_crm_integration: s.has_crm_integration === true,
+    has_payment_integration: s.has_payment_integration === true,
+    has_file_upload: s.has_file_upload === true,
+    has_conditional_logic: s.has_conditional_logic === true
+  };
+}
+
+export async function verifyWordpressRolledBackEntry(args = {}) {
+  const readback = await getWordpressItemById({
+    siteRef: args.destinationSiteRef,
+    collectionSlug: String(args.collectionSlug || "").trim(),
+    id: args.destinationId,
+    authRequired: true
+  });
+  const actualStatus = String(readback?.status || "").trim().toLowerCase();
+  return { verified: actualStatus === "draft", actual_status: actualStatus || "", readback };
+}

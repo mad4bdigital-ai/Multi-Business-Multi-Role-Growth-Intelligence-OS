@@ -1,4 +1,10 @@
 // Auto-extracted from server.js — do not edit manually, use domain logic here.
+import {
+  WORDPRESS_PHASE_B_BUILDER_TYPES,
+  listWordpressEntriesByType,
+  normalizeWordpressPhaseAType,
+  toPositiveInt
+} from "./shared.js";
 
 export function normalizeWordpressBuilderType(value = "") {
   return normalizeWordpressPhaseAType(value);
@@ -2381,5 +2387,63 @@ export function buildWordpressPhaseBNormalizedAudit(args = {}) {
     dependency_graph_edges: dependencyGraph.edges,
     dependency_graph_unresolved: dependencyGraph.unresolved,
     dependency_graph_summary: dependencyGraphSummary
+  };
+}
+
+export async function runWordpressBuilderAssetsInventoryAudit(args = {}) {
+  const { payload = {}, wpContext = {}, phaseBPlan = {}, phaseBGate = {} } = args;
+
+  if (phaseBGate.phase_b_gate_ready !== true) {
+    return {
+      phase_b_inventory_status: "blocked",
+      audit_rows: [],
+      inventory_counts: [],
+      failures: [{
+        code: "phase_b_builder_audit_blocked",
+        message: "Phase B builder audit blocked by phase_b_gate.",
+        blocking_reasons: phaseBGate.blocking_reasons || []
+      }]
+    };
+  }
+
+  const auditRows = [];
+  const inventoryCounts = [];
+  const failures = [];
+
+  for (const postType of phaseBPlan.post_types || []) {
+    try {
+      const itemsRaw = await listWordpressEntriesByType({
+        siteRef: wpContext.source, postType, authRequired: false
+      });
+      const items = itemsRaw.slice(0, phaseBPlan.max_items_per_type);
+      const keptItems = phaseBPlan.include_inactive
+        ? items
+        : items.filter(item => {
+            const status = String(item?.status || "").trim().toLowerCase();
+            return !status || status === "publish" || status === "draft";
+          });
+      for (const item of keptItems) {
+        auditRows.push(buildWordpressBuilderAuditRow({ postType, item, payload }));
+      }
+      inventoryCounts.push({
+        post_type: postType,
+        discovered_count: itemsRaw.length,
+        retained_count: keptItems.length,
+        audit_only: phaseBPlan.audit_only === true
+      });
+    } catch (err) {
+      failures.push({
+        post_type: postType,
+        code: err?.code || "wordpress_builder_inventory_failed",
+        message: err?.message || "WordPress builder inventory audit failed."
+      });
+    }
+  }
+
+  return {
+    phase_b_inventory_status: failures.length === 0 ? "completed" : "completed_with_failures",
+    audit_rows: auditRows,
+    inventory_counts: inventoryCounts,
+    failures
   };
 }

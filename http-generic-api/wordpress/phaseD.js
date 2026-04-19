@@ -1,4 +1,12 @@
 // Auto-extracted from server.js — do not edit manually, use domain logic here.
+import {
+  WORDPRESS_PHASE_D_FORM_TYPES,
+  buildSiteMigrationArtifacts,
+  listWordpressEntriesByType,
+  normalizeWordpressFormIntegrationSignals,
+  normalizeWordpressPhaseAType,
+  toPositiveInt
+} from "./shared.js";
 
 export function normalizeWordpressFormType(value = "") {
   return normalizeWordpressPhaseAType(value);

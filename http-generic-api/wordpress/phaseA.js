@@ -1,3 +1,33 @@
+import {
+  WORDPRESS_MUTATION_PUBLISH_STATUSES,
+  WORDPRESS_PHASE_A_ALLOWED_TYPES,
+  WORDPRESS_PHASE_A_BLOCKED_TYPES,
+  applyDeferredWordpressFeaturedMediaLinks,
+  applyDeferredWordpressParentLinks,
+  applyDeferredWordpressTaxonomyLinks,
+  assertWordpressGovernedResolutionConfidence,
+  buildDeferredWordpressReferencePlan,
+  buildGovernedResolutionRecord,
+  buildSiteMigrationArtifacts,
+  classifyWordpressExecutionStage,
+  ensureWordpressPhaseAState,
+  executeWordpressRestJsonRequest,
+  findWordpressDestinationEntryBySlug,
+  getWordpressItemById,
+  getWordpressSiteAuth,
+  listWordpressEntriesByType,
+  mapWordpressSourceEntryToMutationPayload,
+  normalizeWordpressCollectionSlug,
+  nowIsoSafe,
+  recordWordpressMutationWritebackEvidence,
+  resolveWordpressCollectionSlug,
+  runWithWordpressSelectiveRetry,
+  toPositiveInt,
+  updateWordpressDestinationEntryById,
+  verifyDeferredWordpressParentRepairs,
+  verifyDeferredWordpressTaxonomyRepairs,
+  verifyWordpressRolledBackEntry
+} from "./shared.js";
 // Auto-extracted from server.js — do not edit manually, use domain logic here.
 import {
   resolveWordpressPhaseLPlan,
@@ -143,7 +173,8 @@ import {
   buildWordpressPhaseBMutationPayloadArtifact,
   buildWordpressPhaseBDryRunExecutionSimulator,
   buildWordpressPhaseBDryRunExecutionArtifact,
-  buildWordpressPhaseBFinalOperatorHandoffBundle
+  buildWordpressPhaseBFinalOperatorHandoffBundle,
+  runWordpressBuilderAssetsInventoryAudit
 } from "./phaseB.js";
 import {
   resolveWordpressPhaseCPlan,
