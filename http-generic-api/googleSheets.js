@@ -1,5 +1,17 @@
-// Auto-extracted from server.js — do not edit manually, use domain logic here.
 import { google } from "googleapis";
+import { REGISTRY_SPREADSHEET_ID } from "./config.js";
+import { headerMap } from "./sheetHelpers.js";
+
+function requireEnv(name) {
+  const value = process.env[name];
+  if (!value) {
+    const err = new Error(`Missing required environment variable: ${name}`);
+    err.code = "missing_env";
+    err.status = 500;
+    throw err;
+  }
+  return value;
+}
 
 export async function getGoogleClients() {
   requireEnv("REGISTRY_SPREADSHEET_ID");
@@ -46,6 +58,49 @@ export async function fetchRange(sheets, range) {
   return response.data.values || [];
 }
 
+export async function assertSheetExistsInSpreadsheet(spreadsheetId, sheetName) {
+  const { sheets } = await getGoogleClientsForSpreadsheet(spreadsheetId);
+  const response = await sheets.spreadsheets.get({
+    spreadsheetId: String(spreadsheetId || "").trim(),
+    fields: "sheets.properties.title"
+  });
+
+  const titles = (response.data.sheets || [])
+    .map(s => String(s?.properties?.title || "").trim())
+    .filter(Boolean);
+
+  const normalizedSheetName = String(sheetName || "").trim();
+  if (!titles.includes(normalizedSheetName)) {
+    const err = new Error(
+      `Governed sink sheet not found: ${normalizedSheetName}. Available sheets: ${titles.join(", ")}`
+    );
+    err.code = "sheet_not_found";
+    err.status = 500;
+    err.available_sheets = titles;
+    err.requested_sheet = normalizedSheetName;
+    err.spreadsheet_id = String(spreadsheetId || "").trim();
+    throw err;
+  }
+
+  return titles;
+}
+
+export async function getSpreadsheetSheetMap(sheets, spreadsheetId) {
+  const response = await sheets.spreadsheets.get({
+    spreadsheetId: String(spreadsheetId || "").trim(),
+    fields: "sheets.properties(sheetId,title,index)"
+  });
+
+  const map = {};
+  for (const sheet of response.data.sheets || []) {
+    const props = sheet?.properties || {};
+    const title = String(props.title || "").trim();
+    if (!title) continue;
+    map[title] = { sheetId: props.sheetId, title, index: props.index };
+  }
+  return map;
+}
+
 export async function readLiveSheetShape(spreadsheetId, sheetName, rangeA1) {
   const { sheets } = await getGoogleClientsForSpreadsheet(spreadsheetId);
   const response = await sheets.spreadsheets.values.get({
@@ -70,77 +125,4 @@ export async function readLiveSheetShape(spreadsheetId, sheetName, rangeA1) {
     headerMap: headerMap(header, sheetName),
     columnCount: header.length
   };
-}
-
-export async function getSpreadsheetSheetMap(sheets, spreadsheetId) {
-  const response = await sheets.spreadsheets.get({
-    spreadsheetId: String(spreadsheetId || "").trim(),
-    fields: "sheets.properties(sheetId,title,index)"
-  });
-
-  const map = {};
-  for (const sheet of response.data.sheets || []) {
-    const props = sheet?.properties || {};
-    const title = String(props.title || "").trim();
-    if (!title) continue;
-    map[title] = {
-      sheetId: props.sheetId,
-      title,
-      index: props.index
-    };
-  }
-  return map;
-}
-
-export async function ensureSheetWithHeader(sheets, spreadsheetId, sheetName, columns) {
-  blockLegacyRouteWorkflowWrite(sheetName, columns);
-
-  const sheetMap = await getSpreadsheetSheetMap(sheets, spreadsheetId);
-  if (!sheetMap[sheetName]) {
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: String(spreadsheetId || "").trim(),
-      requestBody: {
-        requests: [
-          {
-            addSheet: {
-              properties: {
-                title: sheetName
-              }
-            }
-          }
-        ]
-      }
-    });
-  }
-
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: String(spreadsheetId || "").trim(),
-    range: toValuesApiRange(sheetName, "1:2")
-  });
-
-  const values = response.data.values || [];
-  const existingHeader = (values[0] || []).map(v => String(v || "").trim()).filter(Boolean);
-
-  if (!existingHeader.length) {
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: String(spreadsheetId || "").trim(),
-      range: toValuesApiRange(sheetName, "A1"),
-      valueInputOption: "RAW",
-      requestBody: {
-        values: [columns]
-      }
-    });
-    return { created: true, header_written: true };
-  }
-
-  const existingSignature = computeHeaderSignature(existingHeader);
-  const expectedSignature = computeHeaderSignature(columns);
-  if (existingSignature !== expectedSignature) {
-    const err = new Error(`${sheetName} header signature mismatch.`);
-    err.code = "sheet_schema_mismatch";
-    err.status = 409;
-    throw err;
-  }
-
-  return { created: false, header_written: false };
 }

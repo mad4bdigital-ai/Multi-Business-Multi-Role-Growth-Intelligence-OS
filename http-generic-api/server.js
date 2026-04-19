@@ -152,6 +152,16 @@ import {
   validateTopLevelRoutingFields
 } from "./normalization.js";
 import {
+  headerMap as headerMapUtil,
+  getCell as getCellUtil
+} from "./sheetHelpers.js";
+import {
+  getGoogleClients as getGoogleClientsBase,
+  getGoogleClientsForSpreadsheet as getGoogleClientsForSpreadsheetBase,
+  fetchRange as fetchRangeBase,
+  assertSheetExistsInSpreadsheet as assertSheetExistsInSpreadsheetBase
+} from "./googleSheets.js";
+import {
   getEndpointExecutionSnapshot as getEndpointExecutionSnapshotCore,
   getPlaceholderResolutionSources as getPlaceholderResolutionSourcesCore,
   isDelegatedTransportTarget as isDelegatedTransportTargetCore,
@@ -471,7 +481,6 @@ import {
   findWordpressDestinationEntryBySlug,
   firstPopulated,
   getWordpressCollectionResolverCache,
-  getWordpressItemById,
   getWordpressSiteAuth,
   inferWordpressAnalyticsPluginSignals,
   inferWordpressBuilderDependencies,
@@ -1867,127 +1876,26 @@ async function logRetryWriteback(input = {}) {
   });
 }
 
-function headerMap(headerRow, sheetName = "unknown_sheet") {
-  const map = {};
-  const duplicates = [];
+function headerMap(headerRow, sheetName) { return headerMapUtil(headerRow, sheetName); }
+function getCell(row, map, key) { return getCellUtil(row, map, key); }
 
-  headerRow.forEach((rawName, idx) => {
-    const name = String(rawName || "").trim();
-    if (!name) return;
-
-    if (Object.prototype.hasOwnProperty.call(map, name)) {
-      duplicates.push(name);
-      return;
-    }
-
-    map[name] = idx;
-  });
-
-  if (duplicates.length) {
-    const err = new Error(
-      `Duplicate headers detected in ${sheetName}: ${[...new Set(duplicates)].join(", ")}`
-    );
-    err.code = "duplicate_sheet_headers";
-    err.status = 500;
-    throw err;
-  }
-
-  return map;
-}
-
-function getCell(row, map, key) {
-  const idx = map[key];
-  return idx === undefined ? "" : (row[idx] ?? "");
-}
-
-async function getGoogleClients() {
-  requireEnv("REGISTRY_SPREADSHEET_ID");
-  const auth = new google.auth.GoogleAuth({
-    scopes: [
-      "https://www.googleapis.com/auth/spreadsheets",
-      "https://www.googleapis.com/auth/drive"
-    ]
-  });
-  const client = await auth.getClient();
-  return {
-    sheets: google.sheets({ version: "v4", auth: client }),
-    drive: google.drive({ version: "v3", auth: client })
-  };
-}
-
-async function getGoogleClientsForSpreadsheet(spreadsheetId) {
-  requireEnv("REGISTRY_SPREADSHEET_ID");
-  if (!String(spreadsheetId || "").trim()) {
-    const err = new Error("Missing required spreadsheet id for governed sink.");
-    err.code = "missing_env";
-    err.status = 500;
-    throw err;
-  }
-  const auth = new google.auth.GoogleAuth({
-    scopes: [
-      "https://www.googleapis.com/auth/spreadsheets",
-      "https://www.googleapis.com/auth/drive"
-    ]
-  });
-  const client = await auth.getClient();
-  return {
-    spreadsheetId: String(spreadsheetId || "").trim(),
-    sheets: google.sheets({ version: "v4", auth: client }),
-    drive: google.drive({ version: "v3", auth: client })
-  };
-}
-
-async function assertSheetExistsInSpreadsheet(spreadsheetId, sheetName) {
-  const { sheets } = await getGoogleClientsForSpreadsheet(spreadsheetId);
-  const response = await sheets.spreadsheets.get({
-    spreadsheetId: String(spreadsheetId || "").trim(),
-    fields: "sheets.properties.title"
-  });
-
-  const titles = (response.data.sheets || [])
-    .map(s => String(s?.properties?.title || "").trim())
-    .filter(Boolean);
-
-  const normalizedSheetName = String(sheetName || "").trim();
-  if (!titles.includes(normalizedSheetName)) {
-    const err = new Error(
-      `Governed sink sheet not found: ${normalizedSheetName}. Available sheets: ${titles.join(", ")}`
-    );
-    err.code = "sheet_not_found";
-    err.status = 500;
-    err.available_sheets = titles;
-    err.requested_sheet = normalizedSheetName;
-    err.spreadsheet_id = String(spreadsheetId || "").trim();
-    throw err;
-  }
-
-  return titles;
-}
+async function getGoogleClients() { return getGoogleClientsBase(); }
+async function getGoogleClientsForSpreadsheet(id) { return getGoogleClientsForSpreadsheetBase(id); }
+async function assertSheetExistsInSpreadsheet(spreadsheetId, sheetName) { return assertSheetExistsInSpreadsheetBase(spreadsheetId, sheetName); }
 
 async function assertGovernedSinkSheetsExist() {
   const executionLogTitles = await assertSheetExistsInSpreadsheet(
     EXECUTION_LOG_UNIFIED_SPREADSHEET_ID,
     EXECUTION_LOG_UNIFIED_SHEET
   );
-
   const jsonAssetTitles = await assertSheetExistsInSpreadsheet(
     JSON_ASSET_REGISTRY_SPREADSHEET_ID,
     JSON_ASSET_REGISTRY_SHEET
   );
-
-  return {
-    executionLogTitles,
-    jsonAssetTitles
-  };
+  return { executionLogTitles, jsonAssetTitles };
 }
 
-async function fetchRange(sheets, range) {
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: REGISTRY_SPREADSHEET_ID,
-    range
-  });
-  return response.data.values || [];
-}
+async function fetchRange(sheets, range) { return fetchRangeBase(sheets, range); }
 
 function toSheetCellValue(value) {
   return toSheetCellValueCore(value);
@@ -3201,14 +3109,6 @@ function createHttpError(code, message, status = 400, details) {
   return err;
 }
 
-function normalizeStringList(value) {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map(item => String(item || "").trim())
-    .filter(Boolean);
-}
-
-
 function buildRecordFromHeaderAndRow(header = [], row = []) {
   return buildRecordFromHeaderAndRowCore(header, row);
 }
@@ -3507,14 +3407,6 @@ async function loadWorkflowRegistry(sheets, options = {}) {
   });
 }
 
-const WORDPRESS_MUTATION_PUBLISH_STATUSES = new Set([
-  "draft",
-  "publish",
-  "pending",
-  "private",
-  "future"
-]);
-
 async function readGovernedSheetRecords(sheetName, spreadsheetId = REGISTRY_SPREADSHEET_ID) {
   return readGovernedSheetRecordsCore(sheetName, spreadsheetId, {
     REGISTRY_SPREADSHEET_ID,
@@ -3562,91 +3454,6 @@ async function hostingerSshRuntimeRead({ input = {} }) {
   );
 }
 
-const WORDPRESS_CORE_POST_TYPE_COLLECTION_ALIASES = Object.freeze({
-  post: "posts",
-  posts: "posts",
-  page: "pages",
-  pages: "pages",
-  attachment: "media",
-  media: "media"
-});
-
-const WORDPRESS_PHASE_A_ALLOWED_TYPES = new Set([
-  "post",
-  "page",
-  "category",
-  "tag"
-]);
-
-const WORDPRESS_PHASE_A_BLOCKED_TYPES = new Set([
-  "attachment",
-  "elementor_library",
-  "wp_template",
-  "wp_template_part",
-  "wp_navigation",
-  "popup",
-  "global_widget",
-  "acf-field-group",
-  "acf-field",
-  "wpforms",
-  "fluentform",
-  "contact-form-7",
-  "seedprod",
-  "mailpoet_page"
-]);
-
-function toPositiveInt(value, fallback) {
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return fallback;
-  return Math.floor(n);
-}
-
-function sleep(ms = 0) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function chunkArray(items = [], size = 20) {
-  const out = [];
-  for (let i = 0; i < items.length; i += size) {
-    out.push(items.slice(i, i + size));
-  }
-  return out;
-}
-
-async function verifyWordpressRolledBackEntry(args = {}) {
-  const readback = await getWordpressItemById({
-    siteRef: args.destinationSiteRef,
-    collectionSlug: String(args.collectionSlug || "").trim(),
-    id: args.destinationId,
-    authRequired: true
-  });
-
-  const actualStatus = String(readback?.status || "").trim().toLowerCase();
-  return {
-    verified: actualStatus === "draft",
-    actual_status: actualStatus || "",
-    readback
-  };
-}
-
-function nowIsoSafe() {
-  try {
-    return new Date().toISOString();
-  } catch {
-    return "";
-  }
-}
-
-const WORDPRESS_PHASE_B_BUILDER_TYPES = new Set([
-  "elementor_library",
-  "wp_template",
-  "wp_template_part",
-  "wp_navigation",
-  "popup",
-  "global_widget",
-  "reusable_block",
-  "wp_block"
-]);
 
 async function runWordpressBuilderAssetsInventoryAudit(args = {}) {
   const {
