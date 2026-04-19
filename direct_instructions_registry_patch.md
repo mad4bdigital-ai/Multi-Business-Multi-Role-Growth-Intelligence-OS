@@ -1,4 +1,4 @@
-﻿direct_instructions_registry_patch
+﻿﻿direct_instructions_registry_patch
 
 
 Status
@@ -88,6 +88,29 @@ Governed Addition Candidate Validation Rule
   - governance_profile = Governed Addition Intake
 - candidate validation rows must not be represented as validated, recovered, or execution-ready authority
 - promotion from candidate/inactive to active is forbidden until the candidate validation set for the affected surfaces has been re-evaluated and upgraded to compatible validated states
+
+
+Patch Deployment Parity Verification Authority Rule
+
+- any request to verify a patch, line-by-line patch, canonical merge, or runtime patch deployment must distinguish evidence scope explicitly
+- patch-file diff confirmation must not be represented as live runtime deployment confirmation
+- canonical merge confirmation must not be represented as live runtime deployment confirmation
+- registry alignment confirmation must not be represented as live runtime deployment confirmation
+- live runtime deployment confirmation is allowed only when authoritative runtime evidence is present
+- governed patch evidence classes must be preserved as:
+  - patch_file_diff
+  - canonical_merge_verification
+  - registry_alignment_verification
+  - runtime_deployment_verification
+- governed patch parity outcomes must be preserved as:
+  - file_verified_only
+  - canonical_verified_only
+  - registry_aligned_only
+  - runtime_confirmed
+  - degraded_missing_runtime_confirmation
+- when the user asks whether a patch is deployed live, execution must attempt governed runtime deployment verification and must not stop at file-only comparison if runtime verification is possible
+- `Execution Log Unified` is the authoritative runtime evidence source for patch deployment confirmation when runtime execution evidence is required
+- if runtime deployment verification is requested but authoritative runtime evidence is absent, deployment-confirmed wording is forbidden and the result must remain degraded or partial by policy
 
 Governed Brand Onboarding Authority Rule
 
@@ -3394,6 +3417,92 @@ Minimal test checklist (for implementers):
 - system_bootstrap completes canonical bootstrap for all five files before routing when those dependencies are required (knowledge_layer or canonical_url per row)
 - Non-`canonicals.wovacation.com` URLs are invalid for migrated rows when URL fetch is used
 - `memory_schema.json` row passes extension checks only with `.json`; markdown canonicals only with `.md` (or governed `.txt` alias)
+
+---
+
+WordPress CPT Schema Preflight Asset Contract Enforcement
+
+For `asset_type = wordpress_cpt_schema_preflight`, execution must produce a governed brand-driven JSON asset instance rather than a generic reusable template.
+
+Required top-level `json_payload` sections:
+- `identity`
+- `source_resolution`
+- `field_contract`
+- `taxonomy_contract`
+- `formatter_hints`
+- `playbook_inference`
+- `readiness_result`
+
+Required `identity` fields:
+- `brand_name`
+- `brand_domain`
+- `target_key`
+- `base_url`
+- `site_type`
+- `cpt_slug`
+- `rest_base`
+- `asset_key`
+
+Required `playbook_inference` fields:
+- `brand_playbook_asset_key`
+- `brand_playbook_sheet_gid`
+- `playbook_coverage_status`
+- `playbook_backfill_required`
+- `fallback_template_mode`
+
+Required shape version:
+- `wordpress_cpt_schema_preflight_asset_v1`
+
+Asset key contract:
+- `{brand.normalized}__{target_key}__{cpt_slug}__wordpress_cpt_schema_preflight_v1`
+
+Brand Playbook Workbook Authority Scope
+
+For CPT preflight template inference, the only governed playbook source is the onboarding-produced Brand Playbook workbook Google Sheet stored in Brand Core assets.
+
+Authority scope:
+- hint-only
+- non-structural
+- brand-driven
+
+The Brand Playbook workbook may influence:
+- naming conventions
+- content patterns
+- field usage hints
+- taxonomy style hints
+- formatter hints
+
+The Brand Playbook workbook must not override:
+- JetEngine config authority
+- WordPress runtime type authority
+- taxonomy runtime authority
+
+Playbook Coverage Fallout Enforcement
+
+If `playbook_coverage_status = missing_for_cpt`:
+- runtime/config structural authority remains primary
+- fallback to runtime contract synthesis is required
+- `playbook_backfill_required` must be set explicitly
+- governed onboarding backfill routing must be preserved
+
+Structural authority rule:
+- `PLAYBOOK_NEVER_REQUIRED_FOR_STRUCTURE`
+
+Taxonomy fallback rule:
+- uncovered playbook taxonomy guidance must not override runtime taxonomy authority
+
+Execution Log Unified Duplicate Exemption Enforcement
+
+`Execution Log Unified` is exempt from semantic duplicate append blocking.
+
+Direct instruction enforcement:
+- semantically equivalent log appends to `Execution Log Unified` must remain allowed
+- repeated attempts must remain preservable as distinct evidence
+- duplicate prevention policy must not block raw execution evidence writes for this sink
+
+This exemption applies only to `Execution Log Unified`.
+
+Mutation write safety for other governed surfaces remains unchanged.
 
 ## Runtime Validation Enforcement Authority
 
