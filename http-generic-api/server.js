@@ -10,6 +10,8 @@ import {
   getIdempotencyEntry, setIdempotencyEntry, deleteIdempotencyEntry, hasIdempotencyEntry
 } from "./queue.js";
 
+import { githubGitBlobChunkRead } from "./github.js";
+
 import {
   JSON_BODY_LIMIT, REGISTRY_SPREADSHEET_ID, ACTIVITY_SPREADSHEET_ID,
   BRAND_REGISTRY_SHEET, ACTIONS_REGISTRY_SHEET, ENDPOINT_REGISTRY_SHEET,
@@ -20,8 +22,7 @@ import {
   EXECUTION_LOG_UNIFIED_SHEET, JSON_ASSET_REGISTRY_SHEET, BRAND_CORE_REGISTRY_SHEET,
   EXECUTION_LOG_UNIFIED_SPREADSHEET_ID, JSON_ASSET_REGISTRY_SPREADSHEET_ID,
   OVERSIZED_ARTIFACTS_DRIVE_FOLDER_ID, RAW_BODY_MAX_BYTES, MAX_TIMEOUT_SECONDS,
-  PORT as port, SERVICE_VERSION, GITHUB_API_BASE_URL, GITHUB_TOKEN,
-  GITHUB_BLOB_CHUNK_MAX_LENGTH, DEFAULT_JOB_MAX_ATTEMPTS,
+  PORT as port, SERVICE_VERSION, DEFAULT_JOB_MAX_ATTEMPTS,
   JOB_WEBHOOK_TIMEOUT_MS, JOB_RETRY_DELAYS_MS
 } from "./config.js";
 
@@ -426,149 +427,6 @@ function requireEnv(name) {
     throw err;
   }
   return value;
-}
-
-function requireGithubToken() {
-  if (!GITHUB_TOKEN) {
-    const err = new Error("Missing required environment variable: GITHUB_TOKEN");
-    err.code = "missing_github_token";
-    err.status = 500;
-    throw err;
-  }
-  return GITHUB_TOKEN;
-}
-
-function assertNonEmptyString(value, fieldName) {
-  const normalized = String(value || "").trim();
-  if (!normalized) {
-    const err = new Error(`${fieldName} is required.`);
-    err.code = "invalid_request";
-    err.status = 400;
-    throw err;
-  }
-  return normalized;
-}
-
-function parseBoundedInteger(value, fieldName, min, max) {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-    const err = new Error(
-      `${fieldName} must be an integer between ${min} and ${max}.`
-    );
-    err.code = "invalid_request";
-    err.status = 400;
-    throw err;
-  }
-  return parsed;
-}
-
-function decodeBase64ToBuffer(value) {
-  return Buffer.from(String(value || "").replace(/\s+/g, ""), "base64");
-}
-
-async function fetchGitHubBlobPayload({ owner, repo, fileSha }) {
-  const token = requireGithubToken();
-  const url =
-    `${GITHUB_API_BASE_URL}/repos/${encodeURIComponent(owner)}` +
-    `/${encodeURIComponent(repo)}/git/blobs/${encodeURIComponent(fileSha)}`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "X-GitHub-Api-Version": "2022-11-28"
-    }
-  });
-
-  const raw = await response.text();
-  let payload = {};
-  if (raw) {
-    try {
-      payload = JSON.parse(raw);
-    } catch {
-      payload = {};
-    }
-  }
-
-  if (!response.ok) {
-    const err = new Error(
-      payload?.message || `GitHub blob fetch failed with status ${response.status}.`
-    );
-    err.code =
-      response.status === 404 ? "github_blob_not_found" : "github_blob_fetch_failed";
-    err.status = response.status === 404 ? 404 : 502;
-    throw err;
-  }
-
-  if (String(payload?.encoding || "").trim().toLowerCase() !== "base64") {
-    const err = new Error("GitHub blob response encoding is not base64.");
-    err.code = "github_blob_encoding_unsupported";
-    err.status = 502;
-    throw err;
-  }
-
-  return payload;
-}
-
-async function githubGitBlobChunkRead({ input = {} }) {
-  const owner = assertNonEmptyString(input.owner, "owner");
-  const repo = assertNonEmptyString(input.repo, "repo");
-  const fileSha = assertNonEmptyString(
-    input.file_sha || input.fileSha,
-    "file_sha"
-  );
-
-  const start = parseBoundedInteger(
-    input.start,
-    "start",
-    0,
-    Number.MAX_SAFE_INTEGER
-  );
-  const length = parseBoundedInteger(
-    input.length,
-    "length",
-    1,
-    GITHUB_BLOB_CHUNK_MAX_LENGTH
-  );
-
-  const blob = await fetchGitHubBlobPayload({
-    owner,
-    repo,
-    fileSha
-  });
-
-  const blobBuffer = decodeBase64ToBuffer(blob.content);
-  const totalSize = blobBuffer.length;
-
-  if (start > totalSize) {
-    return {
-      ok: false,
-      statusCode: 416,
-      error: {
-        code: "range_not_satisfiable",
-        message: "start exceeds blob size."
-      }
-    };
-  }
-
-  const endExclusive = Math.min(start + length, totalSize);
-  const chunkBuffer = blobBuffer.subarray(start, endExclusive);
-
-  return {
-    ok: true,
-    statusCode: 200,
-    owner,
-    repo,
-    file_sha: fileSha,
-    start,
-    length: chunkBuffer.length,
-    end: endExclusive,
-    total_size: totalSize,
-    encoding: "base64",
-    content: chunkBuffer.toString("base64"),
-    has_more: endExclusive < totalSize
-  };
 }
 
 function backendApiKeyEnabled() {
@@ -1335,19 +1193,139 @@ function createJsonAssetId() {
   return `JSON-ASSET-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
 }
 
+function isWordpressCptSchemaPreflightEndpoint(endpointKey = "") {
+  const key = String(endpointKey || "").trim();
+  return new Set([
+    "wordpress_get_cpt_runtime_type",
+    "jetengine_get_post_type_config",
+    "jetengine_get_meta_boxes",
+    "wordpress_get_cpt_sample_pattern",
+    "wordpress_get_taxonomy_runtime",
+    "wordpress_list_taxonomy_terms",
+    "wordpress_get_tag_terms",
+    "wordpress_get_category_terms"
+  ]).has(key);
+}
+
+function normalizeJsonObjectOrEmpty(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value;
+}
+
+function buildWordpressCptSchemaPreflightAssetKey(args = {}) {
+  const brandNormalized = String(
+    args.normalized_brand_name || args.brand_name || "unknown_brand"
+  )
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "unknown_brand";
+
+  const targetKey =
+    String(args.target_key || "unknown_target").trim() || "unknown_target";
+  const cptSlug =
+    String(args.cpt_slug || args.post_type || args.type || args.rest_base || "unknown_cpt")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, "_") || "unknown_cpt";
+
+  return `${brandNormalized}__${targetKey}__${cptSlug}__wordpress_cpt_schema_preflight_v1`;
+}
+
+function buildWordpressCptSchemaPreflightPayload(args = {}) {
+  const rawPayload = extractJsonAssetPayloadBody(args);
+  const payloadObject =
+    rawPayload && typeof rawPayload === "object" && !Array.isArray(rawPayload)
+      ? rawPayload
+      : {};
+
+  const identity = {
+    brand_name: String(args.brand_name || "").trim(),
+    brand_domain: String(args.brand_domain || "").trim(),
+    target_key: String(args.target_key || "").trim(),
+    base_url: String(args.base_url || "").trim(),
+    site_type: "wordpress",
+    cpt_slug: String(args.cpt_slug || args.post_type || args.type || "").trim(),
+    rest_base: String(args.rest_base || "").trim(),
+    asset_key: buildWordpressCptSchemaPreflightAssetKey(args)
+  };
+
+  const source_resolution = {
+    brand_registry_resolved: !!args.brand_name || !!args.target_key,
+    site_runtime_inventory_resolved: !!args.base_url,
+    wordpress_rest_type_resolved:
+      String(args.endpoint_key || "").trim() === "wordpress_get_cpt_runtime_type" ||
+      payloadObject.wordpress_rest_type_resolved === true,
+    jetengine_config_resolved:
+      String(args.endpoint_key || "").trim() === "jetengine_get_post_type_config" ||
+      payloadObject.jetengine_config_resolved === true,
+    taxonomy_runtime_resolved:
+      String(args.endpoint_key || "").trim() === "wordpress_get_taxonomy_runtime" ||
+      payloadObject.taxonomy_runtime_resolved === true,
+    sample_pattern_mode: String(
+      args.sample_pattern_mode ||
+      payloadObject.sample_pattern_mode ||
+      ""
+    ).trim(),
+    sample_pattern_used:
+      String(args.endpoint_key || "").trim() === "wordpress_get_cpt_sample_pattern" ||
+      payloadObject.sample_pattern_used === true
+  };
+
+  const playbook_inference = {
+    brand_playbook_asset_key: String(args.brand_playbook_asset_key || "").trim(),
+    brand_playbook_sheet_gid: String(args.brand_playbook_sheet_gid || "").trim(),
+    playbook_coverage_status: String(
+      args.playbook_coverage_status || "not_applicable"
+    ).trim(),
+    playbook_backfill_required: String(
+      args.playbook_backfill_required || "FALSE"
+    ).trim(),
+    fallback_template_mode: String(
+      args.fallback_template_mode || "runtime_contract_only"
+    ).trim(),
+    coverage_gap_notes: String(args.coverage_gap_notes || "").trim()
+  };
+
+  return {
+    identity,
+    source_resolution,
+    field_contract: normalizeJsonObjectOrEmpty(
+      args.field_contract || payloadObject.field_contract || payloadObject.fields
+    ),
+    taxonomy_contract: normalizeJsonObjectOrEmpty(
+      args.taxonomy_contract || payloadObject.taxonomy_contract
+    ),
+    formatter_hints: normalizeJsonObjectOrEmpty(
+      args.formatter_hints || payloadObject.formatter_hints
+    ),
+    playbook_inference,
+    readiness_result: normalizeJsonObjectOrEmpty(
+      args.readiness_result || payloadObject.readiness_result
+    )
+  };
+}
+
 function toJsonAssetRegistryRow(args = {}) {
   const asset_id = createJsonAssetId();
   const brand = args.brand_name ?? "Unknown Brand";
   const endpoint = args.endpoint_key ?? "unknown_endpoint";
+  const isWordpressPreflightAsset =
+    String(args.asset_type || "").trim() === "wordpress_cpt_schema_preflight" ||
+    isWordpressCptSchemaPreflightEndpoint(endpoint);
   const inferred_asset_type =
-    String(args.parent_action_key || "").trim() === "wordpress_api"
+    isWordpressPreflightAsset
+      ? "wordpress_cpt_schema_preflight"
+      : String(args.parent_action_key || "").trim() === "wordpress_api"
       ? inferWordpressInventoryAssetType(args.endpoint_key)
       : args.job_id
       ? "raw_queue_response_body"
       : "raw_sync_response_body";
   const asset_type = String(args.asset_type || inferred_asset_type).trim();
   const oversized = !!args.oversized;
-  const payloadBody = extractJsonAssetPayloadBody(args);
+  const payloadBody = isWordpressPreflightAsset
+    ? buildWordpressCptSchemaPreflightPayload(args)
+    : extractJsonAssetPayloadBody(args);
   const embeddedPayload = oversized
     ? ""
     : JSON.stringify(payloadBody ?? null);
@@ -1355,28 +1333,52 @@ function toJsonAssetRegistryRow(args = {}) {
     ...args,
     endpoint_key: endpoint,
     asset_type,
-    asset_key: args.asset_key || `${endpoint}__${args.execution_trace_id}`
+    asset_key: args.asset_key || (
+      isWordpressPreflightAsset
+        ? buildWordpressCptSchemaPreflightAssetKey(args)
+        : `${endpoint}__${args.execution_trace_id}`
+    )
   });
 
   return {
     asset_id,
     brand_name: brand,
-    asset_key: args.asset_key || `${endpoint}__${args.execution_trace_id}`,
+    asset_key: args.asset_key || (
+      isWordpressPreflightAsset
+        ? buildWordpressCptSchemaPreflightAssetKey(args)
+        : `${endpoint}__${args.execution_trace_id}`
+    ),
     asset_type,
-    cpt_slug: args.cpt_slug || "",
-    mapping_status: "captured_unreduced",
-    mapping_version: oversized
+    cpt_slug: args.cpt_slug || args.post_type || args.type || "",
+    mapping_status: isWordpressPreflightAsset
+      ? "captured_governed_preflight"
+      : "captured_unreduced",
+    mapping_version: isWordpressPreflightAsset
+      ? "wordpress_cpt_schema_preflight_asset_v1"
+      : oversized
       ? "response_body_artifact_v2"
       : "response_body_embedded_v2",
     storage_format: "json",
     google_drive_link: oversized ? args.google_drive_link : "",
-    source_mode: "server_writeback_artifact",
-    source_asset_ref: oversized ? args.drive_file_id : "",
+    source_mode: isWordpressPreflightAsset
+      ? "brand_driven_runtime_resolution"
+      : "server_writeback_artifact",
+    source_asset_ref: isWordpressPreflightAsset
+      ? String(args.brand_playbook_asset_key || "").trim()
+      : oversized
+      ? args.drive_file_id
+      : "",
     json_payload: embeddedPayload,
-    transport_status: oversized ? "captured_external" : "captured_embedded",
-    validation_status: "pending",
+    transport_status: isWordpressPreflightAsset
+      ? "captured_governed"
+      : oversized
+      ? "captured_external"
+      : "captured_embedded",
+    validation_status: isWordpressPreflightAsset ? "validated" : "pending",
     last_validated_at: args.captured_at,
-    notes: oversized
+    notes: isWordpressPreflightAsset
+      ? `Governed wordpress_cpt_schema_preflight asset captured for execution_trace_id=${args.execution_trace_id}; authoritative_home=${assetHome.authoritative_home}`
+      : oversized
       ? `Oversized derived JSON artifact captured for execution_trace_id=${args.execution_trace_id}; authoritative_home=${assetHome.authoritative_home}`
       : `Embedded derived JSON artifact captured for execution_trace_id=${args.execution_trace_id}; authoritative_home=${assetHome.authoritative_home}`,
     active_status: "TRUE"
@@ -1385,6 +1387,10 @@ function toJsonAssetRegistryRow(args = {}) {
 
 function inferWordpressInventoryAssetType(endpointKey = "") {
   const key = String(endpointKey || "").trim();
+
+  if (isWordpressCptSchemaPreflightEndpoint(key)) {
+    return "wordpress_cpt_schema_preflight";
+  }
 
   if (key === "wordpress_list_tags") return "wordpress_taxonomy_inventory";
   if (key === "wordpress_list_categories") return "wordpress_taxonomy_inventory";
