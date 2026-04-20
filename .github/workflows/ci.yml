@@ -62,7 +62,7 @@ jobs:
         run: |
           # Detect if any function name that exists in an extracted module is also defined inline in server.js.
           # This catches the class of drift where a module is added but server.js is not updated.
-          MODULES="normalization mutationGovernance governedChangeControl jobRunner jobUtils"
+          MODULES="normalization mutationGovernance governedChangeControl jobRunner jobUtils auth"
           FAIL=0
           for mod in $MODULES; do
             if [ ! -f "${mod}.js" ]; then continue; fi

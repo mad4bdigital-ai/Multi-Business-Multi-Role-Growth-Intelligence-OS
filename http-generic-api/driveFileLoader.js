@@ -6,16 +6,20 @@ function debugLog(...args) {
   }
 }
 
+function buildSharedDriveRequest(fileId, extra = {}) {
+  return { fileId, supportsAllDrives: true, ...extra };
+}
+
 async function readDriveFileRaw(drive, fileId, mimeType) {
   if (mimeType.startsWith("application/vnd.google-apps")) {
     const exported = await drive.files.export(
-      { fileId, mimeType: "text/plain" },
+      buildSharedDriveRequest(fileId, { mimeType: "text/plain" }),
       { responseType: "text" }
     );
     return String(exported.data || "");
   }
   const content = await drive.files.get(
-    { fileId, alt: "media" },
+    buildSharedDriveRequest(fileId, { alt: "media" }),
     { responseType: "text" }
   );
   return String(content.data || "");
@@ -36,7 +40,9 @@ export async function fetchSchemaContract(drive, fileId) {
     throw err;
   }
 
-  const meta = await drive.files.get({ fileId, fields: "id,name,mimeType" });
+  const meta = await drive.files.get(
+    buildSharedDriveRequest(fileId, { fields: "id,name,mimeType,driveId,parents" })
+  );
   const { mimeType = "", name = "" } = meta.data || {};
 
   const raw = await readDriveFileRaw(drive, fileId, mimeType);
@@ -59,7 +65,9 @@ export async function fetchOAuthConfigContract(drive, action) {
   if (!fileId) return null;
 
   try {
-    const meta = await drive.files.get({ fileId, fields: "id,name,mimeType" });
+    const meta = await drive.files.get(
+      buildSharedDriveRequest(fileId, { fields: "id,name,mimeType,driveId,parents" })
+    );
     const { mimeType = "", name = "" } = meta.data || {};
 
     const raw = await readDriveFileRaw(drive, fileId, mimeType);

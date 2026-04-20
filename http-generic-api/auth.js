@@ -1,18 +1,62 @@
-// Auto-extracted from server.js — do not edit manually, use domain logic here.
 import { google } from "googleapis";
-import {
-  REGISTRY_SPREADSHEET_ID, ACTIVITY_SPREADSHEET_ID, BRAND_REGISTRY_SHEET,
-  ACTIONS_REGISTRY_SHEET, ENDPOINT_REGISTRY_SHEET, EXECUTION_POLICY_SHEET,
-  HOSTING_ACCOUNT_REGISTRY_SHEET, SITE_RUNTIME_INVENTORY_REGISTRY_SHEET,
-  SITE_SETTINGS_INVENTORY_REGISTRY_SHEET, PLUGIN_INVENTORY_REGISTRY_SHEET,
-  TASK_ROUTES_SHEET, WORKFLOW_REGISTRY_SHEET, REGISTRY_SURFACES_CATALOG_SHEET,
-  VALIDATION_REPAIR_REGISTRY_SHEET, EXECUTION_LOG_UNIFIED_SHEET,
-  JSON_ASSET_REGISTRY_SHEET, BRAND_CORE_REGISTRY_SHEET,
-  EXECUTION_LOG_UNIFIED_SPREADSHEET_ID, JSON_ASSET_REGISTRY_SPREADSHEET_ID,
-  OVERSIZED_ARTIFACTS_DRIVE_FOLDER_ID, RAW_BODY_MAX_BYTES, MAX_TIMEOUT_SECONDS,
-  SERVICE_VERSION, GITHUB_API_BASE_URL, GITHUB_TOKEN, GITHUB_BLOB_CHUNK_MAX_LENGTH,
-  DEFAULT_JOB_MAX_ATTEMPTS, JOB_WEBHOOK_TIMEOUT_MS, JOB_RETRY_DELAYS_MS
-} from "./config.js";
+import { policyValue, policyList } from "./registryResolution.js";
+import { fetchOAuthConfigContract } from "./driveFileLoader.js";
+
+const PREMIUM_RETRY_MUTATION_KEYS = new Set(["premium", "ultra_premium"]);
+
+const _debug = (...args) => {
+  if (String(process.env.EXECUTION_DEBUG || "").trim().toLowerCase() === "true") {
+    console.log(...args);
+  }
+};
+
+// --- retryMutation private helpers ---
+
+function retryMutationEnabled(policies = []) {
+  return String(
+    policyValue(policies, "HTTP Execution Resilience", "Retry Mutation Enabled", "FALSE")
+  ).trim().toUpperCase() === "TRUE";
+}
+
+function retryMutationAppliesToQuery(policies = []) {
+  return String(
+    policyValue(policies, "HTTP Execution Resilience", "Retry Mutation Apply To", "")
+  ).trim() === "query";
+}
+
+function retryMutationSchemaModeAllowlisted(policies = []) {
+  return String(
+    policyValue(policies, "HTTP Execution Resilience", "Retry Mutation Schema Mode", "")
+  ).trim() === "allowlisted";
+}
+
+function parseRetryStageValue(stageValue = "") {
+  const raw = String(stageValue || "").trim();
+  if (!raw || raw === "{}") return {};
+
+  const mutation = {};
+  const pairs = raw
+    .split(",")
+    .map(x => x.trim())
+    .filter(Boolean);
+
+  for (const pair of pairs) {
+    const [rawKey, rawValue] = pair.split("=");
+    const key = String(rawKey || "").trim();
+    const value = String(rawValue || "").trim().toLowerCase();
+
+    if (!key) continue;
+    if (!PREMIUM_RETRY_MUTATION_KEYS.has(key)) continue;
+
+    if (value === "true") mutation[key] = true;
+    else if (value === "false") mutation[key] = false;
+    else mutation[key] = String(rawValue || "").trim();
+  }
+
+  return mutation;
+}
+
+// --- Google OAuth scope resolution ---
 
 export function getDefaultGoogleScopes(action = {}, endpoint = {}) {
   const actionKey = String(action.action_key || "").trim();
@@ -69,7 +113,7 @@ export function validateGoogleOAuthConfigTraceability(action, oauthConfigContrac
   const actualName = String(oauthConfigContract?.name || "").trim();
   if (!expectedName || !actualName) return;
   if (expectedName !== actualName) {
-    debugLog("OAUTH_CONFIG_NAME_MISMATCH:", {
+    _debug("OAUTH_CONFIG_NAME_MISMATCH:", {
       action_key: action.action_key,
       expected: expectedName,
       actual: actualName
@@ -81,7 +125,6 @@ export async function resolveDelegatedGoogleScopes({ drive, policies, action, en
   const endpointScopedKey = `${action.action_key}|${endpoint.endpoint_key}|scopes`;
   const actionScopedKey = `${action.action_key}|scopes`;
 
-  // 1) OAuth config file first
   const oauthConfigContract = await fetchOAuthConfigContract(drive, action);
   validateGoogleOAuthConfigTraceability(action, oauthConfigContract);
   const fileScopes = getScopesFromOAuthConfig(oauthConfigContract, action);
@@ -92,7 +135,6 @@ export async function resolveDelegatedGoogleScopes({ drive, policies, action, en
     };
   }
 
-  // 2) endpoint-level policy override
   const endpointPolicyScopes = policyList(policies, "HTTP Google Auth", endpointScopedKey);
   if (endpointPolicyScopes.length) {
     return {
@@ -101,7 +143,6 @@ export async function resolveDelegatedGoogleScopes({ drive, policies, action, en
     };
   }
 
-  // 3) action-level policy override
   const actionPolicyScopes = policyList(policies, "HTTP Google Auth", actionScopedKey);
   if (actionPolicyScopes.length) {
     return {
@@ -110,7 +151,6 @@ export async function resolveDelegatedGoogleScopes({ drive, policies, action, en
     };
   }
 
-  // 4) current hardcoded fallback
   return {
     explicitScopes: getDefaultGoogleScopes(action, endpoint),
     scopeSource: `server_default:${action.action_key}`
@@ -124,8 +164,8 @@ export async function mintGoogleAccessTokenForEndpoint({ drive, policies, action
     action,
     endpoint
   });
-  debugLog("GOOGLE_SCOPE_SOURCE:", scopeSource);
-  debugLog("GOOGLE_SCOPES:", JSON.stringify(explicitScopes));
+  _debug("GOOGLE_SCOPE_SOURCE:", scopeSource);
+  _debug("GOOGLE_SCOPES:", JSON.stringify(explicitScopes));
 
   const auth = new google.auth.GoogleAuth({ scopes: explicitScopes });
   const client = await auth.getClient();
@@ -139,6 +179,8 @@ export async function mintGoogleAccessTokenForEndpoint({ drive, policies, action
   }
   return token;
 }
+
+// --- Policy enforcement ---
 
 export function requirePolicyTrue(policies, group, key, message) {
   const value = policyValue(policies, group, key, "FALSE");
@@ -222,6 +264,8 @@ export function buildMissingRequiredPolicyError(policies = [], missing = []) {
   return err;
 }
 
+// --- Resilience ---
+
 export function resilienceAppliesToParentAction(policies, parentActionKey) {
   const enabled = String(
     policyValue(
@@ -289,320 +333,4 @@ export function buildProviderRetryMutations(policies, actionKey = "") {
       if (index === 0) return false;
       return Object.keys(mutation || {}).length > 0;
     });
-}
-
-export function inferAuthMode({ action, brand }) {
-  if (brand?.auth_type === "basic_auth_app_password") return "basic_auth";
-
-  const actionKey = String(action.action_key || "").trim().toLowerCase();
-  const apiKeyMode = String(action.api_key_mode || "").trim().toLowerCase();
-  const headerName = String(action.api_key_header_name || "").trim();
-  const paramName = String(action.api_key_param_name || "").trim();
-  const oauthConfigured = isOAuthConfigured(action);
-
-  if (
-    headerName &&
-    String(headerName).toLowerCase() === "authorization" &&
-    apiKeyMode.includes("bearer")
-  ) {
-    return "bearer_token";
-  }
-
-  if (apiKeyMode === "basic_auth_app_password") {
-    return "basic_auth";
-  }
-
-  if (
-    actionKey === "googleads_api" &&
-    oauthConfigured &&
-    headerName &&
-    String(headerName).toLowerCase() !== "authorization"
-  ) {
-    return "oauth_gpt_action";
-  }
-
-  if (headerName && apiKeyMode === "custom_api") {
-    return "api_key_header";
-  }
-
-  if (paramName) return "api_key_query";
-  if (headerName) return "api_key_header";
-
-  if (oauthConfigured) return "oauth_gpt_action";
-  return "none";
-}
-
-export function normalizeAuthContract({
-  action,
-  brand,
-  hostingAccounts = [],
-  targetKey = ""
-}) {
-  const mode = inferAuthMode({ action, brand });
-  const contract = {
-    mode,
-    inject: true,
-    username: "",
-    secret: "",
-    param_name: "",
-    header_name: "",
-    custom_headers: {}
-  };
-
-  if (mode === "basic_auth") {
-    contract.username = brand?.username || "";
-    contract.secret = brand?.application_password || "";
-    contract.header_name = "Authorization";
-    return contract;
-  }
-
-  if (mode === "api_key_query") {
-    contract.param_name = action.api_key_param_name || "api_key";
-    contract.secret = action.api_key_value || "";
-    return contract;
-  }
-
-  if (mode === "api_key_header") {
-    contract.header_name = action.api_key_header_name || "x-api-key";
-    contract.secret = action.api_key_value || "";
-    return contract;
-  }
-
-  if (mode === "bearer_token") {
-    contract.header_name = "Authorization";
-
-    const storageMode = String(action.api_key_storage_mode || "")
-      .trim()
-      .toLowerCase();
-
-    // old/simple action-level mode
-    if (!storageMode || storageMode === "embedded_sheet") {
-      contract.secret = action.api_key_value || "";
-      return contract;
-    }
-
-    // governed per-target credentials:
-    // brand -> hosting account OR direct hosting-account target -> account registry -> secret reference
-    if (storageMode === "per_target_credentials") {
-      const accountKey = resolveAccountKey({
-        brand,
-        targetKey,
-        hostingAccounts
-      });
-
-      const hostingAccount = findHostingAccountByKey(hostingAccounts, accountKey);
-
-      if (hostingAccount) {
-        const accountStorageMode = String(
-          hostingAccount.api_key_storage_mode || ""
-        ).trim().toLowerCase();
-
-        if (accountStorageMode === "secret_reference") {
-          contract.secret = resolveSecretFromReference(
-            hostingAccount.api_key_reference
-          );
-          return contract;
-        }
-        contract.secret = String(hostingAccount.api_key_reference || "").trim();
-        return contract;
-      }
-
-      contract.secret = "";
-      return contract;
-    }
-
-    contract.secret = action.api_key_value || "";
-    return contract;
-  }
-
-  return contract;
-}
-
-export function findHostingAccountByKey(hostingAccounts = [], key = "") {
-  const wanted = String(key || "").trim();
-  if (!wanted) return null;
-
-  return (
-    hostingAccounts.find(
-      row => String(row.hosting_account_key || "").trim() === wanted
-    ) || null
-  );
-}
-
-export function resolveAccountKeyFromBrand(brand = {}) {
-  return (
-    String(brand?.hosting_account_key || "").trim() ||
-    String(brand?.hostinger_api_target_key || "").trim() ||
-    String(brand?.hosting_account_registry_ref || "").trim()
-  );
-}
-
-export function resolveAccountKey({
-  brand = null,
-  targetKey = "",
-  hostingAccounts = []
-}) {
-  const fromBrand = resolveAccountKeyFromBrand(brand);
-  if (fromBrand) return fromBrand;
-
-  const directTargetKey = String(targetKey || "").trim();
-  if (!directTargetKey) return "";
-
-  const directHostingAccount = findHostingAccountByKey(
-    hostingAccounts,
-    directTargetKey
-  );
-  if (directHostingAccount) {
-    return String(directHostingAccount.hosting_account_key || "").trim();
-  }
-
-  return "";
-}
-
-export function resolveSecretFromReference(reference = "") {
-  const ref = String(reference || "").trim();
-  if (!ref) return "";
-
-  const prefix = "ref:secret:";
-  if (!ref.startsWith(prefix)) return "";
-
-  const secretKey = ref.slice(prefix.length).trim();
-  if (!secretKey) return "";
-
-  return String(process.env[secretKey] || "").trim();
-}
-
-export function isGoogleApiHost(providerDomain = "") {
-  try {
-    return new URL(providerDomain).hostname.endsWith("googleapis.com");
-  } catch {
-    return false;
-  }
-}
-
-export function getAdditionalStaticAuthHeaders(action = {}, authContract = {}) {
-  const headerName = String(action.api_key_header_name || "").trim();
-  const headerValue = String(action.api_key_value || "").trim();
-
-  if (!headerName || !headerValue) return {};
-  if (headerName.toLowerCase() === "authorization") return {};
-
-  return { [headerName]: headerValue };
-}
-
-export function enforceSupportedAuthMode(policies, mode) {
-  const supported = String(policyValue(policies, "HTTP Execution Governance", "Supported Auth Modes", ""))
-    .split("|")
-    .map(v => v.trim())
-    .filter(Boolean);
-  if (!supported.includes(mode)) {
-    const err = new Error(`Resolved auth mode is unsupported by policy: ${mode}`);
-    err.code = "unsupported_auth_mode";
-    err.status = 403;
-    throw err;
-  }
-}
-
-export function buildResolvedAuthHeaders(contract) {
-  if (contract.mode === "basic_auth") {
-    if (!contract.username || !contract.secret) {
-      const err = new Error("Missing username or secret for basic_auth.");
-      err.code = "auth_resolution_failed";
-      err.status = 500;
-      throw err;
-    }
-    const token = Buffer.from(`${contract.username}:${contract.secret}`, "utf8").toString("base64");
-    return { Authorization: `Basic ${token}` };
-  }
-
-  if (contract.mode === "bearer_token") {
-    if (!contract.secret) {
-      const err = new Error("Missing secret for bearer_token.");
-      err.code = "auth_resolution_failed";
-      err.status = 500;
-      throw err;
-    }
-    return { Authorization: `Bearer ${contract.secret}` };
-  }
-
-  if (contract.mode === "custom_headers") {
-    return { ...(contract.custom_headers || {}) };
-  }
-
-  return {};
-}
-
-export function injectAuthIntoQuery(query, contract) {
-  if (contract.mode === "api_key_query") {
-    if (!contract.param_name || !contract.secret) {
-      const err = new Error("Missing param_name or secret for api_key_query.");
-      err.code = "auth_resolution_failed";
-      err.status = 500;
-      throw err;
-    }
-    return { ...query, [contract.param_name]: contract.secret };
-  }
-  return query;
-}
-
-export function injectAuthIntoHeaders(headers, contract) {
-  if (contract.mode === "api_key_header") {
-    if (!contract.header_name || !contract.secret) {
-      const err = new Error("Missing header_name or secret for api_key_header.");
-      err.code = "auth_resolution_failed";
-      err.status = 500;
-      throw err;
-    }
-    return { ...headers, [contract.header_name]: contract.secret };
-  }
-
-  return { ...headers, ...buildResolvedAuthHeaders(contract) };
-}
-
-export function injectAuthForSchemaValidation(query, headers, contract) {
-  let nextQuery = { ...(query || {}) };
-  let nextHeaders = { ...(headers || {}) };
-
-  if (contract.mode === "api_key_query") {
-    if (!contract.param_name || !contract.secret) {
-      const err = new Error("Missing param_name or secret for api_key_query.");
-      err.code = "auth_resolution_failed";
-      err.status = 500;
-      throw err;
-    }
-    nextQuery[contract.param_name] = contract.secret;
-  }
-
-  if (contract.mode === "api_key_header") {
-    if (!contract.header_name || !contract.secret) {
-      const err = new Error("Missing header_name or secret for api_key_header.");
-      err.code = "auth_resolution_failed";
-      err.status = 500;
-      throw err;
-    }
-    nextHeaders[contract.header_name] = contract.secret;
-  }
-
-  if (contract.mode === "bearer_token") {
-    if (!contract.secret) {
-      const err = new Error("Missing secret for bearer_token.");
-      err.code = "auth_resolution_failed";
-      err.status = 500;
-      throw err;
-    }
-    nextHeaders["Authorization"] = `Bearer ${contract.secret}`;
-  }
-
-  if (contract.mode === "basic_auth") {
-    if (!contract.username || !contract.secret) {
-      const err = new Error("Missing username or secret for basic_auth.");
-      err.code = "auth_resolution_failed";
-      err.status = 500;
-      throw err;
-    }
-    const token = Buffer.from(`${contract.username}:${contract.secret}`, "utf8").toString("base64");
-    nextHeaders["Authorization"] = `Basic ${token}`;
-  }
-
-  return { query: nextQuery, headers: nextHeaders };
 }
