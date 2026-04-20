@@ -1,5 +1,25 @@
 // Auto-extracted from server.js — do not edit manually, use domain logic here.
 
+function jsonParseSafe(value, fallback) {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function asBool(value) {
+  return String(value || "").trim().toUpperCase() === "TRUE";
+}
+
+function rowToObject(header, row) {
+  const out = {};
+  for (let i = 0; i < header.length; i += 1) {
+    out[header[i]] = row[i] ?? "";
+  }
+  return out;
+}
+
 export function matchesHostingerSshTarget(rowObj, input = {}) {
   if ((rowObj.hosting_provider || "").trim().toLowerCase() !== "hostinger") {
     return false;
@@ -41,7 +61,24 @@ export function matchesHostingerSshTarget(rowObj, input = {}) {
   return false;
 }
 
-export async function hostingerSshRuntimeRead({ input = {} }) {
+export async function hostingerSshRuntimeRead({ input = {} } = {}, deps = {}) {
+  const {
+    REGISTRY_SPREADSHEET_ID = "",
+    HOSTING_ACCOUNT_REGISTRY_RANGE = "",
+    HOSTING_ACCOUNT_REGISTRY_SHEET = "Hosting Account Registry",
+    asBool: asBoolFn = asBool,
+    getGoogleClientsForSpreadsheet,
+    matchesHostingerSshTarget: matchesTarget = matchesHostingerSshTarget,
+    rowToObject: rowToObjectFn = rowToObject
+  } = deps;
+
+  if (typeof getGoogleClientsForSpreadsheet !== "function") {
+    const err = new Error("Hostinger runtime read requires getGoogleClientsForSpreadsheet dependency.");
+    err.code = "hostinger_dependency_missing";
+    err.status = 500;
+    throw err;
+  }
+
   const { sheets } = await getGoogleClientsForSpreadsheet(REGISTRY_SPREADSHEET_ID);
 
   const response = await sheets.spreadsheets.values.get({
@@ -58,8 +95,8 @@ export async function hostingerSshRuntimeRead({ input = {} }) {
   }
 
   const [header, ...rows] = values;
-  const rowObjs = rows.map(row => rowToObject(header, row));
-  const match = rowObjs.find(rowObj => matchesHostingerSshTarget(rowObj, input));
+  const rowObjs = rows.map(row => rowToObjectFn(header, row));
+  const match = rowObjs.find(rowObj => matchesTarget(rowObj, input));
 
   if (!match) {
     return {
@@ -82,9 +119,9 @@ export async function hostingerSshRuntimeRead({ input = {} }) {
     account_identifier: match.account_identifier || "",
     resolver_target_keys_json: match.resolver_target_keys_json || "[]",
     brand_sites_json: match.brand_sites_json || "[]",
-    ssh_available: asBool(match.ssh_available),
-    wp_cli_available: asBool(match.wp_cli_available),
-    shared_access_enabled: asBool(match.shared_access_enabled),
+    ssh_available: asBoolFn(match.ssh_available),
+    wp_cli_available: asBoolFn(match.wp_cli_available),
+    shared_access_enabled: asBoolFn(match.shared_access_enabled),
     account_mode: match.account_mode || "",
     ssh_host: match.ssh_host || "",
     ssh_port: match.ssh_port || "22",
@@ -94,7 +131,7 @@ export async function hostingerSshRuntimeRead({ input = {} }) {
     ssh_runtime_notes: match.ssh_runtime_notes || "",
     auth_validation_status: match.auth_validation_status || "",
     endpoint_binding_status: match.endpoint_binding_status || "",
-    resolver_execution_ready: asBool(match.resolver_execution_ready),
+    resolver_execution_ready: asBoolFn(match.resolver_execution_ready),
     last_runtime_check_at: match.last_runtime_check_at || ""
   };
 }

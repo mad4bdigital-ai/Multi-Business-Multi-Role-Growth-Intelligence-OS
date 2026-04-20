@@ -144,8 +144,8 @@ export async function githubGitBlobChunkRead({ input = {} }) {
   );
 
   const start = parseGithubChunkInteger(
-    input.start,
-    "start",
+    input.byte_offset ?? input.start,
+    "byte_offset",
     0,
     Number.MAX_SAFE_INTEGER
   );
@@ -180,6 +180,7 @@ export async function githubGitBlobChunkRead({ input = {} }) {
     owner,
     repo,
     file_sha: fileSha,
+    byte_offset: start,
     start,
     length: chunkBuffer.length,
     end: endExclusive,

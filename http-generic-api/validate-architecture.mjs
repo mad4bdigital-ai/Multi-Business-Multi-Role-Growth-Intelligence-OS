@@ -35,6 +35,7 @@ section("Required module files");
 
 const REQUIRED_MODULES = [
   "server.js", "config.js", "queue.js",
+  "auth.js",
   "normalization.js", "mutationGovernance.js", "governedChangeControl.js",
   "governedSheetWrites.js", "governedRecordResolution.js",
   "registryResolution.js", "registryMutations.js", "registrySheets.js",
@@ -153,6 +154,24 @@ const REQUIRED_JR_EXPORTS = [
 ];
 for (const name of REQUIRED_JR_EXPORTS) {
   assert(`jobRunner exports ${name}`, name in jrModule);
+}
+
+// ─── Required auth exports ────────────────────────────────────────────────────
+section("Required auth exports");
+
+const authModule = await import("./auth.js");
+const REQUIRED_AUTH_EXPORTS = [
+  "mintGoogleAccessTokenForEndpoint",
+  "requirePolicyTrue",
+  "requirePolicySet",
+  "getRequiredHttpExecutionPolicyKeys",
+  "buildMissingRequiredPolicyError",
+  "resilienceAppliesToParentAction",
+  "shouldRetryProviderResponse",
+  "buildProviderRetryMutations"
+];
+for (const name of REQUIRED_AUTH_EXPORTS) {
+  assert(`auth exports ${name}`, name in authModule);
 }
 
 // ─── Connector API surface ───────────────────────────────────────────────────
