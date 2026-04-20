@@ -261,7 +261,12 @@ export async function dispatchEndpointKeyExecution({ endpoint_key, requestPayloa
 
 // ─── Runtime-bound factory ────────────────────────────────────────────────────
 
-export function configureJobRunner({ jobRepository, executeSiteMigrationJob, performUniversalServerWriteback, logRetryWriteback }) {
+export function configureJobRunner(
+  { jobRepository, executeSiteMigrationJob, performUniversalServerWriteback, logRetryWriteback },
+  deps = {}
+) {
+  const queueApi = deps.queueApi || jobQueue;
+
   function getJob(jobId) {
     const id = normalizeJobId(jobId);
     return id ? jobRepository.get(id) : null;
@@ -278,7 +283,7 @@ export function configureJobRunner({ jobRepository, executeSiteMigrationJob, per
     const job = jobRepository.get(jobId);
     if (!job) return;
     try {
-      await jobQueue.add("execute", job, { jobId: job.job_id, attempts: 1 });
+      await queueApi.add("execute", job, { jobId: job.job_id, attempts: 1 });
       return { ok: true };
     } catch (err) {
       console.error("ENQUEUE_FAILED:", { job_id: jobId, err: err?.message });
@@ -302,7 +307,7 @@ export function configureJobRunner({ jobRepository, executeSiteMigrationJob, per
       attempt_count: job.attempt_count, next_retry_at: job.next_retry_at
     });
     const retryData = { ...job, status: "queued", next_retry_at: "" };
-    jobQueue.add("execute", retryData, { delay: delayMs, attempts: 1 })
+    queueApi.add("execute", retryData, { delay: delayMs, attempts: 1 })
       .catch(err => console.error("RETRY_ENQUEUE_FAILED:", { job_id: job.job_id, err: err?.message }));
   }
 
