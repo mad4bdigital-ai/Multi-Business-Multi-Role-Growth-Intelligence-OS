@@ -274,11 +274,22 @@ export function configureJobRunner({ jobRepository, executeSiteMigrationJob, per
     return job;
   }
 
-  function enqueueJob(jobId) {
+  async function enqueueJob(jobId) {
     const job = jobRepository.get(jobId);
     if (!job) return;
-    jobQueue.add("execute", job, { jobId: job.job_id, attempts: 1 })
-      .catch(err => console.error("ENQUEUE_FAILED:", { job_id: jobId, err: err?.message }));
+    try {
+      await jobQueue.add("execute", job, { jobId: job.job_id, attempts: 1 });
+      return { ok: true };
+    } catch (err) {
+      console.error("ENQUEUE_FAILED:", { job_id: jobId, err: err?.message });
+      return {
+        ok: false,
+        error: {
+          code: err?.code || "queue_unavailable",
+          message: err?.message || String(err)
+        }
+      };
+    }
   }
 
   function scheduleJobRetry(job, delayMs) {

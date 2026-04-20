@@ -658,6 +658,26 @@ async function resolveJob(jobId) {
   return jobRepository.get(jobId) || await getJobFromRedis(jobId);
 }
 
+async function failAsyncSubmission(job, idempotencyLookupKey, enqueueResult) {
+  if (job?.job_id) {
+    jobRepository.delete(job.job_id);
+  }
+  if (idempotencyLookupKey) {
+    await idempotencyRepository.delete(idempotencyLookupKey);
+  }
+
+  return {
+    ok: false,
+    error: {
+      code: enqueueResult?.error?.code || "queue_unavailable",
+      message: "Async job queue is unavailable.",
+      details: {
+        queue_error: enqueueResult?.error || null
+      }
+    }
+  };
+}
+
 function requireEnv(name) {
   const value = process.env[name];
   if (!value) {
@@ -3229,7 +3249,11 @@ app.post("/site-migrate", requireBackendApiKey, async (req, res) => {
     await idempotencyRepository.set(idempotencyLookupKey, job.job_id);
   }
 
-  enqueueJob(job.job_id);
+  const enqueueResult = await enqueueJob(job.job_id);
+  if (!enqueueResult?.ok) {
+    const failure = await failAsyncSubmission(job, idempotencyLookupKey, enqueueResult);
+    return res.status(503).json(failure);
+  }
 
   return res.status(202).json({
     ...toJobSummary(job),
@@ -3428,7 +3452,11 @@ app.post("/jobs", requireBackendApiKey, async (req, res) => {
     endpoint_key: job.endpoint_key
   });
 
-  enqueueJob(job.job_id);
+  const enqueueResult = await enqueueJob(job.job_id);
+  if (!enqueueResult?.ok) {
+    const failure = await failAsyncSubmission(job, idempotencyLookupKey, enqueueResult);
+    return res.status(503).json(failure);
+  }
 
   return res.status(202).json(toJobSummary(job));
 });
