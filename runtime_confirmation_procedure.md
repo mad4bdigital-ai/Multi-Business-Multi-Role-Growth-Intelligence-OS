@@ -85,7 +85,7 @@ Complete the deployment version stamp:
 Deployed commit:   <git rev-parse HEAD>
 Deployed at:       <ISO timestamp>
 Deployed by:       <operator>
-Layer 1 (CI):      PASS  — syntax + 103 tests + 85 architecture checks
+Layer 1 (CI):      PASS  — syntax + 168 tests + 104 architecture checks
 Layer 2 (registry): PASS / FAIL / SKIP — <notes>
 Layer 3 (runtime):  PASS / FAIL — verify-runtime.mjs result
 Layer 4 (live):     PASS / FAIL / SKIP — <notes>

@@ -141,18 +141,23 @@ The repo includes a root runtime and a connector subtree.
 ### `http-generic-api`
 This is the clearest connector-style boundary currently visible.
 
+Key modules and their authority domains:
+- `server.js` (~4,636 lines) — orchestration and route handlers only
+- `executionRouting.js` — HTTP execution context resolution, guard chain, transport/native routing classification
+- `auth.js` — Google OAuth scope resolution, policy enforcement, resilience and retry mutation helpers
+- `normalization.js` — payload normalization, routing field classification, delegated wrapper detection
+- `mutationGovernance.js` / `governedChangeControl.js` — mutation classification, duplicate detection, exemption rules
+- `jobRunner.js` / `jobUtils.js` — async job dispatch and lifecycle management
+- `authInjection.js` / `authCredentialResolution.js` — credential resolution and auth header injection
+- `driveFileLoader.js` — Drive-backed schema and OAuth config loading (`supportsAllDrives: true`)
+- `github.js` / `hostinger.js` — narrow connector entrypoints (2 exports each)
+- `wordpress/` — 16 phase modules (A–P) for governed site migration
+
 Use it as a pattern for:
 - policy-enforced transport execution
 - explicit module boundaries
 - provider-specific dispatch
 - reduced hidden runtime coupling
-
-### GitHub connector direction
-The GitHub connector architecture is moving toward:
-- self-contained module boundaries
-- internal helper privacy
-- narrow explicit exports
-- dispatch-only public entrypoints
 
 ## 9. Documentation trust model
 High trust:
@@ -188,12 +193,20 @@ Prioritize:
 5. test coverage
 6. monolith decomposition by authority boundary
 
-## 12. Suggested next docs to add
-- `architecture_for_ai_agents.md`
-- `canonical_validation_checklist.md`
-- `runtime_boundary_map.md`
-- `governed_mutation_playbook.md`
-- `connector_contracts.md`
+## 12. Current documentation status
+
+All previously suggested docs now exist:
+- `canonical_validation_checklist.md` ✓
+- `runtime_boundary_map.md` ✓
+- `governed_mutation_playbook.md` ✓
+- `connector_contracts.md` ✓
+- `deployment_parity_checklist.md` ✓
+- `runtime_confirmation_procedure.md` ✓
+
+Test and validation baselines (as of 2026-04-20):
+- 168 automated tests across 6 suites (`npm test`)
+- 104 architecture checks (`npm run validate`)
+- CI enforces syntax, tests, drift detection, export floors on every push
 
 ## 13. Short operational summary
 If you are an AI agent working in this repo:

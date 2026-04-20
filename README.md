@@ -100,13 +100,16 @@ Its WordPress subsystem is split into:
 The project has completed Sprint 2 (WordPress modular extraction) and Sprint 3 (http-generic-api decomposition). The runtime is materially modular.
 
 Current state:
-- `http-generic-api/server.js` is decomposed — reduced from ~29,000 lines to ~5,000 lines; authority-based modules extracted
+- `http-generic-api/server.js` is decomposed — reduced from ~29,000 lines to ~4,636 lines; authority-based modules extracted
 - `http-generic-api/wordpress/` — 16 phase modules (A–P), shared.js, index.js barrel (545 exports)
 - `http-generic-api/normalization.js` — canonical normalization layer for routing, payload, and execution classification
 - `http-generic-api/mutationGovernance.js`, `governedChangeControl.js`, `governedSheetWrites.js` — centralized mutation and writeback governance
 - `http-generic-api/registryResolution.js`, `routeWorkflowGovernance.js`, `registryMutations.js` — registry-backed routing and execution control
+- `http-generic-api/executionRouting.js` — isolated HTTP execution context resolution with dependency-injected guard chain
+- `http-generic-api/auth.js` — Google OAuth scope resolution, policy enforcement, and resilience helpers; fully wired
+- `http-generic-api/driveFileLoader.js` — schema and OAuth config loader with `supportsAllDrives: true` for shared-drive artifact reads
 - governed sink handling for `Execution Log Unified` and `JSON Asset Registry` is stable
-- 158 automated tests passing across utility, queue, connector, and WordPress flows
+- 168 automated tests passing across 6 suites: utility, job runner, execution routing, connectors, WordPress, and route-level
 - `/health` reports degraded dependency truth for Redis/BullMQ instead of assuming queue connectivity
 - async job submission returns `503` when the queue backend cannot accept work
 - runtime instances can run in API-only mode with `QUEUE_WORKER_ENABLED=FALSE`
@@ -161,8 +164,8 @@ Agent-facing guide:
 All 9 upgrade phases are complete. The project is in a production-ready, fully governed state.
 
 For ongoing operations:
-- run `npm test` after every code change (158 tests)
-- run `npm run validate` to check architecture invariants (94 checks)
+- run `npm test` after every code change (168 tests across 6 suites)
+- run `npm run validate` to check architecture invariants (104 checks)
 - run `npm run verify` (with `RUNTIME_BASE_URL`) after every deployment — see [`runtime_confirmation_procedure.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/runtime_confirmation_procedure.md>)
 - CI runs automatically on every push/PR (syntax → tests → architecture drift → export floor)
 

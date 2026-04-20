@@ -63,10 +63,13 @@
 ## 8. Testing and drift detection validation
 
 - [ ] Integration coverage exists for governed preflight behavior that is considered critical
-- [ ] Connector contract expectations are testable
+- [ ] Connector contract expectations are testable (github.js, hostinger.js covered in `test-connectors.mjs`)
+- [ ] Execution routing guard chain is covered in `test-execution-routing.mjs` (10 tests including `sameServiceNativeTarget` and transport rejection paths)
+- [ ] Job runner enqueue/failure paths are covered in `test-job-runner.mjs`
 - [ ] Canonical/runtime drift checks are possible and documented
 - [ ] File-level validation and runtime-level validation are explicitly distinguished
-- [ ] Architecture drift can become detectable in CI or scripted validation
+- [ ] Architecture drift is detected in CI: inline redefinition check (6 modules), line count guard, export floor
+- [ ] 168 automated tests across 6 suites pass before any deployment is considered ready
 
 ## 9. Upgrade readiness gates
 
@@ -77,9 +80,7 @@
 
 ## 10. Current missing-input check
 
-As of 2026-04-19, the following requested upgrade artifacts were not found in the repository:
+As of 2026-04-20, no unresolved missing upgrade artifacts. Previously flagged items:
 
-- [ ] `project_upgrade_programmatic_validation_matrix.md`
-- [ ] `project_upgrade_execution_board_9_5_plus.md`
-
-These should be added or remapped before claiming full validation-matrix or execution-board review coverage.
+- `project_upgrade_programmatic_validation_matrix.md` — superseded by `validate-architecture.mjs` (104 checks in CI)
+- `project_upgrade_execution_board_9_5_plus.md` — all 9 phases complete; ongoing work tracked via git commit history and deployment parity checklist

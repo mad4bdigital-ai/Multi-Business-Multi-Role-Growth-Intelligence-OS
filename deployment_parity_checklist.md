@@ -9,8 +9,8 @@ This checklist distinguishes four verification layers that must all pass before 
 
 These pass automatically in CI on every push/PR:
 
-- [ ] `npm test` passes (158+ utility, queue, connector, and WordPress tests)
-- [ ] `npm run validate` passes (94+ architecture checks)
+- [ ] `npm test` passes (168+ tests across utility, job runner, execution routing, connector, route-level, and WordPress suites)
+- [ ] `npm run validate` passes (104+ architecture checks)
 - [ ] All `.js` modules pass `node --check`
 - [ ] No new imports from removed or renamed modules
 - [ ] `wordpress/index.js` barrel exports ≥ 545 symbols
@@ -54,6 +54,8 @@ Verify governed execution paths produce expected outcomes against the live runti
 - [ ] A dry-run site migration payload (`apply: false`) returns `execution_mode: plan_only` with no errors
 - [ ] A `github_git_blob_chunk_read` dispatch resolves without `ReferenceError` (auth errors acceptable in staging)
 - [ ] A `hostinger_ssh_runtime_read` dispatch resolves without `ReferenceError`
+- [ ] A governed connector action (e.g. `github_unified_proxy`) reaches the execution layer without `sameServiceNativeTarget is not defined` or `retryMutationEnabled is not defined` errors
+- [ ] A delegated transport action (`http_generic_api` family) resolves transport binding without `transport_required` governance rejection when the endpoint is correctly configured
 - [ ] An async job enqueued via `POST /jobs` reaches `queued` or `running` status within 5 seconds when queue connectivity is expected
 - [ ] If queue connectivity is unavailable, `POST /jobs` and `POST /site-migrate` return a truthful `503`
 - [ ] `GET /jobs/:id` returns a valid job summary for the enqueued job
@@ -76,6 +78,10 @@ If any Layer 2–4 check fails after a successful Layer 1 (CI) pass, the failure
 | `apply=false` returns error | Canonical/runtime logic drift |
 | Async enqueue returns `503` unexpectedly | Queue dependency failure |
 | Writeback not reaching sheet | Sink connectivity failure |
+| `sameServiceNativeTarget is not defined` at runtime | Deployment lag — deploy from `c3c3b15` or later |
+| `retryMutationEnabled is not defined` at runtime | Deployment lag — deploy from `46affb6` or later |
+| `transport_required` governance rejection on correctly-configured endpoint | Registry data gap — verify `transport_action_key` is set on endpoint row |
+| Drive schema/config returns `404 File not found` for shared-drive files | Missing `supportsAllDrives` — deploy from `c3286cf` or later |
 
 Record any drift in the deployment log and do not mark the deployment complete until all four layers pass.
 
