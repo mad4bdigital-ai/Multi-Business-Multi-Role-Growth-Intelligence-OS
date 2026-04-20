@@ -1,5 +1,5 @@
 /**
- * Unit tests for utils.js CPT schema preflight exports
+ * Unit tests for utils.js, normalization.js, and wordpress-cpt-preflight.js
  * Run: node test-utils.mjs
  */
 import {
@@ -9,6 +9,21 @@ import {
   buildWordpressCptSchemaPreflightAssetKey,
   buildWordpressCptSchemaPreflightPayload
 } from "./utils.js";
+import {
+  normalizeExecutionPayload,
+  normalizeTopLevelRoutingFields,
+  validatePayloadIntegrity,
+  isHttpGenericTransportEndpointKey,
+  isDelegatedHttpExecuteWrapper,
+  promoteDelegatedExecutionPayload,
+  isHostingerAction,
+  isSiteTargetKey,
+  isHostingAccountTargetKey
+} from "./normalization.js";
+import {
+  inferWordpressInventoryAssetType,
+  buildWordpressJsonAssetContext
+} from "./wordpress-cpt-preflight.js";
 
 let passed = 0;
 let failed = 0;
@@ -119,6 +134,109 @@ assert("merges field_contract from response_body.data",
   payloadWithData.field_contract?.name === "string");
 assert("jetengine_config_resolved true for matching endpoint",
   payloadWithData.source_resolution.jetengine_config_resolved === true);
+
+// ─── normalization.js ────────────────────────────────────────────────────────
+section("normalization — normalizeExecutionPayload");
+
+const norm1 = normalizeExecutionPayload({ target_key: "site_a", body: { x: 1 }, query: { page: 2 } });
+assert("normalizeExecutionPayload returns object", typeof norm1 === "object");
+assert("preserves target_key", norm1.target_key === "site_a");
+assert("preserves body", norm1.body?.x === 1);
+assert("preserves query.page", norm1.query?.page === 2);
+
+const norm2 = normalizeExecutionPayload({ params: { query: { q: "test" } } });
+assert("lifts params.query to top-level query", norm2.query?.q === "test");
+
+const normEmpty = normalizeExecutionPayload(null);
+assert("handles null payload", typeof normEmpty === "object");
+
+section("normalization — normalizeTopLevelRoutingFields");
+
+const routing = normalizeTopLevelRoutingFields({ target_key: "site_b", endpoint_key: "wp_list_posts", extra: "ignored" });
+assert("includes target_key", routing.target_key === "site_b");
+assert("includes endpoint_key", routing.endpoint_key === "wp_list_posts");
+
+section("normalization — validatePayloadIntegrity");
+
+const integrity = validatePayloadIntegrity({ target_key: "x" }, { target_key: "x" });
+assert("returns object", typeof integrity === "object");
+
+section("normalization — isHttpGenericTransportEndpointKey");
+
+assert("http_post is transport endpoint", isHttpGenericTransportEndpointKey("http_post") === true);
+assert("http_get is transport endpoint", isHttpGenericTransportEndpointKey("http_get") === true);
+assert("wp_list_posts is not transport endpoint", isHttpGenericTransportEndpointKey("wp_list_posts") === false);
+assert("empty string is not transport endpoint", isHttpGenericTransportEndpointKey("") === false);
+
+section("normalization — isDelegatedHttpExecuteWrapper / promoteDelegatedExecutionPayload");
+
+const delegated = {
+  parent_action_key: "http_generic_api",
+  endpoint_key: "http_post",
+  path: "/http-execute",
+  body: { endpoint_key: "wp_get_post", target_key: "abc" }
+};
+assert("isDelegatedHttpExecuteWrapper true for correctly structured payload", isDelegatedHttpExecuteWrapper(delegated) === true);
+assert("isDelegatedHttpExecuteWrapper false for direct payload", isDelegatedHttpExecuteWrapper({ endpoint_key: "wp_get_post" }) === false);
+
+const promoted = promoteDelegatedExecutionPayload(delegated);
+assert("promotes endpoint_key from body", promoted.endpoint_key === "wp_get_post");
+assert("promotes target_key from body", promoted.target_key === "abc");
+
+section("normalization — isHostingerAction / isSiteTargetKey / isHostingAccountTargetKey");
+
+assert("hostinger_api is hostinger action", isHostingerAction("hostinger_api") === true);
+assert("wp_list_posts is not hostinger action", isHostingerAction("wp_list_posts") === false);
+assert("isSiteTargetKey true for site_ prefix", isSiteTargetKey("site_mybrand") === true);
+assert("isSiteTargetKey true for _wp suffix", isSiteTargetKey("mybrand_wp") === true);
+assert("isSiteTargetKey false for plain string", isSiteTargetKey("account_123") === false);
+assert("isHostingAccountTargetKey true for hostinger_ prefix", isHostingAccountTargetKey("hostinger_main") === true);
+assert("isHostingAccountTargetKey true for _account_ substring", isHostingAccountTargetKey("main_account_plan") === true);
+assert("isHostingAccountTargetKey false for site_ prefix", isHostingAccountTargetKey("site_abc") === false);
+
+// ─── wordpress-cpt-preflight.js ──────────────────────────────────────────────
+section("wordpress-cpt-preflight — inferWordpressInventoryAssetType");
+
+assert("preflight endpoint → wordpress_cpt_schema_preflight",
+  inferWordpressInventoryAssetType("wordpress_get_cpt_runtime_type") === "wordpress_cpt_schema_preflight");
+assert("wordpress_list_tags → wordpress_taxonomy_inventory",
+  inferWordpressInventoryAssetType("wordpress_list_tags") === "wordpress_taxonomy_inventory");
+assert("wordpress_list_categories → wordpress_taxonomy_inventory",
+  inferWordpressInventoryAssetType("wordpress_list_categories") === "wordpress_taxonomy_inventory");
+assert("wordpress_list_types → wordpress_cpt_inventory",
+  inferWordpressInventoryAssetType("wordpress_list_types") === "wordpress_cpt_inventory");
+assert("unknown endpoint → wordpress_runtime_response",
+  inferWordpressInventoryAssetType("some_other_endpoint") === "wordpress_runtime_response");
+assert("empty string → wordpress_runtime_response",
+  inferWordpressInventoryAssetType("") === "wordpress_runtime_response");
+
+section("wordpress-cpt-preflight — buildWordpressJsonAssetContext (preflight)");
+
+const ctx = buildWordpressJsonAssetContext({
+  endpoint_key: "wordpress_get_cpt_runtime_type",
+  brand_name: "My Brand",
+  target_key: "site_x",
+  cpt_slug: "post",
+  execution_trace_id: "trace_abc"
+});
+assert("isWordpressPreflightAsset true", ctx.isWordpressPreflightAsset === true);
+assert("inferred_asset_type is preflight", ctx.inferred_asset_type === "wordpress_cpt_schema_preflight");
+assert("asset_key contains brand", ctx.asset_key.includes("my_brand"));
+assert("mapping_status is captured_governed_preflight", ctx.mapping_status === "captured_governed_preflight");
+assert("validation_status is validated", ctx.validation_status === "validated");
+assert("transport_status is captured_governed", ctx.transport_status === "captured_governed");
+
+section("wordpress-cpt-preflight — buildWordpressJsonAssetContext (non-preflight)");
+
+const ctxNonPreflight = buildWordpressJsonAssetContext({
+  endpoint_key: "wp_list_posts",
+  execution_trace_id: "trace_xyz"
+});
+assert("isWordpressPreflightAsset false", ctxNonPreflight.isWordpressPreflightAsset === false);
+assert("inferred_asset_type is wordpress_runtime_response", ctxNonPreflight.inferred_asset_type === "wordpress_runtime_response");
+assert("asset_key uses endpoint+trace", ctxNonPreflight.asset_key === "wp_list_posts__trace_xyz");
+assert("mapping_status is captured_unreduced", ctxNonPreflight.mapping_status === "captured_unreduced");
+assert("validation_status is pending", ctxNonPreflight.validation_status === "pending");
 
 // ─── Summary ────────────────────────────────────────────────────────────────
 console.log(`\n${"─".repeat(50)}`);

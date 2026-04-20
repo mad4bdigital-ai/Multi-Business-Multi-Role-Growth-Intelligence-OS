@@ -97,13 +97,16 @@ Its WordPress subsystem is split into:
 
 ## Current repository status
 
-The project is mid-upgrade toward fuller canonical/runtime alignment.
+The project has completed Sprint 2 (WordPress modular extraction) and Sprint 3 (http-generic-api decomposition). The runtime is materially modular.
 
-Current visible realities include:
-- root documentation still being aligned to canonicals
-- a large central runtime surface in `http-generic-api/server.js`
-- partial but meaningful modularization already completed in `http-generic-api/wordpress/`
-- governed sink handling for `Execution Log Unified` and `JSON Asset Registry`
+Current state:
+- `http-generic-api/server.js` is decomposed — reduced from ~29,000 lines to ~5,000 lines; authority-based modules extracted
+- `http-generic-api/wordpress/` — 16 phase modules (A–P), shared.js, index.js barrel (545 exports)
+- `http-generic-api/normalization.js` — canonical normalization layer for routing, payload, and execution classification
+- `http-generic-api/mutationGovernance.js`, `governedChangeControl.js`, `governedSheetWrites.js` — centralized mutation and writeback governance
+- `http-generic-api/registryResolution.js`, `routeWorkflowGovernance.js`, `registryMutations.js` — registry-backed routing and execution control
+- governed sink handling for `Execution Log Unified` and `JSON Asset Registry` is stable
+- 63 automated tests passing (30 unit + 33 integration)
 
 ## Upgrade direction
 
@@ -150,9 +153,8 @@ Agent-facing guide:
 ## Immediate next implementation focus
 
 The recommended next implementation steps are:
-- complete documentation alignment
-- define the normalization-layer target contract
-- decompose runtime ownership by authority boundary
-- expand validation coverage and drift detection
+- expand test coverage for normalization layer, CPT preflight, and local dispatch paths (Phase 7)
+- document connector public contracts (Phase 4 — `connector_contracts.md`)
+- add canonical/runtime drift checks and CI validation pipeline (Phase 8)
 
 This repository should be approached as a governed operating model with executable runtime modules, not as a conventional app-first project.
