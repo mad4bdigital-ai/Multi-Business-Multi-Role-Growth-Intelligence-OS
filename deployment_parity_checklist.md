@@ -9,8 +9,8 @@ This checklist distinguishes four verification layers that must all pass before 
 
 These pass automatically in CI on every push/PR:
 
-- [ ] `npm test` passes (103+ unit + integration tests)
-- [ ] `npm run validate` passes (85+ architecture checks)
+- [ ] `npm test` passes (158+ utility, queue, connector, and WordPress tests)
+- [ ] `npm run validate` passes (94+ architecture checks)
 - [ ] All `.js` modules pass `node --check`
 - [ ] No new imports from removed or renamed modules
 - [ ] `wordpress/index.js` barrel exports ≥ 545 symbols
@@ -39,8 +39,10 @@ Verify the deployed container/process matches the committed code:
 - [ ] Deployed image was built from the current `main` commit (`git rev-parse HEAD`)
 - [ ] `GET /health` returns `200 OK` with `{ ok: true }`
 - [ ] `SERVICE_VERSION` in health response matches `package.json` version
+- [ ] `GET /health` dependency surface matches the intended topology: `dependencies.redis`, `dependencies.queue`, and `dependencies.worker.enabled`
 - [ ] No stale environment variables from a prior deployment remain active
-- [ ] Redis/BullMQ connection is live (job queue operational)
+- [ ] Redis/BullMQ connection is live if this instance is expected to accept async work
+- [ ] `QUEUE_WORKER_ENABLED` matches the instance role (`TRUE` for worker-enabled runtime, `FALSE` for API-only runtime)
 - [ ] `BACKEND_API_KEY` and `GOOGLE_APPLICATION_CREDENTIALS` (or equivalent) are injected
 
 ---
@@ -52,7 +54,8 @@ Verify governed execution paths produce expected outcomes against the live runti
 - [ ] A dry-run site migration payload (`apply: false`) returns `execution_mode: plan_only` with no errors
 - [ ] A `github_git_blob_chunk_read` dispatch resolves without `ReferenceError` (auth errors acceptable in staging)
 - [ ] A `hostinger_ssh_runtime_read` dispatch resolves without `ReferenceError`
-- [ ] An async job enqueued via `POST /jobs` reaches `queued` or `running` status within 5 seconds
+- [ ] An async job enqueued via `POST /jobs` reaches `queued` or `running` status within 5 seconds when queue connectivity is expected
+- [ ] If queue connectivity is unavailable, `POST /jobs` and `POST /site-migrate` return a truthful `503`
 - [ ] `GET /jobs/:id` returns a valid job summary for the enqueued job
 - [ ] `Execution Log Unified` receives a writeback row for a completed governed execution
 - [ ] `JSON Asset Registry` receives an asset row for a CPT schema preflight execution (if triggered)
@@ -69,7 +72,9 @@ If any Layer 2–4 check fails after a successful Layer 1 (CI) pass, the failure
 | Wrong spreadsheet ID in env | Configuration drift |
 | Deployed image is behind `main` | Deployment lag |
 | Health endpoint not responding | Runtime startup failure |
+| Health endpoint reports degraded queue/redis unexpectedly | Dependency topology drift |
 | `apply=false` returns error | Canonical/runtime logic drift |
+| Async enqueue returns `503` unexpectedly | Queue dependency failure |
 | Writeback not reaching sheet | Sink connectivity failure |
 
 Record any drift in the deployment log and do not mark the deployment complete until all four layers pass.

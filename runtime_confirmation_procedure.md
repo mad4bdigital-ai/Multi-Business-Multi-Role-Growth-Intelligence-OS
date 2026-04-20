@@ -110,6 +110,23 @@ If `verify-runtime.mjs` fails, classify the failure using the drift table in [`d
 
 ---
 
+## Current runtime notes
+
+The runtime now exposes additional operational truth that should be considered during confirmation:
+
+- `GET /health` may return `status: "degraded"` while still returning `ok: true`
+- health responses now expose `dependencies.redis`, `dependencies.queue`, and `dependencies.worker.enabled`
+- async submission endpoints (`POST /jobs`, `POST /site-migrate`) now return a truthful `503` when the queue backend cannot accept work
+- instances may run in API-only mode with `QUEUE_WORKER_ENABLED=FALSE`
+
+Interpretation guidance:
+
+- `ok: true` plus `status: "degraded"` means the HTTP runtime is up, but at least one dependency is not in the expected state
+- `dependencies.worker.enabled: false` is valid when the instance is intentionally deployed as API-only
+- a `503` from async submission endpoints is a queue/dependency failure signal, not a request-schema failure
+
+---
+
 ## Automated CI vs manual confirmation
 
 | Check | Automated in CI | Requires live runtime |

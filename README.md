@@ -106,7 +106,10 @@ Current state:
 - `http-generic-api/mutationGovernance.js`, `governedChangeControl.js`, `governedSheetWrites.js` — centralized mutation and writeback governance
 - `http-generic-api/registryResolution.js`, `routeWorkflowGovernance.js`, `registryMutations.js` — registry-backed routing and execution control
 - governed sink handling for `Execution Log Unified` and `JSON Asset Registry` is stable
-- 63 automated tests passing (30 unit + 33 integration)
+- 158 automated tests passing across utility, queue, connector, and WordPress flows
+- `/health` reports degraded dependency truth for Redis/BullMQ instead of assuming queue connectivity
+- async job submission returns `503` when the queue backend cannot accept work
+- runtime instances can run in API-only mode with `QUEUE_WORKER_ENABLED=FALSE`
 
 ## Upgrade direction
 
@@ -158,8 +161,8 @@ Agent-facing guide:
 All 9 upgrade phases are complete. The project is in a production-ready, fully governed state.
 
 For ongoing operations:
-- run `npm test` after every code change (103 tests)
-- run `npm run validate` to check architecture invariants (85 checks)
+- run `npm test` after every code change (158 tests)
+- run `npm run validate` to check architecture invariants (94 checks)
 - run `npm run verify` (with `RUNTIME_BASE_URL`) after every deployment — see [`runtime_confirmation_procedure.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/runtime_confirmation_procedure.md>)
 - CI runs automatically on every push/PR (syntax → tests → architecture drift → export floor)
 
