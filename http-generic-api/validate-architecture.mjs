@@ -114,7 +114,8 @@ const REQUIRED_DOCS = [
   "runtime_boundary_map.md",
   "governed_mutation_playbook.md",
   "connector_contracts.md",
-  "project_upgrade_end_to_end_plan.md",
+  "deployment_parity_checklist.md",
+  "runtime_confirmation_procedure.md",
   "README.md"
 ];
 
