@@ -1,0 +1,57 @@
+name: Verify Runtime
+
+on:
+  workflow_dispatch:
+    inputs:
+      runtime_base_url:
+        description: "Base URL of the deployed runtime (e.g. https://your-deployment.example.com)"
+        required: true
+        type: string
+      environment_label:
+        description: "Label for this deployment (e.g. staging, production)"
+        required: false
+        default: "unspecified"
+        type: string
+
+jobs:
+  verify:
+    name: Patch-vs-Runtime Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Record deployment context
+        run: |
+          echo "Environment:    ${{ inputs.environment_label }}"
+          echo "Runtime URL:    ${{ inputs.runtime_base_url }}"
+          echo "Commit:         ${{ github.sha }}"
+          echo "Triggered by:   ${{ github.actor }}"
+          echo "Triggered at:   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+      - name: Run patch-vs-runtime verification
+        working-directory: http-generic-api
+        env:
+          RUNTIME_BASE_URL: ${{ inputs.runtime_base_url }}
+          BACKEND_API_KEY: ${{ secrets.BACKEND_API_KEY }}
+        run: node verify-runtime.mjs
+
+      - name: Confirm parity result
+        if: success()
+        run: |
+          echo "DEPLOYMENT PARITY: PASS"
+          echo "Commit ${{ github.sha }} has verified runtime alignment against ${{ inputs.runtime_base_url }}"
+
+      - name: Report drift on failure
+        if: failure()
+        run: |
+          echo "DEPLOYMENT PARITY: FAIL"
+          echo "Runtime at ${{ inputs.runtime_base_url }} does not match expected behavior for commit ${{ github.sha }}"
+          echo "Review the verify-runtime output above for drift class and resolution steps."
+          exit 1

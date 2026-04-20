@@ -7,36 +7,97 @@ on:
     branches: [main]
 
 jobs:
-  test-and-validate:
-    name: Test & Architecture Validation
+  syntax:
+    name: Syntax Check
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: http-generic-api/package-lock.json
-
-      - name: Install dependencies
-        working-directory: http-generic-api
-        run: npm ci
-
-      - name: Syntax check all modules
+      - name: Check all JS modules
         working-directory: http-generic-api
         run: |
           for f in *.js wordpress/*.js; do
             node --check "$f" || { echo "SYNTAX ERROR: $f"; exit 1; }
           done
 
-      - name: Run unit + integration tests
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: syntax
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: http-generic-api/package-lock.json
+      - name: Install dependencies
+        working-directory: http-generic-api
+        run: npm ci
+      - name: Run tests
         working-directory: http-generic-api
         run: npm test
 
-      - name: Run architecture validation
+  architecture-drift:
+    name: Architecture Drift Detection
+    runs-on: ubuntu-latest
+    needs: syntax
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: http-generic-api/package-lock.json
+      - name: Install dependencies
+        working-directory: http-generic-api
+        run: npm ci
+      - name: Run canonical architecture validation
         working-directory: http-generic-api
         run: npm run validate
+      - name: Check for inline function redefinitions in server.js
+        working-directory: http-generic-api
+        run: |
+          # Detect if any function name that exists in an extracted module is also defined inline in server.js.
+          # This catches the class of drift where a module is added but server.js is not updated.
+          MODULES="normalization mutationGovernance governedChangeControl jobRunner jobUtils"
+          FAIL=0
+          for mod in $MODULES; do
+            if [ ! -f "${mod}.js" ]; then continue; fi
+            # Extract exported function names from the module
+            EXPORTS=$(grep "^export function\|^export async function" "${mod}.js" | sed 's/export \(async \)\?function //;s/(.*//')
+            for fn in $EXPORTS; do
+              # Check if server.js redefines that function inline (not just references it)
+              if grep -qE "^(async )?function ${fn}\b" server.js; then
+                echo "DRIFT: '${fn}' is exported from ${mod}.js but also defined inline in server.js"
+                FAIL=1
+              fi
+            done
+          done
+          if [ "$FAIL" -eq 1 ]; then
+            echo "Inline redefinition drift detected — run extraction cleanup"
+            exit 1
+          fi
+          echo "No inline redefinition drift detected ✓"
+      - name: Check server.js line count
+        working-directory: http-generic-api
+        run: |
+          LINES=$(wc -l < server.js)
+          echo "server.js: ${LINES} lines"
+          if [ "$LINES" -gt 6000 ]; then
+            echo "DRIFT: server.js exceeds 6000-line threshold (${LINES} lines) — decomposition may have regressed"
+            exit 1
+          fi
+          echo "server.js size within threshold ✓"
+      - name: Check wordpress barrel export floor
+        working-directory: http-generic-api
+        run: |
+          COUNT=$(node -e "import('./wordpress/index.js').then(m => { const n = Object.keys(m).length; console.log(n); if(n < 545) process.exit(1); })" 2>&1)
+          echo "wordpress/index.js exports: $COUNT"
+          if [ $? -ne 0 ]; then
+            echo "DRIFT: wordpress/index.js exports dropped below 545 floor"
+            exit 1
+          fi
+          echo "WordPress barrel export count within floor ✓"

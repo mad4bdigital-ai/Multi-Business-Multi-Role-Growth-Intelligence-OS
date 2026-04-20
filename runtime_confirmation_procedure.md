@@ -1,0 +1,126 @@
+# Runtime Confirmation Procedure
+**Authority document — run after every deployment before marking it complete**
+
+This procedure produces a repeatable, evidence-backed runtime confirmation. File-level CI passing does not constitute deployment confirmation. Runtime confirmation is a separate, required step.
+
+---
+
+## Prerequisites
+
+- Deployed runtime is reachable at a known `BASE_URL`
+- `BACKEND_API_KEY` is available (if the deployment requires auth)
+- You are on or have access to the commit that was deployed (`git rev-parse HEAD`)
+
+---
+
+## Step 1 — Record deployment context
+
+Before running any checks, record:
+
+```
+Deployed commit:   <output of: git rev-parse HEAD>
+Deployed at:       <ISO timestamp>
+Deployed by:       <your name / operator>
+Environment:       <staging | production | other>
+Runtime URL:       <BASE_URL>
+```
+
+---
+
+## Step 2 — Run the automated verification script
+
+```bash
+RUNTIME_BASE_URL=https://your-deployment.example.com \
+BACKEND_API_KEY=your-api-key \
+node http-generic-api/verify-runtime.mjs
+```
+
+This script checks four governed behaviors:
+1. `GET /health` — runtime is up, returns `ok: true`
+2. Authentication — authorized requests accepted, unauthorized blocked (if applicable)
+3. Dry-run site migration — `POST /site-migrations` with `apply: false` does not crash
+4. Local dispatch — `POST /http-execute` with `github_git_blob_chunk_read` does not throw `ReferenceError`
+5. Async job queue — `POST /jobs` enqueues and `GET /jobs/:id` returns a known status
+
+**Passing output ends with:**
+```
+RUNTIME VERIFICATION PASS ✓
+Deployment claims are supported by live runtime evidence.
+```
+
+**Failing output ends with:**
+```
+RUNTIME VERIFICATION FAILED — N check(s) indicate drift or outage
+```
+
+---
+
+## Step 3 — Run via GitHub Actions (optional but recommended for production)
+
+Trigger the `Verify Runtime` workflow manually:
+
+1. Go to **Actions** → **Verify Runtime** → **Run workflow**
+2. Set `runtime_base_url` to the deployment URL
+3. Set `environment_label` to `staging` or `production`
+4. Click **Run workflow**
+
+The workflow records the commit SHA, runtime URL, and verification result in the Actions log — this is your permanent evidence record.
+
+---
+
+## Step 4 — Confirm registry alignment (manual)
+
+In Google Sheets, verify:
+- [ ] `Site Runtime Inventory Registry` is readable and has expected columns
+- [ ] `Execution Log Unified` received at least one writeback row since deployment
+- [ ] No policy rows contain unsupported custom literals that would bypass normalization
+
+---
+
+## Step 5 — Record final parity result
+
+Complete the deployment version stamp:
+
+```
+Deployed commit:   <git rev-parse HEAD>
+Deployed at:       <ISO timestamp>
+Deployed by:       <operator>
+Layer 1 (CI):      PASS  — syntax + 103 tests + 85 architecture checks
+Layer 2 (registry): PASS / FAIL / SKIP — <notes>
+Layer 3 (runtime):  PASS / FAIL — verify-runtime.mjs result
+Layer 4 (live):     PASS / FAIL / SKIP — <notes>
+```
+
+A deployment is **complete** only when Layers 1 and 3 both pass.
+
+---
+
+## Drift resolution
+
+If `verify-runtime.mjs` fails, classify the failure using the drift table in [`deployment_parity_checklist.md`](deployment_parity_checklist.md) and resolve before proceeding.
+
+| Failure pattern | First resolution step |
+|---|---|
+| `GET /health` 0 / unreachable | Check process is running and port is open |
+| `GET /health` 500 | Check startup logs for module load errors |
+| Dry-run 500 with ReferenceError | Revert to last passing commit, check extracted module imports |
+| Dispatch returns unexpected shape | Check `dispatchEndpointKeyExecution` wiring in `jobRunner.js` |
+| Job status not a known value | Check `normalizeJobStatus` in `jobUtils.js` |
+| Registry sheet missing columns | Align sheet structure with `siteInventoryRegistry.js` column constants |
+
+---
+
+## Automated CI vs manual confirmation
+
+| Check | Automated in CI | Requires live runtime |
+|---|---|---|
+| Module syntax | ✅ | ❌ |
+| Unit + integration tests | ✅ | ❌ |
+| Architecture export floor | ✅ | ❌ |
+| Inline redefinition drift | ✅ | ❌ |
+| server.js size guard | ✅ | ❌ |
+| Health endpoint | ❌ | ✅ |
+| Dry-run migration | ❌ | ✅ |
+| Dispatch ReferenceError check | ❌ | ✅ |
+| Job queue round-trip | ❌ | ✅ |
+| Registry sheet writeback | ❌ | ✅ (manual) |

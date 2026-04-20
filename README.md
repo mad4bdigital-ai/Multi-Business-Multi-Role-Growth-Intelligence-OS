@@ -136,6 +136,9 @@ Upgrade and preparation:
 - [`canonical_validation_checklist.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/canonical_validation_checklist.md>)
 - [`runtime_boundary_map.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/runtime_boundary_map.md>)
 - [`governed_mutation_playbook.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/governed_mutation_playbook.md>)
+- [`connector_contracts.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/connector_contracts.md>)
+- [`deployment_parity_checklist.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/deployment_parity_checklist.md>)
+- [`runtime_confirmation_procedure.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/runtime_confirmation_procedure.md>)
 
 Agent-facing guide:
 - [`AI_Agent_Knowledge_Guide.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/AI_Agent_Knowledge_Guide.md>)
@@ -152,9 +155,12 @@ Agent-facing guide:
 
 ## Immediate next implementation focus
 
-The recommended next implementation steps are:
-- expand test coverage for normalization layer, CPT preflight, and local dispatch paths (Phase 7)
-- document connector public contracts (Phase 4 — `connector_contracts.md`)
-- add canonical/runtime drift checks and CI validation pipeline (Phase 8)
+All 9 upgrade phases are complete. The project is in a production-ready, fully governed state.
+
+For ongoing operations:
+- run `npm test` after every code change (103 tests)
+- run `npm run validate` to check architecture invariants (85 checks)
+- run `npm run verify` (with `RUNTIME_BASE_URL`) after every deployment — see [`runtime_confirmation_procedure.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/runtime_confirmation_procedure.md>)
+- CI runs automatically on every push/PR (syntax → tests → architecture drift → export floor)
 
 This repository should be approached as a governed operating model with executable runtime modules, not as a conventional app-first project.
