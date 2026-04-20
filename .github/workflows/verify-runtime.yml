@@ -12,6 +12,16 @@ on:
         required: false
         default: "unspecified"
         type: string
+      expect_queue_available:
+        description: "Whether this deployment is expected to have live Redis/BullMQ queue connectivity"
+        required: false
+        default: "true"
+        type: string
+      expect_worker_enabled:
+        description: "Whether this runtime instance is expected to run the BullMQ worker"
+        required: false
+        default: "true"
+        type: string
 
 jobs:
   verify:
@@ -40,6 +50,8 @@ jobs:
         env:
           RUNTIME_BASE_URL: ${{ inputs.runtime_base_url }}
           BACKEND_API_KEY: ${{ secrets.BACKEND_API_KEY }}
+          EXPECT_QUEUE_AVAILABLE: ${{ inputs.expect_queue_available }}
+          EXPECT_WORKER_ENABLED: ${{ inputs.expect_worker_enabled }}
         run: node verify-runtime.mjs
 
       - name: Confirm parity result

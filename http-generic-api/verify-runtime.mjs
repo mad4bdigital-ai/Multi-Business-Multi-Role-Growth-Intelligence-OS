@@ -13,6 +13,10 @@
 
 const BASE_URL = (process.env.RUNTIME_BASE_URL || "").replace(/\/$/, "");
 const API_KEY  = process.env.BACKEND_API_KEY || "";
+const EXPECT_QUEUE_AVAILABLE =
+  String(process.env.EXPECT_QUEUE_AVAILABLE || "TRUE").trim().toUpperCase() === "TRUE";
+const EXPECT_WORKER_ENABLED =
+  String(process.env.EXPECT_WORKER_ENABLED || "TRUE").trim().toUpperCase() === "TRUE";
 
 if (!BASE_URL) {
   console.error("ERROR: RUNTIME_BASE_URL environment variable is required.");
@@ -86,6 +90,27 @@ section("Layer 3 — Runtime health");
 const health = await get("/health");
 assert("GET /health returns 200", health.status === 200, `got ${health.status} — ${health.error || ""}`);
 assert("health body has ok: true", health.body?.ok === true, JSON.stringify(health.body));
+
+const healthStatus = String(health.body?.status || "").trim().toLowerCase();
+const workerEnabled = health.body?.dependencies?.worker?.enabled;
+const redisConnected = health.body?.dependencies?.redis?.connected;
+const queueConnected = health.body?.dependencies?.queue?.connected;
+
+if (EXPECT_QUEUE_AVAILABLE) {
+  assert("health status is healthy when queue is expected", healthStatus === "healthy",
+    `got ${healthStatus || "missing"}`);
+  assert("redis dependency connected when queue is expected", redisConnected === true,
+    JSON.stringify(health.body?.dependencies?.redis || {}));
+  assert("queue dependency connected when queue is expected", queueConnected === true,
+    JSON.stringify(health.body?.dependencies?.queue || {}));
+} else {
+  assert("health status is healthy or degraded when queue is not expected",
+    healthStatus === "healthy" || healthStatus === "degraded",
+    `got ${healthStatus || "missing"}`);
+}
+
+assert("worker enabled flag matches expected deployment role", workerEnabled === EXPECT_WORKER_ENABLED,
+  `expected ${EXPECT_WORKER_ENABLED}, got ${workerEnabled}`);
 
 const serviceVersion = health.body?.version || health.body?.service_version || health.body?.SERVICE_VERSION;
 if (serviceVersion) {
@@ -185,7 +210,12 @@ assert("POST /jobs responds (not unreachable)", jobCreate.status > 0, jobCreate.
 assert("POST /jobs does not 500", jobCreate.status !== 500,
   JSON.stringify(jobCreate.body).slice(0, 120));
 
-if (jobCreate.status === 200 || jobCreate.status === 202) {
+if (!EXPECT_QUEUE_AVAILABLE && jobCreate.status === 503) {
+  const errorCode = String(jobCreate.body?.error?.code || "").trim().toLowerCase();
+  assert("POST /jobs returns truthful queue unavailable status",
+    errorCode === "queue_unavailable" || errorCode.includes("queue"),
+    JSON.stringify(jobCreate.body).slice(0, 120));
+} else if (jobCreate.status === 200 || jobCreate.status === 202) {
   const jobId = jobCreate.body?.job_id;
   assert("job_id present in response", !!jobId, JSON.stringify(jobCreate.body).slice(0, 80));
 
