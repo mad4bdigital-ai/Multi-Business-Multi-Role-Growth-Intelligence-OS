@@ -116,16 +116,12 @@ Current state:
 
 ## Upgrade direction
 
-The current upgrade direction is defined in:
-- [`project_upgrade_end_to_end_plan.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/project_upgrade_end_to_end_plan.md>)
-- [`project_upgrade_preparation_baseline.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/project_upgrade_preparation_baseline.md>)
+All 9 upgrade phases are complete. The project is in a production-ready, fully governed state.
 
-The practical priorities are:
-- canonical/runtime alignment
-- documentation alignment
-- normalization of runtime state
-- decomposition of oversized runtime surfaces by authority boundary
-- stronger governed validation and regression coverage
+Ongoing priorities:
+- maintain canonical/runtime alignment on every change
+- keep test coverage and architecture checks green
+- treat deployment parity as a required verification step, not optional
 
 ## Documentation map
 
@@ -136,9 +132,7 @@ Primary documents:
 - [`module_loader.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/module_loader.md>)
 - [`prompt_router.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/prompt_router.md>)
 
-Upgrade and preparation:
-- [`project_upgrade_end_to_end_plan.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/project_upgrade_end_to_end_plan.md>)
-- [`project_upgrade_preparation_baseline.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/project_upgrade_preparation_baseline.md>)
+Operations and validation:
 - [`canonical_validation_checklist.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/canonical_validation_checklist.md>)
 - [`runtime_boundary_map.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/runtime_boundary_map.md>)
 - [`governed_mutation_playbook.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/governed_mutation_playbook.md>)
