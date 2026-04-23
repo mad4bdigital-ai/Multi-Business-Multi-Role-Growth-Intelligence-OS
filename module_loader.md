@@ -16,6 +16,7 @@ This document additionally prepares:
 - starter-governance validation readiness
 - governance-drift anomaly emission readiness
 - prompt-first continuation readiness for human-triggered system use
+- logic-definition resolution is pointer-first and must read `surface.logic_canonical_pointer_registry` before direct logic-document access
 
 
 Canonical Governed Logic Presentation Loading Rule
@@ -24,6 +25,33 @@ Canonical Governed Logic Presentation Loading Rule
 - module_loader must preserve neutral presentation readiness for user-facing logic naming and activation summaries
 - internal identifiers such as `GPT-LOGIC-001` may remain unchanged for registry continuity
 - execution readiness must continue to resolve from canonical authority layers, registries, engines, routes, workflows, and enforcement state rather than GPT-style prompt framing
+
+Canonical Logic Pointer Resolution Loading Rule
+
+- when loading governed logic definitions, module_loader must resolve logic-document authority through `surface.logic_canonical_pointer_registry` before any direct logic-document read
+- module_loader must treat `surface.logic_canonical_pointer_registry` as the authoritative pointer layer for:
+  - logic_id
+  - canonical_doc_id
+  - legacy_doc_id
+  - canonical_status
+  - active_pointer
+  - rollback_available
+- if `canonical_status = canonical_active`, module_loader must load `canonical_doc_id` as the active governed logic definition
+- direct resolution from legacy logic documents is forbidden when:
+  - `canonical_status = canonical_active`
+  - `active_pointer = canonical_active`
+- legacy logic documents may be loaded only when:
+  - rollback is explicitly invoked
+  - pointer state explicitly resolves to legacy
+  - governed exception handling authorizes legacy recovery
+- when pointer resolution occurs, module_loader must preserve and return when applicable:
+  - logic_pointer_surface_id
+  - logic_pointer_resolution_status
+  - resolved_logic_doc_id
+  - resolved_logic_doc_mode
+  - legacy_doc_retained
+  - rollback_available
+- module_loader must not treat branded, GPT-persona, or legacy-specialized logic documents as active authority merely because they are directly reachable in storage
 
 
 Governed Addition Intake Loading Rule

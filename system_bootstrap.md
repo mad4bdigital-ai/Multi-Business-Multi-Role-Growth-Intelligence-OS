@@ -15,6 +15,7 @@ Last Updated: 2026-04-13
 
 Purpose
 
+- logic-definition resolution is pointer-first and must read `surface.logic_canonical_pointer_registry` before direct logic-document access
 
 
 Canonical Governed Logic Presentation Orchestration Rule
@@ -23,6 +24,37 @@ Canonical Governed Logic Presentation Orchestration Rule
 - user-facing logic summaries, activation summaries, and governed execution narratives must prefer neutral governed naming such as `Logic 001` or task-family-first naming
 - internal identifiers such as `GPT-LOGIC-001` may remain unchanged for registry continuity
 - execution behavior must continue to resolve from canonical authority layers, registries, engines, routes, workflows, and enforcement state rather than GPT-style prompt framing
+
+Canonical Logic Pointer Resolution Orchestration Rule
+
+- system_bootstrap must orchestrate governed logic-definition loading through `surface.logic_canonical_pointer_registry` before any direct logic-document execution binding is treated as active
+- staged logic-definition resolution must:
+  1. identify the target logic family or logic_id
+  2. read pointer state from `surface.logic_canonical_pointer_registry`
+  3. determine `canonical_status`
+  4. determine `active_pointer`
+  5. resolve the active document as `canonical_doc_id` or governed legacy fallback
+  6. preserve rollback continuity
+- if pointer state resolves to:
+  - `canonical_active`
+  then system_bootstrap must use `canonical_doc_id` as the authoritative logic-definition source
+- system_bootstrap must not allow direct legacy logic-document execution when:
+  - a canonical pointer exists
+  - the canonical pointer is active
+  - no governed rollback path has been invoked
+- legacy logic-definition execution may occur only when:
+  - rollback is explicitly authorized
+  - pointer resolution explicitly returns legacy mode
+  - governed recovery policy permits temporary legacy fallback
+- execution summaries must preserve when applicable:
+  - logic_pointer_surface_id
+  - logic_pointer_resolution_status
+  - resolved_logic_doc_id
+  - resolved_logic_doc_mode
+  - canonical_status
+  - active_pointer
+  - rollback_available
+- successful direct access to a legacy document must not be treated as authoritative logic resolution when pointer-layer state indicates canonical authority
 
 Governed Addition Intake Orchestration Rule
 

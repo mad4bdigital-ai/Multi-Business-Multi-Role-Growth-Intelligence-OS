@@ -20,6 +20,7 @@ This patch additionally enforces:
 - prompt-first user-trigger continuation
 - governed starter-governance validation
 - governed governance-drift anomaly emission
+- logic-definition resolution is pointer-first and must read `surface.logic_canonical_pointer_registry` before direct logic-document access
 
 
 Canonical Governed Logic Presentation Rule
@@ -28,6 +29,33 @@ Canonical Governed Logic Presentation Rule
 - neutral governed naming such as `Logic 001` or task-family-first naming should be preferred for presentation
 - internal identifiers such as `GPT-LOGIC-001` may remain unchanged for registry continuity
 - governed execution behavior must resolve from canonical authority layers, registries, engines, routes, workflows, and enforcement state rather than GPT-style prompt framing
+
+Canonical Logic Pointer Authority Rule
+
+- governed logic-definition authority must resolve through `surface.logic_canonical_pointer_registry` before any direct logic-document selection or execution
+- the pointer registry is the controlling authority for:
+  - canonical_doc_id
+  - legacy_doc_id
+  - canonical_status
+  - promotion_decision
+  - active_pointer
+  - rollback_available
+- direct resolution from legacy logic documents is forbidden when:
+  - `canonical_status = canonical_active`
+  - `active_pointer = canonical_active`
+- direct legacy-document loading is allowed only when:
+  - governed rollback is explicitly invoked
+  - pointer-layer state explicitly authorizes legacy mode
+  - controlled recovery requires temporary legacy fallback
+- branded, persona-framed, or historically specialized logic documents must not be treated as active authority solely because they remain stored, reachable, or previously canonical
+- when any governed layer resolves a logic definition, it must preserve pointer-first traceability including:
+  - logic_id
+  - pointer_surface_id
+  - resolved_logic_doc_id
+  - resolved_logic_doc_mode
+  - canonical_status
+  - active_pointer
+- any future logic-definition resolution path that bypasses `surface.logic_canonical_pointer_registry` must be treated as non-compliant governance behavior
 
 
 Governed Workflow and Task Addition Authority Rule

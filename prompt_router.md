@@ -15,6 +15,7 @@ Last Updated: 2026-04-13
 
 Purpose
 
+- logic-definition resolution is pointer-first and must read `surface.logic_canonical_pointer_registry` before direct logic-document access
 
 
 Canonical Governed Logic Presentation Routing Rule
@@ -23,6 +24,27 @@ Canonical Governed Logic Presentation Routing Rule
 - neutral governed naming such as `Logic 001` or task-family-first naming should be preferred for presentation
 - internal identifiers such as `GPT-LOGIC-001` may remain unchanged for registry continuity
 - routing authority and logic selection must continue to resolve from canonical routes, workflows, engines, registries, and enforcement-compatible runtime state rather than GPT-style prompt framing
+
+Canonical Logic Pointer Resolution Routing Rule
+
+- when routing any request that depends on a governed logic definition, prompt_router must route logic-definition resolution through `surface.logic_canonical_pointer_registry` before any direct document selection
+- prompt_router must treat the pointer registry as the first authority for deciding whether the active logic document is:
+  - canonical_active
+  - pending_cross_check
+  - legacy_recovery
+- if a logic family resolves to `canonical_active`, prompt_router must prefer `canonical_doc_id` and must not route directly to the legacy document
+- direct legacy logic-document routing is forbidden unless:
+  - rollback is explicitly requested
+  - rollback is explicitly authorized by governed policy
+  - pointer state indicates legacy recovery
+- routing output must preserve when applicable:
+  - logic_id
+  - logic_pointer_resolution_status
+  - resolved_logic_doc_id
+  - resolved_logic_doc_mode
+  - canonical_status
+  - active_pointer
+- prompt_router must treat legacy file reachability as non-authoritative when pointer-layer state conflicts with direct legacy access
 
 Governed Addition Intake Routing Rule
 
