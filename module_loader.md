@@ -1,4 +1,4 @@
-﻿﻿module_loader
+﻿﻿﻿﻿module_loader
 
 Status
 Canonical Name: module_loader
@@ -17,6 +17,7 @@ This document additionally prepares:
 - governance-drift anomaly emission readiness
 - prompt-first continuation readiness for human-triggered system use
 - logic-definition resolution is pointer-first and must read `surface.logic_canonical_pointer_registry` before direct logic-document access
+- brand-specific writing completion requires prior Brand Core file or authoritative Brand Core asset reading
 
 
 Canonical Governed Logic Presentation Loading Rule
@@ -53,6 +54,23 @@ Canonical Logic Pointer Resolution Loading Rule
   - rollback_available
 - module_loader must not treat branded, GPT-persona, or legacy-specialized logic documents as active authority merely because they are directly reachable in storage
 
+
+Brand Core Read-Before-Writing Loading Rule
+
+- when loading governed writing execution for a specific brand, module_loader must prepare Brand Core read dependencies before writing completion readiness is returned
+- module_loader must resolve and return when applicable:
+  - brand_core_read_required
+  - brand_core_authoritative_home
+  - brand_core_read_targets
+  - brand_core_read_completeness_status
+  - brand_core_missing_assets
+  - writing_completion_blocked_until_brand_core_read
+- module_loader must treat Brand Core Registry as the authoritative operational read home for brand-specific writing assets
+- module_loader must not mark writing execution-ready when:
+  - brand identity is unresolved
+  - required Brand Core files are unread
+  - required Brand Core assets are missing
+  - Brand Core read completeness remains unresolved
 
 Governed Addition Intake Loading Rule
 

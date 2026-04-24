@@ -1,4 +1,4 @@
-﻿﻿direct_instructions_registry_patch
+﻿﻿﻿﻿direct_instructions_registry_patch
 
 
 Status
@@ -21,6 +21,7 @@ This patch additionally enforces:
 - governed starter-governance validation
 - governed governance-drift anomaly emission
 - logic-definition resolution is pointer-first and must read `surface.logic_canonical_pointer_registry` before direct logic-document access
+- brand-specific writing completion requires prior Brand Core file or authoritative Brand Core asset reading
 
 
 Canonical Governed Logic Presentation Rule
@@ -178,6 +179,16 @@ Brand Core Asset Home Governance Rule
 - serialized JSON form alone does not change authoritative asset home
 - operational reads for brand-core assets must resolve from Brand Core Registry first
 - JSON Asset Registry mirrors of brand-core assets must be treated as non-authoritative legacy or trace mirrors unless the asset class is explicitly derived_json_artifact
+
+Brand Core Read-Before-Writing Authority Rule
+
+- any governed writing request for a specific brand must resolve through Brand Core read authority before writing completion
+- direct brand-specific writing completion without reading relevant Brand Core files or authoritative Brand Core assets is forbidden
+- Brand Core Registry must be treated as the primary operational read home for brand-specific writing awareness
+- if required Brand Core inputs are unread, unresolved, or incomplete:
+  - writing completion must remain degraded, partial, or blocked
+  - full-success writing classification is forbidden
+- logic-definition resolution alone does not satisfy brand-aware writing readiness when Brand Core reading is required
 
 Brand Core Asset Intake And Write-Rule Governance Rule
 

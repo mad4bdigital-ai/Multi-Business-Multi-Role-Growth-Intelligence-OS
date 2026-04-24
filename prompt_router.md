@@ -16,6 +16,7 @@ Last Updated: 2026-04-13
 Purpose
 
 - logic-definition resolution is pointer-first and must read `surface.logic_canonical_pointer_registry` before direct logic-document access
+- brand-specific writing completion requires prior Brand Core file or authoritative Brand Core asset reading
 
 
 Canonical Governed Logic Presentation Routing Rule
@@ -161,6 +162,25 @@ Brand-Core Asset Read Routing Rule
 - prompt_router must not prefer JSON Asset Registry for those asset classes
 - JSON Asset Registry may remain primary only when:
   - asset_class = derived_json_artifact
+
+Brand Core Read-Before-Writing Routing Rule
+
+- when intent includes brand-specific writing such as:
+  - website copy
+  - landing page copy
+  - about us
+  - service page copy
+  - brand messaging
+  - campaign copy
+  - SEO content for a specific brand
+  prompt_router must require Brand Core read resolution before writing completion routing
+- routing output must preserve:
+  - brand_core_read_required = true
+  - brand_core_file_resolution_required = true
+  - brand_core_read_completeness_status
+  - writing_completion_blocked_until_brand_core_read
+- prompt_router must prefer Brand Core Registry as the authoritative operational read home for brand-specific writing inputs
+- direct writing completion is forbidden when brand-aware writing is requested but relevant Brand Core files remain unread, unresolved, or incomplete
 
 Brand Core Asset Intake Routing Rule
 

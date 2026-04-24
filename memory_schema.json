@@ -20,6 +20,7 @@
     "workflow_context",
     "routing_context",
     "execution_context",
+    "logic_pointer_state",
     "http_transport_state",
     "intelligence_context",
     "system_context",
@@ -85,6 +86,7 @@
     "wordpress_multilingual_state",
     "brand_core_asset_intake_state",
     "brand_core_write_rules_state",
+    "brand_core_read_state",
     "authoritative_asset_home_state",
     "legacy_json_mirror_state",
     "publish_preparation_extension_state",
@@ -94,7 +96,7 @@
   "properties": {
     "version": {
       "type": "string",
-      "default": "v8.42-http-client-variable-contract-governance",
+      "default": "v8.43-logic-pointer-governance",
       "description": "Schema revision identifier."
     },
     "purpose": {
@@ -174,6 +176,94 @@
     "execution_context": {
       "$ref": "#/$defs/executionContext",
       "default": {}
+    },
+    "logic_pointer_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logic_id",
+        "logic_pointer_surface_id",
+        "logic_pointer_resolution_status",
+        "resolved_logic_doc_id",
+        "resolved_logic_doc_mode",
+        "canonical_status",
+        "active_pointer",
+        "legacy_doc_retained",
+        "rollback_available"
+      ],
+      "properties": {
+        "logic_id": {
+          "type": "string",
+          "default": ""
+        },
+        "logic_pointer_surface_id": {
+          "type": "string",
+          "default": "surface.logic_canonical_pointer_registry"
+        },
+        "logic_pointer_resolution_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "resolved_logic_doc_id": {
+          "type": "string",
+          "default": ""
+        },
+        "resolved_logic_doc_mode": {
+          "type": "string",
+          "enum": [
+            "",
+            "canonical",
+            "legacy",
+            "legacy_recovery"
+          ],
+          "default": ""
+        },
+        "canonical_status": {
+          "type": "string",
+          "enum": [
+            "",
+            "canonical_active",
+            "pending_cross_check",
+            "legacy_recovery"
+          ],
+          "default": ""
+        },
+        "active_pointer": {
+          "type": "string",
+          "enum": [
+            "",
+            "canonical_active",
+            "canonical_pending_cross_check",
+            "legacy_recovery"
+          ],
+          "default": ""
+        },
+        "legacy_doc_retained": {
+          "type": "boolean",
+          "default": true
+        },
+        "rollback_available": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "default": {
+        "logic_id": "",
+        "logic_pointer_surface_id": "surface.logic_canonical_pointer_registry",
+        "logic_pointer_resolution_status": "pending",
+        "resolved_logic_doc_id": "",
+        "resolved_logic_doc_mode": "",
+        "canonical_status": "",
+        "active_pointer": "",
+        "legacy_doc_retained": true,
+        "rollback_available": true
+      }
     },
     "http_transport_state": {
       "type": "object",
@@ -2139,7 +2229,7 @@
         "Each governed surface must declare schema_ref, schema_version, header_signature, expected_column_count, and binding_mode; validation must verify schema_validation_status, header_match_status, and schema_drift_detected; schema drift must trigger degraded or blocked execution and repair mapping when required.",
         "Growth scores must be derived from authoritative execution records, metrics summaries, or governed review feedback sources.",
         "Growth-loop triggers must remain Registry-governed and passive rows or passive scores must not auto-execute.",
-        "brand_tracking_bindings must reflect Brand Registry–authoritative fields for gsc_property, ga_property_id, and gtm_container_id and must not be fabricated outside governed discovery or writeback paths.",
+        "brand_tracking_bindings must reflect Brand Registryâ€“authoritative fields for gsc_property, ga_property_id, and gtm_container_id and must not be fabricated outside governed discovery or writeback paths.",
         "analytics_discovery_state must record GA Admin discovery outcomes without overwriting authoritative Brand Registry rows unless a governed writeback or repair path applies.",
         "measurement_health_state and revenue_signal_state are operational memory for measurement and reporting loops; they must not override registry authority or route selection.",
         "autopilot_trace_state must record full-funnel autopilot inputs and scores with explicit source attribution (GSC, GA Data API, GTM) when populated.",
@@ -2960,6 +3050,64 @@
         "write_target": "",
         "write_target_status": "pending",
         "derived_json_artifact_exception": false
+      }
+    },
+    "brand_core_read_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "brand_core_read_required",
+        "brand_core_authoritative_home",
+        "brand_core_read_targets",
+        "brand_core_read_completeness_status",
+        "brand_core_missing_assets",
+        "writing_completion_blocked_until_brand_core_read"
+      ],
+      "properties": {
+        "brand_core_read_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "brand_core_authoritative_home": {
+          "type": "string",
+          "default": "Brand Core Registry"
+        },
+        "brand_core_read_targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "brand_core_read_completeness_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "brand_core_missing_assets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "writing_completion_blocked_until_brand_core_read": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "default": {
+        "brand_core_read_required": false,
+        "brand_core_authoritative_home": "Brand Core Registry",
+        "brand_core_read_targets": [],
+        "brand_core_read_completeness_status": "pending",
+        "brand_core_missing_assets": [],
+        "writing_completion_blocked_until_brand_core_read": false
       }
     },
     "authoritative_asset_home_state": {
@@ -5319,9 +5467,9 @@
           "default": "",
           "enum": [
             "",
-            "🔴 Very early",
-            "🟡 Good",
-            "🟢 Full"
+            "ðŸ”´ Very early",
+            "ðŸŸ¡ Good",
+            "ðŸŸ¢ Full"
           ]
         },
         "default_execution_mode": {
@@ -5480,9 +5628,9 @@
           "default": "",
           "enum": [
             "",
-            "🔴 Very early",
-            "🟡 Good",
-            "🟢 Full"
+            "ðŸ”´ Very early",
+            "ðŸŸ¡ Good",
+            "ðŸŸ¢ Full"
           ]
         },
         "last_maturity_review": {
@@ -5710,9 +5858,9 @@
           "enum": [
             null,
             "",
-            "🔴 Very early",
-            "🟡 Good",
-            "🟢 Full"
+            "ðŸ”´ Very early",
+            "ðŸŸ¡ Good",
+            "ðŸŸ¢ Full"
           ]
         },
         "default_execution_mode": {

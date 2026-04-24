@@ -16,6 +16,7 @@ Last Updated: 2026-04-13
 Purpose
 
 - logic-definition resolution is pointer-first and must read `surface.logic_canonical_pointer_registry` before direct logic-document access
+- brand-specific writing completion requires prior Brand Core file or authoritative Brand Core asset reading
 
 
 Canonical Governed Logic Presentation Orchestration Rule
@@ -180,6 +181,24 @@ Brand Core Operational Precedence Rule
 - JSON Asset Registry must not be treated as the primary operational read home for those asset classes
 - JSON Asset Registry remains authoritative only for:
   - derived_json_artifact
+
+Brand Core Read-Before-Writing Orchestration Rule
+
+- system_bootstrap must orchestrate brand-specific writing as a read-first governed execution when Brand Core awareness is required
+- staged brand-aware writing execution must:
+  1. resolve target brand
+  2. resolve Brand Core authoritative read home
+  3. identify required Brand Core files or assets
+  4. read relevant Brand Core inputs
+  5. classify Brand Core read completeness
+  6. only then execute writing completion
+- system_bootstrap must preserve when applicable:
+  - brand_core_read_required
+  - brand_core_read_targets
+  - brand_core_read_completeness_status
+  - brand_core_missing_assets
+  - writing_completion_blocked_until_brand_core_read
+- writing completion must not be classified as recovered, validated, complete, or equivalent full-success when required Brand Core inputs remain unread or unresolved
 
 Brand-Core Asset Home Non-Replacement Clause
 
