@@ -1,4 +1,4 @@
-﻿﻿﻿﻿direct_instructions_registry_patch
+﻿﻿﻿direct_instructions_registry_patch
 ﻿﻿﻿﻿direct_instructions_registry_patch
 
 
@@ -24,6 +24,8 @@ This patch additionally enforces:
 - logic-definition resolution is pointer-first and must read `surface.logic_canonical_pointer_registry` before direct logic-document access
 - brand-specific writing completion requires prior Brand Core file or authoritative Brand Core asset reading
 - brand-specific writing requires required-engine readiness through Engines Registry before Brand Core read-completion or writing completion
+- governed logic execution requires prior knowledge-layer resolution for the selected logic when logic-specific, cross-logic, or shared knowledge inputs are required
+- business-aware execution requires prior business-type knowledge-profile resolution when the selected logic or task depends on business-type interpretation
 
 
 Canonical Governed Logic Presentation Rule
@@ -59,6 +61,12 @@ Canonical Logic Pointer Authority Rule
   - canonical_status
   - active_pointer
 - any future logic-definition resolution path that bypasses `surface.logic_canonical_pointer_registry` must be treated as non-compliant governance behavior
+
+Logic Knowledge Layer Authority Rule
+
+- any request to execute governed logic must resolve required logic-specific, cross-logic, and shared knowledge layers before returning full-success execution authority
+- direct bypassing of knowledge read requirements when policy marks them as required is forbidden
+- registry-based resolution must treat logic-knowledge paths as authoritative inputs for the selected logic
 
 
 Governed Workflow and Task Addition Authority Rule
@@ -208,6 +216,12 @@ Engine Registry Readiness Before Brand-Core Writing Authority Rule
   - writing completion must remain degraded, partial, or blocked
   - full-success writing classification is forbidden
 - logic-definition resolution and Brand Core file reading alone do not satisfy brand-aware writing readiness when engine interpretation is required
+
+Business-Type Knowledge Profile Authority Rule
+
+- any request to execute business-aware tasks must resolve the business-type and business-type knowledge profile before returning full-success execution authority
+- direct bypassing of business-type knowledge profile reading when execution relies on business context is forbidden
+- Engines Registry remains the authoritative surface for validating business-type engine compatibility before the knowledge profile is consumed
 
 
 Brand Core Asset Intake And Write-Rule Governance Rule
