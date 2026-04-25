@@ -359,6 +359,29 @@ assert(
   executionConsumers.map(item => item.rel).join(", ")
 );
 
+section("Route files — execution internals isolation");
+
+const EXECUTION_INTERNAL_PATTERN =
+  /from\s+["'](?:\.\.\/)?execution(?:Resolution|Preparation|Dispatch|Async|Response)(?:\.js)?["']/;
+
+const ROUTE_FILES = [
+  "routes/executeRoutes.js",
+  "routes/jobRoutes.js",
+  "routes/mcpRoutes.js",
+  "routes/governanceRoutes.js"
+];
+
+for (const rel of ROUTE_FILES) {
+  const absPath = repoPath(rel);
+  if (existsSync(absPath)) {
+    const content = readFileSync(absPath, "utf8");
+    assert(
+      `${rel} does not import execution internals directly`,
+      !EXECUTION_INTERNAL_PATTERN.test(content)
+    );
+  }
+}
+
 section("server.js size guard");
 
 const serverLines = readFileSync(repoPath("server.js"), "utf8").split("\n").length;
