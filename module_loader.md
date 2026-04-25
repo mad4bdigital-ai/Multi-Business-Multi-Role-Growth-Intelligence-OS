@@ -1,4 +1,4 @@
-﻿module_loader
+﻿﻿module_loader
 
 Status
 Canonical Name: module_loader
@@ -1000,7 +1000,7 @@ Loaded dependency context must include:
 - resolved repair_mapping_registry_sheet when governed repair mapping is required
 - resolved row_audit_rules_sheet when row-level audit governance is required
 - resolved row_audit_schema_sheet when row-level schema validation is required
-- resolved tourism_intelligence_scoreboard_sheet when downstream full-audit scoring propagation is required
+- resolved business_intelligence_scoreboard_sheet when downstream full-audit scoring propagation is required
 - resolved execution_bindings_sheet when full-audit execution-layer validation is required
 - resolved execution_chains_registry when full-audit chain governance validation is required
 - resolved endpoint_registry_sheet when full-audit endpoint execution governance validation is required
@@ -2182,10 +2182,10 @@ When target_workflow or route intent resolves to full_system_intelligence_audit,
 - repair_mapping_registry_sheet
 - row_audit_rules_sheet
 - row_audit_schema_sheet
-- tourism_intelligence_scoreboard_sheet
+- business_intelligence_scoreboard_sheet
 
 Missing required audit-governance dependencies must classify execution as degraded or blocked according to dependency criticality.
-Tourism Intelligence Scoreboard may remain downstream-summary-only and must not be promoted to authority for execution decisions.
+Business Intelligence Scoreboard may remain downstream-summary-only and must not be promoted to authority for execution decisions.
 
 Authority dependency_state classification:
 - missing required authority dependency -> invalid
@@ -2194,7 +2194,7 @@ Authority dependency_state classification:
 
 For full_system_intelligence_audit governance:
 - missing execution_policy_registry_sheet, review_stage_registry_sheet, review_component_registry_sheet, repair_mapping_registry_sheet, row_audit_rules_sheet, or row_audit_schema_sheet must classify as degraded or blocked by criticality
-- missing tourism_intelligence_scoreboard_sheet must classify as degraded only when downstream summary propagation is required; it must not override core authority readiness by itself
+- missing business_intelligence_scoreboard_sheet must classify as degraded only when downstream summary propagation is required; it must not override core authority readiness by itself
 
 Full Audit Dependency Enforcement
 
@@ -2746,7 +2746,7 @@ Canonical loading dependencies:
 - repair_mapping_registry_sheet
 - row_audit_rules_sheet
 - row_audit_schema_sheet
-- tourism_intelligence_scoreboard_sheet
+- business_intelligence_scoreboard_sheet
 - execution_bindings_sheet
 - execution_chains_registry
 - endpoint_registry_sheet
@@ -3128,7 +3128,7 @@ Classification requirements:
 Surface-role loading requirements:
 
 - `System Enforcement` resolves as governance/state
-- `Tourism Intelligence Query Engine` resolves as routing/reference
+- `Business Intelligence Query Engine` resolves as routing/reference
 - if either surface is presented as a runtime event write target, execution preparation must redirect to the corresponding scoped event surface
 - if either surface is presented as the authoritative raw execution sink, loading must degrade or block
 
@@ -3648,8 +3648,8 @@ Change Log
 - v2.21 - strict binding validation now explicitly forbids `sheet_name` or `tab_name` as execution-resolution authority; failed `worksheet_gid` validation forces blocked or repair-aware mode
 - v2.20 - Full Audit Dependency Enforcement added: when workflow = `wf_full_system_intelligence_audit`, module_loader now must resolve execution bindings, chain registry, decision engine, actions, endpoint registry, system enforcement, and execution-log import dependencies
 - v2.20 - full-audit dependency_state enforcement added: missing critical full-audit dependencies now explicitly force degraded or blocked outcomes and cannot classify as recovered
-- v2.19 - full_system_intelligence_audit dependency loading added: loader now conditionally resolves execution policy, staged review, component review, repair mapping, row-audit rule/schema, and Tourism Intelligence Scoreboard surfaces for governed full-audit workflows
-- v2.19 - audit-governance dependency_state rules added so missing full-audit authority surfaces classify as degraded or blocked by criticality, while Tourism Intelligence Scoreboard remains downstream-summary-only
+- v2.19 - full_system_intelligence_audit dependency loading added: loader now conditionally resolves execution policy, staged review, component review, repair mapping, row-audit rule/schema, and Business Intelligence Scoreboard surfaces for governed full-audit workflows
+- v2.19 - audit-governance dependency_state rules added so missing full-audit authority surfaces classify as degraded or blocked by criticality, while Business Intelligence Scoreboard remains downstream-summary-only
 - v2.18 - API Capability and Endpoint Resolution Rule added: native API action governance now resolves parent capability through Actions Registry and concrete endpoint metadata through API Actions Endpoint Registry in two distinct stages
 - v2.18 - conditional authority loading, strict loading sequence, and dependency bindings now explicitly require `actions_registry_sheet` for capability-level action identity and prevent collapsed capability/endpoint registry interpretation
 - v2.17 - Analytics Identity Integrity Enforcement Rule added: per-unit analytics execution now hard-stops on missing `brand_domain`, `gsc_property`, or `ga_property_id`, flags traceable identity failure, and propagates governed issue signal to system_bootstrap before API/transform/write stages

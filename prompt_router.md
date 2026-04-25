@@ -1920,7 +1920,7 @@ When this intent is resolved through Task Routes and Workflow Registry, prompt_r
 - repair_mapping_registry_sheet
 - row_audit_rules_sheet
 - row_audit_schema_sheet
-- tourism_intelligence_scoreboard_sheet as downstream scoring surface
+- business_intelligence_scoreboard_sheet as downstream scoring surface
 
 Required handoff expectations for this governed route include:
 - staged audit
@@ -2643,12 +2643,12 @@ Routing requirements:
 - `logging_sink_required = surface.operations_log_unified_sheet` remains unchanged for canonical raw execution logging
 - scoped event routing must not override or replace the authoritative raw execution logging sink
 - routed writeback for enforcement events must not target `System Enforcement`
-- routed writeback for query-intake or decision events must not target `Tourism Intelligence Query Engine`
+- routed writeback for query-intake or decision events must not target `Business Intelligence Query Engine`
 
 Surface-role preservation:
 
 - `System Enforcement` remains governance/state
-- `Tourism Intelligence Query Engine` remains routing/reference
+- `Business Intelligence Query Engine` remains routing/reference
 - scoped runtime event emissions must target the corresponding `Activity Log` event sheets
 
 Workflow-Aware Logging Retry Routing Rule

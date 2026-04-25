@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://tourism-growth-intelligence.local/schemas/memory_schema.json",
-  "title": "Tourism Growth Intelligence Platform Memory Schema",
+  "$id": "https://growth-intelligence.local/schemas/memory_schema.json",
+  "title": "Multi-Business Growth Intelligence Platform Memory Schema",
   "description": "Canonical memory/state model aligned with Registry Surfaces Catalog authority, Validation & Repair Registry governance, runtime execution registries, embedded OAuth config resolution, embedded API-key resolution, repair-aware routing, execution traceability, review writeback planning, observability governance, architecture reconciliation, analytics identity tracking, API action capability/endpoint inventory state, governed starter-governance validation, governance-drift anomaly emission, prompt-first human-trigger continuation, enforced same-cycle native Google GPT Actions validation for governed activation and runtime checks, spill-safe prewrite guard enforcement, row-2 template sampling before governed writes, protected unified-log column preservation, governed pipeline-integrity audit state, and provider-family continuity validation across capability, route, and workflow layers.",
   "type": "object",
   "additionalProperties": false,
@@ -104,7 +104,7 @@
     },
     "purpose": {
       "type": "string",
-      "default": "Canonical memory/state model for the Tourism Growth Intelligence Platform."
+      "default": "Canonical memory/state model for the Multi-Business Growth Intelligence Platform."
     },
     "principles": {
       "$ref": "#/$defs/principles",
@@ -5718,7 +5718,7 @@
         },
         "source_sheet": {
           "type": "string",
-          "default": "Tourism Intelligence Scoreboard"
+          "default": "Business Intelligence Scoreboard"
         },
         "last_read_at": {
           "type": "string",
@@ -8096,7 +8096,7 @@
       "properties": {
         "platform_name": {
           "type": "string",
-          "default": "Tourism Growth Intelligence Platform"
+          "default": "Multi-Business Growth Intelligence Platform"
         },
         "registry_workbook": {
           "type": "object",
@@ -8108,7 +8108,7 @@
             },
             "title": {
               "type": "string",
-              "default": "Tourism Intelligence OS - Registry Workbook"
+              "default": "Growth Intelligence OS - Registry Workbook"
             },
             "role": {
               "type": "string",
@@ -8130,7 +8130,7 @@
             },
             "title": {
               "type": "string",
-              "default": "Tourism Intelligence OS - Operations Workbook"
+              "default": "Growth Intelligence OS - Operations Workbook"
             },
             "role": {
               "type": "string",
@@ -8148,7 +8148,7 @@
             },
             "title": {
               "type": "string",
-              "default": "Tourism Metrics Warehouse"
+              "default": "Business Metrics Warehouse"
             },
             "role": {
               "type": "string",
@@ -8166,7 +8166,7 @@
             },
             "title": {
               "type": "string",
-              "default": "Tourism Live Data Hub"
+              "default": "Business Live Data Hub"
             },
             "role": {
               "type": "string",
@@ -8198,7 +8198,7 @@
         },
         "registry_control_center": {
           "type": "string",
-          "default": "Tourism Intelligence Control Center"
+          "default": "Growth Intelligence Control Center"
         },
         "operations_control_center": {
           "type": "string",
@@ -8311,7 +8311,7 @@
             },
             "title": {
               "type": "string",
-              "default": "Tourism Intelligence OS - Operations Workbook"
+              "default": "Growth Intelligence OS - Operations Workbook"
             },
             "role": {
               "type": "string",

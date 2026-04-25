@@ -1,4 +1,4 @@
-﻿direct_instructions_registry_patch
+﻿﻿direct_instructions_registry_patch
 
 
 Status
@@ -679,7 +679,7 @@ Authority requirements:
 Surface role requirements:
 
 - `System Enforcement` is a governance/state surface and must not act as a runtime event ledger
-- `Tourism Intelligence Query Engine` is a routing/reference surface and must not act as a runtime event ledger
+- `Business Intelligence Query Engine` is a routing/reference surface and must not act as a runtime event ledger
 - runtime event writeback formerly directed to those surfaces must be redirected to the corresponding scoped event sheets in `Activity Log`
 
 Allowed write scope:
@@ -696,7 +696,7 @@ Allowed write scope:
 Forbidden behavior:
 
 - writing raw execution truth to `System Enforcement`
-- writing runtime event rows to `Tourism Intelligence Query Engine`
+- writing runtime event rows to `Business Intelligence Query Engine`
 - treating scoped event surfaces as substitutes for `Execution Log Unified`
 
 Raw Execution Single-Write Rule
@@ -1889,7 +1889,7 @@ For governed full_system_intelligence_audit execution:
 - repair_mapping_registry_sheet is required when governed repair mapping is active
 - row_audit_rules_sheet and row_audit_schema_sheet are required when row-level audit validation is active
 
-Tourism Intelligence Scoreboard may receive downstream audit scoring and summary propagation but must not be treated as execution authority.
+Business Intelligence Scoreboard may receive downstream audit scoring and summary propagation but must not be treated as execution authority.
 
 Full Audit Governance Scope Extension
 
@@ -2598,7 +2598,7 @@ For `full_system_intelligence_audit` governance, strict validation must also exp
 - endpoint_registry_sheet presence when endpoint execution metadata validation is required
 - system_enforcement_sheet presence when system enforcement validation is required
 - execution_log_import_sheet presence when execution-log validation is required
-- tourism_intelligence_scoreboard_sheet presence only when downstream scoring propagation is required; absence must not be treated as missing execution authority by itself
+- business_intelligence_scoreboard_sheet presence only when downstream scoring propagation is required; absence must not be treated as missing execution authority by itself
 
 Authority workbook placement must also be validated so that:
 - authority surfaces live in the Registry workbook when designated authoritative
@@ -3268,8 +3268,8 @@ Missing metadata in API Actions Endpoint Registry must degrade endpoint readines
 Analytics warehouse surfaces are governed registry-bound schema surfaces and must be validated as part of execution authority.
 
 The following surfaces are authoritative analytics sheet-sync targets when active in Registry:
-- Tourism Metrics Warehouse -> GSC Data
-- Tourism Metrics Warehouse -> GA4 Data
+- Business Metrics Warehouse -> GSC Data
+- Business Metrics Warehouse -> GA4 Data
 
 Registry governance for analytics warehouse surfaces must include:
 1. workbook binding validation
@@ -4155,14 +4155,14 @@ Change Log
 - v2.20 - Version Conflict Resolution Rule added: duplicate active `route_id`, `workflow_id`, or `chain_id` rows now classify as invalid configuration, with highest-version deterministic conflict handling until repaired
 - v2.20 - Full Audit Governance Scope Extension added: full_system_intelligence_audit now explicitly requires execution bindings, execution chains, decision engine, runtime actions/endpoints, system enforcement, and execution-log import validation dependencies
 - v2.19 - Full Audit Governance Scope added: full_system_intelligence_audit now requires execution policy, staged/component review, repair mapping, and row-audit governance surfaces where applicable
-- v2.19 - full-audit route/workflow authority and strict validation expectations added; Tourism Intelligence Scoreboard is now explicitly downstream-only and non-authoritative for execution
+- v2.19 - full-audit route/workflow authority and strict validation expectations added; Business Intelligence Scoreboard is now explicitly downstream-only and non-authoritative for execution
 - v2.18 - API Action Capability vs Endpoint Inventory Rule added: Actions Registry and API Actions Endpoint Registry now have explicit split authority between parent capability identity and endpoint inventory metadata governance
 - v2.18 - endpoint-metadata completeness is now required for endpoint readiness classification, but missing endpoint metadata no longer implies GPT action non-existence when runtime access is already known
 - v2.17 - Analytics Identity Issue Governance Rule added: analytics identity defects are now governed issues with mandatory Review Findings Log entry, Active Issues Dashboard surfacing, execution-classification constraints, and repair/reconciliation lifecycle handling
 - v2.17 - analytics identity issue deduplication keys are now governed per brand, execution cycle, and defect type so duplicate findings are prevented while preserving remediation traceability
 - v2.16 - Brand-Domain Analytics Governance Rule added: analytics authority now requires brand-domain identity alignment across Brand Registry, property bindings, warehouse schema, and runtime execution identity
 - v2.16 - canonical GSC warehouse schema now includes `brand_domain`; registry validation must downgrade readiness and require reconciliation when brand-domain identity is missing or misaligned
-- v2.15 - Analytics Warehouse Schema Governance Rule added: Tourism Metrics Warehouse targets (`GSC Data`, `GA4 Data`) are now explicitly governed as authoritative analytics sheet-sync surfaces with workbook/sheet/schema/source compatibility validation and write/review/repair compatibility requirements
+- v2.15 - Analytics Warehouse Schema Governance Rule added: Business Metrics Warehouse targets (`GSC Data`, `GA4 Data`) are now explicitly governed as authoritative analytics sheet-sync surfaces with workbook/sheet/schema/source compatibility validation and write/review/repair compatibility requirements
 - v2.15 - canonical GA4 and GSC warehouse header schemas added; malformed or headerless analytics sheets now require downgrade, reconciliation flagging, and recovered-write prevention until aligned
 - v2.14 - Registry Reconciliation Governance Rule added: structural architecture changes now require cross-registry reconciliation across dependencies, bindings, routing, workflow, policy, and canonical validation surfaces before conflicting legacy rows may be treated as valid authority
 - v2.14 - reconciliation-aware signal and completion rules added so stale superseded architecture rows are downgraded, flagged, or blocked until aligned

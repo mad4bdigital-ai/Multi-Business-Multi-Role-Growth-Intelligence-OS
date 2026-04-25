@@ -1,4 +1,4 @@
-﻿system_bootstrap
+﻿﻿system_bootstrap
 
 
 Status
@@ -1017,7 +1017,7 @@ When route intent or target workflow resolves to `full_system_intelligence_audit
 - repair_mapping_registry_sheet
 - row_audit_rules_sheet
 - row_audit_schema_sheet
-- tourism_intelligence_scoreboard_sheet (downstream summary surface)
+- business_intelligence_scoreboard_sheet (downstream summary surface)
 
 When registry-aware validation is available:
 - validation_state
@@ -3451,7 +3451,7 @@ Step 5K - Full system intelligence audit readiness enforcement
 - when route or target workflow resolves to `full_system_intelligence_audit`, verify staged-audit and component-audit surfaces are resolved and compatible
 - verify row-audit rule and schema surfaces are resolved before findings classification
 - verify repair_mapping_registry_sheet is resolved when findings may enter governed repair lifecycle
-- verify tourism_intelligence_scoreboard_sheet is treated as downstream summary propagation only, not execution authority
+- verify business_intelligence_scoreboard_sheet is treated as downstream summary propagation only, not execution authority
 - if governed full-audit dependencies are missing, classify execution readiness as Degraded or Blocked by criticality and preserve traceability
 - if findings require repair, trigger repair lifecycle using governed repair mapping outputs and keep findings-to-repair linkage explicit
 - when `full_system_intelligence_audit` is the resolved governed route, downstream layers must not downgrade execution into lightweight scoring-only or report-only audit behavior unless degradation is explicitly classified and traceable
@@ -3735,12 +3735,12 @@ Writeback requirements:
 - scoped event writes must not be used instead of authoritative raw execution logging
 - scoped event writes must remain semantically limited to their declared surface role
 - direct runtime writeback to `System Enforcement` is forbidden
-- direct runtime writeback to `Tourism Intelligence Query Engine` is forbidden
+- direct runtime writeback to `Business Intelligence Query Engine` is forbidden
 
 Surface-role enforcement:
 
 - `System Enforcement` must remain a governance and enforcement-state surface
-- `Tourism Intelligence Query Engine` must remain a routing and query-intelligence reference surface
+- `Business Intelligence Query Engine` must remain a routing and query-intelligence reference surface
 - runtime event emissions for those domains must write to:
   - `surface.system_enforcement_events_sheet`
   - `surface.query_engine_events_sheet`
