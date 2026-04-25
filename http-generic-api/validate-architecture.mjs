@@ -88,6 +88,7 @@ const REQUIRED_MODULES = [
   "jobRunner.js",
   "executionRouting.js",
   "executionResolution.js",
+  "executionPreparation.js",
   "driveFileLoader.js",
   "sheetHelpers.js",
   "googleSheets.js",
@@ -228,6 +229,17 @@ const REQUIRED_EXECUTION_RESOLUTION_EXPORTS = [
 
 for (const name of REQUIRED_EXECUTION_RESOLUTION_EXPORTS) {
   assert(`executionResolution exports ${name}`, name in executionResolutionModule);
+}
+
+section("Required executionPreparation exports");
+
+const executionPreparationModule = await import("./executionPreparation.js");
+const REQUIRED_EXECUTION_PREPARATION_EXPORTS = [
+  "prepareExecutionRequest"
+];
+
+for (const name of REQUIRED_EXECUTION_PREPARATION_EXPORTS) {
+  assert(`executionPreparation exports ${name}`, name in executionPreparationModule);
 }
 
 section("Required auth exports");
