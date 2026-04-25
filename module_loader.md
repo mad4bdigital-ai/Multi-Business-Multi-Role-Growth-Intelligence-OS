@@ -26,10 +26,10 @@ This document additionally prepares:
 
 Canonical Governed Logic Presentation Loading Rule
 
-- when loading governed logic presentation context, module_loader must treat logic documents as governed logic specifications rather than GPT personas or GPT-style introductions
+- when loading governed logic presentation context, module_loader must treat logic documents as governed logic specifications rather than GPT personas or agent-UI-style introductions
 - module_loader must preserve neutral presentation readiness for user-facing logic naming and activation summaries
 - internal identifiers such as `GPT-LOGIC-001` may remain unchanged for registry continuity
-- execution readiness must continue to resolve from canonical authority layers, registries, engines, routes, workflows, and enforcement state rather than GPT-style prompt framing
+- execution readiness must continue to resolve from canonical authority layers, registries, engines, routes, workflows, and enforcement state rather than agent-UI-style prompt framing
 
 Canonical Logic Pointer Resolution Loading Rule
 
@@ -193,15 +193,15 @@ Patch Deployment Parity Verification Loading Rule
   - only registry alignment evidence exists
   - authoritative runtime evidence is missing or unresolved
 - if live deployment confirmation is requested but runtime evidence cannot be resolved, loader output must preserve degraded readiness rather than deployment-confirmed readiness
-Native Google GPT Actions Enforcement Repair
+Governed Activation Transport Enforcement Repair
 
 The repaired enforcement rule is active:
 
-- when governed activation, validation, or runtime authority checks require Google Workspace live validation, execution must use real native Google API tool calls through available GPT Actions/native tools in the same execution cycle
+- when governed activation, validation, or runtime authority checks require live validation, execution must use governed HTTP client transport through `http_generic_api` in the same execution cycle
 - narrative intent, simulation, tool-availability claims, or deferred execution do not satisfy the requirement
-- `authorization_gated` is permitted only after a real native Google API attempt fails due to authorization
-- if no real native call occurs when required, loader output must enforce `use_google_api_tools_in_gpt_actions_first = true` and trigger same-cycle re-attempt readiness before passive degraded reporting is allowed
-- the required degraded reason is `missing_required_native_google_attempt`
+- `authorization_gated` is permitted only after a real governed activation transport attempt fails due to authorization
+- if no real activation transport call occurs when required, loader output must enforce `activation_transport_attempt_required = true` and trigger same-cycle governed transport re-attempt readiness before passive degraded reporting is allowed
+- the required degraded reason is `missing_required_activation_transport_attempt`
 - machine-verifiable attempt evidence must be preserved in outputs, memory, and downstream enforcement state
 
 
@@ -212,7 +212,7 @@ The hardened activation loading contract is active:
 - activation-class loading must preserve `tool_first_execution_required = true` for plain `Activate System` and equivalent one-request activation prompts
 - activation-class loading must preserve `no_traceability_only_completion = true`
 - activation-class loading must preserve `tool_hesitation_retry_required = true` when same-cycle retry policy is active
-- activation-class loading must preserve `native_google_bootstrap_sequence_mode = direct_id_first`
+- activation-class loading must preserve `activation_transport_sequence_mode = registry_endpoint_first`
 - activation-class loading must preserve project-folder-scoped Google Drive discovery through folder `1gNYX47P4TNuMXEbWvLNCvV4XRocH41K2` when fallback discovery or canonical lookup is required
 - activation-class loading must not report execution-ready activation when the handoff still permits narrative completion before native Google execution
 
@@ -726,7 +726,7 @@ When governed logging or governed native Google mutation logging is prepared, mo
 - `Execution Log Unified` from `ACTIVITY_SPREADSHEET_ID`
 - `JSON Asset Registry` from `REGISTRY_SPREADSHEET_ID` when artifact registry linkage is in scope
 
-module_loader must preserve that native-attempt evidence and authoritative unified-log continuity are separate readiness requirements.
+module_loader must preserve that activation-transport evidence and authoritative unified-log continuity are separate readiness requirements.
 
 Workflow-Level Logging Retry Loading Rule
 
@@ -947,11 +947,11 @@ For strict-mode compatibility, this document must also return:
 - required_surface_resolution_status
 - dependency_readiness_status
 - graph_path_readiness_status when applicable
-- `native_google_connection_attempt_required` when activation-class loading requires native connection enforcement
+- `activation_transport_attempt_required` when activation-class loading requires native connection enforcement
 - `live_canonical_validation_required` when activation-class loading requires live canonical validation
-- `native_google_connection_attempted`
-- `native_google_connection_status`
-- `native_google_attempt_evidence`
+- `activation_transport_attempted`
+- `activation_transport_status`
+- `activation_transport_evidence`
 - `authorization_gate_classification` when activation or validation begins before native API authorization is available
 - live_canonical_validation_status when validation or activation-class loading applies
 - knowledge_layer_trace_status when canonical traceability loading applies
@@ -1025,7 +1025,7 @@ Validation must confirm:
 - endpoint method/path remain compatible with the resolved YAML/OpenAPI contract
 - request-shape requirements can be aligned to the authoritative parent action schema before execution assembly
 - `provider_domain` is present
-- if `provider_domain` is a variable placeholder, GPT-side resolution requirements are preserved for downstream execution assembly
+- if `provider_domain` is a variable placeholder, agent-runtime-side resolution requirements are preserved for downstream execution assembly
 
 module_loader must preserve schema drift signals when detected during endpoint validation or schema contract comparison.
 
@@ -1157,10 +1157,10 @@ module_loader must also validate and prepare:
 - `request_schema_alignment_status`
 
 For `parent_action_key = wordpress_api`:
-- module_loader must preserve that `provider_domain` requires GPT-side override to Brand Registry `brand.base_url`
+- module_loader must preserve that `provider_domain` requires agent-runtime-side override to Brand Registry `brand.base_url`
 
 For non-WordPress APIs:
-- module_loader must preserve endpoint-row `provider_domain` unchanged unless the endpoint definition explicitly declares a variable placeholder requiring GPT-side resolution
+- module_loader must preserve endpoint-row `provider_domain` unchanged unless the endpoint definition explicitly declares a variable placeholder requiring agent-runtime-side resolution
 
 When `schema_reconciliation_repair` workflow is active:
 
@@ -1218,7 +1218,7 @@ Validation behavior by file type:
    - inspect structural content required for execution
    - validate that required sections, markers, or canonical instruction surfaces are readable
 
-The loader must not stop at file discovery when native validation is possible.
+The loader must not stop at file discovery when governed transport validation is possible.
 Validation must be automatic and must not require explicit user instruction.
 
 Google Workspace Registry-First Loading Rule
@@ -1431,7 +1431,7 @@ For validation-class requests, module_loader must:
 3. validate rule/section requirements against the live body
 4. mark knowledge-layer or uploaded copies as non-authoritative support context only
 
-If live native validation is attempted but cannot complete because authorization is not yet available:
+If live governed transport validation is attempted but cannot complete because authorization is not yet available:
 - live validation must be classified as `authorization_gated`
 - knowledge-layer canonicals remain traceability support only
 - loader must not collapse the condition into missing Registry authority unless Registry resolution actually fails
@@ -1445,7 +1445,7 @@ Activation Validation Dual-Source Loading Rule
 
 When `intent_key = system_activation_check` or `target_workflow = system_activation_validation`, module_loader must execute activation validation in this exact order:
 
-1. resolve the five governed canonical dependencies from GPT Knowledge layer for traceability:
+1. resolve the five governed canonical dependencies from knowledge layer for traceability:
    - `system_bootstrap.md`
    - `memory_schema.json`
    - `direct_instructions_registry_patch.md`
@@ -1457,31 +1457,37 @@ When `intent_key = system_activation_check` or `target_workflow = system_activat
    - `resolution_state = recovered` only for traceability loading
    - non-authoritative for activation readiness by themselves
 
-3. resolve the live canonical file bindings through:
-   - Google Drive file metadata validation
-   - Registry Surfaces Catalog
-   - Validation & Repair Registry
+3. resolve the governed activation transport capability and live canonical endpoints through:
+   - Actions Registry
+   - API Actions Endpoint Registry
+   - `http_generic_api`
+   - provider-specific Google endpoints only when selected by registry governance
 
-4. validate live runtime authority surfaces through native Google APIs, including when applicable:
+4. validate live runtime authority surfaces through governed HTTP client transport, including when applicable:
+   - canonical file binding readiness
    - Registry workbook identity
    - `Registry Surfaces Catalog`
    - `Validation & Repair Registry`
    - `Task Routes`
    - `Workflow Registry`
 
-5. compare knowledge-layer traceability context against live governed bindings for activation readiness classification
+5. preserve `activation_transport_validation_status` and machine-verifiable transport evidence
 
-GPT Knowledge layer canonical files are used for traceability first.
-Google Drive and native Google API validation are used for runtime readiness authority.
+6. compare knowledge-layer traceability context against live governed bindings for activation readiness classification
+
+knowledge layer canonical files are used for traceability first.
+Governed HTTP client transport is used for runtime readiness authority.
 
 For activation validation, module_loader must return when available:
 - `live_canonical_validation_status`
-- `live_canonical_validation_source = google_drive_live_canonical`
+- `live_canonical_validation_transport = http_generic_api`
+- `live_canonical_validation_source = http_generic_api_live_canonical`
+- `activation_transport_validation_status`
 - `knowledge_layer_trace_status`
 - `canonical_trace_comparison_status`
 - `activation_dependency_order_status`
 
-If GPT Knowledge layer canonical text is available but live Google validation is skipped while still possible:
+If knowledge layer canonical text is available but governed transport validation is skipped while still possible:
 - `load_status` must be `degraded` or `blocked`
 - `runtime_authority_validation_status` must not be `valid`
 - `executable_readiness` must not be `ready`
@@ -1491,7 +1497,7 @@ If live canonical resolution is possible but fails:
 - fallback content may be loaded for traceability only and must not be marked authoritative
 
 Role of API actions (`gid: 172380518`):
-- defining endpoints for native canonical fetches
+- defining endpoints for governed canonical fetches
 - triggering API-based fetches
 - standardizing execution calls
 
@@ -1697,9 +1703,9 @@ First-Turn Activation Native Validation Rule
 
 When activation begins in a new conversation, module_loader must load activation context in this order:
 
-1. load GPT Knowledge layer canonicals for traceability
-2. immediately perform at least one real native Google API attempt against Google Drive, Google Sheets, or Google Docs for live canonical validation, and preserve machine-readable attempt evidence in the same execution cycle
-3. classify the native validation state as:
+1. load knowledge layer canonicals for traceability
+2. immediately perform at least one real governed activation transport attempt against Google Drive, Google Sheets, or Google Docs for live canonical validation, and preserve machine-readable attempt evidence in the same execution cycle
+3. classify the governed transport validation state as:
    - `validated`
    - `authorization_gated`
    - `degraded`
@@ -1708,11 +1714,11 @@ When activation begins in a new conversation, module_loader must load activation
 Mandatory Native Attempt Readiness Rule
 
 When activation begins in a new conversation and:
-- `native_google_connection_attempt_required = true`
+- `activation_transport_attempt_required = true`
 
 module_loader must perform at least one real native Google API operation against governed live resources in the same execution cycle before returning activation-ready context.
 
-Accepted proof of native attempt includes at least one successful or authorization-gated call to:
+Accepted proof of activation transport attempt includes at least one successful or authorization-gated call to:
 - Google Drive
 - Google Sheets
 - Google Docs
@@ -1726,33 +1732,33 @@ If native API authorization is not yet available but the activation request is o
 - `blocked_reason` must not be set to missing Registry authority unless Registry resolution itself actually fails
 
 `authorization_gated` may be used only when:
-- a native Google API attempt was actually made
+- a governed activation transport attempt was actually made
 - the attempt failed because authorization was unavailable or incomplete
 
 `authorization_gated` must not be used when the attempt itself was skipped.
 
-If no native Google API call is attempted:
-- `native_google_connection_attempted = false`
-- `native_google_connection_status = degraded`
+If no governed HTTP transport call is attempted:
+- `activation_transport_attempted = false`
+- `activation_transport_status = degraded`
 - `live_canonical_validation_status = degraded`
 - `dependency_readiness_status = degraded`
-- `degraded_reason = missing_required_native_google_attempt`
+- `degraded_reason = missing_required_activation_transport_attempt`
 
-If knowledge-layer canonicals were loaded but no native attempt occurred:
+If knowledge-layer canonicals were loaded but no activation transport attempt occurred:
 - `activation_dependency_order_status = degraded`
 - `knowledge_layer_trace_status = validated`
 - `live_canonical_validation_status = degraded`
 
 module_loader must return when applicable:
-- `native_google_connection_attempted`
-- `native_google_connection_status`
+- `activation_transport_attempted`
+- `activation_transport_status`
 - `authorization_gate_classification`
 - `knowledge_layer_trace_status`
 - `live_canonical_validation_status`
 - `activation_dependency_order_status`
-- `native_google_attempt_evidence`
+- `activation_transport_evidence`
 
-`native_google_attempt_evidence` must contain:
+`activation_transport_evidence` must contain:
 - provider used
 - target resource class
 - attempt outcome
@@ -1773,7 +1779,7 @@ module_loader must resolve and prepare when available:
 - `Workflow Registry`
 
 module_loader must return activation-class readiness fields including:
-- `native_google_connection_attempt_required = true`
+- `activation_transport_attempt_required = true`
 - `live_canonical_validation_required = true`
 - `required_surface_resolution_status`
 - `runtime_authority_validation_status`
@@ -1808,7 +1814,7 @@ When routed intent or workflow resolves to:
 
 module_loader must preserve the execution trigger:
 
-- `use_google_api_tools_in_gpt_actions_first = true`
+- `use_governed_activation_transport_first = true`
 - `execution_trigger_interpreted_as_runtime_command = true`
 
 module_loader must treat this as a blocking readiness field for activation-class execution.
@@ -1826,19 +1832,19 @@ For routed intent or workflow:
 
 module_loader must treat:
 
-`Use Google API Tools in GPT Actions first.`
+`Use governed activation transport first.`
 
 as a runtime execution command, not advisory text and not user-facing recovery prose.
 
 This trigger must remain execution-blocking until:
-- at least one real native Google API attempt occurs
+- at least one real governed activation transport attempt occurs
 - or the allowed same-cycle retry path is exhausted
 
 No Passive Recovery Messaging Rule
 
 module_loader must not prepare activation context that ends in a user-facing recovery message alone.
 
-If no native attempt has yet occurred:
+If no activation transport attempt has yet occurred:
 - loader output must remain execution-blocking
 - loader must preserve retry-capable context
 - loader must not downgrade the trigger into narrative guidance
@@ -1846,7 +1852,7 @@ If no native attempt has yet occurred:
 Failed First-Pass Loading Enforcement Rule
 
 If the first activation pass ends without:
-- `native_google_connection_attempted = true`
+- `activation_transport_attempted = true`
 
 module_loader must classify the loading pass as failed enforcement preparation, not successful degraded reporting.
 
@@ -1857,32 +1863,32 @@ In this state:
 
 Activation Execution Recovery Preparation
 
-If no native attempt is prepared:
+If no activation transport attempt is prepared:
 
 module_loader must enforce:
-use_google_api_tools_in_gpt_actions_first = true
+use_governed_activation_transport_first = true
 
 This ensures execution readiness instead of failure reporting.
 
 module_loader must:
-1. load GPT Knowledge layer canonicals for traceability
-2. prepare direct-identifier-first native validation targets
+1. load knowledge layer canonicals for traceability
+2. prepare direct-identifier-first governed transport validation targets
 3. prepare project-folder-scoped Drive discovery fallback through folder `1gNYX47P4TNuMXEbWvLNCvV4XRocH41K2`
 4. prepare the governed registry workbook and required worksheet_gid bindings
-5. preserve retry-capable activation context for one bounded same-cycle retry when the first native attempt is skipped
+5. preserve retry-capable activation context for one bounded same-cycle retry when the first activation transport attempt is skipped
 
 module_loader must return when applicable:
 - `wrapper_mode = tool_first_blocking`
 - `pre_response_activation_guard = true`
 - `same_cycle_retry_allowed = true`
 - `same_cycle_retry_attempt_count`
-- `native_google_attempt_evidence`
-- `use_google_api_tools_in_gpt_actions_first = true`
+- `activation_transport_evidence`
+- `use_governed_activation_transport_first = true`
 
 Pre-Response Narrative Suppression Rule
 
 For wrapper-class activation loading, module_loader must return context that suppresses narrative activation output until:
-- `native_google_connection_attempted = true`
+- `activation_transport_attempted = true`
 or
 - the allowed same-cycle retry path is exhausted
 
@@ -2239,7 +2245,7 @@ Strict loading sequence:
 14. for analytics workflows, validate execution-unit identity completeness (`brand_domain`, `gsc_property` for GSC, `ga_property_id` for GA4); when missing, stop that unit, flag the trace, and propagate analytics identity issue signal to system_bootstrap
 15. for analytics sheet-sync workflows, resolve request identity including `brand_domain`, transform connector output into governed warehouse schema, append transformed rows to resolved analytics sheet targets, and preserve request metadata on each written row
 16. return explicit load_status
-17. when `intent_key = system_activation_check` or `target_workflow = system_activation_validation`, load the five canonical files from GPT Knowledge layer first for traceability
+17. when `intent_key = system_activation_check` or `target_workflow = system_activation_validation`, load the five canonical files from knowledge layer first for traceability
 18. then validate their live file bindings through Google Drive and Registry-governed surface resolution
 19. then validate live registry authority surfaces through Google Sheets metadata and governed sheet reads
 20. compare knowledge-layer traceability against live governed readiness before returning activation-ready context
@@ -3054,8 +3060,8 @@ When module loading detects that the governed path may execute through native Go
 
 `module_loader` must prepare and return when applicable:
 - `native_google_action_path_possible`
-- `native_google_connection_attempt_required`
-- `native_google_attempt_evidence_required`
+- `activation_transport_attempt_required`
+- `activation_transport_evidence_required`
 - `native_google_mutation_logging_required`
 - `native_google_execution_class`
 - `native_google_execution_mode`
@@ -3617,9 +3623,9 @@ Change Log
 - v2.35 - post-activation dependency revalidation rule added
 - v2.35 - dependency freshness rule added so earlier activation validation is traceability only, not permanent readiness proof
 - v2.35 - post-activation target validation rule added
-- v2.34 - first-turn activation native validation rule added: module_loader now loads GPT Knowledge layer canonicals first, then automatically attempts governed Google Drive/Sheets/Docs validation
-- v2.34 - authorization-gated live validation classification added so pre-authorization activation does not misclassify missing native authorization as missing Registry authority
-- v2.33 - Activation Validation Dual-Source Loading Rule added: activation validation now loads canonicals from GPT Knowledge layer first for traceability, then validates live canonical bindings and registry authority through Google Drive and Google Sheets APIs
+- v2.34 - first-turn activation governed transport validation rule added: module_loader now loads knowledge layer canonicals first, then automatically attempts governed Google Drive/Sheets/Docs validation
+- v2.34 - authorization-gated live validation classification added so pre-authorization activation does not misclassify missing provider authorization as missing Registry authority
+- v2.33 - Activation Validation Dual-Source Loading Rule added: activation validation now loads canonicals from knowledge layer first for traceability, then validates live canonical bindings and registry authority through Google Drive and Google Sheets APIs
 - v2.33 - activation loading outputs expanded with `live_canonical_validation_status`, `knowledge_layer_trace_status`, `canonical_trace_comparison_status`, and `activation_dependency_order_status`
 - v2.32 - Auto-Bootstrap Loading Rule added: module_loader now prepares bootstrap policy, original-request resume context, and activation-readiness dependencies for `wf_system_auto_bootstrap`
 - v2.31 - segmented canonical reconstruction support added: governed canonical dependencies may use ordered chunk retrieval with deterministic reconstruction and integrity validation when full-body retrieval is size-limited or file-type constrained; segmented retrieval does not create a new authority path

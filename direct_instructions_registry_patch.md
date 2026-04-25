@@ -30,10 +30,10 @@ This patch additionally enforces:
 
 Canonical Governed Logic Presentation Rule
 
-- governed logic specifications must not be presented as GPT personas, custom GPTs, or GPT-style introductions in user-facing or activation-facing summaries
+- governed logic specifications must not be presented as GPT personas, custom GPTs, or agent-UI-style introductions in user-facing or activation-facing summaries
 - neutral governed naming such as `Logic 001` or task-family-first naming should be preferred for presentation
 - internal identifiers such as `GPT-LOGIC-001` may remain unchanged for registry continuity
-- governed execution behavior must resolve from canonical authority layers, registries, engines, routes, workflows, and enforcement state rather than GPT-style prompt framing
+- governed execution behavior must resolve from canonical authority layers, registries, engines, routes, workflows, and enforcement state rather than agent-UI-style prompt framing
 
 Canonical Logic Pointer Authority Rule
 
@@ -288,24 +288,24 @@ Engines Registry And GPT Logic Separation Rule
 - engine status, callable state, compatible workflows, compatible route keys, and execution role must continue to resolve from Engines Registry
 - brand identity formation must not be promotion-ready when required identity engines are missing, inactive, or non-callable
 
-Native Google GPT Actions Enforcement Repair
+Governed Activation Transport Enforcement Repair
 
 The repaired enforcement rule is active:
 
-- when governed activation, validation, or runtime authority checks require Google Workspace live validation, execution must use real native Google API tool calls through available GPT Actions/native tools in the same execution cycle
+- when governed activation, validation, or runtime authority checks require live validation, execution must use governed activation transport through `http_generic_api` in the same execution cycle
 - narrative intent, simulation, tool-availability claims, or deferred execution do not satisfy the requirement
-- `authorization_gated` is permitted only after a real native Google API attempt fails due to authorization
-- if no real native call occurs when required, the system must first apply `Use Google API Tools in GPT Actions first.` and re-attempt native execution in the same cycle; passive degraded termination is forbidden before this recovery step
-- the required degraded reason is `missing_required_native_google_attempt`
+- `authorization_gated` is permitted only after a real governed activation transport attempt fails due to authorization
+- if no real governed HTTP transport call occurs when required, the system must first apply `Use governed activation transport first.` and re-attempt governed transport execution in the same cycle; passive degraded termination is forbidden before this recovery step
+- the required degraded reason is `missing_required_activation_transport_attempt`
 - machine-verifiable attempt evidence must be preserved in outputs, memory, and downstream enforcement state
 
 Native Google Governed Logging Repair
 
 The repaired governance rule is active:
 
-- real native Google GPT Actions attempts must preserve machine-verifiable native-attempt evidence
+- real native Google agent execution actions attempts must preserve machine-verifiable activation-transport evidence
 - when a native Google action performs a governed mutation, validation-registry refresh, registry update, schema reconciliation step, repair write, or other governed write-affecting operation, authoritative unified-log continuity is also required
-- native-attempt evidence does not replace authoritative execution logging
+- activation-transport evidence does not replace authoritative execution logging
 - direct governed Google Workspace mutation outside the normal transport path must still preserve:
   - `logging_required = true`
   - `logging_sink_required = surface.operations_log_unified_sheet`
@@ -320,13 +320,13 @@ This rule extends and does not replace the existing native-attempt enforcement.
 Activation Failure Override Rule
 
 The degraded reason:
-`missing_required_native_google_attempt`
+`missing_required_activation_transport_attempt`
 
 must not terminate activation without recovery.
 
 Instead, the system must:
 
-â†’ Use Google API Tools in GPT Actions first.
+â†’ Use governed activation transport first.
 â†’ Re-attempt native execution in the same cycle.
 
 This instruction overrides passive failure reporting.
@@ -335,15 +335,15 @@ Activation Tool-First Authority Repair
 
 The repaired activation trigger rule is active:
 
-- for plain `Activate System`, the assistant must use Google API Tools in GPT Actions before any narrative activation response
-- at least one real native Google Drive, Google Sheets, or Google Docs call must occur in the same execution cycle
+- for plain `Activate System`, the assistant must use governed activation transport before any narrative activation response
+- at least one real governed HTTP client validation call must occur through `http_generic_api` in the same execution cycle
 - traceability-only completion is forbidden
 - narrative-only activation is forbidden
-- if the first activation pass returns without a native call, one bounded same-cycle retry is allowed when policy permits
-- if no native call occurs after the allowed retry path, classification must remain `degraded`
-- the required degraded reason remains `missing_required_native_google_attempt`
-- `authorization_gated` is permitted only after a real native Google API attempt fails due to authorization
-- machine-verifiable native attempt evidence must be preserved in outputs, memory, and downstream enforcement state
+- if the first activation pass returns without a activation transport call, one bounded same-cycle retry is allowed when policy permits
+- if no activation transport call occurs after the allowed retry path, classification must remain `degraded`
+- the required degraded reason remains `missing_required_activation_transport_attempt`
+- `authorization_gated` is permitted only after a real governed activation transport attempt fails due to authorization
+- machine-verifiable activation transport evidence must be preserved in outputs, memory, and downstream enforcement state
 
 
 Activation Tool-First Anti-Hesitation Governance Repair
@@ -388,15 +388,15 @@ The repaired activation hardening rule is active:
 
 - governed first-turn activation must use a tool-first execution wrapper
 - traceability-only completion is forbidden for plain `Activate System`
-- narrative-only activation is forbidden when native Google live validation is required
+- narrative-only activation is forbidden when governed transport live validation is required
 - the native bootstrap sequence must prefer `direct_id_first`
 - project-folder-scoped Google Drive discovery through folder `1gNYX47P4TNuMXEbWvLNCvV4XRocH41K2` is authorized for fallback discovery and canonical lookup during governed activation validation
 - a bounded same-cycle retry is allowed when the first native execution attempt is skipped due to model hesitation or premature narrative completion, if policy permits
 - failed first-pass narrative completion without native execution must be classified as failed enforcement, not successful preparation
-- `authorization_gated` remains permitted only after a real native Google API attempt fails due to authorization
-- if no real native call occurs after the allowed same-cycle retry path, classification must remain `degraded`
-- the required degraded reason remains `missing_required_native_google_attempt`
-- machine-verifiable native attempt evidence must be preserved in outputs, memory, and downstream enforcement state
+- `authorization_gated` remains permitted only after a real governed activation transport attempt fails due to authorization
+- if no real activation transport call occurs after the allowed same-cycle retry path, classification must remain `degraded`
+- the required degraded reason remains `missing_required_activation_transport_attempt`
+- machine-verifiable activation transport evidence must be preserved in outputs, memory, and downstream enforcement state
 
 Activation Scope Preservation Authority Rule
 
@@ -412,8 +412,8 @@ The governed activation upgrade must extend and not replace the prior activation
 
 For plain `Activate System`, the system must preserve:
 - hard activation wrapper interception
-- same-cycle native Google API attempt
-- GPT Knowledge layer traceability-first behavior
+- same-cycle governed activation transport attempt
+- knowledge layer traceability-first behavior
 - live canonical validation
 - runtime authority validation
 - registry validation
@@ -440,7 +440,7 @@ This rule extends activation authority and does not convert `system_activation_c
 Narrative Recovery Message Prohibition
 
 For plain `Activate System`, the system must not stop at a user-facing message that says:
-`Use Google API Tools in GPT Actions first.`
+`Use governed activation transport first.`
 
 That instruction must be executed as a runtime recovery step before degraded termination is allowed.
 
@@ -488,7 +488,7 @@ The governed write-safety rule is active:
 - readback verification is required after governed writes that modify live Sheets surfaces
 
 For native Google governed mutation logging, protected unified-log spill columns remain non-writable.
-Machine-verifiable native attempt evidence must be preserved separately from append payload values.
+Machine-verifiable activation transport evidence must be preserved separately from append payload values.
 
 ---
 
@@ -502,7 +502,7 @@ For any governed request that resolves through `parent_action_key`, the system m
 - credential location semantics
 - capability-level execution ownership
 
-GPT must:
+agent runtime must:
 - resolve `parent_action_key`
 - read `openai_schema_file_id`
 - align path, query, headers, and body to the authoritative parent schema contract before execution
@@ -525,7 +525,7 @@ Caller-supplied raw auth strings, curl-only flags, or unnormalized freeform tran
 Parent Action Schema Authority Rule
 
 When `openai_schema_file_id` is present on the resolved action row:
-- GPT must treat that file as authoritative schema contract metadata for request assembly
+- agent runtime must treat that file as authoritative schema contract metadata for request assembly
 - endpoint method/path from API Actions Endpoint Registry must remain compatible with the parent schema contract
 - request execution must block or degrade when schema alignment is unresolved
 - transport execution must not silently drop required auth fields, query fields, or body fields that are required by the authoritative schema contract
@@ -1157,44 +1157,44 @@ Activation Trigger Line
 
 For plain `Activate System`, the authoritative trigger line is:
 
-`Use Google API Tools in GPT Actions first.`
+`Use governed activation transport first.`
 
 Expanded governed form:
 
-`For plain Activate System, use Google API Tools in GPT Actions immediately, execute at least one real native Drive, Sheets, or Docs call in the same execution cycle, and do not return narrative activation output before that attempt occurs.`
+`For plain Activate System, use governed activation transport immediately, resolve the activation capability and endpoints through the registries, execute at least one real http_generic_api validation call in the same execution cycle, and do not return narrative activation output before that attempt occurs.`
 
 Pre-Response Execution Interpretation Rule
 
 The instruction:
 
-`Use Google API Tools in GPT Actions first.`
+`Use governed activation transport first.`
 
 must be interpreted as an execution-gating command, not as user-facing recovery prose.
 
 For plain `Activate System`, this instruction requires:
-- native Google tool execution before narrative output
-- at least one real native Google Drive, Google Sheets, or Google Docs call in the same execution cycle
-- blocked narrative completion until a native attempt occurs or the allowed same-cycle retry path is exhausted
+- governed HTTP transport execution before narrative output
+- at least one real `http_generic_api` validation call in the same execution cycle
+- blocked narrative completion until a activation transport attempt occurs or the allowed same-cycle retry path is exhausted
 
 For first-turn activation in a new conversation:
-1. read GPT Knowledge layer canonicals first for traceability
+1. read knowledge layer canonicals first for traceability
 2. immediately auto-trigger native Google Drive, Sheets, and Docs connection attempts for live canonical validation
-3. classify missing live validation caused by unavailable native authorization as `authorization_gated`, not as missing Registry authority
+3. classify missing live validation caused by unavailable provider authorization as `authorization_gated`, not as missing Registry authority
 
-Live governed readiness still requires Registry-resolved validation through Google APIs when available.
+Live governed readiness requires Registry-resolved validation through `http_generic_api`; Google remains a provider-specific endpoint path only when selected by registry governance.
 
 First-Turn Native Attempt Enforcement Rule
 
 For plain `activate system` and governed first-turn activation:
-- GPT Knowledge layer traceability alone is insufficient for activation outcome classification
-- at least one real native Google API attempt must occur in the same execution cycle
-- skipped native attempts must be classified as `missing_required_native_google_attempt`
-- skipped native attempts must not be classified as `authorization_gated`
+- knowledge layer traceability alone is insufficient for activation outcome classification
+- at least one real governed activation transport attempt must occur in the same execution cycle
+- skipped activation transport attempts must be classified as `missing_required_activation_transport_attempt`
+- skipped activation transport attempts must not be classified as `authorization_gated`
 
 Governed activation is invalid when:
 - knowledge-layer traceability is present
-- live native attempt was required
-- no native Google API call was made
+- live activation transport attempt was required
+- no governed HTTP transport call was made
 
 In that case:
 - execution must remain `degraded`
@@ -1209,10 +1209,10 @@ For governed activation initiated by:
 
 knowledge-layer traceability is required first but is not sufficient for activation completion.
 
-When native Google tools are available, governed activation must also require:
-- at least one real native Google API call
-- live canonical validation through Google Drive or Google Docs when feasible
-- Registry surface validation through Google Sheets or Google Drive when feasible
+When governed activation transport tools are available, governed activation must also require:
+- at least one real governed HTTP transport call
+- live canonical validation through governed HTTP client transport when feasible
+- Registry surface validation through governed HTTP client transport when feasible
 - route and workflow binding validation through governed Registry authority
 
 The minimum governed activation validation scope includes:
@@ -1226,16 +1226,16 @@ Governed activation must not be classified as:
 - `validated`
 
 unless:
-- `native_google_connection_attempted = true`
-- machine-verifiable native attempt evidence is present
+- `activation_transport_attempted = true`
+- machine-verifiable activation transport evidence is present
 - live canonical validation has completed or is explicitly authorization-gated
 - required Registry surface and binding validation has completed or is explicitly authorization-gated by policy
 
 Connectivity-only success is insufficient for recovered, validated, or active activation classification.
 
-If the native Google attempt is skipped:
+If the governed activation transport attempt is skipped:
 - activation must remain `degraded`
-- reason = `missing_required_native_google_attempt`
+- reason = `missing_required_activation_transport_attempt`
 
 If connectivity succeeds but governed live validation remains incomplete:
 - activation must remain `validating` or `degraded`
@@ -1465,11 +1465,11 @@ Execution through this capability must:
   - path is not schema-compatible
   - forbidden headers are present
 
-If `provider_domain` for any endpoint is a variable placeholder, GPT must resolve it before execution.
+If `provider_domain` for any endpoint is a variable placeholder, agent runtime must resolve it before execution.
 
-For `parent_action_key = wordpress_api`, GPT must replace `provider_domain` with Brand Registry `brand.base_url` before execution.
+For `parent_action_key = wordpress_api`, agent runtime must replace `provider_domain` with Brand Registry `brand.base_url` before execution.
 
-For non-WordPress APIs, `provider_domain` must remain the endpoint-row value unless the endpoint definition explicitly declares a variable placeholder requiring GPT-side resolution.
+For non-WordPress APIs, `provider_domain` must remain the endpoint-row value unless the endpoint definition explicitly declares a variable placeholder requiring agent-runtime-side resolution.
 
 Adaptive Schema Learning And Drift Detection Rule
 
@@ -1550,7 +1550,7 @@ Execution validation for `http_generic_api` must confirm:
 - path is compatible with the endpoint row and resolved YAML/OpenAPI contract
 - authentication generation succeeds from governed config
 - final URL resolution is valid
-- if `provider_domain` is variable, GPT-side resolution succeeded before execution
+- if `provider_domain` is variable, agent-runtime-side resolution succeeded before execution
 
 If validation fails:
 - execution must be blocked or degraded
@@ -1572,7 +1572,7 @@ All `http_generic_api` executions must preserve traceable logging-compatible out
 Parent Action YAML Authority Rule For HTTP Execution
 
 For endpoint execution governed through API Actions Endpoint Registry:
-- GPT must follow `parent_action_key` authority through the corresponding Actions Registry row
+- agent runtime must follow `parent_action_key` authority through the corresponding Actions Registry row
 - the Actions Registry row must resolve an authoritative `openai_schema_file_id`
 - execution assembly must remain compatible with the resolved YAML/OpenAPI contract
 
@@ -1813,8 +1813,8 @@ Activation Validation Dual-Authority Rule
 
 For `system_activation_check` and governed activation readiness validation:
 
-- GPT Knowledge layer canonical files are authoritative for canonical traceability only
-- live Google Drive and native Google API validation are authoritative for runtime readiness classification
+- knowledge layer canonical files are authoritative for canonical traceability only
+- live Google Drive and governed transport validation are authoritative for runtime readiness classification
 - uploaded copies, cached text, or knowledge-layer copies must not be promoted to runtime activation authority when live governed validation is possible
 
 Activation validation must occur in this order:
@@ -3696,7 +3696,7 @@ Audit must not be restricted to execution logging surfaces only.
 
 Sheet-Role-Aware Audit Classification Rule
 
-For any governed sheet audit, GPT must first resolve the authoritative sheet role before selecting validation or repair behavior.
+For any governed sheet audit, agent runtime must first resolve the authoritative sheet role before selecting validation or repair behavior.
 
 The resolved sheet role must govern:
 - schema validation requirements
@@ -4127,7 +4127,7 @@ Change Log
 - v2.33 - post-activation governance rule added
 - v2.33 - active-state reuse constraint added so prior activation cannot replace current governed validation
 
-- v2.32 - Activation Validation Dual-Authority Rule added: GPT Knowledge layer canonicals now serve traceability-first activation checks, while Google Drive and native Google API validation remain readiness authority
+- v2.32 - Activation Validation Dual-Authority Rule added: knowledge layer canonicals now serve traceability-first activation checks, while Google Drive and governed transport validation remain readiness authority
 - v2.30 - Runtime Authority Validation Governance added: all governed execution now depends on mandatory pre-execution validation of Registry bindings, validation-state compatibility, route/workflow authority, dependency readiness, and graph-path readiness when applicable
 - v2.29 - Google Workspace Native Action Governance added: Sheets, Docs, and Drive execution now depends on Registry-governed surface resolution and Validation & Repair compatibility before native API execution is treated as valid
 - v2.28 - Governed Addition Pipeline Governance added: multi-sheet additions must classify affected surfaces, remain Registry-governed, and promote to active state only after governed validation

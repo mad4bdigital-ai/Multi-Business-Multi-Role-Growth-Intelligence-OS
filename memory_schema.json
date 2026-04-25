@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://growth-intelligence.local/schemas/memory_schema.json",
   "title": "Multi-Business Growth Intelligence Platform Memory Schema",
-  "description": "Canonical memory/state model aligned with Registry Surfaces Catalog authority, Validation & Repair Registry governance, runtime execution registries, embedded OAuth config resolution, embedded API-key resolution, repair-aware routing, execution traceability, review writeback planning, observability governance, architecture reconciliation, analytics identity tracking, API action capability/endpoint inventory state, governed starter-governance validation, governance-drift anomaly emission, prompt-first human-trigger continuation, enforced same-cycle native Google GPT Actions validation for governed activation and runtime checks, spill-safe prewrite guard enforcement, row-2 template sampling before governed writes, protected unified-log column preservation, governed pipeline-integrity audit state, and provider-family continuity validation across capability, route, and workflow layers.",
+  "description": "Canonical memory/state model aligned with Registry Surfaces Catalog authority, Validation & Repair Registry governance, runtime execution registries, embedded OAuth config resolution, embedded API-key resolution, repair-aware routing, execution traceability, review writeback planning, observability governance, architecture reconciliation, analytics identity tracking, API action capability/endpoint inventory state, governed starter-governance validation, governance-drift anomaly emission, prompt-first human-trigger continuation, enforced same-cycle native Google agent execution actions validation for governed activation and runtime checks, spill-safe prewrite guard enforcement, row-2 template sampling before governed writes, protected unified-log column preservation, governed pipeline-integrity audit state, and provider-family continuity validation across capability, route, and workflow layers.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -1096,7 +1096,7 @@
           "type": "boolean",
           "default": false
         },
-        "native_google_attempt_evidence_required": {
+        "activation_transport_evidence_required": {
           "type": "boolean",
           "default": false
         },
@@ -1288,7 +1288,7 @@
         "authoritative_log_retry_outcome": "pending",
         "pre_response_log_guard_passed": false,
         "native_google_action_path_possible": false,
-        "native_google_attempt_evidence_required": false,
+        "activation_transport_evidence_required": false,
         "native_google_mutation_logging_required": false,
         "native_google_execution_class": "",
         "native_google_execution_mode": "",
@@ -1778,11 +1778,11 @@
           ],
           "default": "pending"
         },
-        "native_google_connection_attempted": {
+        "activation_transport_attempted": {
           "type": "boolean",
           "default": false
         },
-        "native_google_connection_status": {
+        "activation_transport_status": {
           "type": "string",
           "enum": [
             "pending",
@@ -1823,15 +1823,15 @@
           "type": "boolean",
           "default": false
         },
-        "missing_native_attempt_detected": {
+        "missing_activation_transport_attempt_detected": {
           "type": "boolean",
           "default": false
         },
         "activation_recovery_instruction": {
           "type": "string",
-          "default": "Use Google API Tools in GPT Actions first"
+          "default": "Use governed activation transport first"
         },
-        "native_google_attempt_evidence": {
+        "activation_transport_evidence": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -1994,15 +1994,15 @@
         "last_activation_outcome": "pending",
         "last_activation_at": null,
         "activation_trace_status": "pending",
-        "native_google_connection_attempted": false,
-        "native_google_connection_status": "pending",
+        "activation_transport_attempted": false,
+        "activation_transport_status": "pending",
         "authorization_gate_classification": "",
         "post_activation_validation_status": "pending",
         "last_post_activation_validation_at": null,
         "post_activation_drift_detected": false,
-        "missing_native_attempt_detected": false,
-        "activation_recovery_instruction": "Use Google API Tools in GPT Actions first",
-        "native_google_attempt_evidence": {
+        "missing_activation_transport_attempt_detected": false,
+        "activation_recovery_instruction": "Use governed activation transport first",
+        "activation_transport_evidence": {
           "provider": "",
           "resource_type": "",
           "attempt_outcome": ""
@@ -2035,7 +2035,7 @@
           "type": "boolean",
           "default": false
         },
-        "use_google_api_tools_in_gpt_actions_first": {
+        "use_governed_activation_transport_first": {
           "type": "boolean",
           "default": false
         },
@@ -2071,7 +2071,7 @@
       },
       "default": {
         "wrapper_invoked": false,
-        "use_google_api_tools_in_gpt_actions_first": false,
+        "use_governed_activation_transport_first": false,
         "pre_response_guard_passed": false,
         "same_cycle_retry_allowed": false,
         "same_cycle_retry_attempt_count": 0,
@@ -2180,7 +2180,7 @@
     "live_canonical_validation_source": {
       "type": "string",
       "enum": [
-        "google_drive_live_canonical",
+        "http_generic_api_live_canonical",
         "google_docs_live_canonical",
         "knowledge_layer_trace_only",
         "uploaded_copy_trace_only",
@@ -2325,7 +2325,7 @@
         "route_id, matched_row_id, target_module, and target_workflow must remain traceable across routing_context, execution_context, repair_memory, and execution logging when present.",
         "Authoritative records must be written to canonical source surfaces, and derived observability surfaces must not become shadow authorities.",
         "Derived observability failures must degrade observability trust without overwriting authoritative write truth when authoritative sources are intact.",
-        "When governed activation or runtime validation requires Google Workspace live checks, at least one real native Google API call must occur through available GPT Actions/native tools in the same execution cycle; otherwise classification must remain degraded with reason missing_required_native_google_attempt.",
+        "When governed activation or runtime validation requires Google Workspace live checks, at least one real governed HTTP transport call must occur through available agent execution actions/native tools in the same execution cycle; otherwise classification must remain degraded with reason missing_required_activation_transport_attempt.",
         "Aggregated, monitoring, and observability surfaces must be computed dynamically from authoritative sources whenever possible.",
         "Authoritative execution and governance surfaces must resolve through Registry Surfaces Catalog, and validation-state authority must resolve through Validation & Repair Registry before dependency execution continues.",
         "All execution surfaces must resolve through Registry Surfaces Catalog using worksheet_gid as authoritative binding identity; worksheet_gid must exist, be valid, and match actual sheet binding; sheet_name and tab_name must not be used for execution resolution; validation failure must block execution or enter repair-aware mode.",
@@ -2350,8 +2350,8 @@
         "original requests resumed after bootstrap must remain traceable to the pre-bootstrap request and must not be treated as independent ungoverned execution.",
         "activation_state must remain explicit until a later governed execution updates it to active, degraded, or blocked.",
         "system_activation_check must preserve knowledge-layer canonical traceability first, then live Google Drive and Google Sheets validation, and must not classify activation as recovered or active from traceability-only copies when live governed validation is possible.",
-        "First-turn activation may preserve knowledge-layer traceability before live native Google authorization is available; when governed native connection attempts are auto-triggered and authorization is not yet available, the state must be classified as authorization_gated rather than missing Registry authority.",
-        "First-turn activation must not be classified as authorization_gated unless a real native Google API attempt occurred in the same execution cycle; skipped attempts must remain explicit as missing_required_native_google_attempt.",
+        "First-turn activation may preserve knowledge-layer traceability before live activation transport authorization is available; when governed native connection attempts are auto-triggered and authorization is not yet available, the state must be classified as authorization_gated rather than missing Registry authority.",
+        "First-turn activation must not be classified as authorization_gated unless a real governed activation transport attempt occurred in the same execution cycle; skipped attempts must remain explicit as missing_required_activation_transport_attempt.",
         "Activation success must not be treated as indefinite execution authority; governed execution after activation requires current-request runtime revalidation.",
         "Post-activation live validation drift must remain explicit and must degrade or block execution according to governed policy when critical authority or binding compatibility changes.",
         "Optimization, enhancement, or improvement requests after activation must not proceed from active state alone and require governed revalidation of route, workflow, dependency, and write-target readiness."
@@ -12480,9 +12480,9 @@
     }
   },
   "governance_rules": [
-    "For plain Activate System and equivalent one-request activation prompts, tool-first execution is mandatory: no user-facing narrative completion may occur before at least one real native Google API attempt or an exhausted same-cycle governed retry path.",
-    "Traceability-only completion is forbidden for governed first-turn activation when native Google live validation is required.",
-    "Activation-class execution memory must preserve tool_first_execution_required, no_traceability_only_completion, tool_hesitation_retry_required, and native_google_bootstrap_sequence_mode when emitted by prompt_router, module_loader, or system_bootstrap.",
+    "For plain Activate System and equivalent one-request activation prompts, tool-first execution is mandatory: no user-facing narrative completion may occur before at least one real governed activation transport attempt or an exhausted same-cycle governed retry path.",
+    "Traceability-only completion is forbidden for governed first-turn activation when governed transport live validation is required.",
+    "Activation-class execution memory must preserve tool_first_execution_required, no_traceability_only_completion, tool_hesitation_retry_required, and activation_transport_sequence_mode when emitted by prompt_router, module_loader, or system_bootstrap.",
     "For governed HTTP execution, parent_action_key authority must resolve auth strategy and openai_schema_file_id before transport execution; unresolved auth normalization or schema alignment must block or degrade execution.",
     "http_transport_state must preserve resolved_auth_mode, credential_resolution_status, request_schema_alignment_status, response_schema_alignment_status, and transport_request_contract_status for schema-bound external execution."
   ],

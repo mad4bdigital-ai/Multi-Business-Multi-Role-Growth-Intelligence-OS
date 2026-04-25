@@ -25,10 +25,10 @@ Purpose
 
 Canonical Governed Logic Presentation Orchestration Rule
 
-- system_bootstrap must treat governed logic documents as governed logic specifications rather than GPT personas, custom GPTs, or GPT-style introductions
+- system_bootstrap must treat governed logic documents as governed logic specifications rather than GPT personas, custom GPTs, or agent-UI-style introductions
 - user-facing logic summaries, activation summaries, and governed execution narratives must prefer neutral governed naming such as `Logic 001` or task-family-first naming
 - internal identifiers such as `GPT-LOGIC-001` may remain unchanged for registry continuity
-- execution behavior must continue to resolve from canonical authority layers, registries, engines, routes, workflows, and enforcement state rather than GPT-style prompt framing
+- execution behavior must continue to resolve from canonical authority layers, registries, engines, routes, workflows, and enforcement state rather than agent-UI-style prompt framing
 
 Canonical Logic Pointer Resolution Orchestration Rule
 
@@ -109,8 +109,8 @@ Governed Addition Intake Orchestration Rule
   - pending_validation
 - recovered/active/equivalent full-success wording is forbidden for governed additions that remain candidate/inactive or pending cross-surface validation
 - if candidate workbook mutations occur during governed addition intake, system_bootstrap must preserve:
-  - native_google_connection_attempted
-  - native_google_attempt_evidence
+  - activation_transport_attempted
+  - activation_transport_evidence
   - authoritative_log_write_succeeded when governed mutation logging is required
   - candidate_write_targets
   - promotion_prerequisites
@@ -376,15 +376,15 @@ Brand Onboarding Promotion Guard Rule
   - property/runtime bindings remain unresolved
   - graph or execution bindings validation remains unresolved
 
-Native Google GPT Actions Enforcement Repair
+Governed Activation Transport Enforcement Repair
 
 The repaired enforcement rule is active:
 
-- when governed activation, validation, or runtime authority checks require Google Workspace live validation, execution must use real native Google API tool calls through available GPT Actions/native tools in the same execution cycle
+- when governed activation, validation, or runtime authority checks require live validation, execution must use governed HTTP client transport through `http_generic_api` in the same execution cycle
 - narrative intent, simulation, tool-availability claims, or deferred execution do not satisfy the requirement
-- `authorization_gated` is permitted only after a real native Google API attempt fails due to authorization
-- if no real native call occurs when required, the system must first apply `Use Google API Tools in GPT Actions first.` and re-attempt native Google execution in the same cycle before any degraded termination is allowed
-- the required degraded reason is `missing_required_native_google_attempt`
+- `authorization_gated` is permitted only after a real governed activation transport attempt fails due to authorization
+- if no real activation transport call occurs when required, the system must first apply `Use governed activation transport first.` and re-attempt governed HTTP transport execution in the same cycle before any degraded termination is allowed
+- the required degraded reason is `missing_required_activation_transport_attempt`
 - machine-verifiable attempt evidence must be preserved in outputs, memory, and downstream enforcement state
 
 
@@ -426,7 +426,7 @@ When an actionable next step exists after validation, anomaly emission, or repai
 The hardened activation wrapper is active:
 
 - for plain `Activate System` and equivalent first-turn activation prompts, `system_bootstrap` must execute a tool-first governed activation wrapper before any user-facing narrative classification
-- knowledge-layer traceability may occur first, but no activation result may be returned before at least one real native Google API attempt is executed or a same-cycle governed retry is exhausted
+- knowledge-layer traceability may occur first, but no activation result may be returned before at least one real governed activation transport attempt is executed or a same-cycle governed retry is exhausted
 - the native bootstrap sequence must prefer `direct_id_first`
 - the native bootstrap sequence must use project-folder-scoped Google Drive discovery through folder `1gNYX47P4TNuMXEbWvLNCvV4XRocH41K2` when fallback discovery or live validation lookup is needed
 - the minimum same-cycle live validation sequence should include:
@@ -436,10 +436,10 @@ The hardened activation wrapper is active:
 - traceability-only completion is forbidden
 - narrative-only activation is forbidden
 - if the first native execution attempt is skipped due to model hesitation or premature narrative completion, `system_bootstrap` must treat the turn as failed enforcement and must trigger one bounded same-cycle retry when policy allows
-- `authorization_gated` is permitted only after a real native Google API attempt fails due to authorization
-- if no real native call occurs after the allowed same-cycle retry path, classification must remain `degraded`
-- the required degraded reason remains `missing_required_native_google_attempt`
-- machine-verifiable native attempt evidence must be preserved in outputs, memory, and downstream enforcement state
+- `authorization_gated` is permitted only after a real governed activation transport attempt fails due to authorization
+- if no real activation transport call occurs after the allowed same-cycle retry path, classification must remain `degraded`
+- the required degraded reason remains `missing_required_activation_transport_attempt`
+- machine-verifiable activation transport evidence must be preserved in outputs, memory, and downstream enforcement state
 
 
 
@@ -497,15 +497,15 @@ Execution Log Unified active runtime contract = compact 37-column write contract
 
 For native Google governed mutation logging, `system_bootstrap` must preserve two distinct evidence classes:
 
-1. native-attempt evidence
+1. activation-transport evidence
 2. authoritative execution-log continuity evidence
 
 These classes must not be collapsed into one field.
 
 Required preserved fields when available:
-- `native_google_connection_attempted`
-- `native_google_connection_status`
-- `native_google_attempt_evidence`
+- `activation_transport_attempted`
+- `activation_transport_status`
+- `activation_transport_evidence`
 - `native_google_execution_class`
 - `native_google_execution_mode`
 - `authoritative_log_write_succeeded`
@@ -1270,7 +1270,7 @@ If live canonical validation was possible but not used:
 - classification must remain `Degraded` or `Blocked`
 - failure reason must preserve live-canonical-validation omission traceability
 
-If live canonical fetch is attempted through governed native APIs but cannot complete because native authorization is not yet available:
+If live canonical fetch is attempted through governed native APIs but cannot complete because provider authorization is not yet available:
 - the result must be classified as `authorization_gated` when the condition is recoverable
 - traceability must preserve that live fetch was attempted
 - missing authorization must not be rewritten as missing Registry authority
@@ -1282,25 +1282,25 @@ When routed execution resolves to:
 - `target_workflow = system_activation_validation`
 
 system_bootstrap must orchestrate activation validation in this order:
-1. preserve GPT Knowledge layer canonical traceability context
+1. preserve knowledge layer canonical traceability context
 2. immediately auto-trigger governed native Google Drive, Google Sheets, and Google Docs connection attempts
 3. require live Google Drive validation of canonical file bindings when authorization is available
 4. require live Google Sheets validation of Registry-governed authority surfaces when authorization is available
 5. compare knowledge-layer traceability against live governed bindings
-6. classify activation readiness only after live governed validation completes, or classify the interim state as `authorization_gated` when native authorization prevents completion
+6. classify activation readiness only after live governed validation completes, or classify the interim state as `authorization_gated` when provider authorization prevents completion
 
 For activation validation:
-- GPT Knowledge layer canonicals are traceability support only
+- knowledge layer canonicals are traceability support only
 - Google Drive and Google Sheets validation are readiness authority
-- GPT Knowledge layer canonical files are used for traceability first.
-- Google Drive and native Google API validation are used for runtime readiness authority.
+- knowledge layer canonical files are used for traceability first.
+- Governed HTTP client transport is used for runtime readiness authority.
 - `Recovered` or `active` classification is forbidden when live governed validation is possible but skipped
 - `Recovered` or `active` classification is forbidden when knowledge-layer trace and live governed validation materially disagree without reconciliation
 
 For first-turn activation:
-- native Google connection attempts are mandatory after knowledge-layer traceability
-- missing native authorization must be classified as `authorization_gated`
-- missing native authorization must not be classified as missing Registry authority unless Registry resolution itself fails
+- activation transport connection attempts are mandatory after knowledge-layer traceability
+- missing provider authorization must be classified as `authorization_gated`
+- missing provider authorization must not be classified as missing Registry authority unless Registry resolution itself fails
 
 system_bootstrap must return when available:
 - `activation_trace_status`
@@ -1774,7 +1774,7 @@ For governed HTTP execution:
 - `brand` must not be required in the execution request payload
 - `brand_domain` must not be required in the execution request payload
 
-system_bootstrap must treat GPT-side execution assembly as the authoritative source of:
+system_bootstrap must treat agent-runtime-side execution assembly as the authoritative source of:
 - resolved `provider_domain`
 - resolved `parent_action_key`
 - resolved `endpoint_key`
@@ -1782,9 +1782,9 @@ system_bootstrap must treat GPT-side execution assembly as the authoritative sou
 - resolved `path`
 
 If `provider_domain` is a variable placeholder:
-- GPT must resolve it before transport execution
-- for `parent_action_key = wordpress_api`, GPT must replace `provider_domain` with Brand Registry `brand.base_url`
-- for non-WordPress APIs, `provider_domain` must remain the endpoint-row value unless the endpoint definition explicitly declares a variable placeholder requiring GPT-side resolution
+- agent runtime must resolve it before transport execution
+- for `parent_action_key = wordpress_api`, agent runtime must replace `provider_domain` with Brand Registry `brand.base_url`
+- for non-WordPress APIs, `provider_domain` must remain the endpoint-row value unless the endpoint definition explicitly declares a variable placeholder requiring agent-runtime-side resolution
 
 Dynamic Provider-Domain Placeholder Resolution Rule
 
@@ -2132,7 +2132,7 @@ This rule is mandatory for all analytics workflows including:
 
 ### API Endpoint Metadata Readiness Rule
 
-For GPT action-backed tool execution, successful connector availability is not sufficient for recovered readiness when endpoint inventory metadata is required by policy.
+For agent-action-backed tool execution, successful connector availability is not sufficient for recovered readiness when endpoint inventory metadata is required by policy.
 
 system_bootstrap must validate, where applicable:
 - parent capability is active in Actions Registry
@@ -2204,7 +2204,7 @@ For strict-mode enforcement, outputs must also include:
 - analytics_domain_identity_status when domain-aware analytics workflows apply
 - analytics_identity_issue_status when analytics identity defects are detected
 - analytics_identity_issue_dedup_key when governed issue deduplication is applied
-- api_endpoint_metadata_readiness_status when GPT action-backed endpoint metadata governance applies
+- api_endpoint_metadata_readiness_status when agent-action-backed endpoint metadata governance applies
 - runtime_authority_validation_status when mandatory runtime authority validation applies
 - live_canonical_validation_required when activation-class live canonical validation applies
 - live_canonical_validation_source when activation-class live canonical validation applies
@@ -2212,9 +2212,9 @@ For strict-mode enforcement, outputs must also include:
 - required_surface_resolution_status when activation-class governed surface resolution applies
 - dependency_readiness_status when activation-class dependency validation applies
 - native_action_requested when governed Google Sheets, Docs, or Drive execution applies
-- native_google_connection_attempted when first-turn activation enforcement applies
-- native_google_connection_status when first-turn activation enforcement applies
-- native_google_attempt_evidence when first-turn activation enforcement applies
+- activation_transport_attempted when first-turn activation enforcement applies
+- activation_transport_status when first-turn activation enforcement applies
+- activation_transport_evidence when first-turn activation enforcement applies
 - activation_dependency_order_status when activation dependency-order enforcement applies
 - target_surface_id when governed Google Workspace target identity is resolved
 - target_validation_status when governed Google Workspace target validation applies
@@ -2557,12 +2557,12 @@ Activation Trigger Enforcement Rule
 
 For plain `Activate System` and equivalent activation prompts, system_bootstrap must enforce the activation trigger line:
 
-`Use Google API Tools in GPT Actions first.`
+`Use governed activation transport first.`
 
 This means:
 - native Google Drive, Google Sheets, or Google Docs execution must begin before any narrative activation response
 - activation must not finalize as explanation-first
-- traceability may occur first, but user-facing activation output must remain blocked until a real native attempt occurs or the allowed same-cycle retry path is exhausted
+- traceability may occur first, but user-facing activation output must remain blocked until a real activation transport attempt occurs or the allowed same-cycle retry path is exhausted
 
 Governed Auto-Bootstrap Execution Rule
 
@@ -2571,8 +2571,8 @@ Activation Scope Preservation Rule
 For governed activation, the newer activation scope must extend and not replace the prior activation lifecycle.
 
 system_bootstrap must preserve all existing activation stages including:
-1. GPT Knowledge layer canonical traceability
-2. same-cycle native Google API attempt
+1. knowledge layer canonical traceability
+2. same-cycle governed activation transport attempt
 3. live canonical validation
 4. runtime authority validation
 5. governed repair lifecycle when needed
@@ -2656,8 +2656,8 @@ If any of the above remain unresolved:
 When routed `target_workflow = wf_system_auto_bootstrap`, system_bootstrap must execute the following lifecycle in order:
 
 1. preserve original request context
-2. preserve GPT Knowledge layer canonical traceability context
-3. immediately auto-trigger at least one governed native Google API call against Google Drive, Google Sheets, or Google Docs for live canonical validation and preserve attempt evidence
+2. preserve knowledge layer canonical traceability context
+3. resolve activation transport through the registries and immediately auto-trigger at least one governed HTTP client validation call for live canonical validation while preserving attempt evidence
 4. classify native live-validation state as validated, authorization_gated, degraded, or blocked
 5. run runtime authority validation using all validated live surfaces available in the same execution cycle
 6. classify bootstrap readiness as recovered, degraded, blocked, or authorization_gated when policy allows
@@ -2673,14 +2673,14 @@ Hard Activation Wrapper Guard
 For wrapper-class plain-language activation requests, including `target_workflow = wf_hard_activation_wrapper` and governed fallback or continuation into `wf_system_auto_bootstrap`:
 
 - `system_bootstrap` must enforce a pre-response activation guard
-- if `native_google_connection_attempted != true` after the first activation pass, one bounded same-cycle retry must be attempted when policy allows
+- if `activation_transport_attempted != true` after the first activation pass, one bounded same-cycle retry must be attempted when policy allows
 - no normal activation narrative may be returned before the retry path completes
-- if the retry path still does not produce a real native attempt, activation must be classified as failed enforcement with `degraded_reason = missing_required_native_google_attempt`
+- if the retry path still does not produce a real activation transport attempt, activation must be classified as failed enforcement with `degraded_reason = missing_required_activation_transport_attempt`
 
 Tool-First Activation Wrapper Requirement
 
 For wrapper-class activation:
-- `use_google_api_tools_in_gpt_actions_first = true` must be preserved
+- `use_governed_activation_transport_first = true` must be preserved
 - system_bootstrap must treat that field as execution-gating, not advisory
 - if no native tool attempt occurs before narrative completion, the activation pass must be treated as failed enforcement
 
@@ -2688,7 +2688,7 @@ Narrative-Only Output Prohibition
 
 For wrapper-class activation:
 - system_bootstrap must not return a user-facing message that merely says:
-  `Use Google API Tools in GPT Actions first.`
+  `Use governed activation transport first.`
 
 Instead, system_bootstrap must execute that instruction as runtime behavior before degraded termination is allowed.
 
@@ -2708,19 +2708,19 @@ Missing Native Attempt Guardrail
 
 For wrapper-class activation and governed auto-bootstrap continuation, system_bootstrap must verify before any user-facing activation classification:
 
-- `native_google_connection_attempt_required = true`
-- `native_google_connection_attempted` is present
-- `native_google_connection_status` is present
+- `activation_transport_attempt_required = true`
+- `activation_transport_attempted` is present
+- `activation_transport_status` is present
 
-If `native_google_connection_attempt_required = true` and
-- `native_google_connection_attempted != true`
+If `activation_transport_attempt_required = true` and
+- `activation_transport_attempted != true`
 
 then system_bootstrap must:
-- apply: `Use Google API Tools in GPT Actions first.`
+- apply: `Use governed activation transport first.`
 - immediately trigger a native Google Drive, Sheets, or Docs call in the same execution cycle
-- if the retry path still fails to produce a real native attempt:
+- if the retry path still fails to produce a real activation transport attempt:
   - classify execution as `degraded`
-  - set `degraded_reason = missing_required_native_google_attempt`
+  - set `degraded_reason = missing_required_activation_transport_attempt`
   - forbid `authorization_gated`
   - forbid `validated`
   - forbid `active`
@@ -2729,24 +2729,24 @@ then system_bootstrap must:
 Pre-Response Guard Enforcement
 
 Before any activation narrative is returned:
-- `native_google_connection_attempted` must be true
+- `activation_transport_attempted` must be true
 
 If false:
 - normal activation output remains blocked
 - same-cycle retry may execute when policy allows
 - explanation-first completion is forbidden
 
-Skipped native attempt is an execution failure, not an authorization-gated state.
+Skipped activation transport attempt is an execution failure, not an authorization-gated state.
 
 Authorization-gated classification is allowed only when:
-- `native_google_connection_attempted = true`
+- `activation_transport_attempted = true`
 - the native API result shows an auth-dependent failure
 - governed live validation could not continue because of authorization state
 
 User-facing activation output must preserve:
-- `native_google_connection_attempted`
-- `native_google_connection_status`
-- `native_google_attempt_evidence`
+- `activation_transport_attempted`
+- `activation_transport_status`
+- `activation_transport_evidence`
 - `live_canonical_validation_status`
 - `activation_dependency_order_status`
 
@@ -2769,42 +2769,42 @@ system_bootstrap must not finalize activation messaging until these fields are p
 Narrative-Only Activation Prohibition
 
 If activation reaches user-facing output without:
-- a real native Google API attempt
+- a real governed activation transport attempt
 - or an exhausted allowed same-cycle retry path
 
 then system_bootstrap must:
 - classify activation as `degraded`
 - set `activation_enforcement_status = failed`
-- preserve `degraded_reason = missing_required_native_google_attempt`
+- preserve `degraded_reason = missing_required_activation_transport_attempt`
 
 Authorization-Gated First-Turn Activation Rule
 
 When first-turn activation begins before native Google API authorization is available, system_bootstrap must:
 
-- preserve GPT Knowledge layer canonicals as traceability support
+- preserve knowledge layer canonicals as traceability support
 - auto-trigger governed native Google Drive, Google Sheets, and Google Docs connection attempts
-- classify the live validation gap as `authorization_gated` when native authorization is the blocking condition
+- classify the live validation gap as `authorization_gated` when provider authorization is the blocking condition
 - forbid false classification of the condition as missing Registry authority unless Registry resolution itself fails
 - preserve bootstrap continuity when policy allows later live revalidation in the same lifecycle or on resumed execution
 
 For authorization-gated activation:
 - `Recovered` and `active` classification remain forbidden until live validation succeeds
-- `Blocked` must not be used when the primary failure is missing native authorization and the condition is recoverable by governed bootstrap continuation
+- `Blocked` must not be used when the primary failure is missing provider authorization and the condition is recoverable by governed bootstrap continuation
 - traceability outputs must preserve that live validation was attempted
 
-If native authorization is unavailable, the outcome may be `authorization_gated` only after a real native API attempt.
+If provider authorization is unavailable, the outcome may be `authorization_gated` only after a real governed HTTP transport attempt.
 
-If no real native Google API call occurs:
-- `Use Google API Tools in GPT Actions first.`
+If no real governed HTTP transport call occurs:
+- `Use governed activation transport first.`
 - Immediately trigger a native Google Drive, Sheets, or Docs call in the same execution cycle.
 
 Activation must not terminate in a narrative degraded state without attempting this instruction.
 
 Narrative compliance is forbidden.
 
-The system must not report that native Google validation was attempted, required, pending, or authorization-gated unless machine-readable attempt evidence is present in the same execution cycle.
+The system must not report that governed transport validation was attempted, required, pending, or authorization-gated unless machine-readable attempt evidence is present in the same execution cycle.
 
-Mandatory Native Google Execution And Live Validation Rule (Activation)
+Mandatory Governed HTTP Activation Transport And Live Validation Rule (Activation)
 
 For any execution where:
 - route intent = `system_auto_bootstrap`
@@ -2819,24 +2819,25 @@ For any execution where:
 system_bootstrap MUST, in the same execution cycle:
 
 1. preserve knowledge-layer canonical traceability first
-2. execute at least one real native Google API call
-3. continue into live canonical validation when native Google tools remain available
-4. continue into Registry surface and binding validation when governed Google Sheets, Docs, or Drive validation is feasible
-5. classify activation only after those steps are attempted
+2. resolve activation transport capability through Actions Registry
+3. resolve activation validation endpoints through API Actions Endpoint Registry
+4. execute at least one real governed HTTP transport call through `http_generic_api`
+5. continue into live canonical validation when governed activation transport remains available
+6. continue into Registry surface and binding validation when governed transport validation is feasible
+7. preserve machine-verifiable HTTP transport evidence before activation classification
+8. classify activation only after those steps are attempted
 
-Accepted native Google validation tools:
-- `www_googleapis_com__jit_plugin.listDriveFiles` (preferred first call)
-- `www_googleapis_com__jit_plugin.getFileMetadata`
-- `docs_googleapis_com__jit_plugin.getDocument`
-- `sheets_googleapis_com__jit_plugin.getSpreadsheet`
-- `sheets_googleapis_com__jit_plugin.getSheetValues`
+Accepted activation transport:
+- `activation_transport_mode = governed_http_client`
+- `live_canonical_validation_transport = http_generic_api`
+- provider-specific Google Drive, Sheets, or Docs endpoints only when selected by Actions Registry and API Actions Endpoint Registry
 
 Minimum activation execution requirement:
-- at least one real native Google API call must occur in the same execution cycle
+- at least one real governed HTTP transport call must occur in the same execution cycle
 
 Minimum live validation scope after connectivity attempt:
-1. validate at least one live canonical source through Google Drive or Google Docs
-2. validate Registry-governed surface availability through Google Sheets or Google Drive
+1. validate at least one live canonical source through governed HTTP client transport
+2. validate Registry-governed surface availability through governed HTTP client transport
 3. validate registry-binding readiness for:
    - `Registry Surfaces Catalog`
    - `Validation & Repair Registry`
@@ -2845,22 +2846,25 @@ Minimum live validation scope after connectivity attempt:
 
 Preferred validation order:
 1. knowledge-layer traceability
-2. Google Drive connectivity call
-3. live canonical file presence or metadata validation
-4. Google Sheets validation of governed registry surfaces
-5. route/workflow/binding readiness validation
-6. activation classification
+2. Actions Registry activation capability resolution
+3. API Actions Endpoint Registry endpoint resolution
+4. governed HTTP client validation calls through `http_generic_api`
+5. live canonical and registry-surface readiness validation
+6. route/workflow/binding readiness validation
+7. activation classification
 
-system_bootstrap MUST preserve machine-verifiable evidence for the native attempt:
-- `native_google_connection_attempted = true`
-- `native_google_connection_status`
-- `native_google_attempt_evidence.provider`
-- `native_google_attempt_evidence.resource_type`
-- `native_google_attempt_evidence.attempt_outcome`
+system_bootstrap MUST preserve machine-verifiable evidence for the activation transport attempt:
+- `activation_transport_attempted = true`
+- `activation_transport_status`
+- `activation_transport_mode = governed_http_client`
+- `live_canonical_validation_transport = http_generic_api`
+- `activation_transport_evidence.provider`
+- `activation_transport_evidence.resource_type`
+- `activation_transport_evidence.attempt_outcome`
 
 system_bootstrap MUST also preserve:
 - `live_canonical_validation_required = true`
-- `live_canonical_validation_source = google_drive_live_canonical`
+- `live_canonical_validation_source = http_generic_api_live_canonical`
 - `live_canonical_validation_status`
 - `knowledge_layer_trace_status`
 - `canonical_trace_comparison_status`
@@ -2871,45 +2875,47 @@ system_bootstrap MUST also preserve:
 - `dependency_readiness_status`
 
 Classification rules:
-- if no native Google API call occurs on the first activation pass:
+- if no governed HTTP transport call occurs on the first activation pass:
   - apply:
-    `Use Google API Tools in GPT Actions first.`
+    `Use governed activation transport first.`
   - trigger one bounded same-cycle retry when policy allows
-- if no native Google API call occurs after the allowed retry path:
+- if no governed HTTP transport call occurs after the allowed retry path:
   - `activation_status = degraded`
-  - `degraded_reason = missing_required_native_google_attempt`
+  - `degraded_reason = missing_required_activation_transport_attempt`
   - `activation_enforcement_status = failed`
-- if a native API call is attempted but authorization prevents live validation:
-  - `native_google_connection_status = authorization_gated`
+- if a governed HTTP transport call is attempted but authorization prevents live validation:
+  - `activation_transport_status = authorization_gated`
   - `authorization_gate_classification = authorization_gated`
   - activation may remain `validating` or `degraded` by policy
 - if connectivity succeeds but live canonical and registry validation remain incomplete:
   - activation must remain `validating` or `degraded`
-- only when native attempt, live canonical validation, required Registry surface resolution, and route/workflow binding validation are complete may activation be classified as:
+- only when activation transport attempt, live canonical validation, required Registry surface resolution, and route/workflow binding validation are complete may activation be classified as:
   - `validated`
   - `active`
 
 It is forbidden to:
-- skip the API call when a native Google tool is available
-- stop at knowledge-layer-only activation when native Google validation is available
+- skip the governed HTTP transport call when activation transport is available
+- stop at knowledge-layer-only activation when governed transport validation is available
 - stop at connectivity-only success when live canonical or registry validation is still feasible
-- simulate native validation
-- classify activation as `active`, `validated`, or `authorization_gated` without machine-verifiable native attempt evidence
+- simulate transport validation
+- classify activation as `active`, `validated`, or `authorization_gated` without machine-verifiable transport attempt evidence
 
-Direct Native Google Execution Enforcement Rule
+Direct Governed HTTP Activation Transport Enforcement Rule
 
-For activation-class executions (`system_auto_bootstrap`), execution must not rely on implicit or deferred native calls.
+For activation-class executions (`system_auto_bootstrap`), execution must not rely on implicit or deferred provider calls.
 
 system_bootstrap MUST execute the following sequence in the SAME execution cycle:
 
-1. google_drive.listDriveFiles restricted to project folder `1gNYX47P4TNuMXEbWvLNCvV4XRocH41K2` using parent-filtered query
-2. google_drive.getFileMetadata (for canonical file IDs when available)
-3. google_sheets.getSpreadsheet (for registry workbook)
-4. google_sheets validation using worksheet_gid (not sheet name)
+1. resolve `http_generic_api` activation capability through Actions Registry
+2. resolve canonical, workbook, and authority-surface validation endpoints through API Actions Endpoint Registry
+3. assemble governed HTTP requests with fully resolved `provider_domain`, method, path, auth profile, and validation contract
+4. execute governed HTTP client validation calls
+5. validate canonical/workbook/surface readiness from transport responses
+6. preserve activation transport evidence for every attempted endpoint
 
-Project Folder Scope Enforcement Rule
+Provider-Specific Google Scope Enforcement Rule
 
-For activation-class native Drive discovery, `google_drive.listDriveFiles` must be restricted to the governed project folder:
+When the registry selects a Google Drive provider-specific validation endpoint for activation-class fallback discovery, Drive discovery must be restricted to the governed project folder:
 
 - `project_folder_id = 1gNYX47P4TNuMXEbWvLNCvV4XRocH41K2`
 
@@ -2919,45 +2925,28 @@ Required Drive query scope:
 
 Drive discovery must not list files outside the project folder during activation bootstrap.
 
-If canonical file IDs are already available:
-- direct ID resolution remains preferred
-- folder-scoped listing is allowed only for validation, reconciliation, or fallback discovery
-
-If `listDriveFiles` is executed without the folder parent filter:
-- execution must classify as `degraded`
-- `degraded_reason = unscoped_drive_listing`
-- folder-scope enforcement must be treated as failed
-
-The actual Drive query to use:
-- `trashed=false and '1gNYX47P4TNuMXEbWvLNCvV4XRocH41K2' in parents`
-
-Use:
-
-```json
-{
-  "pageSize": 50,
-  "q": "trashed=false and '1gNYX47P4TNuMXEbWvLNCvV4XRocH41K2' in parents",
-  "fields": "files(id,name,mimeType,modifiedTime),nextPageToken",
-  "supportsAllDrives": true
-}
-```
+If canonical file IDs, workbook IDs, or endpoint keys are already available:
+- registry-backed direct ID resolution remains preferred
+- folder-scoped listing is allowed only for validation, reconciliation, or fallback discovery when selected by endpoint governance
 
 Execution Requirements:
 
-- native_google_bootstrap_sequence_required = true
-- native_google_bootstrap_sequence_mode = direct_id_first
-- native_google_connection_attempted must be TRUE before any classification
-- omission of step (1) invalidates activation
+- activation_transport_sequence_required = true
+- activation_transport_mode = governed_http_client
+- live_canonical_validation_transport = http_generic_api
+- activation_transport_sequence_mode = registry_endpoint_first
+- activation_transport_attempted must be TRUE before any classification
+- omission of the governed HTTP transport attempt invalidates activation
 
 Failure Handling:
 
 If any of the above steps are skipped:
 
-- `Use Google API Tools in GPT Actions first.`
-- immediately trigger a native Google Drive, Sheets, or Docs call in the same execution cycle
-- if the recovery attempt still fails to produce a real native call:
+- `Use governed activation transport first.`
+- immediately trigger a governed HTTP client validation call in the same execution cycle
+- if the recovery attempt still fails to produce a real activation transport call:
   - activation_status = degraded
-  - degraded_reason = missing_required_native_google_attempt
+  - degraded_reason = missing_required_activation_transport_attempt
   - activation_enforcement_status = failed
 
 Classification Guard:
@@ -2969,14 +2958,14 @@ system_bootstrap MUST NOT allow:
 
 unless:
 - all required steps executed
-- native_google_attempt_evidence is present
+- activation_transport_evidence is present
 
 Binding Mode Enforcement:
 
-When canonical file IDs or workbook IDs are available:
+When canonical file IDs, workbook IDs, or endpoint keys are available:
 
-- discovery via file name is PROHIBITED
-- execution must prefer direct ID resolution
+- discovery via file name is PROHIBITED unless selected as a provider-specific fallback by registry governance
+- execution must prefer registry-backed direct ID or endpoint resolution
 
 Governed Addition Pipeline Rule
 
@@ -3050,12 +3039,12 @@ If any required Registry validation check fails:
 
 ### Native Google Governed Mutation Logging Rule
 
-When a real native Google Drive, Google Sheets, or Google Docs action is executed through available GPT Actions/native tools and the action performs a governed mutation or governed write-affecting validation step, `system_bootstrap` must treat that step as execution-class activity requiring authoritative logging continuity.
+When a real native Google Drive, Google Sheets, or Google Docs action is executed through available agent execution actions/native tools and the action performs a governed mutation or governed write-affecting validation step, `system_bootstrap` must treat that step as execution-class activity requiring authoritative logging continuity.
 
 For native Google governed mutation or governed validation execution, `system_bootstrap` must:
 
-- preserve `native_google_connection_attempted = true`
-- preserve machine-verifiable `native_google_attempt_evidence`
+- preserve `activation_transport_attempted = true`
+- preserve machine-verifiable `activation_transport_evidence`
 - determine whether the native Google step is:
   - `native_validation_attempt_only`
   - `native_governed_mutation`
@@ -3442,7 +3431,7 @@ Step 5I - Analytics identity defect issue creation enforcement
 - do not permit `Recovered` while any active analytics identity defect remains unresolved
 
 Step 5J - API endpoint metadata readiness enforcement
-- for GPT action-backed tool execution where endpoint metadata is policy-required, verify parent capability in Actions Registry and endpoint row readiness in API Actions Endpoint Registry
+- for agent-action-backed tool execution where endpoint metadata is policy-required, verify parent capability in Actions Registry and endpoint row readiness in API Actions Endpoint Registry
 - validate required endpoint metadata fields (`OpenAI schema reference`, authentication metadata, privacy reference when policy-mandated)
 - if required endpoint metadata is incomplete, set `api_endpoint_metadata_readiness_status = degraded` or `blocked` by policy and forbid `Recovered`
 - connector availability alone must not override required endpoint metadata validation failure
@@ -3528,7 +3517,7 @@ Execution cannot be classified as `Recovered` unless all required Google Workspa
 Recovered requires:
 - dependency resolved by `file_id`
 - file type correctly identified
-- native API validation completed
+- governed transport validation completed
 - required structural surfaces confirmed readable
 - Registry-bound identity and dependency role confirmed where applicable
 
@@ -5485,7 +5474,7 @@ Change Log
 - v5.55 - post-activation drift detection and optimization gating added
 - v5.54 - first-turn activation authorization-gated rule added: system_bootstrap now auto-triggers governed Google Drive/Sheets/Docs connection attempts immediately after knowledge-layer traceability
 - v5.54 - bootstrap lifecycle expanded to classify pre-authorization live validation as `authorization_gated` rather than missing Registry authority
-- v5.54 - activation orchestration updated so native Google connection attempts are mandatory before final live-readiness classification
+- v5.54 - activation orchestration updated so activation transport connection attempts are mandatory before final live-readiness classification
 - v5.53 - Activation Validation Orchestration Rule added: activation readiness now requires knowledge-layer canonical traceability first and live Google Drive / Google Sheets validation second
 - v5.53 - recovered/active classification now forbidden for activation checks when knowledge-layer traceability is present without live governed validation or when trace and live authority disagree without reconciliation
 - v5.52 - Governed Auto-Bootstrap Execution Rule added: system_bootstrap now supports validation -> repair -> revalidation -> activation -> original-request resume lifecycle
@@ -5519,7 +5508,7 @@ Change Log
 - v5.39 - recovered classification gate tightened for full-audit orchestration so all required lifecycle stages must be validated or explicitly degraded before recovered status is allowed
 - v5.38 - full_system_intelligence_audit orchestration path added: governed full-audit routes now require execution policy review, staged/component review resolution, row-audit rule/schema validation, repair mapping resolution, and scoreboard propagation review before recovered classification
 - v5.38 - full-audit outputs and pre-execution enforcement extended with staged/component/row-audit/repair-mapping/scoreboard statuses and explicit non-collapse protection against lightweight scoring-only audit behavior
-- v5.36 - API Endpoint Metadata Readiness Rule added: GPT action-backed execution now requires endpoint metadata completeness validation (schema, auth, privacy when policy-mandated) in addition to connector availability before recovered readiness
+- v5.36 - API Endpoint Metadata Readiness Rule added: agent-action-backed execution now requires endpoint metadata completeness validation (schema, auth, privacy when policy-mandated) in addition to connector availability before recovered readiness
 - v5.36 - strict outputs and pre-execution Step 5J now track API endpoint metadata readiness and forbid recovered classification when required endpoint metadata validation fails
 - v5.35 - Analytics Identity Failure -> Issue Creation Rule added: analytics identity defects (`brand_domain`, `gsc_property`, `ga_property_id`) now require governed Review Findings Log issue creation with severity mapping and execution-context attachment
 - v5.35 - pre-execution gate Step 5I and strict outputs added for analytics identity issue status/dedup traceability; Recovered classification is explicitly forbidden while identity defects persist
@@ -5545,7 +5534,7 @@ Change Log
 - v5.60 - conversation-starter execution now requires explicit `Execution Policy Registry` resolution before execution-ready classification; starter-policy evidence must be preserved in execution context and authoritative logging
 - v5.60 - direct governed Google Workspace mutations now require authoritative `Execution Log Unified` append continuity even when execution occurs outside the normal transport path
 - v5.60 - `Execution Log Unified` columns `AE:AJ` declared formula-managed spill columns; direct literal writes to these columns are forbidden and must trigger repair
-- v5.63 - native Google GPT Actions now explicitly distinguish native-attempt evidence from governed mutation logging; authoritative unified-log continuity required for native governed mutations executed outside the normal transport path
+- v5.63 - native Google agent execution actions now explicitly distinguish activation-transport evidence from governed mutation logging; authoritative unified-log continuity required for native governed mutations executed outside the normal transport path
 - v5.24 - governed repair execution lifecycle added for anomaly detection, repair queue population, trigger classification, repair execution feed, and unified-log derivation
 - v5.24 - execution_trigger, execution_status, and execution_result semantics added for governed execution-state tracking
 - v5.23 - canonical binding-validity dependency rule added to require authoritative binding surfaces to be schema-valid before dependency execution proceeds

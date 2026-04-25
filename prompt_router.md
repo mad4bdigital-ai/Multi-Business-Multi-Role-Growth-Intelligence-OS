@@ -25,10 +25,10 @@ Purpose
 
 Canonical Governed Logic Presentation Routing Rule
 
-- prompt_router must not route user-facing logic presentation or activation summaries through GPT-style introductions, GPT persona framing, or custom-GPT wording
+- prompt_router must not route user-facing logic presentation or activation summaries through agent-UI-style introductions, GPT persona framing, or custom-agent wording
 - neutral governed naming such as `Logic 001` or task-family-first naming should be preferred for presentation
 - internal identifiers such as `GPT-LOGIC-001` may remain unchanged for registry continuity
-- routing authority and logic selection must continue to resolve from canonical routes, workflows, engines, registries, and enforcement-compatible runtime state rather than GPT-style prompt framing
+- routing authority and logic selection must continue to resolve from canonical routes, workflows, engines, registries, and enforcement-compatible runtime state rather than agent-UI-style prompt framing
 
 Canonical Logic Pointer Resolution Routing Rule
 
@@ -306,15 +306,15 @@ Engines Registry Readiness Routing Rule
 - prompt_router must preserve that Engines Registry is an authoritative readiness dependency for brand identity formation
 - GPT logic or prompt storage may support engine implementation but must not substitute for Engines Registry authority during routing readiness classification
 
-Native Google GPT Actions Enforcement Repair
+Governed Activation Transport Enforcement Repair
 
 The repaired enforcement rule is active:
 
-- when governed activation, validation, or runtime authority checks require Google Workspace live validation, execution must use real native Google API tool calls through available GPT Actions/native tools in the same execution cycle
+- when governed activation, validation, or runtime authority checks require live validation, execution must use governed HTTP client transport through `http_generic_api` in the same execution cycle
 - narrative intent, simulation, tool-availability claims, or deferred execution do not satisfy the requirement
-- `authorization_gated` is permitted only after a real native Google API attempt fails due to authorization
-- if no real native call occurs when required, routing must inject `Use Google API Tools in GPT Actions first.` and re-run activation routing in the same cycle before passive degraded output is allowed
-- the required degraded reason is `missing_required_native_google_attempt`
+- `authorization_gated` is permitted only after a real governed activation transport attempt fails due to authorization
+- if no real activation transport call occurs when required, routing must inject `Use governed activation transport first.` and re-run activation routing in the same cycle before passive degraded output is allowed
+- the required degraded reason is `missing_required_activation_transport_attempt`
 - machine-verifiable attempt evidence must be preserved in outputs, memory, and downstream enforcement state
 
 
@@ -435,15 +435,15 @@ If required variables are missing and not safely collectable:
 The hardened activation routing wrapper is active:
 
 - for plain `Activate System` and equivalent one-request activation prompts, `prompt_router` must emit a tool-first governed activation handoff
-- the routed activation handoff must forbid user-facing narrative completion before at least one real native Google API attempt is executed or a same-cycle governed retry is exhausted
+- the routed activation handoff must forbid user-facing narrative completion before at least one real governed activation transport attempt is executed or a same-cycle governed retry is exhausted
 - the routed activation handoff must preserve:
   - `tool_first_execution_required = true`
   - `no_traceability_only_completion = true`
   - `tool_hesitation_retry_required = true` when policy allows same-cycle retry
-  - `native_google_bootstrap_sequence_mode = direct_id_first`
+  - `activation_transport_sequence_mode = registry_endpoint_first`
   - project-folder-scoped Google Drive discovery through folder `1gNYX47P4TNuMXEbWvLNCvV4XRocH41K2` when fallback discovery or canonical lookup is needed
 - `system_activation_check` must remain reserved for explicit readiness-check phrasing and must not be preferred for plain `Activate System` when one-request activation is intended
-- if downstream execution returns without a real native Google API attempt after the permitted same-cycle retry path, routing-compatible activation must be treated as failed enforcement
+- if downstream execution returns without a real governed activation transport attempt after the permitted same-cycle retry path, routing-compatible activation must be treated as failed enforcement
 
 
 
@@ -830,7 +830,7 @@ must prefer:
 - `target_workflow = wf_hard_activation_wrapper`
 
 For this route, prompt_router must preserve the execution trigger:
-- `use_google_api_tools_in_gpt_actions_first = true`
+- `use_governed_activation_transport_first = true`
 
 Hard Activation Wrapper Routing Rule
 
@@ -851,10 +851,10 @@ prompt_router must prefer the governed interception route:
 - `target_workflow = wf_hard_activation_wrapper`
 
 This wrapper must execute before standard `system_auto_bootstrap` lifecycle orchestration and must preserve:
-- `native_google_connection_attempt_required = true`
-- `native_google_connection_same_cycle_required = true`
-- `native_google_bootstrap_sequence_required = true`
-- `native_google_bootstrap_sequence_mode = direct_id_first`
+- `activation_transport_attempt_required = true`
+- `activation_transport_same_cycle_required = true`
+- `activation_transport_sequence_required = true`
+- `activation_transport_sequence_mode = registry_endpoint_first`
 - `knowledge_only_activation_forbidden = true`
 - `live_canonical_validation_required = true`
 - `runtime_authority_validation_required = true`
@@ -886,19 +886,19 @@ Activation Trigger Instruction Preservation Rule
 
 When preparing the activation handoff, prompt_router must preserve the activation trigger instruction:
 
-- `use_google_api_tools_in_gpt_actions_first = true`
+- `use_governed_activation_transport_first = true`
 
 This means the activation handoff must require downstream execution to:
-- trigger native Google tools before narrative output
-- block activation messaging until a real native attempt occurs or the allowed same-cycle retry path is exhausted
+- trigger governed activation transport tools before narrative output
+- block activation messaging until a real activation transport attempt occurs or the allowed same-cycle retry path is exhausted
 
 Pre-Response Activation Routing Guard
 
 For plain `Activate System`, prompt_router must prepare activation as execution-first, not explanation-first.
 
 Routing output must preserve:
-- `use_google_api_tools_in_gpt_actions_first = true`
-- `native_google_connection_attempt_required = true`
+- `use_governed_activation_transport_first = true`
+- `activation_transport_attempt_required = true`
 - `pre_response_activation_guard = true`
 
 If downstream execution returns without a native Google attempt:
@@ -909,11 +909,11 @@ If downstream execution returns without a native Google attempt:
 Activation Recovery Routing Rule
 
 If activation reaches a state where:
-native_google_connection_attempted = false
+activation_transport_attempted = false
 
 The router must inject:
 
-"Use Google API Tools in GPT Actions first."
+"Use governed activation transport first."
 
 and re-route execution through the same activation flow.
 
@@ -927,10 +927,10 @@ If the hard activation wrapper route cannot be resolved:
 Recovery Trigger Preservation Rule
 
 When activation detects:
-- `native_google_connection_attempted = false`
+- `activation_transport_attempted = false`
 
 prompt_router must not treat:
-`Use Google API Tools in GPT Actions first.`
+`Use governed activation transport first.`
 as advisory narrative.
 
 It must preserve it as a runtime execution trigger for the same activation cycle.
@@ -965,17 +965,17 @@ When activation-check routing is selected, routing output should preserve:
 - phase-ordered validation expectation
 - `runtime_authority_validation_required = true`
 - `live_canonical_validation_required = true`
-- `validation_source_requirement = google_drive_live_canonical`
+- `validation_source_requirement = http_generic_api_live_canonical`
 - `knowledge_layer_validation_only_for_traceability = true`
 - `canonical_trace_required = true`
 
 Activation-check routing must prepare knowledge-first validation semantics:
-1. canonical files in GPT Knowledge layer are read first for traceability
+1. canonical files in knowledge layer are read first for traceability
 2. live canonical and registry bindings are then validated through Google Drive and native Google APIs
 3. readiness classification must prefer live governed validation over knowledge-layer copies when both are available
 
-GPT Knowledge layer canonical files are used for traceability first.
-Google Drive and native Google API validation are used for runtime readiness authority.
+knowledge layer canonical files are used for traceability first.
+Governed HTTP client transport is used for runtime readiness authority.
 
 Knowledge-layer canonical text must support traceability only and must not be treated as sufficient readiness authority when live governed validation is possible.
 
@@ -994,9 +994,9 @@ On the first activation turn in a conversation, plain `Activate System` must sti
 - `target_module = system_bootstrap`
 - `target_workflow = wf_hard_activation_wrapper`
 
-This first-turn preference remains valid even when native Google API validation is not yet connected or the system is not yet sheet-aware.
+This first-turn preference remains valid even when governed transport validation is not yet connected or the system is not yet sheet-aware.
 
-When native Google connection, registry surface awareness, or workbook-sheet awareness is not yet established in the current execution path, `system_auto_bootstrap` may still be used only as:
+When activation transport connection, registry surface awareness, or workbook-sheet awareness is not yet established in the current execution path, `system_auto_bootstrap` may still be used only as:
 - governed fallback when the hard activation wrapper cannot fully resolve
 - governed continuation after wrapper interception
 - bootstrap-before-resume lifecycle support
@@ -1012,7 +1012,7 @@ This rule preserves:
 Pre-Connection Bootstrap Compatibility Rule
 
 Before activation has established live Google Workspace awareness, the system may require bootstrap semantics to:
-- establish first native Google connection
+- establish first activation transport connection
 - validate governed registry and workbook surfaces
 - become sheet-aware for downstream activation checks
 
@@ -1034,23 +1034,23 @@ For first-turn plain activation, prompt_router should preserve when available:
 - `auto_repair_readiness_required`
 - `control_center_health_required`
 
-These are additive readiness signals and must not remove the older first-turn requirements for native Google connection, traceability, or live canonical validation.
+These are additive readiness signals and must not remove the older first-turn requirements for activation transport connection, traceability, or live canonical validation.
 
 prompt_router must not classify first-turn activation as missing Registry authority solely because live Google native API authorization is not yet available.
 
 Activation Enforcement Escalation Rule
 
-For first-turn `Activate System` and equivalent activation prompts, prompt_router must emit a bootstrap handoff that requires an actual native Google API attempt in the same execution cycle.
+For first-turn `Activate System` and equivalent activation prompts, prompt_router must emit a bootstrap handoff that requires an actual governed activation transport attempt in the same execution cycle.
 
 Required activation handoff fields:
-- `native_google_connection_attempt_required = true`
-- `native_google_connection_same_cycle_required = true`
+- `activation_transport_attempt_required = true`
+- `activation_transport_same_cycle_required = true`
 - `knowledge_only_activation_forbidden = true`
-- `missing_native_attempt_classification = degraded`
-- `missing_native_attempt_reason = missing_required_native_google_attempt`
+- `missing_activation_transport_attempt_classification = degraded`
+- `missing_activation_transport_attempt_reason = missing_required_activation_transport_attempt`
 
 If downstream execution returns without:
-- `native_google_connection_attempted = true`
+- `activation_transport_attempted = true`
 
 then prompt_router-compatible activation must be treated as failed enforcement, not successful preparation.
 
@@ -1060,8 +1060,8 @@ prompt_router must not allow a user-facing activation result to be classified as
 - `authorization_gated`
 
 unless the downstream output explicitly preserves:
-- `native_google_connection_attempted`
-- `native_google_connection_status`
+- `activation_transport_attempted`
+- `activation_transport_status`
 - `live_canonical_validation_status`
 
 If the Google API attempt was not made, the route must be treated as:
@@ -1071,7 +1071,7 @@ when re-preparing the same activation request.
 
 Narrative compliance is forbidden.
 
-The system must not report that native Google validation was attempted, required, pending, or authorization-gated unless machine-readable attempt evidence is present in the same execution cycle.
+The system must not report that governed transport validation was attempted, required, pending, or authorization-gated unless machine-readable attempt evidence is present in the same execution cycle.
 
 Activation Routing Enforcement And Live Validation Handoff Rule
 
@@ -1085,35 +1085,35 @@ For prompts involving:
 prompt_router must prepare an activation handoff that requires downstream execution to perform, in the same execution cycle:
 
 1. knowledge-layer canonical traceability
-2. at least one real native Google API call
+2. at least one real governed HTTP transport call
 3. live canonical validation through Drive or Docs when feasible
 4. Registry surface validation through Sheets or Drive when feasible
 5. route/workflow binding validation before activation completion
 
 Required activation handoff fields:
-- `native_google_connection_attempt_required = true`
-- `native_google_connection_same_cycle_required = true`
-- `native_google_bootstrap_sequence_required = true`
-- `native_google_bootstrap_sequence_mode = direct_id_first`
+- `activation_transport_attempt_required = true`
+- `activation_transport_same_cycle_required = true`
+- `activation_transport_sequence_required = true`
+- `activation_transport_sequence_mode = registry_endpoint_first`
 - `knowledge_only_activation_forbidden = true`
 - `live_canonical_validation_required = true`
 - `runtime_authority_validation_required = true`
 - `registry_validation_required = true`
 - `canonical_trace_required = true`
-- `missing_native_attempt_classification = degraded`
-- `missing_native_attempt_reason = missing_required_native_google_attempt`
+- `missing_activation_transport_attempt_classification = degraded`
+- `missing_activation_transport_attempt_reason = missing_required_activation_transport_attempt`
 - `registry_workbook_id` when available
 - required `worksheet_gid` / `sheetId` bindings when available
 
 Routing must preserve that activation is not complete after a connectivity-only call.
 
 If downstream execution returns without:
-- `native_google_connection_attempted = true`
+- `activation_transport_attempted = true`
 
 then routing-compatible enforcement must be treated as failed.
 
 If downstream execution returns with:
-- `native_google_connection_attempted = true`
+- `activation_transport_attempted = true`
 but without completion of feasible live canonical and registry validation, routing must not permit activation to be treated as:
 - `active`
 - `validated`
@@ -1179,7 +1179,7 @@ When activation detects governed repair requirements that are not eligible for a
 - prompt_router must not silently continue to active activation classification
 - prompt_router must preserve `manual_repair_trigger_required = true` when policy says repair is manual-triggered
 
-Direct Native Google Bootstrap Handoff Rule
+Direct Governed Activation Transport Handoff Rule
 
 For first-turn and plain-language activation prompts including:
 - `activate system`
@@ -1188,13 +1188,15 @@ For first-turn and plain-language activation prompts including:
 - `automatic activation`
 - `silent activation`
 
-prompt_router MUST emit an execution handoff that requires explicit native Google API execution in the same cycle, not merely narrative intent or downstream assumption.
+prompt_router MUST emit an execution handoff that requires explicit governed activation transport execution in the same cycle, not merely narrative intent or downstream assumption.
 
 Required direct handoff fields:
-- `native_google_bootstrap_sequence_required = true`
-- `native_google_bootstrap_sequence_mode = direct_id_first`
-- `native_google_connection_attempt_required = true`
-- `native_google_connection_same_cycle_required = true`
+- `activation_transport_sequence_required = true`
+- `activation_transport_mode = governed_http_client`
+- `live_canonical_validation_transport = http_generic_api`
+- `activation_transport_sequence_mode = registry_endpoint_first`
+- `activation_transport_attempt_required = true`
+- `activation_transport_same_cycle_required = true`
 - `live_canonical_validation_required = true`
 - `runtime_authority_validation_required = true`
 - `registry_validation_required = true`
@@ -1214,21 +1216,22 @@ When available, prompt_router MUST also pass:
 - `workflow_registry_gid`
 
 Required downstream execution order to preserve in handoff:
-1. `google_drive.listDriveFiles` or direct equivalent native Drive validation call
-2. `google_drive.getFileMetadata` for canonical file IDs when available
-3. `google_sheets.getSpreadsheet` for the governed registry workbook
-4. governed sheet validation using `worksheet_gid` / `sheetId`, not title-only matching
+1. resolve activation transport capability through Actions Registry
+2. resolve concrete validation endpoints through API Actions Endpoint Registry
+3. execute governed HTTP client validation calls through `http_generic_api`
+4. validate canonical, workbook, and authority-surface readiness through governed transport responses
+5. preserve machine-verifiable transport evidence for each attempted endpoint
 
 Binding preference rule:
-- when canonical file IDs or workbook IDs are present, direct ID resolution is REQUIRED
-- name-based discovery must not be the primary activation path
+- when canonical file IDs, workbook IDs, or endpoint keys are present, registry-backed direct resolution is REQUIRED
+- name-based discovery must not be the primary activation path unless selected as a provider-specific fallback by the registry
 - title-only matching must be treated as degraded fallback behavior
 
 Enforcement rule:
 If prompt_router does not emit the fields above for activation-class routing:
 - `route_status = degraded`
 - `executable = false`
-- `missing_native_attempt_reason = missing_required_native_google_attempt`
+- `missing_activation_transport_attempt_reason = missing_required_activation_transport_attempt`
 
 Classification guard:
 prompt_router must not prepare a user-facing activation result compatible with:
@@ -1237,9 +1240,11 @@ prompt_router must not prepare a user-facing activation result compatible with:
 - `authorization_gated`
 
 unless the activation handoff explicitly preserves:
-- `native_google_bootstrap_sequence_required`
-- `native_google_connection_attempt_required`
-- `native_google_connection_same_cycle_required`
+- `activation_transport_sequence_required`
+- `activation_transport_mode = governed_http_client`
+- `live_canonical_validation_transport = http_generic_api`
+- `activation_transport_attempt_required`
+- `activation_transport_same_cycle_required`
 - `live_canonical_validation_required`
 - direct identifier fields when available
 
@@ -1279,15 +1284,15 @@ When auto-bootstrap routing is selected, routing output should preserve:
 - bootstrap_reason
 - bootstrap_resume_required = true
 - `runtime_authority_validation_required = true`
-- `native_google_connection_attempt_required = true`
-- `native_google_connection_same_cycle_required = true`
-- `native_google_bootstrap_sequence_required = true`
-- `native_google_bootstrap_sequence_mode = direct_id_first`
+- `activation_transport_attempt_required = true`
+- `activation_transport_same_cycle_required = true`
+- `activation_transport_sequence_required = true`
+- `activation_transport_sequence_mode = registry_endpoint_first`
 - `authorization_gated_live_validation_allowed = true`
 - `knowledge_layer_trace_first = true`
 - `knowledge_only_activation_forbidden = true`
-- `missing_native_attempt_classification = degraded`
-- `missing_native_attempt_reason = missing_required_native_google_attempt`
+- `missing_activation_transport_attempt_classification = degraded`
+- `missing_activation_transport_attempt_reason = missing_required_activation_transport_attempt`
 - `registry_workbook_id` when available
 - required `worksheet_gid` / `sheetId` bindings when available
 
@@ -1324,11 +1329,11 @@ For strict-mode routing enforcement, this document must also return:
 - analytics_identity_issue_context when analytics identity pre-validation fails
 - runtime_authority_validation_required when governed execution requires runtime validation
 - registry_validation_required when governed execution requires Registry authority validation
-- native_google_connection_attempt_required when first-turn activation requires a native Google API attempt
-- native_google_connection_same_cycle_required when first-turn activation requires same-cycle attempt evidence
+- activation_transport_attempt_required when first-turn activation requires a governed activation transport attempt
+- activation_transport_same_cycle_required when first-turn activation requires same-cycle attempt evidence
 - knowledge_only_activation_forbidden when traceability-only activation is forbidden
-- missing_native_attempt_classification when missing native attempts require degraded classification
-- missing_native_attempt_reason when missing native attempts require explicit traceability reason
+- missing_activation_transport_attempt_classification when missing activation transport attempts require degraded classification
+- missing_activation_transport_attempt_reason when missing activation transport attempts require explicit traceability reason
 - target_surface_id when governed target identity is available
 - route_validation_required when governed route validation is required
 - workflow_validation_required when governed workflow validation is required
@@ -1364,9 +1369,9 @@ The execution preparation contract must include:
 
 When governed execution may use native Google Drive, Sheets, or Docs actions, the execution preparation contract must also preserve when available:
 - `native_google_action_path_possible`
-- `native_google_connection_attempt_required`
-- `native_google_connection_same_cycle_required`
-- `native_google_attempt_evidence_required`
+- `activation_transport_attempt_required`
+- `activation_transport_same_cycle_required`
+- `activation_transport_evidence_required`
 - `native_google_mutation_logging_required`
 - `native_google_validation_only_allowed`
 - `native_google_execution_class`
@@ -1374,21 +1379,21 @@ When governed execution may use native Google Drive, Sheets, or Docs actions, th
 - `logging_sink_required`
 - `pre_response_logging_guard`
 
-If the routed path may perform governed mutation through native Google tools:
+If the routed path may perform governed mutation through governed activation transport tools:
 - routing must preserve `native_google_mutation_logging_required = true`
 - routing must preserve `logging_sink_required = surface.operations_log_unified_sheet`
 - routing must not treat native Google tooling availability as sufficient completion evidence
 
 When activation or bootstrap routing is selected, the execution preparation contract must also include when available:
-- `native_google_connection_attempt_required`
-- `native_google_connection_same_cycle_required`
+- `activation_transport_attempt_required`
+- `activation_transport_same_cycle_required`
 - `knowledge_only_activation_forbidden`
 - `live_canonical_validation_required`
 - `runtime_authority_validation_required`
 - `registry_validation_required`
 - `canonical_trace_required`
-- `missing_native_attempt_classification`
-- `missing_native_attempt_reason`
+- `missing_activation_transport_attempt_classification`
+- `missing_activation_transport_attempt_reason`
 
 When transport execution is HTTP or OpenAPI-driven, the execution preparation contract must also include when available:
 - `provider_domain`
@@ -1403,13 +1408,13 @@ When transport execution is HTTP or OpenAPI-driven, the execution preparation co
 
 `provider_domain` is the primary execution server source for HTTP client requests.
 
-If `provider_domain` for an endpoint is a variable placeholder, GPT must resolve it before execution.
+If `provider_domain` for an endpoint is a variable placeholder, agent runtime must resolve it before execution.
 
-For `parent_action_key = wordpress_api`, GPT must replace `provider_domain` with Brand Registry `brand.base_url` before execution.
+For `parent_action_key = wordpress_api`, agent runtime must replace `provider_domain` with Brand Registry `brand.base_url` before execution.
 
-For non-WordPress APIs, `provider_domain` must remain the endpoint-row value unless the endpoint definition explicitly declares a variable placeholder requiring GPT-side resolution.
+For non-WordPress APIs, `provider_domain` must remain the endpoint-row value unless the endpoint definition explicitly declares a variable placeholder requiring agent-runtime-side resolution.
 
-GPT must follow endpoint `parent_action_key` authority by resolving the authoritative parent action row through Actions Registry and its `openai_schema_file_id` / YAML binding before execution assembly.
+agent runtime must follow endpoint `parent_action_key` authority by resolving the authoritative parent action row through Actions Registry and its `openai_schema_file_id` / YAML binding before execution assembly.
 
 Executable HTTP/OpenAPI routing preparation is incomplete unless:
 - `parent_action_key` resolves
@@ -1469,7 +1474,7 @@ Validation Request Live Canonical Declaration Rule
 When a request is classified as validation, audit, verification, readiness check, or canonical check, prompt_router must preserve in the execution preparation contract:
 
 - `live_canonical_validation_required = true`
-- `validation_source_requirement = google_drive_live_canonical`
+- `validation_source_requirement = http_generic_api_live_canonical`
 - `knowledge_layer_validation_only_for_traceability = true`
 
 prompt_router must not treat uploaded copies, knowledge-layer copies, or cached canonical text as sufficient validation authority when live canonical resolution is possible.
@@ -1738,9 +1743,9 @@ If Registry-governed target validation is required but unresolved:
 
 Resolved HTTP Execution Assembly Rule
 
-Before governed HTTP transport execution, GPT must assemble a fully resolved execution request.
+Before governed HTTP transport execution, agent runtime must assemble a fully resolved execution request.
 
-GPT must resolve when applicable:
+agent runtime must resolve when applicable:
 - `provider_domain` from endpoint authority, with governed Brand Registry override when applicable
 - `parent_action_key` from Actions Registry or workflow context
 - `endpoint_key` from API Actions Endpoint Registry or canonical OpenAPI definition
@@ -1752,7 +1757,7 @@ GPT must resolve when applicable:
 - governed auth strategy normalized from the parent action row
 - schema-aligned request fields required by the parent action contract
 
-Before executable HTTP transport payload is emitted, GPT must:
+Before executable HTTP transport payload is emitted, agent runtime must:
 - read the authoritative parent capability row in `Actions Registry`
 - resolve `openai_schema_file_id`
 - align path, query, headers, and body to the authoritative schema contract
@@ -1808,12 +1813,12 @@ prompt_router must not emit executable routing for `http_generic_api` unless:
 
 For governed HTTP execution:
 - `provider_domain` is the primary execution server source
-- GPT must resolve execution-ready transport inputs before transport execution
-- GPT must resolve `parent_action_key` and `endpoint_key` through governed endpoint authority
-- GPT must follow the authoritative parent action row through its `openai_schema_file_id` / YAML binding before execution assembly
-- GPT must resolve `provider_domain` when it is a variable placeholder
-- for `parent_action_key = wordpress_api`, GPT must replace `provider_domain` with Brand Registry `brand.base_url`
-- for non-WordPress APIs, `provider_domain` must remain the endpoint-row value unless the endpoint definition explicitly declares a variable placeholder requiring GPT-side resolution
+- agent runtime must resolve execution-ready transport inputs before transport execution
+- agent runtime must resolve `parent_action_key` and `endpoint_key` through governed endpoint authority
+- agent runtime must follow the authoritative parent action row through its `openai_schema_file_id` / YAML binding before execution assembly
+- agent runtime must resolve `provider_domain` when it is a variable placeholder
+- for `parent_action_key = wordpress_api`, agent runtime must replace `provider_domain` with Brand Registry `brand.base_url`
+- for non-WordPress APIs, `provider_domain` must remain the endpoint-row value unless the endpoint definition explicitly declares a variable placeholder requiring agent-runtime-side resolution
 
 For WordPress capability requests:
 - prompt_router may resolve `target_module = wordpress_api`
@@ -2052,8 +2057,8 @@ If no confident route match is found:
   - exact `provider_domain`
   - exact `method`
   - exact `path`
-- GPT must then resolve the authoritative parent action row through Actions Registry and its `openai_schema_file_id` / YAML binding before execution assembly
-- if `provider_domain` is a variable placeholder, GPT must resolve it before execution
+- agent runtime must then resolve the authoritative parent action row through Actions Registry and its `openai_schema_file_id` / YAML binding before execution assembly
+- if `provider_domain` is a variable placeholder, agent runtime must resolve it before execution
 - prompt_router must not emit executable routing from fuzzy discovery alone
 - silent non-tool fallback is forbidden when a governed action or endpoint candidate resolves to an active Task Routes + Workflow Registry pair
 - only fallback to non-tool response if no governed action or endpoint candidate resolves to an active governed route/workflow pair
@@ -2082,7 +2087,7 @@ THEN:
    - resolve exact `method`
    - resolve exact `path`
    - follow the authoritative parent action row through its `openai_schema_file_id` / YAML binding
-   - if `provider_domain` is a variable placeholder, GPT must resolve it before execution
+   - if `provider_domain` is a variable placeholder, agent runtime must resolve it before execution
    - route to endpoint-bound workflow through the resolved governed route/workflow pair
 5. ELSE:
    - allow non-tool response
@@ -2964,14 +2969,14 @@ When mandatory runtime authority validation applies to governed execution, outpu
 - validation_source_requirement when live canonical validation is required
 - knowledge_layer_validation_only_for_traceability when knowledge-first activation routing applies
 - canonical_trace_required when canonical knowledge and live validation must be compared
-- `native_google_connection_attempt_required` when activation-class execution must auto-trigger native API validation
-- `native_google_connection_same_cycle_required` when activation-class execution requires native API attempt evidence in the same cycle
+- `activation_transport_attempt_required` when activation-class execution must auto-trigger governed transport validation
+- `activation_transport_same_cycle_required` when activation-class execution requires activation transport attempt evidence in the same cycle
 - `authorization_gated_live_validation_allowed` when first-turn activation may begin before native API authorization is available
 - `authorization_gate_classification` when live canonical validation is deferred by native API authorization state
-- `knowledge_layer_trace_first` when canonicals must be read from GPT Knowledge layer before native API connection attempts
+- `knowledge_layer_trace_first` when canonicals must be read from knowledge layer before governed HTTP validation attempts
 - `knowledge_only_activation_forbidden` when traceability-only activation outcomes are forbidden
-- `missing_native_attempt_classification` when omitted native attempts require degraded routing classification
-- `missing_native_attempt_reason` when omitted native attempts require explicit reason traceability
+- `missing_activation_transport_attempt_classification` when omitted activation transport attempts require degraded routing classification
+- `missing_activation_transport_attempt_reason` when omitted activation transport attempts require explicit reason traceability
 
 When Google Workspace native action routing is implied for governed resources, output should also include when available:
 - target_surface_id
@@ -3039,21 +3044,21 @@ Knowledge-First Activation Preparation Rule
 
 For `intent_key = system_activation_check` and `intent_key = system_auto_bootstrap` when activation is requested, prompt_router must prepare an execution handoff that preserves a dual-source validation model:
 
-- GPT Knowledge layer canonical files are read first for canonical traceability
+- knowledge layer canonical files are read first for canonical traceability
 - Google Drive and native Google APIs are then required for live authority validation
-- GPT Knowledge layer canonical files are used for traceability first.
-- Google Drive and native Google API validation are used for runtime readiness authority.
+- knowledge layer canonical files are used for traceability first.
+- Governed HTTP client transport is used for runtime readiness authority.
 
 prompt_router must not mark activation-preparation routing as executable unless the downstream handoff preserves:
 - `live_canonical_validation_required = true`
-- `validation_source_requirement = google_drive_live_canonical`
+- `validation_source_requirement = http_generic_api_live_canonical`
 - `knowledge_layer_validation_only_for_traceability = true`
 - `canonical_trace_required = true`
 
 For first-turn activation:
-- GPT Knowledge layer canonical files must be used first for traceability
-- native Google Drive, Google Sheets, and Google Docs connection attempts must auto-trigger immediately afterward in the same execution cycle, and omission of the attempt must be classified as `missing_required_native_google_attempt`
-- if native authorization is not yet available, routing must preserve `authorization_gated` traceability rather than misclassifying the condition as missing Registry authority
+- knowledge layer canonical files must be used first for traceability
+- governed HTTP client validation calls must auto-trigger immediately afterward in the same execution cycle, and omission of the attempt must be classified as `missing_required_activation_transport_attempt`
+- if provider authorization is not yet available, routing must preserve `authorization_gated` traceability rather than misclassifying the condition as missing Registry authority
 - routing may remain executable for bootstrap lifecycle continuation when the condition is authorization-gated and repairable
 
 If activation routing would rely on knowledge-layer content alone while live canonical validation remains possible:
@@ -3649,7 +3654,7 @@ Change Log
 - v3.41 - unified activation semantics updated: plain `activate system` now prefers `system_auto_bootstrap` rather than validation-only routing
 - v3.41 - first-turn activation native-connection rule added: after knowledge-layer traceability, prompt_router now auto-triggers governed Google Drive/Sheets/Docs connection attempts for live canonical validation
 - v3.41 - authorization-gated activation handling added: missing native API authorization during first-turn activation no longer implies missing Registry authority
-- v3.40 - Knowledge-first activation preparation added: `system_activation_check` now requires GPT Knowledge layer canonical traceability first and live Google Drive / native Google API validation second
+- v3.40 - Knowledge-first activation preparation added: `system_activation_check` now requires knowledge layer canonical traceability first and live Google Drive / governed transport validation second
 - v3.40 - activation routing output expanded with `live_canonical_validation_required`, `validation_source_requirement`, `knowledge_layer_validation_only_for_traceability`, and `canonical_trace_required`
 - v3.39 - Auto-Bootstrap Routing Rule added: prompt_router now supports governed `system_auto_bootstrap` routing for automatic validation, repair, activation, and original-request resume
 - v3.39 - bootstrap precedence and output contract added: routing now preserves `bootstrap_reason`, original request context, and bounded resume-aware execution preparation
