@@ -93,6 +93,7 @@ const REQUIRED_MODULES = [
   "executionAsync.js",
   "executionResponse.js",
   "registryPolicyAccess.js",
+  "registryExecutionEligibility.js",
   "driveFileLoader.js",
   "sheetHelpers.js",
   "googleSheets.js",
@@ -281,6 +282,19 @@ const REQUIRED_REGISTRY_POLICY_ACCESS_EXPORTS = [
 
 for (const name of REQUIRED_REGISTRY_POLICY_ACCESS_EXPORTS) {
   assert(`registryPolicyAccess exports ${name}`, name in registryPolicyAccessModule);
+}
+
+section("Required registryExecutionEligibility exports");
+
+const registryEligibilityModule = await import("./registryExecutionEligibility.js");
+const REQUIRED_REGISTRY_ELIGIBILITY_EXPORTS = [
+  "requireRuntimeCallableAction",
+  "requireEndpointExecutionEligibility",
+  "requireExecutionModeCompatibility"
+];
+
+for (const name of REQUIRED_REGISTRY_ELIGIBILITY_EXPORTS) {
+  assert(`registryExecutionEligibility exports ${name}`, name in registryEligibilityModule);
 }
 
 section("Required executionResponse exports");
