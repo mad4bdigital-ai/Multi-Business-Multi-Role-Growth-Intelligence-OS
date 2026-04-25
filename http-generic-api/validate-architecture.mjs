@@ -91,6 +91,7 @@ const REQUIRED_MODULES = [
   "executionPreparation.js",
   "executionDispatch.js",
   "executionAsync.js",
+  "executionResponse.js",
   "driveFileLoader.js",
   "sheetHelpers.js",
   "googleSheets.js",
@@ -267,6 +268,17 @@ const REQUIRED_EXECUTION_ASYNC_EXPORTS = [
 
 for (const name of REQUIRED_EXECUTION_ASYNC_EXPORTS) {
   assert(`executionAsync exports ${name}`, name in executionAsyncModule);
+}
+
+section("Required executionResponse exports");
+
+const executionResponseModule = await import("./executionResponse.js");
+const REQUIRED_EXECUTION_RESPONSE_EXPORTS = [
+  "validateAndShapeExecutionResponse"
+];
+
+for (const name of REQUIRED_EXECUTION_RESPONSE_EXPORTS) {
+  assert(`executionResponse exports ${name}`, name in executionResponseModule);
 }
 
 section("Required auth exports");
