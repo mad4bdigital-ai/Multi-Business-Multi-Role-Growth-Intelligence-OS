@@ -17,12 +17,19 @@ import {
 } from "./runtimeState.js";
 
 import {
-  requireEnv,
-  debugEnabled,
-  debugLog,
-  backendApiKeyEnabled,
-  requireBackendApiKey
+  requireEnv as requireEnvCore,
+  isBackendApiKeyEnabled,
+  isDebugEnabled,
+  createDebugLog,
+  createBackendApiKeyMiddleware
 } from "./runtimeGuards.js";
+
+import {
+  jsonParseSafe,
+  boolFromSheet,
+  asBool,
+  rowToObject
+} from "./runtimeHelpers.js";
 
 import {
   requireMcpToken,
@@ -34,10 +41,6 @@ import {
 
 import {
   extractJsonAssetPayloadBody,
-  jsonParseSafe,
-  boolFromSheet,
-  asBool,
-  rowToObject,
   matchesHostingerSshTarget,
   normalizePath,
   normalizeProviderDomain,
@@ -631,6 +634,17 @@ import {
   dispatchEndpointKeyExecution,
   configureJobRunner
 } from "./jobRunner.js";
+
+
+// --- Runtime Guards Initialization ---
+const debugLog = createDebugLog(process.env);
+const debugEnabled = isDebugEnabled(process.env);
+const backendApiKeyEnabled = isBackendApiKeyEnabled(process.env);
+const requireBackendApiKey = createBackendApiKeyMiddleware(process.env);
+
+function requireEnv(name) {
+  return requireEnvCore(name, process.env[name]);
+}
 
 
 const app = express();
