@@ -94,6 +94,7 @@ const REQUIRED_MODULES = [
   "executionResponse.js",
   "registryPolicyAccess.js",
   "registryExecutionEligibility.js",
+  "registryTransportGovernance.js",
   "driveFileLoader.js",
   "sheetHelpers.js",
   "googleSheets.js",
@@ -295,6 +296,23 @@ const REQUIRED_REGISTRY_ELIGIBILITY_EXPORTS = [
 
 for (const name of REQUIRED_REGISTRY_ELIGIBILITY_EXPORTS) {
   assert(`registryExecutionEligibility exports ${name}`, name in registryEligibilityModule);
+}
+
+section("Required registryTransportGovernance exports");
+
+const registryTransportModule = await import("./registryTransportGovernance.js");
+const REQUIRED_REGISTRY_TRANSPORT_EXPORTS = [
+  "isDelegatedTransportTarget",
+  "requireNativeFamilyBoundary",
+  "requireTransportIfDelegated",
+  "requireNoFallbackDirectExecution",
+  "getPlaceholderResolutionSources",
+  "resolveRuntimeProviderDomainSource",
+  "resolveProviderDomain"
+];
+
+for (const name of REQUIRED_REGISTRY_TRANSPORT_EXPORTS) {
+  assert(`registryTransportGovernance exports ${name}`, name in registryTransportModule);
 }
 
 section("Required executionResponse exports");
