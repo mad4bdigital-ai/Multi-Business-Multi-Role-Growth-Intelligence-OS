@@ -1,5 +1,7 @@
 import { READ_POLICIES } from "./registryReadPolicies.js";
 export { READ_POLICIES };
+import { policyValue, policyList } from "./registryPolicyAccess.js";
+export { policyValue, policyList };
 
 function defaultBoolFromSheet(value) {
   if (value === true || value === false) return value;
@@ -25,24 +27,6 @@ function getJsonParseSafe(deps = {}) {
 
 function getDebugLog(deps = {}) {
   return deps.debugLog || (() => {});
-}
-
-export function policyValue(policies, group, key, fallback = "", deps = {}) {
-  const boolFromSheet = getBoolFromSheet(deps);
-  const row = (policies || []).find(
-    policy =>
-      policy.policy_group === group &&
-      policy.policy_key === key &&
-      boolFromSheet(policy.active)
-  );
-  return row ? row.policy_value : fallback;
-}
-
-export function policyList(policies, group, key, deps = {}) {
-  return String(policyValue(policies, group, key, "", deps))
-    .split("|")
-    .map(value => value.trim())
-    .filter(Boolean);
 }
 
 export function isDelegatedTransportTarget(endpoint = {}, deps = {}) {

@@ -92,6 +92,7 @@ const REQUIRED_MODULES = [
   "executionDispatch.js",
   "executionAsync.js",
   "executionResponse.js",
+  "registryPolicyAccess.js",
   "driveFileLoader.js",
   "sheetHelpers.js",
   "googleSheets.js",
@@ -268,6 +269,18 @@ const REQUIRED_EXECUTION_ASYNC_EXPORTS = [
 
 for (const name of REQUIRED_EXECUTION_ASYNC_EXPORTS) {
   assert(`executionAsync exports ${name}`, name in executionAsyncModule);
+}
+
+section("Required registryPolicyAccess exports");
+
+const registryPolicyAccessModule = await import("./registryPolicyAccess.js");
+const REQUIRED_REGISTRY_POLICY_ACCESS_EXPORTS = [
+  "policyValue",
+  "policyList"
+];
+
+for (const name of REQUIRED_REGISTRY_POLICY_ACCESS_EXPORTS) {
+  assert(`registryPolicyAccess exports ${name}`, name in registryPolicyAccessModule);
 }
 
 section("Required executionResponse exports");
