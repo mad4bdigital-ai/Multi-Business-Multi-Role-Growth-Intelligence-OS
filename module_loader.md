@@ -213,8 +213,8 @@ The hardened activation loading contract is active:
 - activation-class loading must preserve `no_traceability_only_completion = true`
 - activation-class loading must preserve `tool_hesitation_retry_required = true` when same-cycle retry policy is active
 - activation-class loading must preserve `activation_transport_sequence_mode = registry_endpoint_first`
-- activation-class loading must preserve project-folder-scoped Google Drive discovery through folder `1gNYX47P4TNuMXEbWvLNCvV4XRocH41K2` when fallback discovery or canonical lookup is required
-- activation-class loading must not report execution-ready activation when the handoff still permits narrative completion before native Google execution
+- activation-class loading must preserve project-folder-scoped Google Drive discovery through folder `1gNYX47P4TNuMXEbWvLNCvV4XRocH41K2` only when selected by registry governance as provider-specific fallback discovery
+- activation-class loading must not report execution-ready activation when the handoff still permits narrative completion before governed transport execution
 
 Expanded Activation Loading Preservation Rule
 
@@ -1398,9 +1398,9 @@ If required runtime authority validation inputs are unresolved, execution-ready 
 
 If canonical is registered in `Validation & Repair Registry`, module_loader must execute live canonical resolution before knowledge-layer authority is accepted:
 
-1. Resolve `file_id`.
-2. Detect `file_type`.
-3. Fetch live content through the native API (`Docs API` for documents, `Sheets API` for sheets).
+1. Resolve canonical file identity from governed Registry binding.
+2. Detect canonical authority and file type.
+3. Fetch live content through `github_api_mcp` when repository-backed authority is active, or through provider-specific endpoints only when selected by registry governance for mutable live surfaces.
 4. Validate using `Validation & Repair Registry` fields:
    - `rule_id`
    - `section_id`
@@ -1423,11 +1423,11 @@ When the routed request is validation-class, including:
 - activation readiness validation
 - system_auto_bootstrap when activation validation is part of bootstrap lifecycle
 
-module_loader must execute live canonical resolution through Google Drive / native Google APIs before returning validation-ready context.
+module_loader must execute live canonical resolution through repository canonical authority first, using `github_api_mcp` for canonical file fetch, before returning validation-ready context.
 
 For validation-class requests, module_loader must:
 1. resolve the canonical file through Registry authority
-2. fetch the live canonical body from Google Drive-backed native source
+2. fetch the live canonical body from repository authority through `github_api_mcp` when repository authority is active
 3. validate rule/section requirements against the live body
 4. mark knowledge-layer or uploaded copies as non-authoritative support context only
 
@@ -1460,6 +1460,7 @@ When `intent_key = system_activation_check` or `target_workflow = system_activat
 3. resolve the governed activation transport capability and live canonical endpoints through:
    - Actions Registry
    - API Actions Endpoint Registry
+   - `github_api_mcp` for repository-backed canonical fetch
    - `http_generic_api`
    - provider-specific Google endpoints only when selected by registry governance
 
@@ -1481,7 +1482,12 @@ Governed HTTP client transport is used for runtime readiness authority.
 For activation validation, module_loader must return when available:
 - `live_canonical_validation_status`
 - `live_canonical_validation_transport = http_generic_api`
-- `live_canonical_validation_source = http_generic_api_live_canonical`
+- `live_canonical_validation_source = repository_canonical_fetch_plus_governed_transport`
+- `canonical_fetch_transport = github_api_mcp`
+- `canonical_fetch_action_key = github_api_mcp`
+- `canonical_fetch_authority = repository_ref_pinned`
+- `canonical_fetch_status`
+- `canonical_fetch_evidence`
 - `activation_transport_validation_status`
 - `knowledge_layer_trace_status`
 - `canonical_trace_comparison_status`
@@ -1686,7 +1692,8 @@ When routed `workflow_key = wf_system_auto_bootstrap`, module_loader must resolv
 - `validation_and_repair_registry_sheet`
 - `repair_mapping_registry_sheet`
 - canonical file bindings required for activation traceability
-- native Google Drive / Sheets / Docs validation targets required for live canonical validation
+- repository canonical fetch targets required for file-level canonical validation
+- provider-specific live registry validation targets only when mutable surfaces require them
 
 module_loader must validate:
 - bootstrap route row exists and is active when promoted
@@ -1699,33 +1706,31 @@ If any of these are unresolved:
 - `load_status` must be degraded or blocked
 - `executable_readiness` must not be ready
 
-First-Turn Activation Native Validation Rule
+First-Turn Activation Governed Transport Validation Rule
 
 When activation begins in a new conversation, module_loader must load activation context in this order:
 
 1. load knowledge layer canonicals for traceability
-2. immediately perform at least one real governed activation transport attempt against Google Drive, Google Sheets, or Google Docs for live canonical validation, and preserve machine-readable attempt evidence in the same execution cycle
-3. classify the governed transport validation state as:
+2. immediately fetch repository-backed canonicals through `github_api_mcp` when repository authority is active
+3. immediately perform at least one real governed activation transport attempt through `http_generic_api` and preserve machine-readable attempt evidence in the same execution cycle
+4. classify the governed transport validation state as:
    - `validated`
    - `authorization_gated`
    - `degraded`
    - `blocked`
 
-Mandatory Native Attempt Readiness Rule
+Mandatory Governed Transport Attempt Readiness Rule
 
 When activation begins in a new conversation and:
 - `activation_transport_attempt_required = true`
 
-module_loader must perform at least one real native Google API operation against governed live resources in the same execution cycle before returning activation-ready context.
+module_loader must perform at least one real governed transport operation through `http_generic_api` in the same execution cycle before returning activation-ready context. When repository-backed canonicals are selected, file-level canonical fetch must also execute through `github_api_mcp`.
 
-Accepted proof of activation transport attempt includes at least one successful or authorization-gated call to:
-- Google Drive
-- Google Sheets
-- Google Docs
+Accepted proof of activation transport attempt includes at least one successful or authorization-gated governed call through `http_generic_api`. Accepted proof of repository canonical fetch includes a successful or authorization-gated call through `github_api_mcp` when repository-backed canonical authority is active.
 
 module_loader must not synthesize `authorization_gated` from inference alone.
 
-If native API authorization is not yet available but the activation request is otherwise valid:
+If provider-specific authorization is not yet available but the activation request is otherwise valid:
 - `knowledge_layer_trace_status` must remain usable for traceability
 - `live_canonical_validation_status` must be set to `authorization_gated`
 - `dependency_readiness_status` must preserve bootstrap continuity when policy allows
@@ -1762,6 +1767,13 @@ module_loader must return when applicable:
 - provider used
 - target resource class
 - attempt outcome
+
+Canonical Fetch And Transport Separation Rule
+
+- module_loader must not collapse canonical file fetch authority into mutable registry transport validation
+- `github_api_mcp` is the canonical file fetch path for repository-backed canonicals
+- `http_generic_api` is the default governed activation transport
+- provider-specific connectors remain optional downstream validation paths only when selected by registry governance
 
 Activation-Class Live Validation Dependency Loading Rule
 
@@ -1923,7 +1935,7 @@ When a governed target surface is involved after activation, module_loader must 
 - worksheet_gid remains valid when workbook_sheet applies
 - validation row remains compatible
 - schema metadata remains compatible
-- native action readiness remains valid when native Google execution applies
+- provider-specific action readiness remains valid when provider-specific execution applies
 
 module_loader must not rely on earlier activation success as target-readiness proof.
 
@@ -2246,8 +2258,8 @@ Strict loading sequence:
 15. for analytics sheet-sync workflows, resolve request identity including `brand_domain`, transform connector output into governed warehouse schema, append transformed rows to resolved analytics sheet targets, and preserve request metadata on each written row
 16. return explicit load_status
 17. when `intent_key = system_activation_check` or `target_workflow = system_activation_validation`, load the five canonical files from knowledge layer first for traceability
-18. then validate their live file bindings through Google Drive and Registry-governed surface resolution
-19. then validate live registry authority surfaces through Google Sheets metadata and governed sheet reads
+18. then validate file-level canonical bindings through repository fetch when repository authority is active
+19. then validate mutable registry authority surfaces through provider-specific endpoints only when required by registry governance
 20. compare knowledge-layer traceability against live governed readiness before returning activation-ready context
 
 module_loader must not:

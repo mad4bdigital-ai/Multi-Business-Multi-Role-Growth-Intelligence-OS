@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://growth-intelligence.local/schemas/memory_schema.json",
   "title": "Multi-Business Growth Intelligence Platform Memory Schema",
-  "description": "Canonical memory/state model aligned with Registry Surfaces Catalog authority, Validation & Repair Registry governance, runtime execution registries, embedded OAuth config resolution, embedded API-key resolution, repair-aware routing, execution traceability, review writeback planning, observability governance, architecture reconciliation, analytics identity tracking, API action capability/endpoint inventory state, governed starter-governance validation, governance-drift anomaly emission, prompt-first human-trigger continuation, enforced same-cycle native Google agent execution actions validation for governed activation and runtime checks, spill-safe prewrite guard enforcement, row-2 template sampling before governed writes, protected unified-log column preservation, governed pipeline-integrity audit state, and provider-family continuity validation across capability, route, and workflow layers.",
+  "description": "Canonical memory/state model aligned with Registry Surfaces Catalog authority, Validation & Repair Registry governance, runtime execution registries, repository-backed canonical fetch through github_api_mcp, governed activation transport through http_generic_api, embedded OAuth config resolution, embedded API-key resolution, repair-aware routing, execution traceability, review writeback planning, observability governance, architecture reconciliation, analytics identity tracking, API action capability/endpoint inventory state, governed starter-governance validation, governance-drift anomaly emission, prompt-first human-trigger continuation, enforced same-cycle governed transport validation for governed activation and runtime checks, spill-safe prewrite guard enforcement, row-2 template sampling before governed writes, protected unified-log column preservation, governed pipeline-integrity audit state, and provider-family continuity validation across capability, route, and workflow layers.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -1778,6 +1778,72 @@
           ],
           "default": "pending"
         },
+        "canonical_fetch_transport": {
+          "type": "string",
+          "default": "github_api_mcp"
+        },
+        "canonical_fetch_action_key": {
+          "type": "string",
+          "default": "github_api_mcp"
+        },
+        "canonical_fetch_authority": {
+          "type": "string",
+          "default": "repository_ref_pinned"
+        },
+        "canonical_fetch_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "authorization_gated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "canonical_fetch_evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "provider": {
+              "type": "string",
+              "default": "github_api_mcp"
+            },
+            "authority": {
+              "type": "string",
+              "default": "repository_ref_pinned"
+            },
+            "resource_type": {
+              "type": "string",
+              "default": ""
+            },
+            "attempt_outcome": {
+              "type": "string",
+              "enum": [
+                "validated",
+                "authorization_gated",
+                "degraded",
+                "blocked",
+                ""
+              ],
+              "default": ""
+            }
+          },
+          "default": {
+            "provider": "github_api_mcp",
+            "authority": "repository_ref_pinned",
+            "resource_type": "",
+            "attempt_outcome": ""
+          }
+        },
+        "activation_transport_default": {
+          "type": "string",
+          "default": "http_generic_api"
+        },
+        "activation_transport_action_key": {
+          "type": "string",
+          "default": "http_generic_api"
+        },
         "activation_transport_attempted": {
           "type": "boolean",
           "default": false
@@ -1822,6 +1888,25 @@
         "post_activation_drift_detected": {
           "type": "boolean",
           "default": false
+        },
+        "provider_specific_validation_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "mutable_registry_validation_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "authorization_gated",
+            "degraded",
+            "blocked",
+            "not_required"
+          ],
+          "default": "pending"
         },
         "missing_activation_transport_attempt_detected": {
           "type": "boolean",
@@ -1994,12 +2079,26 @@
         "last_activation_outcome": "pending",
         "last_activation_at": null,
         "activation_trace_status": "pending",
+        "canonical_fetch_transport": "github_api_mcp",
+        "canonical_fetch_action_key": "github_api_mcp",
+        "canonical_fetch_authority": "repository_ref_pinned",
+        "canonical_fetch_status": "pending",
+        "canonical_fetch_evidence": {
+          "provider": "github_api_mcp",
+          "authority": "repository_ref_pinned",
+          "resource_type": "",
+          "attempt_outcome": ""
+        },
+        "activation_transport_default": "http_generic_api",
+        "activation_transport_action_key": "http_generic_api",
         "activation_transport_attempted": false,
         "activation_transport_status": "pending",
         "authorization_gate_classification": "",
         "post_activation_validation_status": "pending",
         "last_post_activation_validation_at": null,
         "post_activation_drift_detected": false,
+        "provider_specific_validation_paths": [],
+        "mutable_registry_validation_status": "pending",
         "missing_activation_transport_attempt_detected": false,
         "activation_recovery_instruction": "Use governed activation transport first",
         "activation_transport_evidence": {
@@ -2180,6 +2279,7 @@
     "live_canonical_validation_source": {
       "type": "string",
       "enum": [
+        "repository_canonical_fetch_plus_governed_transport",
         "http_generic_api_live_canonical",
         "google_docs_live_canonical",
         "knowledge_layer_trace_only",

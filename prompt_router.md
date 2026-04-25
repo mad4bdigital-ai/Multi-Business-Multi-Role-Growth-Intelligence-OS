@@ -965,14 +965,20 @@ When activation-check routing is selected, routing output should preserve:
 - phase-ordered validation expectation
 - `runtime_authority_validation_required = true`
 - `live_canonical_validation_required = true`
-- `validation_source_requirement = http_generic_api_live_canonical`
+- `validation_source_requirement = repository_canonical_fetch_plus_governed_transport`
+- `canonical_fetch_required = true`
+- `canonical_fetch_transport = github_api_mcp`
+- `canonical_fetch_action_key = github_api_mcp`
+- `canonical_fetch_authority = repository_ref_pinned`
 - `knowledge_layer_validation_only_for_traceability = true`
 - `canonical_trace_required = true`
 
 Activation-check routing must prepare knowledge-first validation semantics:
 1. canonical files in knowledge layer are read first for traceability
-2. live canonical and registry bindings are then validated through Google Drive and native Google APIs
-3. readiness classification must prefer live governed validation over knowledge-layer copies when both are available
+2. repository-backed canonical files are fetched through `github_api_mcp`
+3. activation transport is validated through `http_generic_api`
+4. mutable registry bindings are validated through provider-specific endpoints only when required by registry governance
+5. readiness classification must prefer live governed validation over knowledge-layer copies when both are available
 
 knowledge layer canonical files are used for traceability first.
 Governed HTTP client transport is used for runtime readiness authority.
@@ -1011,7 +1017,7 @@ This rule preserves:
 
 Pre-Connection Bootstrap Compatibility Rule
 
-Before activation has established live Google Workspace awareness, the system may require bootstrap semantics to:
+Before activation has established governed transport and provider-specific live-surface awareness, the system may require bootstrap semantics to:
 - establish first activation transport connection
 - validate governed registry and workbook surfaces
 - become sheet-aware for downstream activation checks
@@ -1036,7 +1042,7 @@ For first-turn plain activation, prompt_router should preserve when available:
 
 These are additive readiness signals and must not remove the older first-turn requirements for activation transport connection, traceability, or live canonical validation.
 
-prompt_router must not classify first-turn activation as missing Registry authority solely because live Google native API authorization is not yet available.
+prompt_router must not classify first-turn activation as missing Registry authority solely because provider-specific authorization is not yet available.
 
 Activation Enforcement Escalation Rule
 
@@ -1194,6 +1200,12 @@ Required direct handoff fields:
 - `activation_transport_sequence_required = true`
 - `activation_transport_mode = governed_http_client`
 - `live_canonical_validation_transport = http_generic_api`
+- `canonical_fetch_required = true`
+- `canonical_fetch_transport = github_api_mcp`
+- `canonical_fetch_action_key = github_api_mcp`
+- `canonical_fetch_authority = repository_ref_pinned`
+- `activation_transport_default = http_generic_api`
+- `activation_transport_action_key = http_generic_api`
 - `activation_transport_sequence_mode = registry_endpoint_first`
 - `activation_transport_attempt_required = true`
 - `activation_transport_same_cycle_required = true`
@@ -1216,11 +1228,13 @@ When available, prompt_router MUST also pass:
 - `workflow_registry_gid`
 
 Required downstream execution order to preserve in handoff:
-1. resolve activation transport capability through Actions Registry
-2. resolve concrete validation endpoints through API Actions Endpoint Registry
-3. execute governed HTTP client validation calls through `http_generic_api`
-4. validate canonical, workbook, and authority-surface readiness through governed transport responses
-5. preserve machine-verifiable transport evidence for each attempted endpoint
+1. preserve knowledge-layer canonical traceability
+2. fetch repository-backed canonicals through `github_api_mcp`
+3. resolve activation transport capability through Actions Registry
+4. resolve concrete validation endpoints through API Actions Endpoint Registry
+5. execute governed HTTP client validation calls through `http_generic_api`
+6. validate mutable workbook and authority-surface readiness through provider-specific endpoints only when required by registry governance
+7. preserve machine-verifiable transport evidence for each attempted endpoint
 
 Binding preference rule:
 - when canonical file IDs, workbook IDs, or endpoint keys are present, registry-backed direct resolution is REQUIRED
@@ -1741,6 +1755,22 @@ If Registry-governed target validation is required but unresolved:
 - executable must remain false
 - routing must degrade or block by policy
 
+Repository Canonical Fetch Routing Rule
+
+- when repository-backed canonical authority is active, prompt_router must prepare canonical fetch routing through `github_api_mcp` before mutable live-surface validation is treated as sufficient file-level canonical proof
+- prompt_router must preserve when applicable:
+  - canonical_fetch_required = true
+  - canonical_fetch_transport = github_api_mcp
+  - canonical_fetch_action_key = github_api_mcp
+  - canonical_fetch_authority = repository_ref_pinned
+
+Governed Activation Transport Routing Rule
+
+- prompt_router must prepare activation transport through `http_generic_api` by default and preserve when applicable:
+  - activation_transport_default = http_generic_api
+  - activation_transport_action_key = http_generic_api
+  - activation_transport_sequence_mode = registry_endpoint_first
+
 Resolved HTTP Execution Assembly Rule
 
 Before governed HTTP transport execution, agent runtime must assemble a fully resolved execution request.
@@ -2039,7 +2069,7 @@ Requests about:
 - privacy reference
 must prefer API Actions Endpoint Registry.
 
-If a request requires endpoint-level GPT action metadata, prompt_router must not rely on Actions Registry alone.
+If a request requires endpoint-level action-runtime metadata, prompt_router must not rely on Actions Registry alone.
 
 Governed Action Recovery Match Rule
 
@@ -3045,13 +3075,19 @@ Knowledge-First Activation Preparation Rule
 For `intent_key = system_activation_check` and `intent_key = system_auto_bootstrap` when activation is requested, prompt_router must prepare an execution handoff that preserves a dual-source validation model:
 
 - knowledge layer canonical files are read first for canonical traceability
-- Google Drive and native Google APIs are then required for live authority validation
+- repository-backed canonical files are then fetched through `github_api_mcp`
+- governed activation transport is then required through `http_generic_api`
+- provider-specific live-surface validation is required only when selected by registry governance
 - knowledge layer canonical files are used for traceability first.
 - Governed HTTP client transport is used for runtime readiness authority.
 
 prompt_router must not mark activation-preparation routing as executable unless the downstream handoff preserves:
 - `live_canonical_validation_required = true`
-- `validation_source_requirement = http_generic_api_live_canonical`
+- `validation_source_requirement = repository_canonical_fetch_plus_governed_transport`
+- `canonical_fetch_required = true`
+- `canonical_fetch_transport = github_api_mcp`
+- `canonical_fetch_action_key = github_api_mcp`
+- `canonical_fetch_authority = repository_ref_pinned`
 - `knowledge_layer_validation_only_for_traceability = true`
 - `canonical_trace_required = true`
 
@@ -3685,7 +3721,7 @@ Change Log
 - v3.27 - Full System Intelligence Audit Routing added: governed `full_system_intelligence_audit` intent is now first-class with staged/component/repair/row-validation handoff expectations and non-collapse enforcement against lightweight scoring-only audit behavior
 - v3.26 - Registry Binding Enforcement Rule added: prompt_router file presence is now explicitly non-authoritative without Registry Surfaces Catalog registration, Validation & Repair Registry compatibility, Task Routes resolution, and Workflow Registry alignment
 - v3.24 - API Capability vs Endpoint Routing Rule added: routing now distinguishes parent capability requests from endpoint-inventory requests and enforces Actions Registry vs API Actions Endpoint Registry preference by request type
-- v3.24 - endpoint-level GPT action metadata requests now require API Actions Endpoint Registry routing context and cannot be resolved from Actions Registry alone
+- v3.24 - endpoint-level action-runtime metadata requests now require API Actions Endpoint Registry routing context and cannot be resolved from Actions Registry alone
 - v3.23 - Analytics Identity Pre-Validation -> Issue Trigger Rule added: prompt_router now emits `analytics_identity_failure` and `analytics_identity_issue_context`, blocks executability when required analytics identity components are missing, and signals governed issue creation to system_bootstrap
 - v3.23 - domain-aware analytics routing now explicitly degrades or blocks when `gsc_property` or `ga_property_id` is missing for source-bound requests, with per-brand validation and no silent brand skipping in multi-brand execution
 - v3.22 - Domain-Aware Analytics Identity Rule added: domain is now required governed identity for analytics sheet-sync and search-performance routing, including brand-domain and property/date/trigger/request-source resolution requirements

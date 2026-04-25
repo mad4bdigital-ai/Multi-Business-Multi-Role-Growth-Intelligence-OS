@@ -1799,7 +1799,7 @@ Required live validation path:
 - fetch live canonical content through governed Google native API
 - validate against the live fetched body before classification
 
-If a validation request does not execute against live Google Drive canonicals when live resolution is possible:
+If a validation request does not execute against repository-backed canonicals through `github_api_mcp` when repository-backed live resolution is possible:
 - validation must classify as `Degraded` or `Blocked`
 - `Recovered` classification is forbidden
 - a repair-capable signal must remain available
@@ -3245,12 +3245,12 @@ Actions Registry is the authoritative capability and connector-family registry f
 - tool action families
 - route-target-capable execution surfaces
 
-API Actions Endpoint Registry is the authoritative endpoint inventory and GPT action metadata registry for already-available action operations.
+API Actions Endpoint Registry is the authoritative endpoint inventory and action-runtime metadata registry for already-available action operations.
 
 API Actions Endpoint Registry must be treated as:
-- an inventory or view of GPT actions available to runtime
+- an inventory or view of governed runtime actions available to the execution layer
 - the governed metadata registry for endpoint readiness
-- not the authority that provisions or creates GPT actions on the OpenAI side
+- not the authority that provisions or creates provider-side actions outside governed runtime
 
 Endpoint inventory rows must support metadata validation for:
 - OpenAI schema reference

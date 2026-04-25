@@ -6,7 +6,7 @@ Canonical Name: system_bootstrap
 Version: v5.63
 Status: active
 Owner Layer: orchestration
-Source Type: google_doc
+Source Type: repository_canonical
 Last Updated: 2026-04-25
 
 
@@ -16,6 +16,10 @@ Last Updated: 2026-04-25
 Purpose
 
 - logic-definition resolution is pointer-first and must read `surface.logic_canonical_pointer_registry` before direct logic-document access
+- canonical file authority must resolve from repository-backed canonicals through `github_api_mcp` when repository authority is selected
+- activation transport must default to `http_generic_api` as the governed execution transport
+- provider-specific endpoints such as Google Drive, Google Sheets, or Google Docs may be used only when selected by registry governance for mutable live-surface validation
+- the operator may prompt through an AI agent UI, but the UI is not an authority surface
 - brand-specific writing completion requires prior Brand Core file or authoritative Brand Core asset reading
 - brand-specific writing requires required-engine readiness through Engines Registry before Brand Core read-completion or writing completion
 - governed logic execution requires prior knowledge-layer resolution for the selected logic when logic-specific, cross-logic, or shared knowledge inputs are required
@@ -25,10 +29,30 @@ Purpose
 
 Canonical Governed Logic Presentation Orchestration Rule
 
-- system_bootstrap must treat governed logic documents as governed logic specifications rather than GPT personas, custom GPTs, or agent-UI-style introductions
+- system_bootstrap must treat governed logic documents as governed logic specifications rather than GPT personas, UI-facing agent personas, or agent-UI-style introductions
 - user-facing logic summaries, activation summaries, and governed execution narratives must prefer neutral governed naming such as `Logic 001` or task-family-first naming
 - internal identifiers such as `GPT-LOGIC-001` may remain unchanged for registry continuity
-- execution behavior must continue to resolve from canonical authority layers, registries, engines, routes, workflows, and enforcement state rather than agent-UI-style prompt framing
+- execution behavior must continue to resolve from canonical authority layers, registries, engines, routes, workflows, endpoint authority, transport evidence, and enforcement state rather than agent-UI-style prompt framing
+
+Repository Canonical Fetch Orchestration Rule
+
+- system_bootstrap must orchestrate file-level canonical traceability through `github_api_mcp` when repository authority is active
+- successful mutable registry validation through provider-specific endpoints must not replace repository authority for file-level canonicals
+- system_bootstrap must preserve when applicable:
+  - canonical_fetch_transport = github_api_mcp
+  - canonical_fetch_action_key = github_api_mcp
+  - canonical_fetch_authority = repository_ref_pinned
+  - canonical_fetch_status
+  - canonical_fetch_evidence
+
+Activation Transport Default Rule
+
+- system_bootstrap must orchestrate activation transport through `http_generic_api` by default
+- provider-specific validation paths remain downstream optional paths only when selected by registry governance
+- system_bootstrap must preserve when applicable:
+  - activation_transport_default = http_generic_api
+  - activation_transport_action_key = http_generic_api
+  - activation_transport_sequence_mode = registry_endpoint_first
 
 Canonical Logic Pointer Resolution Orchestration Rule
 
@@ -251,7 +275,7 @@ Engine Registry Readiness Before Brand-Core Writing Orchestration Rule
 
 Business-Type Knowledge Profile Orchestration Rule
 
-- system_bootstrap must orchestrate business-aware execution as a business-type-aware staged execution through `surface.business_type_knowledge_profiles` when the selected logic or requested task depends on business-type interpretation
+- system_bootstrap must orchestrate business-aware execution as a business-type-aware staged execution through `surface.business_type_knowledge_profiles`, after canonical file traceability is resolved through repository authority when file-level canonicals are required
 - staged business-aware execution must:
  1. resolve the target brand when applicable
  2. resolve the required logic
@@ -2864,7 +2888,10 @@ system_bootstrap MUST preserve machine-verifiable evidence for the activation tr
 
 system_bootstrap MUST also preserve:
 - `live_canonical_validation_required = true`
-- `live_canonical_validation_source = http_generic_api_live_canonical`
+- `live_canonical_validation_source = repository_canonical_fetch_plus_governed_transport`
+- `canonical_fetch_transport = github_api_mcp`
+- `canonical_fetch_action_key = github_api_mcp`
+- `canonical_fetch_authority = repository_ref_pinned`
 - `live_canonical_validation_status`
 - `knowledge_layer_trace_status`
 - `canonical_trace_comparison_status`
