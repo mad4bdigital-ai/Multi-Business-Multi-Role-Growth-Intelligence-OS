@@ -1,75 +1,109 @@
-import {
-  getJobFromRedis,
-  setJobInRedis,
-  getIdempotencyEntry,
-  setIdempotencyEntry,
-  deleteIdempotencyEntry,
-  hasIdempotencyEntry
-} from "./queue.js";
-
-// In-memory job store (per-worker). Writes through to Redis on every mutation.
 const inMemoryJobs = new Map();
 
-export const jobRepository = {
-  get(jobId) {
-    return inMemoryJobs.get(String(jobId || "").trim()) || null;
-  },
-  set(job) {
-    const id = String(job?.job_id || "").trim();
-    if (!id) return null;
-    inMemoryJobs.set(id, job);
-    setJobInRedis(job);
-    return inMemoryJobs.get(id);
-  },
-  delete(jobId) {
-    const id = String(jobId || "").trim();
-    if (!id) return;
-    inMemoryJobs.delete(id);
-  },
-  values() {
-    return [...inMemoryJobs.values()];
-  },
-  size() {
-    return inMemoryJobs.size;
-  }
-};
-
-// Idempotency — fully async, backed by Redis.
-export const idempotencyRepository = {
-  async get(key) {
-    return getIdempotencyEntry(key);
-  },
-  async set(key, jobId) {
-    return setIdempotencyEntry(key, jobId);
-  },
-  async delete(key) {
-    return deleteIdempotencyEntry(key);
-  },
-  async has(key) {
-    return hasIdempotencyEntry(key);
-  }
-};
-
-// Resolve a job by ID: in-memory first, then Redis fallback (cross-instance).
-export async function resolveJob(jobId) {
-  return jobRepository.get(jobId) || await getJobFromRedis(jobId);
+export function getInMemoryJobs() {
+  return inMemoryJobs;
 }
 
-export async function failAsyncSubmission(job, idempotencyLookupKey, enqueueResult) {
-  if (job?.job_id) {
-    jobRepository.delete(job.job_id);
-  }
-  if (idempotencyLookupKey) {
+export function createJobRepository({ setJobInRedis, getJobFromRedis, debugLog }) {
+  return {
+    get(id) {
+      return inMemoryJobs.get(String(id || "").trim()) || null;
+    },
+
+    async getWithFallback(id) {
+      const normalizedId = String(id || "").trim();
+      if (!normalizedId) return null;
+      
+      const local = inMemoryJobs.get(normalizedId);
+      if (local) return local;
+
+      try {
+        const fromRedis = await getJobFromRedis(normalizedId);
+        if (fromRedis) {
+          inMemoryJobs.set(normalizedId, fromRedis);
+          return fromRedis;
+        }
+      } catch (err) {
+        if (debugLog) debugLog("jobRepository.getWithFallback redis error", err?.message || err);
+      }
+
+      return null;
+    },
+
+    async set(job) {
+      const id = String(job?.job_id || "").trim();
+      if (!id) return null;
+      inMemoryJobs.set(id, job);
+      await setJobInRedis(job);
+      return job;
+    },
+
+    delete(id) {
+      const normalizedId = String(id || "").trim();
+      if (!normalizedId) return;
+      inMemoryJobs.delete(normalizedId);
+    },
+
+    has(id) {
+      return inMemoryJobs.has(String(id || "").trim());
+    },
+
+    values() {
+      return [...inMemoryJobs.values()];
+    },
+
+    size() {
+      return inMemoryJobs.size;
+    }
+  };
+}
+
+export function createIdempotencyRepository({ getByIdempotencyKey, setByIdempotencyKey, deleteByIdempotencyKey, hasByIdempotencyKey }) {
+  return {
+    async get(key) {
+      return getByIdempotencyKey(key);
+    },
+    async set(key, value) {
+      return setByIdempotencyKey(key, value);
+    },
+    async delete(key) {
+      return deleteByIdempotencyKey(key);
+    },
+    async has(key) {
+      return hasByIdempotencyKey(key);
+    }
+  };
+}
+
+export async function resolveJob(jobRepository, id) {
+  return jobRepository.getWithFallback(id);
+}
+
+export async function failAsyncSubmission(jobRepository, idempotencyRepository, job, errorLike, idempotencyLookupKey) {
+  const message =
+    errorLike?.message ||
+    (typeof errorLike === "string" ? errorLike : "Async submission failed");
+
+  const failed = {
+    ...job,
+    status: "failed",
+    error: message,
+    finished_at: new Date().toISOString()
+  };
+
+  await jobRepository.set(failed);
+
+  if (idempotencyLookupKey && idempotencyRepository) {
     await idempotencyRepository.delete(idempotencyLookupKey);
   }
 
   return {
     ok: false,
     error: {
-      code: enqueueResult?.error?.code || "queue_unavailable",
+      code: errorLike?.code || "queue_unavailable",
       message: "Async job queue is unavailable.",
       details: {
-        queue_error: enqueueResult?.error || null
+        queue_error: errorLike || null
       }
     }
   };

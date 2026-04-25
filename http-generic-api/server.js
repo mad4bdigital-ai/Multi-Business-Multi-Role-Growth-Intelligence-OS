@@ -1,17 +1,19 @@
-
 import express from "express";
 import crypto from "node:crypto";
 import { promises as fs } from "fs";
 import {
   redis, jobQueue, createWorker, closeQueue,
-  getJobFromRedis, getAllJobsFromRedis,
+  getJobFromRedis, setJobInRedis, getAllJobsFromRedis,
+  getIdempotencyEntry, setIdempotencyEntry, deleteIdempotencyEntry, hasIdempotencyEntry,
   getRedisRuntimeStatus, getWaitingCountSafe
 } from "./queue.js";
 
 import {
-  jobRepository,
+  createJobRepository,
+  createIdempotencyRepository,
   resolveJob,
-  failAsyncSubmission
+  failAsyncSubmission,
+  getInMemoryJobs
 } from "./runtimeState.js";
 
 import {
@@ -636,7 +638,31 @@ app.use(express.json({ limit: JSON_BODY_LIMIT }));
 
 
 
-// Code moved to runtimeState.js, runtimeGuards.js, and utils.js
+// --- Runtime State Initialization ---
+const jobRepository = createJobRepository({
+  setJobInRedis,
+  getJobFromRedis,
+  debugLog
+});
+
+const idempotencyRepository = createIdempotencyRepository({
+  getByIdempotencyKey: getIdempotencyEntry,
+  setByIdempotencyKey: setIdempotencyEntry,
+  deleteByIdempotencyKey: deleteIdempotencyEntry,
+  hasByIdempotencyKey: hasIdempotencyEntry
+});
+
+const {
+  getJob,
+  updateJob,
+  enqueueJob,
+  executeSingleQueuedJob
+} = configureJobRunner({
+  jobRepository,
+  executeSiteMigrationJob,
+  performUniversalServerWriteback,
+  logRetryWriteback
+});
 
 const EXECUTION_RESULT_CLASSIFICATIONS = new Set([
   "resolved_sync",
@@ -3017,7 +3043,7 @@ app.post("/site-migrate", requireBackendApiKey, async (req, res) => {
 
   const enqueueResult = await enqueueJob(job.job_id);
   if (!enqueueResult?.ok) {
-    const failure = await failAsyncSubmission(job, idempotencyLookupKey, enqueueResult);
+    const failure = await failAsyncSubmission(jobRepository, idempotencyRepository, job, enqueueResult?.error, idempotencyLookupKey);
     return res.status(503).json(failure);
   }
 
@@ -3220,7 +3246,7 @@ app.post("/jobs", requireBackendApiKey, async (req, res) => {
 
   const enqueueResult = await enqueueJob(job.job_id);
   if (!enqueueResult?.ok) {
-    const failure = await failAsyncSubmission(job, idempotencyLookupKey, enqueueResult);
+    const failure = await failAsyncSubmission(jobRepository, idempotencyRepository, job, enqueueResult?.error, idempotencyLookupKey);
     return res.status(503).json(failure);
   }
 
