@@ -16,6 +16,7 @@ import {
   SERVICE_VERSION, GITHUB_API_BASE_URL, GITHUB_TOKEN, GITHUB_BLOB_CHUNK_MAX_LENGTH,
   DEFAULT_JOB_MAX_ATTEMPTS, JOB_WEBHOOK_TIMEOUT_MS, JOB_RETRY_DELAYS_MS
 } from "./config.js";
+import { policyValue, policyList } from "./registryResolution.js";
 
 export function retryMutationEnabled(policies = []) {
   return String(
