@@ -116,7 +116,7 @@ function isRangeExceedsGridError(err) {
   const msg = String(
     err?.message || err?.response?.data?.error?.message || ""
   ).toLowerCase();
-  return msg.includes("range exceeds grid limits");
+  return msg.includes("exceeds grid limits");
 }
 
 function normalizePositiveInt(value, fallback) {

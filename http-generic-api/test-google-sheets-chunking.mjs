@@ -121,8 +121,11 @@ function makeFakeSheets(responsesByRange = {}) {
           if (callCount === 2) {
             return { data: { valueRanges: [{ range, values: [["row1", "val1"]] }] } };
           }
-          // Second data chunk simulates grid limit exceeded
-          const err = new Error("Range exceeds grid limits");
+          // Second data chunk simulates Google's actual verbose error format:
+          // "Range ('Sheet'!A1852:H1901) exceeds grid limits. Max rows: 1828, max columns: 26"
+          const err = new Error(
+            `Range ('Policy Registry'!A52:H101) exceeds grid limits. Max rows: 51, max columns: 8`
+          );
           err.status = 400;
           throw err;
         }
