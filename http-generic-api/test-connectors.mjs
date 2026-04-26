@@ -157,32 +157,84 @@ assert("github fetch sends bearer auth header", fetchCalls[0]?.init?.headers?.Au
   fetchCalls.length = 0;
   globalThis.fetch = async (url, init = {}) => {
     fetchCalls.push({ url: String(url), init });
-    if (String(init.method || "GET") === "GET") {
+    const method = String(init.method || "GET");
+    const urlString = String(url);
+
+    if (method === "GET" && urlString.includes("/git/ref/heads/main")) {
       return {
         ok: true,
         status: 200,
         async text() {
           return JSON.stringify({
-            type: "file",
-            sha: "old_sha"
+            ref: "refs/heads/main",
+            object: {
+              sha: "base_commit_sha"
+            }
           });
         }
       };
     }
-    return {
-      ok: true,
-      status: 200,
-      async text() {
-        return JSON.stringify({
-          content: {
-            sha: "new_content_sha",
-            html_url: "https://github.com/octo/repo/blob/main/README.md"
-          },
-          commit: {
+
+    if (method === "GET" && urlString.includes("/git/commits/base_commit_sha")) {
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            sha: "base_commit_sha",
+            tree: {
+              sha: "base_tree_sha"
+            }
+          });
+        }
+      };
+    }
+
+    if (method === "POST" && urlString.endsWith("/git/trees")) {
+      return {
+        ok: true,
+        status: 201,
+        async text() {
+          return JSON.stringify({
+            sha: "new_tree_sha"
+          });
+        }
+      };
+    }
+
+    if (method === "POST" && urlString.endsWith("/git/commits")) {
+      return {
+        ok: true,
+        status: 201,
+        async text() {
+          return JSON.stringify({
             sha: "commit_sha",
             html_url: "https://github.com/octo/repo/commit/commit_sha"
-          }
-        });
+          });
+        }
+      };
+    }
+
+    if (method === "PATCH" && urlString.includes("/git/refs/heads/main")) {
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            ref: "refs/heads/main",
+            object: {
+              sha: "commit_sha"
+            }
+          });
+        }
+      };
+    }
+
+    return {
+      ok: false,
+      status: 500,
+      async text() {
+        return JSON.stringify({ message: `Unexpected mock request: ${method} ${urlString}` });
       }
     };
   };
@@ -203,14 +255,21 @@ assert("github fetch sends bearer auth header", fetchCalls[0]?.init?.headers?.Au
     }
   });
 
-  const putCall = fetchCalls.find(call => call.init?.method === "PUT");
-  const putBody = JSON.parse(putCall?.init?.body || "{}");
+  const treeCall = fetchCalls.find(call => String(call.init?.method || "") === "POST" && String(call.url).endsWith("/git/trees"));
+  const commitCall = fetchCalls.find(call => String(call.init?.method || "") === "POST" && String(call.url).endsWith("/git/commits"));
+  const patchCall = fetchCalls.find(call => call.init?.method === "PATCH");
+  const treeBody = JSON.parse(treeCall?.init?.body || "{}");
+  const commitBody = JSON.parse(commitCall?.init?.body || "{}");
+  const patchBody = JSON.parse(patchCall?.init?.body || "{}");
 
   assert("github apply file updates succeeds", result.ok === true, JSON.stringify(result));
-  assert("github apply fetches existing file sha", fetchCalls.some(call => call.init?.method === "GET"), JSON.stringify(fetchCalls));
-  assert("github apply sends PUT contents request", !!putCall, JSON.stringify(fetchCalls));
-  assert("github apply includes existing sha", putBody.sha === "old_sha", JSON.stringify(putBody));
-  assert("github apply base64 encodes content", putBody.content === Buffer.from("hello", "utf8").toString("base64"), JSON.stringify(putBody));
+  assert("github apply uses single commit tree mode", result.commit_mode === "single_commit_tree", JSON.stringify(result));
+  assert("github apply creates one tree", !!treeCall, JSON.stringify(fetchCalls));
+  assert("github apply includes base tree", treeBody.base_tree === "base_tree_sha", JSON.stringify(treeBody));
+  assert("github apply includes file content in tree", treeBody.tree?.[0]?.content === "hello", JSON.stringify(treeBody));
+  assert("github apply creates one commit", commitBody.parents?.[0] === "base_commit_sha" && commitBody.tree === "new_tree_sha", JSON.stringify(commitBody));
+  assert("github apply updates branch ref once", patchBody.sha === "commit_sha", JSON.stringify(patchBody));
+  assert("github apply does not use contents PUT per file", !fetchCalls.some(call => call.init?.method === "PUT"), JSON.stringify(fetchCalls));
 }
 
 {

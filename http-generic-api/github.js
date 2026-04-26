@@ -239,7 +239,7 @@ export async function githubPutContents({ input = {} }) {
 export async function githubApplyFileUpdates({ input = {} }) {
   const owner = assertGithubParam(input.owner, "owner");
   const repo = assertGithubParam(input.repo, "repo");
-  const branch = String(input.branch || "").trim() || undefined;
+  const branch = assertGithubParam(input.branch || "main", "branch");
   const message = assertGithubParam(input.message, "message");
   const files = Array.isArray(input.files) ? input.files : [];
 
@@ -250,41 +250,182 @@ export async function githubApplyFileUpdates({ input = {} }) {
     throw err;
   }
 
-  const results = [];
+  const refUpstream = await proxyGitHubJson({
+    method: "GET",
+    pathname:
+      `/repos/${encodeURIComponent(owner)}` +
+      `/${encodeURIComponent(repo)}` +
+      `/git/ref/heads/${encodeURIComponent(branch)}`
+  });
 
-  for (const file of files) {
+  if (!refUpstream.ok) {
+    const err = new Error(
+      refUpstream.payload?.message ||
+      `GitHub branch ref fetch failed with status ${refUpstream.status}.`
+    );
+    err.code = "github_ref_fetch_failed";
+    err.status = refUpstream.status || 502;
+    err.details = refUpstream.payload || null;
+    throw err;
+  }
+
+  const baseCommitSha = String(refUpstream.payload?.object?.sha || "").trim();
+  if (!baseCommitSha) {
+    const err = new Error(`GitHub branch ref did not include a commit SHA: ${branch}`);
+    err.code = "github_ref_missing_commit_sha";
+    err.status = 502;
+    throw err;
+  }
+
+  const commitUpstream = await proxyGitHubJson({
+    method: "GET",
+    pathname:
+      `/repos/${encodeURIComponent(owner)}` +
+      `/${encodeURIComponent(repo)}` +
+      `/git/commits/${encodeURIComponent(baseCommitSha)}`
+  });
+
+  if (!commitUpstream.ok) {
+    const err = new Error(
+      commitUpstream.payload?.message ||
+      `GitHub base commit fetch failed with status ${commitUpstream.status}.`
+    );
+    err.code = "github_base_commit_fetch_failed";
+    err.status = commitUpstream.status || 502;
+    err.details = commitUpstream.payload || null;
+    throw err;
+  }
+
+  const baseTreeSha = String(commitUpstream.payload?.tree?.sha || "").trim();
+  if (!baseTreeSha) {
+    const err = new Error(`GitHub base commit did not include a tree SHA: ${baseCommitSha}`);
+    err.code = "github_base_tree_missing";
+    err.status = 502;
+    throw err;
+  }
+
+  const tree = files.map(file => {
     const path = assertGithubParam(file.path, "files[].path");
-    const existing = await fetchGitHubContentFile({ owner, repo, path, branch });
-    const writeResult = await githubPutContents({
-      input: {
-        owner,
-        repo,
-        branch,
-        path,
-        message: file.message || message,
-        sha: file.sha || existing?.sha || "",
-        content: file.content,
-        content_base64: file.content_base64,
-        committer: input.committer,
-        author: input.author
-      }
-    });
+    const content =
+      file.content_base64 !== undefined
+        ? decodeGithubBase64ToBuffer(file.content_base64).toString("utf8")
+        : String(file.content ?? "");
 
-    results.push({
-      ...writeResult,
-      operation: existing ? "update" : "create",
-      previous_sha: existing?.sha || ""
-    });
+    return {
+      path,
+      mode: "100644",
+      type: "blob",
+      content
+    };
+  });
+
+  const treeUpstream = await proxyGitHubJson({
+    method: "POST",
+    pathname:
+      `/repos/${encodeURIComponent(owner)}` +
+      `/${encodeURIComponent(repo)}` +
+      `/git/trees`,
+    body: {
+      base_tree: baseTreeSha,
+      tree
+    }
+  });
+
+  if (!treeUpstream.ok) {
+    const err = new Error(
+      treeUpstream.payload?.message ||
+      `GitHub tree creation failed with status ${treeUpstream.status}.`
+    );
+    err.code = "github_tree_create_failed";
+    err.status = treeUpstream.status || 502;
+    err.details = treeUpstream.payload || null;
+    throw err;
+  }
+
+  const newTreeSha = String(treeUpstream.payload?.sha || "").trim();
+  if (!newTreeSha) {
+    const err = new Error("GitHub tree creation did not return a tree SHA.");
+    err.code = "github_tree_sha_missing";
+    err.status = 502;
+    throw err;
+  }
+
+  const commitBody = {
+    message,
+    tree: newTreeSha,
+    parents: [baseCommitSha],
+    ...(input.author ? { author: input.author } : {}),
+    ...(input.committer ? { committer: input.committer } : {})
+  };
+
+  const newCommitUpstream = await proxyGitHubJson({
+    method: "POST",
+    pathname:
+      `/repos/${encodeURIComponent(owner)}` +
+      `/${encodeURIComponent(repo)}` +
+      `/git/commits`,
+    body: commitBody
+  });
+
+  if (!newCommitUpstream.ok) {
+    const err = new Error(
+      newCommitUpstream.payload?.message ||
+      `GitHub commit creation failed with status ${newCommitUpstream.status}.`
+    );
+    err.code = "github_commit_create_failed";
+    err.status = newCommitUpstream.status || 502;
+    err.details = newCommitUpstream.payload || null;
+    throw err;
+  }
+
+  const newCommitSha = String(newCommitUpstream.payload?.sha || "").trim();
+  if (!newCommitSha) {
+    const err = new Error("GitHub commit creation did not return a commit SHA.");
+    err.code = "github_commit_sha_missing";
+    err.status = 502;
+    throw err;
+  }
+
+  const updateRefUpstream = await proxyGitHubJson({
+    method: "PATCH",
+    pathname:
+      `/repos/${encodeURIComponent(owner)}` +
+      `/${encodeURIComponent(repo)}` +
+      `/git/refs/heads/${encodeURIComponent(branch)}`,
+    body: {
+      sha: newCommitSha,
+      force: input.force === true
+    }
+  });
+
+  if (!updateRefUpstream.ok) {
+    const err = new Error(
+      updateRefUpstream.payload?.message ||
+      `GitHub branch ref update failed with status ${updateRefUpstream.status}.`
+    );
+    err.code = "github_ref_update_failed";
+    err.status = updateRefUpstream.status || 502;
+    err.details = updateRefUpstream.payload || null;
+    throw err;
   }
 
   return {
     ok: true,
     owner,
     repo,
-    branch: branch || "",
-    files_changed: results.length,
-    results,
-    final_commit_sha: results[results.length - 1]?.commit_sha || ""
+    branch,
+    files_changed: tree.length,
+    commit_mode: "single_commit_tree",
+    base_commit_sha: baseCommitSha,
+    base_tree_sha: baseTreeSha,
+    tree_sha: newTreeSha,
+    final_commit_sha: newCommitSha,
+    commit_html_url: newCommitUpstream.payload?.html_url || "",
+    ref: updateRefUpstream.payload?.ref || `refs/heads/${branch}`,
+    results: tree.map(item => ({
+      path: item.path,
+      operation: "upsert"
+    }))
   };
 }
 

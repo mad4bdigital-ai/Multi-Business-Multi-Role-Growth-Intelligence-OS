@@ -231,7 +231,7 @@ Example payload:
 }
 ```
 
-Each file is applied through the GitHub Contents API after resolving the current file SHA. Use `content_base64` instead of `content` when sending pre-encoded content.
+Files are applied in one commit through GitHub's Git Trees API. Use `content_base64` instead of `content` when sending pre-encoded content.
 
 ## Immediate next implementation focus
 
