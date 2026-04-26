@@ -14,9 +14,20 @@ import {
   EXECUTION_LOG_UNIFIED_SPREADSHEET_ID, JSON_ASSET_REGISTRY_SPREADSHEET_ID,
   OVERSIZED_ARTIFACTS_DRIVE_FOLDER_ID, RAW_BODY_MAX_BYTES, MAX_TIMEOUT_SECONDS,
   SERVICE_VERSION, GITHUB_API_BASE_URL, GITHUB_TOKEN, GITHUB_BLOB_CHUNK_MAX_LENGTH,
-  DEFAULT_JOB_MAX_ATTEMPTS, JOB_WEBHOOK_TIMEOUT_MS, JOB_RETRY_DELAYS_MS
+  DEFAULT_JOB_MAX_ATTEMPTS, JOB_WEBHOOK_TIMEOUT_MS, JOB_RETRY_DELAYS_MS,
+  ACTIVATION_BOOTSTRAP_CONFIG_RANGE, ACTIVATION_WORKBOOK_CACHE_TTL_SECONDS,
+  ACTIVATION_BOOTSTRAP_ROW_CACHE_TTL_SECONDS, ACTIVATION_SHEETS_429_BACKOFF_SECONDS
 } from "./config.js";
 import { policyValue, policyList } from "./registryResolution.js";
+import {
+  getCachedValue,
+  setCachedValue,
+  getActivationBackoffUntil,
+  setActivationBackoffUntil,
+  makeActivationWorkbookCacheKey,
+  makeActivationBootstrapRowCacheKey,
+  makeActivationSheetsBackoffKey
+} from "./activationBootstrapCache.js";
 
 export function retryMutationEnabled(policies = []) {
   return String(
@@ -1218,10 +1229,101 @@ export function assertHostingerTargetTier(payload = {}) {
   return { ok: true };
 }
 
+function isActivationDriveDiscoveryRequest(payload = {}) {
+  return String(payload.parent_action_key || "").trim() === "google_drive_api" &&
+    String(payload.endpoint_key || "").trim() === "listDriveFiles";
+}
+
+function isActivationSheetOpenRequest(payload = {}) {
+  return String(payload.parent_action_key || "").trim() === "google_sheets_api" &&
+    String(payload.endpoint_key || "").trim() === "getSpreadsheet";
+}
+
+function isActivationBootstrapRowRead(payload = {}) {
+  if (String(payload.parent_action_key || "").trim() !== "google_sheets_api") return false;
+  if (String(payload.endpoint_key || "").trim() !== "getSheetValues") return false;
+  const range = String(payload.path_params?.range || payload.query?.range || "").trim();
+  return range === ACTIVATION_BOOTSTRAP_CONFIG_RANGE;
+}
+
+function isSheets429(upstream, data) {
+  if (Number(upstream?.status) !== 429) return false;
+  const message = String(data?.error?.message || data?.message || "").toLowerCase();
+  return message.includes("quota") || message.includes("read requests per minute");
+}
+
+function buildValidationRateLimitedBody(base = {}) {
+  return {
+    ...base,
+    ok: false,
+    code: "validation_rate_limited",
+    activation_state: "validation_rate_limited",
+    message: "Google Sheets activation binding read is rate-limited. Retry after backoff.",
+    retryable: true
+  };
+}
+
+function syntheticJsonAttempt(data, status = 200) {
+  return {
+    upstream: {
+      ok: status >= 200 && status < 300,
+      status,
+      headers: new Map([["content-type", "application/json"]])
+    },
+    data,
+    responseText: JSON.stringify(data),
+    responseHeaders: { "content-type": "application/json" },
+    contentType: "application/json"
+  };
+}
+
 export async function executeUpstreamAttempt({
   requestUrl,
-  requestInit
+  requestInit,
+  requestPayload = {},
+  resolvedProviderDomain = ""
 }) {
+  if (isActivationSheetOpenRequest(requestPayload) || isActivationBootstrapRowRead(requestPayload)) {
+    const backoffUntil = await getActivationBackoffUntil(makeActivationSheetsBackoffKey());
+    if (backoffUntil && Date.now() < backoffUntil) {
+      return {
+        shortCircuitResponse: {
+          status: 429,
+          body: buildValidationRateLimitedBody({
+            backoff_until: new Date(backoffUntil).toISOString()
+          })
+        }
+      };
+    }
+  }
+
+  if (isActivationDriveDiscoveryRequest(requestPayload)) {
+    const workbookId = await getCachedValue(makeActivationWorkbookCacheKey());
+    if (workbookId) {
+      return syntheticJsonAttempt({
+        files: [
+          {
+            id: String(workbookId),
+            name: "Growth Intelligence OS - Registry Workbook"
+          }
+        ],
+        cache_status: "hit",
+        cache_key: makeActivationWorkbookCacheKey()
+      });
+    }
+  }
+
+  if (isActivationBootstrapRowRead(requestPayload)) {
+    const row = await getCachedValue(makeActivationBootstrapRowCacheKey());
+    if (Array.isArray(row)) {
+      return syntheticJsonAttempt({
+        values: [row],
+        cache_status: "hit",
+        cache_key: makeActivationBootstrapRowCacheKey()
+      });
+    }
+  }
+
   const upstream = await fetch(requestUrl, requestInit);
 
   const contentType = upstream.headers.get("content-type") || "";
@@ -1240,6 +1342,52 @@ export async function executeUpstreamAttempt({
   upstream.headers.forEach((value, key) => {
     responseHeaders[key] = value;
   });
+
+  if (isActivationDriveDiscoveryRequest(requestPayload) && Array.isArray(data?.files)) {
+    const workbook = data.files.find(
+      f => String(f?.name || "").trim() === "Growth Intelligence OS - Registry Workbook"
+    );
+    if (workbook?.id) {
+      await setCachedValue(
+        makeActivationWorkbookCacheKey(),
+        String(workbook.id),
+        ACTIVATION_WORKBOOK_CACHE_TTL_SECONDS
+      );
+    }
+  }
+
+  if (isActivationBootstrapRowRead(requestPayload)) {
+    const values = Array.isArray(data?.values) ? data.values : [];
+    const row = Array.isArray(values[0]) ? values[0] : null;
+    if (row) {
+      await setCachedValue(
+        makeActivationBootstrapRowCacheKey(),
+        row,
+        ACTIVATION_BOOTSTRAP_ROW_CACHE_TTL_SECONDS
+      );
+    }
+  }
+
+  if (isSheets429(upstream, data)) {
+    const untilMs = Date.now() + (ACTIVATION_SHEETS_429_BACKOFF_SECONDS * 1000);
+    await setActivationBackoffUntil(
+      makeActivationSheetsBackoffKey(),
+      untilMs,
+      ACTIVATION_SHEETS_429_BACKOFF_SECONDS
+    );
+
+    return {
+      shortCircuitResponse: {
+        status: 429,
+        body: buildValidationRateLimitedBody({
+          provider_domain: resolvedProviderDomain,
+          parent_action_key: requestPayload.parent_action_key,
+          endpoint_key: requestPayload.endpoint_key,
+          backoff_until: new Date(untilMs).toISOString()
+        })
+      }
+    };
+  }
 
   return {
     upstream,

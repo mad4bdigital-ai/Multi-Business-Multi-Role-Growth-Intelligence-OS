@@ -9,7 +9,8 @@ export async function dispatchPreparedExecution(input = {}, deps = {}) {
     finalQuery,
     finalHeaders,
     baseUrl,
-    requestUrl
+    requestUrl,
+    resolvedProviderDomain
   } = input;
 
   const {
@@ -83,8 +84,19 @@ export async function dispatchPreparedExecution(input = {}, deps = {}) {
 
       const attemptResult = await executeUpstreamAttempt({
         requestUrl: attemptUrl,
-        requestInit: upstreamRequest
+        requestInit: upstreamRequest,
+        requestPayload,
+        resolvedProviderDomain
       });
+
+      if (attemptResult.shortCircuitResponse) {
+        return {
+          shortCircuitResponse: attemptResult.shortCircuitResponse,
+          effectiveRequestUrl: attemptUrl,
+          finalAttemptQuery: attemptQuery,
+          resilienceApplies
+        };
+      }
 
       upstream = attemptResult.upstream;
       data = attemptResult.data;

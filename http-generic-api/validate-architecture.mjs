@@ -92,6 +92,7 @@ const REQUIRED_MODULES = [
   "executionDispatch.js",
   "executionAsync.js",
   "executionResponse.js",
+  "activationBootstrapCache.js",
   "registryPolicyAccess.js",
   "registryExecutionEligibility.js",
   "registryTransportGovernance.js",

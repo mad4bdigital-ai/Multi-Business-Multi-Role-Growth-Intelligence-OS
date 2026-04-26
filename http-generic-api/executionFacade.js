@@ -318,7 +318,8 @@ export function createExecutionFacade(deps) {
             finalQuery,
             finalHeaders,
             baseUrl,
-            requestUrl
+            requestUrl,
+            resolvedProviderDomain
           },
           {
             debugLog,
@@ -333,6 +334,9 @@ export function createExecutionFacade(deps) {
             MAX_TIMEOUT_SECONDS
           }
         );
+        if (dispatchResult.shortCircuitResponse) {
+          return dispatchResult.shortCircuitResponse;
+        }
 
         return await validateAndShapeExecutionResponse(
           dispatchResult,
