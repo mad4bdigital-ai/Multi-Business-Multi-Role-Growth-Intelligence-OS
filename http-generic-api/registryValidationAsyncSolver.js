@@ -1,7 +1,9 @@
 import { getRecoveryPolicy } from './activationRecoveryPolicy.js';
 import { buildRateLimitedClassification } from './activationClassification.js';
+import { classifyActivationFromEvidence } from './activationStatusClassifier.js';
 import { buildProgressState } from './activationProgress.js';
 import { createJob } from './executionAsync.js'; 
+import { validateRegistryAlignment } from './registryAlignmentValidator.js';
 
 export const SOLVER_JOB_TYPE = 'registry_validation_async_solver';
 
@@ -90,9 +92,45 @@ export async function resumeValidationJob(jobPayload, sheetsClient) {
         }
     }
 
+    const alignment = validateRegistryAlignment(results);
+
+    if (!alignment.valid) {
+        const runtimeClassification = classifyActivationFromEvidence({
+            transport_attempted: true,
+            drive_ok: true,
+            sheets_ok: true,
+            github_ok: true,
+            bootstrap_row_read: true,
+            binding_resolved: true,
+            validation_complete: false,
+            executable_binding_mismatch: true
+        });
+
+        return {
+            status: "degraded",
+            runtime_classification: runtimeClassification,
+            alignment_audit: results,
+            alignment_validation: alignment,
+            activation_id: validation_context.activation_id,
+            completed_stages: [...validation_context.completed_stages, "sheets_validation"]
+        };
+    }
+
+    const runtimeClassification = classifyActivationFromEvidence({
+        transport_attempted: true,
+        drive_ok: true,
+        sheets_ok: true,
+        github_ok: true,
+        bootstrap_row_read: true,
+        binding_resolved: true,
+        validation_complete: true
+    });
+
     return {
         status: "active",
+        runtime_classification: runtimeClassification,
         alignment_audit: results,
+        alignment_validation: alignment,
         activation_id: validation_context.activation_id,
         completed_stages: [...validation_context.completed_stages, "sheets_validation"]
     };

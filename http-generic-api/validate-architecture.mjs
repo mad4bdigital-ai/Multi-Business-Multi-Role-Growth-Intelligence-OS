@@ -111,6 +111,8 @@ const REQUIRED_MODULES = [
   "activationResponse.js",
   "activationStatusClassifier.js",
   "governedActivationRunner.js",
+  "registryAlignmentValidator.js",
+  "registryValidationAsyncSolver.js",
   "wordpress/index.js",
   "wordpress/shared.js",
   "wordpress/phaseA.js"
