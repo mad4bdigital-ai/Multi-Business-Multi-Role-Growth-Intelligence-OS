@@ -64,6 +64,7 @@
 - [ ] New documentation follows canonicals rather than inventing new policy semantics
 - [ ] `schemas/` sub-schema files match the `$defs` referenced by `memory_schema.json` (no orphaned or missing `$ref`)
 - [ ] `logic_knowledge.schema.json` remains the domain home for logic pointer, logic knowledge, business-type knowledge, and logical search state
+- [ ] `memory-schema-manifest.mjs` lists extracted root-level schema states that must remain backed by matching `$defs` and root `$ref` entries
 
 ## 8. Testing and drift detection validation
 
@@ -87,5 +88,5 @@
 
 As of 2026-04-20, no unresolved missing upgrade artifacts. Previously flagged items:
 
-- `project_upgrade_programmatic_validation_matrix.md` — superseded by `validate-architecture.mjs` and schema/canonical validators in CI
-- `project_upgrade_execution_board_9_5_plus.md` — all 9 phases complete; ongoing work tracked via git commit history and deployment parity checklist
+- `project_upgrade_programmatic_validation_matrix.md` - superseded by `validate-architecture.mjs` and schema/canonical validators in CI
+- `project_upgrade_execution_board_9_5_plus.md` - all 9 phases complete; ongoing work tracked via git commit history and deployment parity checklist

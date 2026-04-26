@@ -432,7 +432,7 @@ assert(
   executionConsumers.map(item => item.rel).join(", ")
 );
 
-section("Route files — execution internals isolation");
+section("Route files - execution internals isolation");
 
 const EXECUTION_INTERNAL_PATTERN =
   /from\s+["'](?:\.\.\/)?execution(?:Resolution|Preparation|Dispatch|Async|Response)(?:\.js)?["']/;

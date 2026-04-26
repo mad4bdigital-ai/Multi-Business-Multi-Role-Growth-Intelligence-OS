@@ -170,16 +170,16 @@ The repo includes a root runtime and a connector subtree.
 This is the clearest connector-style boundary currently visible.
 
 Key modules and their authority domains:
-- `server.js` (~4,636 lines) — orchestration and route handlers only
-- `executionRouting.js` — HTTP execution context resolution, guard chain, transport/native routing classification
-- `auth.js` — Google OAuth scope resolution, policy enforcement, resilience and retry mutation helpers
-- `normalization.js` — canonical normalization layer successfully implementing all A-H domains
-- `mutationGovernance.js` / `governedChangeControl.js` — mutation classification, duplicate detection, exemption rules
-- `jobRunner.js` / `jobUtils.js` — async job dispatch and lifecycle management
-- `authInjection.js` / `authCredentialResolution.js` — credential resolution and auth header injection
-- `driveFileLoader.js` — Drive-backed schema and OAuth config loading (`supportsAllDrives: true`)
-- `github.js` / `hostinger.js` — narrow connector entrypoints (2 exports each)
-- `wordpress/` — 16 phase modules (A–P) for governed site migration
+- `server.js` (~4,636 lines) - orchestration and route handlers only
+- `executionRouting.js` - HTTP execution context resolution, guard chain, transport/native routing classification
+- `auth.js` - Google OAuth scope resolution, policy enforcement, resilience and retry mutation helpers
+- `normalization.js` - canonical normalization layer successfully implementing all A-H domains
+- `mutationGovernance.js` / `governedChangeControl.js` - mutation classification, duplicate detection, exemption rules
+- `jobRunner.js` / `jobUtils.js` - async job dispatch and lifecycle management
+- `authInjection.js` / `authCredentialResolution.js` - credential resolution and auth header injection
+- `driveFileLoader.js` - Drive-backed schema and OAuth config loading (`supportsAllDrives: true`)
+- `github.js` / `hostinger.js` - narrow connector entrypoints (2 exports each)
+- `wordpress/` - 16 phase modules (A-P) for governed site migration
 
 Use it as a pattern for:
 - policy-enforced transport execution
@@ -219,27 +219,27 @@ Prioritize:
 3. module boundary cleanup
 4. policy normalization
 5. test coverage
-6. monolith decomposition by authority boundary ✓ (schema layer complete — `memory_schema.json` → 12 domain sub-schemas in `schemas/`)
+6. monolith decomposition by authority boundary complete (schema layer complete - `memory_schema.json` -> 12 domain sub-schemas in `schemas/`)
 
 ## 12. Current documentation status
 
 All previously suggested docs now exist:
-- `canonical_validation_checklist.md` ✓
-- `runtime_boundary_map.md` ✓
-- `governed_mutation_playbook.md` ✓
-- `connector_contracts.md` ✓
-- `deployment_parity_checklist.md` ✓
-- `runtime_confirmation_procedure.md` ✓
+- `canonical_validation_checklist.md` complete
+- `runtime_boundary_map.md` complete
+- `governed_mutation_playbook.md` complete
+- `connector_contracts.md` complete
+- `deployment_parity_checklist.md` complete
+- `runtime_confirmation_procedure.md` complete
 
 Schema layer:
-- `memory_schema.json` — root schema (~41 KB, 123 properties, 92 required)
-- `schemas/` — 12 domain sub-schemas, including `logic_knowledge.schema.json`
+- `memory_schema.json` - root schema (~41 KB, 123 properties, 92 required)
+- `schemas/` - 12 domain sub-schemas, including `logic_knowledge.schema.json`
   - `shared`, `business_identity`, `brand`, `execution`, `analytics`, `governance`,
     `logic_knowledge`, `repair_audit`, `routing_transport`, `graph_addition`, `operations`, `wordpress_api`
 
 Test and validation baselines (as of 2026-04-26):
-- 168 automated tests across 6 suites (`npm test`)
-- architecture checks via `npm run validate`
+- 168 automated tests across 6 suites (`npm test` from `http-generic-api/`)
+- architecture checks via `npm run validate` from `http-generic-api/`
 - memory schema `$ref` checks via `node validate-memory-schema.mjs`
 - CI enforces canonical generated-output checks, memory schema reference checks, syntax, tests, drift detection, export floors on every push
 

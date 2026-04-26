@@ -18,7 +18,8 @@ export const manifest = {
   "logic_knowledge.schema.json": [
     "logic_pointer_state",
     "logic_knowledge_state",
-    "business_type_knowledge_state"
+    "business_type_knowledge_state",
+    "logical_search_state"
   ],
   "repair_audit.schema.json": [
     "anomaly_cluster_state",

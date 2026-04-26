@@ -1,25 +1,25 @@
 # Deployment Parity Checklist
-**Authority document — run before and after every deployment**
+**Authority document - run before and after every deployment**
 
 This checklist distinguishes four verification layers that must all pass before a deployment is considered aligned. File-level changes alone do not constitute deployment verification.
 
 ---
 
-## Layer 1 — File merged (CI gate)
+## Layer 1 - File merged (CI gate)
 
 These pass automatically in CI on every push/PR:
 
-- [ ] `npm test` passes (168+ tests across utility, job runner, execution routing, connector, route-level, and WordPress suites)
-- [ ] `npm run validate` passes (104+ architecture checks)
+- [ ] `npm test` passes from `http-generic-api/` (168+ tests across utility, job runner, execution routing, connector, route-level, and WordPress suites)
+- [ ] `npm run validate` passes from `http-generic-api/` (104+ architecture checks)
 - [ ] All `.js` modules pass `node --check`
 - [ ] No new imports from removed or renamed modules
-- [ ] `wordpress/index.js` barrel exports ≥ 545 symbols
+- [ ] `wordpress/index.js` barrel exports >= 545 symbols
 - [ ] `github.js` exports exactly 2 public symbols
 - [ ] `server.js` remains under 6,000 lines
 
 ---
 
-## Layer 2 — Registry aligned
+## Layer 2 - Registry aligned
 
 Verify the live Google Sheets registry reflects intended architecture:
 
@@ -32,7 +32,7 @@ Verify the live Google Sheets registry reflects intended architecture:
 
 ---
 
-## Layer 3 — Runtime deployed
+## Layer 3 - Runtime deployed
 
 Verify the deployed container/process matches the committed code:
 
@@ -47,7 +47,7 @@ Verify the deployed container/process matches the committed code:
 
 ---
 
-## Layer 4 — Live behavior confirmed
+## Layer 4 - Live behavior confirmed
 
 Verify governed execution paths produce expected outcomes against the live runtime:
 
@@ -66,7 +66,7 @@ Verify governed execution paths produce expected outcomes against the live runti
 
 ## Drift detection
 
-If any Layer 2–4 check fails after a successful Layer 1 (CI) pass, the failure class is:
+If any Layer 2-4 check fails after a successful Layer 1 (CI) pass, the failure class is:
 
 | Failure location | Drift class |
 |---|---|
@@ -78,10 +78,10 @@ If any Layer 2–4 check fails after a successful Layer 1 (CI) pass, the failure
 | `apply=false` returns error | Canonical/runtime logic drift |
 | Async enqueue returns `503` unexpectedly | Queue dependency failure |
 | Writeback not reaching sheet | Sink connectivity failure |
-| `sameServiceNativeTarget is not defined` at runtime | Deployment lag — deploy from `c3c3b15` or later |
-| `retryMutationEnabled is not defined` at runtime | Deployment lag — deploy from `46affb6` or later |
-| `transport_required` governance rejection on correctly-configured endpoint | Registry data gap — verify `transport_action_key` is set on endpoint row |
-| Drive schema/config returns `404 File not found` for shared-drive files | Missing `supportsAllDrives` — deploy from `c3286cf` or later |
+| `sameServiceNativeTarget is not defined` at runtime | Deployment lag - deploy from `c3c3b15` or later |
+| `retryMutationEnabled is not defined` at runtime | Deployment lag - deploy from `46affb6` or later |
+| `transport_required` governance rejection on correctly-configured endpoint | Registry data gap - verify `transport_action_key` is set on endpoint row |
+| Drive schema/config returns `404 File not found` for shared-drive files | Missing `supportsAllDrives` - deploy from `c3286cf` or later |
 
 Record any drift in the deployment log and do not mark the deployment complete until all four layers pass.
 

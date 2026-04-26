@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { manifest } from './memory-schema-manifest.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,6 +49,23 @@ function findRefs(obj, refs = []) {
   return refs;
 }
 
+function decodePointerPart(part) {
+  return part.replace(/~1/g, '/').replace(/~0/g, '~');
+}
+
+function resolvePointer(schemaObj, pointer, ref, fileName) {
+  const parts = pointer.replace(/^\//, '').split('/').map(decodePointerPart);
+  let current = schemaObj;
+
+  for (const part of parts) {
+    if (current === undefined || current[part] === undefined) {
+      error(`Broken pointer in $ref in ${fileName}: ${ref}`);
+      return;
+    }
+    current = current[part];
+  }
+}
+
 function validateSchemas() {
   const rootSchema = loadJson(ROOT_SCHEMA_PATH);
   if (!rootSchema) return;
@@ -66,15 +84,7 @@ function validateSchemas() {
     const refs = findRefs(schemaObj);
     for (const ref of refs) {
       if (ref.startsWith('#/')) {
-        const parts = ref.replace('#/', '').split('/');
-        let current = schemaObj;
-        for (const part of parts) {
-          if (current[part] === undefined) {
-            error(`Broken internal $ref in ${fileName}: ${ref}`);
-            break;
-          }
-          current = current[part];
-        }
+        resolvePointer(schemaObj, ref.replace(/^#/, ''), ref, fileName);
       } else {
         const [filePath, pointer] = ref.split('#');
         const targetFileName = path.basename(filePath);
@@ -87,15 +97,32 @@ function validateSchemas() {
         }
 
         if (pointer) {
-          const parts = pointer.replace(/^\//, '').split('/');
-          let current = schemas[targetFileName];
-          for (const part of parts) {
-            if (current === undefined || current[part] === undefined) {
-              error(`Broken pointer in $ref in ${fileName}: ${ref}`);
-              break;
-            }
-            current = current[part];
-          }
+          resolvePointer(schemas[targetFileName], pointer, ref, fileName);
+        }
+      }
+    }
+  }
+
+  function validateManifestCoverage() {
+    info(`Validating memory schema manifest coverage...`);
+
+    for (const [file, defs] of Object.entries(manifest)) {
+      const schema = schemas[file];
+      if (!schema) {
+        error(`Manifest references missing schema file: schemas/${file}`);
+        continue;
+      }
+
+      for (const defName of defs) {
+        if (!schema.$defs || schema.$defs[defName] === undefined) {
+          error(`Manifest references missing $defs entry: schemas/${file}#/$defs/${defName}`);
+          continue;
+        }
+
+        const rootProperty = rootSchema.properties?.[defName];
+        const expectedRef = `schemas/${file}#/$defs/${defName}`;
+        if (!rootProperty || rootProperty.$ref !== expectedRef) {
+          error(`Manifest entry ${defName} is not referenced from memory_schema.json as ${expectedRef}`);
         }
       }
     }
@@ -108,6 +135,8 @@ function validateSchemas() {
     info(`Validating $refs in schemas/${file}...`);
     checkRefsInFile(schemas[file], file);
   }
+
+  validateManifestCoverage();
 
   for (const file of schemaFiles) {
     if (!referencedFiles.has(file)) {
