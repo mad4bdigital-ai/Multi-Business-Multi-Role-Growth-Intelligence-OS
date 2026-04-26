@@ -5,9 +5,15 @@ export { policyValue, policyList };
 import {
   requireRuntimeCallableAction,
   requireEndpointExecutionEligibility,
-  requireExecutionModeCompatibility
+  requireExecutionModeCompatibility,
+  validateEndpointRowConsistency
 } from "./registryExecutionEligibility.js";
-export { requireRuntimeCallableAction, requireEndpointExecutionEligibility, requireExecutionModeCompatibility };
+export {
+  requireRuntimeCallableAction,
+  requireEndpointExecutionEligibility,
+  requireExecutionModeCompatibility,
+  validateEndpointRowConsistency
+};
 import {
   isDelegatedTransportTarget,
   requireNativeFamilyBoundary,
@@ -63,6 +69,9 @@ export function getEndpointExecutionSnapshot(endpoint = {}, deps = {}) {
     endpoint_id: String(endpoint.endpoint_id || "").trim(),
     endpoint_key: String(endpoint.endpoint_key || "").trim(),
     parent_action_key: String(endpoint.parent_action_key || "").trim(),
+    endpoint_operation: String(endpoint.endpoint_operation || "").trim(),
+    route_target: String(endpoint.route_target || "").trim(),
+    openai_action_name: String(endpoint.openai_action_name || "").trim(),
     endpoint_role: String(endpoint.endpoint_role || "").trim(),
     inventory_role: String(endpoint.inventory_role || "").trim(),
     inventory_source: String(endpoint.inventory_source || "").trim(),
@@ -225,13 +234,43 @@ export function resolveEndpoint(rows, parentActionKey, endpointKey, deps = {}) {
     throw err;
   }
 
-  const activeReady = matches.find(
+  const strictResults = matches.map(row => ({
+    row,
+    consistency: validateEndpointRowConsistency(row, {
+      parent_action_key: parentActionKey,
+      endpoint_key: endpointKey
+    })
+  }));
+  const strictMatches = strictResults
+    .filter(result => result.consistency.valid)
+    .map(result => result.row);
+
+  if (!strictMatches.length) {
+    const err = new Error(
+      `Endpoint binding mismatch for ${parentActionKey}/${endpointKey}. Registry row fields are inconsistent with the requested endpoint.`
+    );
+    err.code = "endpoint_binding_mismatch";
+    err.status = 403;
+    err.details = {
+      parent_action_key: parentActionKey,
+      endpoint_key: endpointKey,
+      mismatches: strictResults.map(result => ({
+        endpoint_id: String(result.row?.endpoint_id || "").trim(),
+        endpoint_key: String(result.row?.endpoint_key || "").trim(),
+        parent_action_key: String(result.row?.parent_action_key || "").trim(),
+        mismatches: result.consistency.mismatches
+      }))
+    };
+    throw err;
+  }
+
+  const activeReady = strictMatches.find(
     row =>
       String(row.status || "").trim().toLowerCase() === "active" &&
       String(row.execution_readiness || "").trim().toLowerCase() === "ready"
   );
 
-  const endpoint = activeReady || matches[0];
+  const endpoint = activeReady || strictMatches[0];
 
   debugLog(
     "ENDPOINT_RESOLUTION_SELECTED:",

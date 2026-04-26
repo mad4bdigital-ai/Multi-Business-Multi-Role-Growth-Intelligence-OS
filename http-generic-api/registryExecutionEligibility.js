@@ -14,6 +14,179 @@ function getDebugLog(deps = {}) {
   return deps.debugLog || (() => {});
 }
 
+const ENDPOINT_ALIASES = {
+  getSheetValues: ["getSheetValues"],
+  appendSheetValues: ["appendSheetValues"],
+  clearSheetValues: ["clearSheetValues"],
+  getDocument: ["getDocument"],
+  createDocument: ["createDocument"],
+  updateDocument: ["updateDocument"]
+};
+
+const GOOGLE_WORKSPACE_ENDPOINT_GUARDS = {
+  getSheetValues: {
+    providerDomains: ["sheets.googleapis.com"],
+    method: "GET",
+    pathIncludes: ["/v4/spreadsheets/", "/values/"]
+  },
+  appendSheetValues: {
+    providerDomains: ["sheets.googleapis.com"],
+    method: "POST",
+    pathIncludes: ["/v4/spreadsheets/", "/values/"],
+    pathEndsWith: ":append"
+  },
+  clearSheetValues: {
+    providerDomains: ["sheets.googleapis.com"],
+    method: "POST",
+    pathIncludes: ["/v4/spreadsheets/", "/values/"],
+    pathEndsWith: ":clear"
+  },
+  getDocument: {
+    providerDomains: ["docs.googleapis.com"],
+    method: "GET",
+    pathIncludes: ["/v1/documents/"]
+  },
+  createDocument: {
+    providerDomains: ["docs.googleapis.com"],
+    method: "POST",
+    pathIncludes: ["/v1/documents"]
+  },
+  updateDocument: {
+    providerDomains: ["docs.googleapis.com"],
+    method: "POST",
+    pathIncludes: ["/v1/documents/"],
+    pathEndsWith: ":batchUpdate"
+  }
+};
+
+function normalizeText(value = "") {
+  return String(value || "").trim();
+}
+
+function normalizeLower(value = "") {
+  return normalizeText(value).toLowerCase();
+}
+
+function stripUrlPrefix(value = "") {
+  return normalizeLower(value).replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
+
+function endpointAliasesFor(endpointKey = "") {
+  const key = normalizeText(endpointKey);
+  return ENDPOINT_ALIASES[key] || [key];
+}
+
+export function validateEndpointRowConsistency(row = {}, expected = {}) {
+  const endpointKey = normalizeText(expected.endpoint_key || row.endpoint_key);
+  const parentActionKey = normalizeText(expected.parent_action_key || row.parent_action_key);
+  const mismatches = [];
+
+  const rowParentActionKey = normalizeText(row.parent_action_key);
+  if (parentActionKey && rowParentActionKey && rowParentActionKey !== parentActionKey) {
+    mismatches.push({
+      field: "parent_action_key",
+      expected: parentActionKey,
+      actual: rowParentActionKey
+    });
+  }
+
+  const rowEndpointKey = normalizeText(row.endpoint_key);
+  if (endpointKey && rowEndpointKey && rowEndpointKey !== endpointKey) {
+    mismatches.push({
+      field: "endpoint_key",
+      expected: endpointKey,
+      actual: rowEndpointKey
+    });
+  }
+
+  const hasExplicitAliasPolicy = Object.prototype.hasOwnProperty.call(
+    ENDPOINT_ALIASES,
+    endpointKey
+  );
+  const allowedOperationAliases = endpointAliasesFor(endpointKey);
+  const endpointOperation = normalizeText(row.endpoint_operation);
+  if (
+    hasExplicitAliasPolicy &&
+    endpointOperation &&
+    !allowedOperationAliases.includes(endpointOperation)
+  ) {
+    mismatches.push({
+      field: "endpoint_operation",
+      expected: allowedOperationAliases.join("|"),
+      actual: endpointOperation
+    });
+  }
+
+  const openaiActionName = normalizeText(row.openai_action_name);
+  if (
+    hasExplicitAliasPolicy &&
+    openaiActionName &&
+    !allowedOperationAliases.includes(openaiActionName)
+  ) {
+    mismatches.push({
+      field: "openai_action_name",
+      expected: allowedOperationAliases.join("|"),
+      actual: openaiActionName
+    });
+  }
+
+  const routeTarget = normalizeText(row.route_target);
+  if (routeTarget && parentActionKey && routeTarget !== parentActionKey) {
+    mismatches.push({
+      field: "route_target",
+      expected: parentActionKey,
+      actual: routeTarget
+    });
+  }
+
+  const guard = GOOGLE_WORKSPACE_ENDPOINT_GUARDS[endpointKey];
+  if (guard) {
+    const providerDomain = stripUrlPrefix(row.provider_domain);
+    if (
+      providerDomain &&
+      !guard.providerDomains.map(stripUrlPrefix).includes(providerDomain)
+    ) {
+      mismatches.push({
+        field: "provider_domain",
+        expected: guard.providerDomains.join("|"),
+        actual: normalizeText(row.provider_domain)
+      });
+    }
+
+    const method = normalizeText(row.method).toUpperCase();
+    if (method && method !== guard.method) {
+      mismatches.push({
+        field: "method",
+        expected: guard.method,
+        actual: method
+      });
+    }
+
+    const path = normalizeLower(row.endpoint_path_or_function || row.path);
+    for (const fragment of guard.pathIncludes || []) {
+      if (path && !path.includes(fragment.toLowerCase())) {
+        mismatches.push({
+          field: "endpoint_path_or_function",
+          expected: `contains ${fragment}`,
+          actual: normalizeText(row.endpoint_path_or_function || row.path)
+        });
+      }
+    }
+    if (guard.pathEndsWith && path && !path.endsWith(guard.pathEndsWith.toLowerCase())) {
+      mismatches.push({
+        field: "endpoint_path_or_function",
+        expected: `ends_with ${guard.pathEndsWith}`,
+        actual: normalizeText(row.endpoint_path_or_function || row.path)
+      });
+    }
+  }
+
+  return {
+    valid: mismatches.length === 0,
+    mismatches
+  };
+}
+
 function isDelegatedTransportTarget(endpoint = {}, deps = {}) {
   const boolFromSheet = getBoolFromSheet(deps);
   return (
@@ -29,6 +202,9 @@ function getEndpointExecutionSnapshot(endpoint = {}, deps = {}) {
     endpoint_id: String(endpoint.endpoint_id || "").trim(),
     endpoint_key: String(endpoint.endpoint_key || "").trim(),
     parent_action_key: String(endpoint.parent_action_key || "").trim(),
+    endpoint_operation: String(endpoint.endpoint_operation || "").trim(),
+    route_target: String(endpoint.route_target || "").trim(),
+    openai_action_name: String(endpoint.openai_action_name || "").trim(),
     endpoint_role: String(endpoint.endpoint_role || "").trim(),
     inventory_role: String(endpoint.inventory_role || "").trim(),
     inventory_source: String(endpoint.inventory_source || "").trim(),

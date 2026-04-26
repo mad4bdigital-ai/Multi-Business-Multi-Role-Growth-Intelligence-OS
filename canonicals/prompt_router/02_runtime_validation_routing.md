@@ -152,7 +152,10 @@ Before generic intent classification:
 prompt_router must:
 1. detect if input matches a governed Conversation Starter
 2. resolve starter row using:
-   - `Registry Surfaces Catalog`
+   - split starter authority from `Registry Surfaces Catalog`
+   - `conversation_starters_system_surface` for system/governance starter classes
+   - `conversation_starters_main_surface` for normal user-facing starter classes
+   - legacy `conversation_starter_sheet` only as non-authoritative fallback context
    - `worksheet_gid` binding
 3. extract:
    - `route_key`

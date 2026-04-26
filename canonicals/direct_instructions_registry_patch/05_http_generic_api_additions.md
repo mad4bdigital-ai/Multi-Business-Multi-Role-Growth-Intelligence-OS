@@ -208,7 +208,10 @@ Starter Intelligence Canonical Governance Rule
 Conversation Starter is a governed intelligence surface.
 
 It must:
-- be registered in Registry Surfaces Catalog
+- be registered in Registry Surfaces Catalog as split authority surfaces when active:
+  - `conversation_starters_main_surface`
+  - `conversation_starters_system_surface`
+- keep any legacy aggregate `conversation_starter_sheet` non-authoritative unless an explicit migration policy temporarily permits fallback
 - be validated in Validation & Repair Registry
 - follow row_audit_schema
 

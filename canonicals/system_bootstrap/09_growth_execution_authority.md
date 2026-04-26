@@ -9,6 +9,12 @@ If `binding_integrity_review` fails for required surfaces:
 - repair-aware routing must remain available
 - `Recovered` classification is forbidden
 
+Promotion-sensitive execution must distinguish registration, activation, readiness, and promotion:
+- `registered` does not imply `promoted`
+- `active` does not imply `promoted`
+- promotion-sensitive execution requires explicit `promotion_status = promoted` from the governed authority surface or policy set
+- records without promoted state may be used for validation, review, or repair context only, not promoted execution authority
+
 `canonical_knowledge_dependency_bootstrap` and `canonical_url_dependency_bootstrap` must complete before `surface_catalog_validation` consumes or validates runtime dependency text for the five core canonical dependencies, and before prompt routing, module loading, workflow resolution, or memory restoration that depends on canonical schema or canonical prose interpretation.
 
 `validation_registry_review` must complete after surface catalog validation and before dependency execution continues.

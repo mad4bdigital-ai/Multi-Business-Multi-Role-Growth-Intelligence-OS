@@ -3,7 +3,7 @@
  * Run: node test-transport-governance.mjs
  */
 
-import { resolveBrand } from "./registryResolution.js";
+import { resolveBrand, resolveEndpoint } from "./registryResolution.js";
 import { requireTransportIfDelegated } from "./registryTransportGovernance.js";
 
 let passed = 0;
@@ -175,6 +175,69 @@ section("requireTransportIfDelegated honors configurable transport");
     "non-transport executor is rejected when no http backend executor is present",
     error?.code === "transport_executor_mismatch",
     JSON.stringify(error)
+  );
+}
+
+section("resolveEndpoint blocks Google Workspace binding drift");
+
+{
+  let error = null;
+  try {
+    resolveEndpoint(
+      [
+        {
+          endpoint_id: "bad_google_row",
+          parent_action_key: "google_sheets_api",
+          endpoint_key: "getSheetValues",
+          endpoint_operation: "getDocument",
+          route_target: "google_docs_api",
+          openai_action_name: "getDocument",
+          provider_domain: "docs.googleapis.com",
+          method: "GET",
+          endpoint_path_or_function: "/v1/documents/{documentId}",
+          status: "active",
+          execution_readiness: "ready"
+        }
+      ],
+      "google_sheets_api",
+      "getSheetValues"
+    );
+  } catch (err) {
+    error = err;
+  }
+
+  assert(
+    "repurposed Docs row is rejected for Sheets endpoint",
+    error?.code === "endpoint_binding_mismatch",
+    JSON.stringify(error?.details || error)
+  );
+}
+
+{
+  const endpoint = resolveEndpoint(
+    [
+      {
+        endpoint_id: "good_google_row",
+        parent_action_key: "google_sheets_api",
+        endpoint_key: "getSheetValues",
+        endpoint_operation: "getSheetValues",
+        route_target: "google_sheets_api",
+        openai_action_name: "getSheetValues",
+        provider_domain: "sheets.googleapis.com",
+        method: "GET",
+        endpoint_path_or_function: "/v4/spreadsheets/{spreadsheetId}/values/{range}",
+        status: "active",
+        execution_readiness: "ready"
+      }
+    ],
+    "google_sheets_api",
+    "getSheetValues"
+  );
+
+  assert(
+    "consistent Sheets endpoint resolves",
+    endpoint.endpoint_id === "good_google_row",
+    JSON.stringify(endpoint)
   );
 }
 

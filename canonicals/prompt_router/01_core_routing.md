@@ -322,7 +322,10 @@ Decision-aware inputs when available:
 - review_context when repair-loop skip, rerun qualification, or findings-driven repair routing is required
 - repair_control_sheet when repair rerun qualification is required
 - review_control_center_sheet when governed control-signal resolution is required
-- conversation_starter_sheet when starter-aware routing is active
+- split conversation starter authority surfaces when starter-aware routing is active:
+  - `conversation_starters_main_surface` for normal user-facing starters
+  - `conversation_starters_system_surface` for system, governance, monitoring, repair, runtime-validation, analytics-sync, and activation starters
+- `conversation_starter_sheet` may be used only as a non-authoritative legacy fallback and must not make a route executable by itself
 - knowledge_graph_node_registry_sheet when graph-based routing support is enabled
 - relationship_graph_registry_sheet when graph-based routing support is enabled
 - review findings summary when `incomplete_scope_lifecycle` or pre-execution block repair routing is required

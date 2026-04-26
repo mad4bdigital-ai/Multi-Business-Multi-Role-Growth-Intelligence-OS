@@ -187,7 +187,8 @@ Conditional authority loading:
 - registry_surfaces_catalog_sheet is required when surface-location authority is required for routed dependencies
 - actions_registry_sheet is required when native API capability governance is required
 - api_actions_endpoint_registry_sheet is required when native API fetch actions are required for dependency resolution
-- conversation_starter_sheet is required when starter-aware execution is active
+- split conversation starter authority surfaces are required when starter-aware execution is active
+- `conversation_starter_sheet` is a legacy aggregate fallback only; it must not be treated as execution-critical authority when split starter surfaces are registered
 
 Scoring Policy Loading Rule
 
@@ -206,7 +207,11 @@ Conversation Starter Loading Rule
 When starter-aware execution is active:
 
 module_loader must:
-- resolve `conversation_starter_sheet` from `Registry Surfaces Catalog`
+- resolve split starter authority surfaces from `Registry Surfaces Catalog` before considering legacy aggregate rows:
+  - `conversation_starters_main_surface`
+  - `conversation_starters_system_surface`
+- treat `conversation_starter_sheet` as non-authoritative fallback only when split surfaces are absent or explicitly unavailable
+- block execution-critical starter authority from any legacy aggregate surface with `required_for_execution = FALSE` or non-authoritative surface classification
 - validate `worksheet_gid`
 - validate `schema_ref`, `schema_version`, `header_signature`, `expected_column_count`
 
@@ -228,7 +233,9 @@ Conversation Starter Context Injection
 When starter-aware execution is active:
 
 module_loader must:
-- load `conversation_starter_sheet` via Registry
+- load split starter authority surfaces via Registry before legacy fallback
+- classify system/governance starters from the system starter surface and normal user-facing starters from the main starter surface
+- preserve legacy aggregate starter rows only as routing-support context, not execution-ready authority
 - validate:
   - `worksheet_gid`
   - `header_signature`
