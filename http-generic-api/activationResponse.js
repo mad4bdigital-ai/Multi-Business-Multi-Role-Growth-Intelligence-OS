@@ -1,4 +1,4 @@
-import { buildRateLimitedClassification } from "./activationClassification.js";
+import { classifyActivationFromEvidence } from "./activationStatusClassifier.js";
 import { buildProgressState } from "./activationProgress.js";
 import { getRecoveryPolicy } from "./activationRecoveryPolicy.js";
 import { buildActivationOperatorView } from "./activationOperatorView.js";
@@ -25,14 +25,37 @@ function deriveBlockedStage(evidence) {
   return "";
 }
 
+function buildStateRecovery(classification, evidence) {
+  const status = classification.activation_status;
+  const reason = classification.reason_code;
+
+  if (status === "validation_rate_limited") {
+    return getRecoveryPolicy(Number(evidence.retry_count) || 0);
+  }
+  if (status === "active") {
+    return { retryable: false, recommended_action: "none", retry_after_seconds: null };
+  }
+  if (status === "authorization_gated") {
+    return { retryable: false, recommended_action: "repair_credentials", retry_after_seconds: null };
+  }
+  if (status === "validating") {
+    return { retryable: false, recommended_action: "continue_validation", retry_after_seconds: null };
+  }
+  // degraded — reason-specific guidance
+  if (reason === "executable_binding_mismatch") {
+    return { retryable: false, recommended_action: "repair_binding", retry_after_seconds: null };
+  }
+  return { retryable: false, recommended_action: "re_read_bootstrap", retry_after_seconds: null };
+}
+
 export function buildActivationEnvelope(evidence = {}) {
   const completedStages = deriveCompletedStages(evidence);
   const blockedStage = deriveBlockedStage(evidence);
   const progress = buildProgressState(completedStages, blockedStage);
-  const runtime_classification = buildRateLimitedClassification(progress);
-  const recovery = getRecoveryPolicy(Number(evidence.retry_count) || 0);
+  const classification = classifyActivationFromEvidence(evidence);
+  const recovery = buildStateRecovery(classification, evidence);
   const operator_view = buildActivationOperatorView(
-    { ...runtime_classification, evidence },
+    { ...classification, evidence },
     progress,
     recovery
   );
@@ -40,7 +63,8 @@ export function buildActivationEnvelope(evidence = {}) {
 
   return {
     runtime_classification: {
-      ...runtime_classification,
+      ...classification,
+      progress,
       ...consistency
     },
     recovery,
