@@ -1,0 +1,569 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://growth-intelligence.local/schemas/graph_addition.schema.json",
+  "title": "Growth Intelligence — Graph & Addition",
+  "$defs": {
+    "graphIntelligenceState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "graph_validation_enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "graph_prediction_enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "graph_auto_routing_enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "selected_graph_path": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "graph_path_confidence": {
+          "type": "number",
+          "default": 0
+        },
+        "graph_prediction_basis": {
+          "type": "string",
+          "default": ""
+        },
+        "graph_validation_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "recovered",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "missing_graph_nodes": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "missing_graph_relationships": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "graph_outcome_status": {
+          "type": "string",
+          "enum": [
+            "none",
+            "recovered",
+            "degraded",
+            "blocked",
+            "failed"
+          ],
+          "default": "none"
+        },
+        "provider_family_graph_targets": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "missing_provider_family_edges": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "provider_route_workflow_graph_status": {
+          "type": "string",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": ""
+        }
+      },
+      "default": {}
+    },
+    "additionIntakeState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "addition_request_detected": {
+          "type": "boolean",
+          "default": false
+        },
+        "addition_type": {
+          "type": "string",
+          "enum": [
+            "",
+            "route_only",
+            "workflow_only",
+            "route_and_workflow",
+            "chain_only",
+            "surface_extension",
+            "overlap_conflict"
+          ],
+          "default": ""
+        },
+        "addition_decision_class": {
+          "type": "string",
+          "enum": [
+            "",
+            "reuse_existing",
+            "extend_existing",
+            "create_new_route",
+            "create_new_workflow",
+            "create_chain",
+            "create_new_surface",
+            "blocked_overlap_conflict",
+            "degraded_missing_dependencies",
+            "pending_validation"
+          ],
+          "default": ""
+        },
+        "candidate_write_performed": {
+          "type": "boolean",
+          "default": false
+        },
+        "candidate_write_targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "promotion_prerequisites": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "promotion_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "blocked",
+            "degraded"
+          ],
+          "default": "pending"
+        }
+      },
+      "default": {
+        "addition_request_detected": false,
+        "addition_type": "",
+        "addition_decision_class": "",
+        "candidate_write_performed": false,
+        "candidate_write_targets": [],
+        "promotion_prerequisites": [],
+        "promotion_status": "pending"
+      }
+    },
+    "additionDecisionState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "addition_decision_class": {
+          "type": "string",
+          "enum": [
+            "",
+            "reuse_existing",
+            "extend_existing",
+            "create_new_route",
+            "create_new_workflow",
+            "create_chain",
+            "create_new_surface",
+            "blocked_overlap_conflict",
+            "degraded_missing_dependencies",
+            "pending_validation"
+          ],
+          "default": ""
+        },
+        "decision_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "affected_surface_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "candidate_write_targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "promotion_prerequisites": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "overlap_group": {
+          "type": "string",
+          "default": ""
+        },
+        "chain_required": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "default": {
+        "addition_decision_class": "",
+        "decision_status": "pending",
+        "affected_surface_ids": [],
+        "candidate_write_targets": [],
+        "promotion_prerequisites": [],
+        "overlap_group": "",
+        "chain_required": false
+      }
+    },
+    "overlapReviewState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "route_overlap_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "none",
+            "detected",
+            "validated",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "workflow_overlap_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "none",
+            "detected",
+            "validated",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "overlap_group": {
+          "type": "string",
+          "default": ""
+        },
+        "reuse_recommended": {
+          "type": "boolean",
+          "default": false
+        },
+        "extend_recommended": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "default": {
+        "route_overlap_status": "pending",
+        "workflow_overlap_status": "pending",
+        "overlap_group": "",
+        "reuse_recommended": false,
+        "extend_recommended": false
+      }
+    },
+    "chainNecessityState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "chain_review_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "chain_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "chain_candidate_id": {
+          "type": "string",
+          "default": ""
+        },
+        "intersection_detected": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "default": {
+        "chain_review_required": false,
+        "chain_required": false,
+        "chain_candidate_id": "",
+        "intersection_detected": false
+      }
+    },
+    "graphImpactState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "knowledge_graph_update_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "relationship_graph_update_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "graph_validation_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        }
+      },
+      "default": {
+        "knowledge_graph_update_required": false,
+        "relationship_graph_update_required": false,
+        "graph_validation_status": "pending"
+      }
+    },
+    "bindingsImpactState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "execution_bindings_update_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "validation_registry_update_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "registry_surfaces_update_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "bindings_validation_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        }
+      },
+      "default": {
+        "execution_bindings_update_required": false,
+        "validation_registry_update_required": false,
+        "registry_surfaces_update_required": false,
+        "bindings_validation_status": "pending"
+      }
+    },
+    "candidatePromotionState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "promotion_blocked_until_validated": {
+          "type": "boolean",
+          "default": true
+        },
+        "promotion_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "blocked",
+            "degraded"
+          ],
+          "default": "pending"
+        },
+        "candidate_write_performed": {
+          "type": "boolean",
+          "default": false
+        },
+        "candidate_validation_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "candidate_validation_rows_written": {
+          "type": "boolean",
+          "default": false
+        },
+        "candidate_validation_row_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "candidate_write_targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "promotion_blockers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "promotion_prerequisites": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "promotion_ready": {
+          "type": "boolean",
+          "default": false
+        },
+        "blocked_reason": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "default": {
+        "promotion_blocked_until_validated": true,
+        "promotion_status": "pending",
+        "candidate_write_performed": false,
+        "candidate_validation_required": false,
+        "candidate_validation_rows_written": false,
+        "candidate_validation_row_ids": [],
+        "candidate_write_targets": [],
+        "promotion_blockers": [],
+        "promotion_prerequisites": [],
+        "promotion_ready": false,
+        "blocked_reason": ""
+      }
+    },
+    "governedAdditionState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "addition_requested": {
+          "type": "boolean",
+          "default": false
+        },
+        "addition_type": {
+          "type": "string",
+          "default": ""
+        },
+        "affected_surfaces": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "validation_required": {
+          "type": "boolean",
+          "default": true
+        },
+        "graph_impact_expected": {
+          "type": "boolean",
+          "default": false
+        },
+        "promotion_status": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "pending",
+            "candidate",
+            "promoted",
+            "blocked",
+            "failed"
+          ],
+          "default": "not_required"
+        },
+        "final_activation_status": {
+          "type": "string",
+          "enum": [
+            "inactive",
+            "candidate",
+            "active",
+            "authoritative",
+            "blocked"
+          ],
+          "default": "inactive"
+        },
+        "starter_addition_requested": {
+          "type": "boolean",
+          "default": false
+        },
+        "starter_classification": {
+          "type": "string",
+          "enum": [
+            "",
+            "general_starter",
+            "system_starter",
+            "override_required_starter",
+            "predictive_starter"
+          ],
+          "default": ""
+        },
+        "starter_override_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "starter_override_source": {
+          "type": "string",
+          "enum": [
+            "",
+            "none",
+            "curated_registry",
+            "self_healing_registry",
+            "manual_override"
+          ],
+          "default": ""
+        },
+        "starter_insert_validation_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "starter_post_insert_readback_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "starter_post_insert_readback_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "default": {}
+    }
+  }
+}

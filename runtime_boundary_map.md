@@ -6,7 +6,7 @@
 These files define the intended architecture and enforcement model:
 
 - `system_bootstrap.md`
-- `memory_schema.json`
+- `memory_schema.json` (root; domain sub-schemas in `schemas/`)
 - `direct_instructions_registry_patch.md`
 - `module_loader.md`
 - `prompt_router.md`
@@ -371,7 +371,27 @@ Current important authority surfaces:
 - `Hosting Account Registry`
 - `Brand Core Registry`
 
-## 8. Immediate decomposition opportunities
+## 8. Schema boundary
+
+`memory_schema.json` is the persistent state contract root. It is decomposed into 11 domain sub-schemas under `schemas/`, each containing the relevant `$defs`:
+
+| File | Defs | Size |
+|---|---|---|
+| `schemas/shared.schema.json` | 3 | 1.5 KB |
+| `schemas/business_identity.schema.json` | 2 | 4.1 KB |
+| `schemas/brand.schema.json` | 8 | 19 KB |
+| `schemas/execution.schema.json` | 12 | 39 KB |
+| `schemas/analytics.schema.json` | 17 | 20 KB |
+| `schemas/governance.schema.json` | 3 | 4.4 KB |
+| `schemas/repair_audit.schema.json` | 11 | 34 KB |
+| `schemas/routing_transport.schema.json` | 2 | 7.7 KB |
+| `schemas/graph_addition.schema.json` | 9 | 15 KB |
+| `schemas/operations.schema.json` | 13 | 125 KB |
+| `schemas/wordpress_api.schema.json` | 3 | 6 KB |
+
+Root retains 123 properties and 92 required fields. All 169 `$ref` values resolve.
+
+## 9. Immediate decomposition opportunities
 
 The next highest-value decomposition opportunities are:
 

@@ -216,7 +216,7 @@ Per the upgrade plan, the first domains to normalize are:
 
 ## 5. Implementation shape
 
-The preferred implementation shape is a dedicated normalization boundary under `http-generic-api`, rather than new scattered helpers.
+The normalization boundary is actively implemented in `http-generic-api/normalization.js`, effectively acting as the staging boundary for all domains A-H.
 
 Recommended initial modules:
 - `normalization/policy.js`
@@ -227,7 +227,7 @@ Recommended initial modules:
 - `normalization/executionResult.js`
 - `normalization/index.js`
 
-If the repo is not ready for a subfolder yet, an intermediate module such as `http-generic-api/normalization.js` is acceptable as a staging boundary.
+*Status:* The intermediate staging boundary `http-generic-api/normalization.js` is now complete. The next refactor phase will decouple these into the recommended subfolder structure.
 
 ## 6. Current raw-to-canonical pressure points
 

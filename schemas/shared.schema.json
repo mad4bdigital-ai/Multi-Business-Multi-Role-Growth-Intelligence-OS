@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://growth-intelligence.local/schemas/shared.schema.json",
+  "title": "Growth Intelligence — Shared Primitives",
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "default": [],
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "standardLifecycleStatus": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "validated",
+        "degraded",
+        "blocked"
+      ],
+      "default": "pending"
+    },
+    "principles": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "brand_aware_by_default": {
+          "type": "boolean",
+          "default": true
+        },
+        "multi_brand_ready": {
+          "type": "boolean",
+          "default": true
+        },
+        "multi_source_ready": {
+          "type": "boolean",
+          "default": true
+        },
+        "multi_entity_ready": {
+          "type": "boolean",
+          "default": true
+        },
+        "workbook_separation_enforced": {
+          "type": "boolean",
+          "default": true
+        },
+        "engines_only_executable_registry": {
+          "type": "boolean",
+          "default": true
+        },
+        "review_layer_supported": {
+          "type": "boolean",
+          "default": true
+        },
+        "manual_to_live_transition_supported": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,174 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://growth-intelligence.local/schemas/business_identity.schema.json",
+  "title": "Growth Intelligence — Business Identity",
+  "$defs": {
+    "moduleCacheEntry": {
+      "type": "object",
+      "description": "Minimum required shape for a successfully cached module entry. Additional payload fields are allowed.",
+      "additionalProperties": true,
+      "required": [
+        "variable",
+        "file_type",
+        "file_id",
+        "status"
+      ],
+      "properties": {
+        "variable": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file_type": {
+          "type": "string",
+          "enum": [
+            "document",
+            "spreadsheet",
+            "knowledge_file",
+            "database",
+            "api",
+            "markdown"
+          ]
+        },
+        "file_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gid": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "loaded"
+          ]
+        },
+        "loaded_from_cache": {
+          "type": "boolean",
+          "default": false
+        },
+        "source_registry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "spreadsheet_id",
+            "sheet_name"
+          ],
+          "properties": {
+            "spreadsheet_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sheet_name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sheet_title": {
+              "type": "string"
+            }
+          }
+        },
+        "content": {
+          "type": [
+            "string",
+            "object",
+            "array",
+            "null"
+          ]
+        },
+        "metadata": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "file_type": {
+                "const": "spreadsheet"
+              }
+            },
+            "required": [
+              "file_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "gid"
+            ]
+          }
+        }
+      ]
+    },
+    "sessionContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "session_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "active_user_request": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "active_mode": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "active_brand_scope": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "active_source_scope": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "active_entity_scope": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "current_date_mode": {
+          "type": "string",
+          "default": "live"
+        },
+        "last_bootstrap_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "memory_isolation_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "active_brand_isolation_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "cross_brand_memory_guard": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

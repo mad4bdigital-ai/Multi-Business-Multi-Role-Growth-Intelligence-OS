@@ -49,12 +49,16 @@ Use it for:
 - degraded vs validating vs active state classification
 
 ### `memory_schema.json`
-Persistent state contract.
+Persistent state contract (root of a decomposed schema set).
 
 Use it for:
 - durable execution memory
 - state field shape
 - structured persistence expectations
+
+Domain sub-schemas live in `schemas/` and are referenced via `$ref` from the root.
+Sub-schemas: `shared`, `business_identity`, `brand`, `execution`, `analytics`,
+`governance`, `repair_audit`, `routing_transport`, `graph_addition`, `operations`, `wordpress_api`.
 
 ### `direct_instructions_registry_patch.md`
 Hard enforcement patch layer.
@@ -145,7 +149,7 @@ Key modules and their authority domains:
 - `server.js` (~4,636 lines) — orchestration and route handlers only
 - `executionRouting.js` — HTTP execution context resolution, guard chain, transport/native routing classification
 - `auth.js` — Google OAuth scope resolution, policy enforcement, resilience and retry mutation helpers
-- `normalization.js` — payload normalization, routing field classification, delegated wrapper detection
+- `normalization.js` — canonical normalization layer successfully implementing all A-H domains
 - `mutationGovernance.js` / `governedChangeControl.js` — mutation classification, duplicate detection, exemption rules
 - `jobRunner.js` / `jobUtils.js` — async job dispatch and lifecycle management
 - `authInjection.js` / `authCredentialResolution.js` — credential resolution and auth header injection
@@ -191,7 +195,7 @@ Prioritize:
 3. module boundary cleanup
 4. policy normalization
 5. test coverage
-6. monolith decomposition by authority boundary
+6. monolith decomposition by authority boundary ✓ (schema layer complete — `memory_schema.json` → 11 domain sub-schemas in `schemas/`)
 
 ## 12. Current documentation status
 
@@ -203,7 +207,13 @@ All previously suggested docs now exist:
 - `deployment_parity_checklist.md` ✓
 - `runtime_confirmation_procedure.md` ✓
 
-Test and validation baselines (as of 2026-04-20):
+Schema layer:
+- `memory_schema.json` — root schema (112 KB, 123 properties, 92 required)
+- `schemas/` — 11 domain sub-schemas (276 KB total, 83 `$defs`, 169 `$ref` all resolving)
+  - `shared`, `business_identity`, `brand`, `execution`, `analytics`, `governance`,
+    `repair_audit`, `routing_transport`, `graph_addition`, `operations`, `wordpress_api`
+
+Test and validation baselines (as of 2026-04-26):
 - 168 automated tests across 6 suites (`npm test`)
 - 104 architecture checks (`npm run validate`)
 - CI enforces syntax, tests, drift detection, export floors on every push

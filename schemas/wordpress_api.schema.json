@@ -1,0 +1,218 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://growth-intelligence.local/schemas/wordpress_api.schema.json",
+  "title": "Growth Intelligence — WordPress & API",
+  "$defs": {
+    "wordpressMultilingualState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "translatable_post_type_scope_active": {
+          "type": "boolean",
+          "default": false
+        },
+        "target_post_type_slug": {
+          "type": "string",
+          "default": ""
+        },
+        "target_language_code": {
+          "type": "string",
+          "default": ""
+        },
+        "default_language_inferred": {
+          "type": "boolean",
+          "default": false
+        },
+        "direct_rest_language_write_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "unproven",
+            "proof_test_pending",
+            "proof_tested",
+            "execution_validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "wpml_import_language_path_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "authoritative_for_non_default_language_workflows",
+            "deferred",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "translation_scope_preflight_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "required",
+            "validated",
+            "deferred",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "translation_linkage_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "not_requested",
+            "terminal_non_blocking",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "multilingual_execution_mode": {
+          "type": "string",
+          "enum": [
+            "",
+            "direct_rest_proven",
+            "wpml_import_governed",
+            "mixed_layered_execution"
+          ],
+          "default": ""
+        }
+      },
+      "default": {
+        "translatable_post_type_scope_active": false,
+        "target_post_type_slug": "",
+        "target_language_code": "",
+        "default_language_inferred": false,
+        "direct_rest_language_write_status": "pending",
+        "wpml_import_language_path_status": "pending",
+        "translation_scope_preflight_status": "pending",
+        "translation_linkage_status": "pending",
+        "multilingual_execution_mode": ""
+      }
+    },
+    "wordpressPreflightState": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "brand_playbook_asset_key": {
+          "type": "string",
+          "default": ""
+        },
+        "brand_playbook_sheet_gid": {
+          "type": "string",
+          "default": ""
+        },
+        "playbook_coverage_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "covered",
+            "missing_for_cpt",
+            "missing_asset",
+            "not_applicable"
+          ]
+        },
+        "playbook_backfill_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "fallback_template_mode": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "runtime_contract_only",
+            "runtime_plus_sample_hint",
+            "runtime_plus_playbook_hint"
+          ]
+        },
+        "last_cpt_schema_asset_key": {
+          "type": "string",
+          "default": ""
+        },
+        "last_cpt_slug": {
+          "type": "string",
+          "default": ""
+        },
+        "last_rest_base": {
+          "type": "string",
+          "default": ""
+        },
+        "last_readiness_state": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "apiActionInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "last_capability_registry_validation",
+        "last_endpoint_inventory_validation",
+        "last_incomplete_endpoint_metadata",
+        "last_parent_endpoint_mismatches",
+        "last_async_job_validation",
+        "last_credential_resolver_chain",
+        "last_hosting_account_registry_validation"
+      ],
+      "properties": {
+        "last_capability_registry_validation": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "last_endpoint_inventory_validation": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "last_incomplete_endpoint_metadata": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "last_parent_endpoint_mismatches": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "last_async_job_validation": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "last_credential_resolver_chain": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "last_hosting_account_registry_validation": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        }
+      }
+    }
+  }
+}

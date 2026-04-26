@@ -1,0 +1,1465 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://growth-intelligence.local/schemas/repair_audit.schema.json",
+  "title": "Growth Intelligence — Repair & Audit",
+  "$defs": {
+    "fullAuditState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "audit_mode": {
+          "type": "string",
+          "enum": [
+            "standard",
+            "full_system_intelligence"
+          ],
+          "default": "standard"
+        },
+        "staged_audit_status": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "pending",
+            "recovered",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "component_audit_status": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "pending",
+            "recovered",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "row_audit_status": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "pending",
+            "recovered",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "repair_mapping_status": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "pending",
+            "recovered",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "scoreboard_propagation_status": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "pending",
+            "recovered",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "audit_version": {
+          "type": "string",
+          "default": "v2"
+        },
+        "execution_layers_validated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "required_surfaces": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "missing_surfaces": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "validation_depth": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "targeted",
+            "sampled",
+            "exhaustive"
+          ],
+          "default": "pending"
+        },
+        "required_surface_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "validated_surface_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "required_row_group_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "validated_row_group_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "coverage_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0
+        },
+        "validated_surface_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "unvalidated_surface_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "required_row_group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "validated_row_group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "unvalidated_row_group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "exhaustive_coverage_guard_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "passed",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "full_audit_completion_guard_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "passed",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "audit_depth_label": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "targeted",
+            "sampled_full_system",
+            "exhaustive_full_system"
+          ],
+          "default": "pending"
+        }
+      },
+      "default": {}
+    },
+    "bindingIntegrityState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "binding_mode": {
+          "type": "string",
+          "enum": [
+            "gid_based"
+          ],
+          "default": "gid_based"
+        },
+        "binding_integrity_review_status": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "pending",
+            "recovered",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "deprecated_label_binding_detected": {
+          "type": "boolean",
+          "default": false
+        },
+        "required_surfaces": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "missing_or_mismatched_gids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "default": {}
+    },
+    "adaptiveScoringState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "effective_threshold_source": {
+          "type": "string",
+          "enum": [
+            "default",
+            "dynamic_class",
+            "adaptive"
+          ],
+          "default": "default"
+        },
+        "effective_recovered_threshold": {
+          "type": "number",
+          "default": 0
+        },
+        "effective_degraded_threshold_min": {
+          "type": "number",
+          "default": 0
+        },
+        "effective_blocked_threshold_max": {
+          "type": "number",
+          "default": 0
+        },
+        "adaptive_window": {
+          "type": "string",
+          "default": ""
+        },
+        "threshold_readback_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "failed"
+          ],
+          "default": "pending"
+        }
+      },
+      "default": {}
+    },
+    "autoRepairRetryState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "retry_eligible": {
+          "type": "boolean",
+          "default": false
+        },
+        "retry_attempt_limit": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "retry_attempt_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "retry_status": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "pending",
+            "retrying",
+            "succeeded",
+            "failed",
+            "blocked"
+          ],
+          "default": "not_required"
+        },
+        "original_execution_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "resolved",
+            "degraded",
+            "blocked",
+            "recovered",
+            "failed"
+          ],
+          "default": "pending"
+        },
+        "resolved_repair_handler": {
+          "type": "string",
+          "default": ""
+        },
+        "retry_outcome": {
+          "type": "string",
+          "enum": [
+            "none",
+            "recovered",
+            "degraded",
+            "blocked",
+            "failed"
+          ],
+          "default": "none"
+        },
+        "repair_trace_id": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "default": {}
+    },
+    "repairBlocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blocker_type",
+        "blocker_layer",
+        "reason",
+        "safe_degradation_possible",
+        "timestamp"
+      ],
+      "properties": {
+        "blocker_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "blocker_layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "safe_degradation_possible": {
+          "type": "boolean",
+          "default": false
+        },
+        "timestamp": {
+          "type": "string",
+          "default": ""
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "resolved",
+            "blocked"
+          ],
+          "default": "active"
+        },
+        "notes": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "repairDiagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repaired_items": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "remaining_limitations": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "notes": {
+          "type": "string",
+          "default": ""
+        },
+        "execution_mode": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "normal",
+            "system_repair"
+          ]
+        },
+        "repair_severity": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "minor",
+            "major",
+            "critical"
+          ]
+        },
+        "repair_trigger_source": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "user",
+            "system"
+          ]
+        },
+        "validation_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "valid",
+            "partial",
+            "recoverable",
+            "invalid",
+            "unknown"
+          ]
+        },
+        "fallback_used": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "final_outcome_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "Recovered",
+            "Degraded",
+            "Blocked"
+          ]
+        },
+        "resolution_type": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "auto",
+            "partial",
+            "manual"
+          ]
+        }
+      }
+    },
+    "repairHistoryEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "timestamp",
+        "route",
+        "subtype",
+        "repair_scope",
+        "affected_layers",
+        "outcome_class",
+        "repair_severity",
+        "repair_trigger_source",
+        "validation_state",
+        "fallback_used",
+        "resolution_type",
+        "route_id",
+        "route_status",
+        "target_module",
+        "target_workflow"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "default": ""
+        },
+        "route": {
+          "type": "string",
+          "enum": [
+            "system_repair"
+          ],
+          "default": "system_repair"
+        },
+        "subtype": {
+          "type": "string",
+          "enum": [
+            "audit_and_repair",
+            "registry_repair",
+            "dependency_repair",
+            "binding_correction",
+            "observability_repair",
+            "escalated_repair",
+            "scope_completion_repair"
+          ]
+        },
+        "repair_scope": {
+          "type": "string",
+          "enum": [
+            "structural",
+            "dependency",
+            "registry",
+            "binding",
+            "observability",
+            "mixed"
+          ]
+        },
+        "affected_layers": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "authority_state": {
+          "type": "string",
+          "default": ""
+        },
+        "dependency_state": {
+          "type": "string",
+          "default": ""
+        },
+        "repair_actions_taken": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "unresolved_blockers": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/repairBlocker"
+          }
+        },
+        "outcome_class": {
+          "type": "string",
+          "enum": [
+            "Recovered",
+            "Degraded",
+            "Blocked"
+          ]
+        },
+        "diagnostics": {
+          "$ref": "#/$defs/repairDiagnostics",
+          "default": {}
+        },
+        "repair_severity": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "minor",
+            "major",
+            "critical"
+          ]
+        },
+        "repair_trigger_source": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "user",
+            "system"
+          ]
+        },
+        "validation_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "valid",
+            "partial",
+            "recoverable",
+            "invalid",
+            "unknown"
+          ]
+        },
+        "fallback_used": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "resolution_type": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "auto",
+            "partial",
+            "manual"
+          ]
+        },
+        "route_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "route_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "resolved",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "route_source": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "registry_task_routes"
+          ]
+        },
+        "matched_row_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "target_module": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "target_workflow": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "intake_validation_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_checked",
+            "valid",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "execution_ready_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_ready",
+            "ready",
+            "degraded_ready",
+            "blocked"
+          ]
+        },
+        "failure_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "recovery_action": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "started_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "completed_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "scope_brand_name": {
+          "type": "string",
+          "default": ""
+        },
+        "scope_normalized_brand_name": {
+          "type": "string",
+          "default": ""
+        },
+        "scope_session_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "memory_isolation_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "final_outcome_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "Recovered",
+            "Degraded",
+            "Blocked"
+          ]
+        }
+      }
+    },
+    "repairMemory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "execution_mode",
+        "repair_active",
+        "active_route",
+        "active_subtype",
+        "repair_scope",
+        "affected_layers",
+        "authority_checks_required",
+        "dependency_checks_required",
+        "route_id",
+        "route_status",
+        "route_source",
+        "matched_row_id",
+        "target_module",
+        "target_workflow",
+        "intake_validation_status",
+        "execution_ready_status",
+        "failure_reason",
+        "recovery_action",
+        "authority_state",
+        "dependency_state",
+        "candidate_repair_actions",
+        "repair_actions_taken",
+        "unresolved_blockers",
+        "diagnostics",
+        "outcome_class",
+        "degraded_state",
+        "repair_history",
+        "repair_severity",
+        "repair_trigger_source",
+        "validation_state",
+        "fallback_used",
+        "resolution_type",
+        "scope_brand_name",
+        "scope_normalized_brand_name",
+        "scope_session_id",
+        "memory_isolation_key"
+      ],
+      "properties": {
+        "execution_mode": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "normal",
+            "system_repair"
+          ]
+        },
+        "repair_active": {
+          "type": "boolean",
+          "default": false
+        },
+        "active_route": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "system_repair"
+          ]
+        },
+        "active_subtype": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "audit_and_repair",
+            "registry_repair",
+            "dependency_repair",
+            "binding_correction",
+            "observability_repair",
+            "escalated_repair",
+            "scope_completion_repair"
+          ]
+        },
+        "repair_scope": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "structural",
+            "dependency",
+            "registry",
+            "binding",
+            "observability",
+            "mixed"
+          ]
+        },
+        "repair_severity": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "minor",
+            "major",
+            "critical"
+          ]
+        },
+        "repair_trigger_source": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "user",
+            "system"
+          ]
+        },
+        "affected_layers": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "authority_checks_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "dependency_checks_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "route_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "route_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "resolved",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "route_source": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "registry_task_routes"
+          ]
+        },
+        "matched_row_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "target_module": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "target_workflow": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "intake_validation_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_checked",
+            "valid",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "execution_ready_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_ready",
+            "ready",
+            "degraded_ready",
+            "blocked"
+          ]
+        },
+        "failure_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "recovery_action": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "authority_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "valid",
+            "partial",
+            "invalid",
+            "unknown"
+          ]
+        },
+        "dependency_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "valid",
+            "partial_failure",
+            "missing",
+            "invalid",
+            "unknown"
+          ]
+        },
+        "validation_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "valid",
+            "partial",
+            "recoverable",
+            "invalid",
+            "unknown"
+          ]
+        },
+        "candidate_repair_actions": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "fallback_used": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "resolution_type": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "auto",
+            "partial",
+            "manual"
+          ]
+        },
+        "repair_actions_taken": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "unresolved_blockers": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/repairBlocker"
+          }
+        },
+        "diagnostics": {
+          "$ref": "#/$defs/repairDiagnostics",
+          "default": {}
+        },
+        "outcome_class": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "Recovered",
+            "Degraded",
+            "Blocked"
+          ]
+        },
+        "degraded_state": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "is_degraded",
+            "status",
+            "reason",
+            "affected_layers",
+            "since_timestamp"
+          ],
+          "properties": {
+            "is_degraded": {
+              "type": "boolean",
+              "default": false
+            },
+            "reason": {
+              "type": "string",
+              "default": ""
+            },
+            "affected_layers": {
+              "$ref": "./shared.schema.json#/$defs/stringList"
+            },
+            "since_timestamp": {
+              "type": "string",
+              "default": ""
+            },
+            "status": {
+              "type": "string",
+              "default": "normal",
+              "enum": [
+                "normal",
+                "degraded",
+                "blocked",
+                "recovered"
+              ]
+            },
+            "source": {
+              "type": "string",
+              "default": "",
+              "enum": [
+                "",
+                "routing",
+                "registry",
+                "repair",
+                "execution",
+                "system"
+              ]
+            },
+            "last_transition_at": {
+              "type": "string",
+              "default": ""
+            },
+            "cleared_at": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            }
+          }
+        },
+        "scope_brand_name": {
+          "type": "string",
+          "default": ""
+        },
+        "scope_normalized_brand_name": {
+          "type": "string",
+          "default": ""
+        },
+        "scope_session_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "memory_isolation_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "started_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "completed_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "repair_history": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/repairHistoryEntry"
+          }
+        },
+        "final_outcome_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "Recovered",
+            "Degraded",
+            "Blocked"
+          ]
+        }
+      }
+    },
+    "repairIntelligenceSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "timestamp",
+        "pattern_type",
+        "repair_priority",
+        "recurrence_score",
+        "stability_risk_score",
+        "escalation_required",
+        "recommended_next_action"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "default": ""
+        },
+        "pattern_type": {
+          "type": "string",
+          "enum": [
+            "isolated_failure",
+            "repeated_same_blocker",
+            "multi-layer_instability",
+            "authority_instability",
+            "dependency_drift",
+            "binding_drift",
+            "observability_gap_pattern",
+            "emerging_pattern",
+            ""
+          ],
+          "default": ""
+        },
+        "repair_priority": {
+          "type": "string",
+          "enum": [
+            "",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "default": ""
+        },
+        "recurrence_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0
+        },
+        "stability_risk_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0
+        },
+        "escalation_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "watchlist_layers": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "recommended_next_action": {
+          "type": "string",
+          "default": ""
+        },
+        "source_outcome_class": {
+          "type": "string",
+          "enum": [
+            "",
+            "Recovered",
+            "Degraded",
+            "Blocked"
+          ],
+          "default": ""
+        },
+        "source_subtype": {
+          "type": "string",
+          "enum": [
+            "",
+            "audit_and_repair",
+            "registry_repair",
+            "dependency_repair",
+            "binding_correction",
+            "observability_repair",
+            "escalated_repair",
+            "scope_completion_repair"
+          ],
+          "default": ""
+        },
+        "notes": {
+          "type": "string",
+          "default": ""
+        },
+        "source_validation_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "valid",
+            "partial",
+            "recoverable",
+            "invalid",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "repairIntelligence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pattern_type",
+        "repair_priority",
+        "recurrence_score",
+        "stability_risk_score",
+        "escalation_required",
+        "watchlist_layers",
+        "recommended_next_action",
+        "last_intelligence_refresh",
+        "intelligence_history"
+      ],
+      "properties": {
+        "pattern_type": {
+          "type": "string",
+          "enum": [
+            "",
+            "isolated_failure",
+            "repeated_same_blocker",
+            "multi-layer_instability",
+            "authority_instability",
+            "dependency_drift",
+            "binding_drift",
+            "observability_gap_pattern",
+            "emerging_pattern"
+          ],
+          "default": ""
+        },
+        "repair_priority": {
+          "type": "string",
+          "enum": [
+            "",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "default": ""
+        },
+        "recurrence_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0
+        },
+        "stability_risk_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0
+        },
+        "escalation_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "watchlist_layers": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "recommended_next_action": {
+          "type": "string",
+          "default": ""
+        },
+        "last_intelligence_refresh": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "source_repair_outcome": {
+          "type": "string",
+          "enum": [
+            "",
+            "Recovered",
+            "Degraded",
+            "Blocked"
+          ],
+          "default": ""
+        },
+        "source_repair_subtype": {
+          "type": "string",
+          "enum": [
+            "",
+            "audit_and_repair",
+            "registry_repair",
+            "dependency_repair",
+            "binding_correction",
+            "observability_repair",
+            "escalated_repair",
+            "scope_completion_repair"
+          ],
+          "default": ""
+        },
+        "intelligence_notes": {
+          "type": "string",
+          "default": ""
+        },
+        "intelligence_history": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/repairIntelligenceSnapshot"
+          }
+        },
+        "source_validation_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "valid",
+            "partial",
+            "recoverable",
+            "invalid",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "auditContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "dependencies_read": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "validation_sources": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "validation_mode": {
+          "type": "string",
+          "enum": [
+            "real_time",
+            "partial",
+            "inferred"
+          ],
+          "default": "inferred"
+        },
+        "pipeline_integrity_audit_status": {
+          "type": "string",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": ""
+        },
+        "provider_family_audit_targets": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "provider_family_audit_results": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "audit_validity": {
+          "type": "string",
+          "enum": [
+            "valid",
+            "degraded",
+            "invalid"
+          ],
+          "default": "degraded"
+        }
+      }
+    }
+  }
+}

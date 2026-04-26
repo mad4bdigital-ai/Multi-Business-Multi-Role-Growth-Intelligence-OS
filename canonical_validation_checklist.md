@@ -4,7 +4,7 @@
 ## 1. Authority order validation
 
 - [ ] `system_bootstrap.md` is treated as primary orchestration authority
-- [ ] `memory_schema.json` is treated as the persistent state contract
+- [ ] `memory_schema.json` is treated as the persistent state contract (root; domain sub-schemas in `schemas/`)
 - [ ] `direct_instructions_registry_patch.md` is treated as hard enforcement authority
 - [ ] `module_loader.md` is treated as execution-readiness/loading authority
 - [ ] `prompt_router.md` is treated as routing authority
@@ -59,6 +59,7 @@
 - [ ] `governed_mutation_playbook.md` matches runtime mutation behavior
 - [ ] Agent-facing guidance remains aligned with canonicals
 - [ ] New documentation follows canonicals rather than inventing new policy semantics
+- [ ] `schemas/` sub-schema files match the `$defs` declared in `memory_schema.json` (no orphaned or missing `$ref`)
 
 ## 8. Testing and drift detection validation
 

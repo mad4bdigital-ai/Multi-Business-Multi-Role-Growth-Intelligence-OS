@@ -1,0 +1,824 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://growth-intelligence.local/schemas/analytics.schema.json",
+  "title": "Growth Intelligence — Analytics & Measurement",
+  "$defs": {
+    "starterIntelligenceState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "last_used_starter": {
+          "type": "string",
+          "default": ""
+        },
+        "starter_usage_history": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "starter_success_scores": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "starter_prediction_history": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "goal_detection_history": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "predicted_next_best_starter": {
+          "type": "string",
+          "default": ""
+        },
+        "predicted_next_best_route": {
+          "type": "string",
+          "default": ""
+        },
+        "predicted_goal_best_starter": {
+          "type": "string",
+          "default": ""
+        },
+        "predicted_goal_best_route": {
+          "type": "string",
+          "default": ""
+        },
+        "predicted_goal_family": {
+          "type": "string",
+          "default": ""
+        },
+        "prediction_confidence": {
+          "type": "number",
+          "default": 0
+        },
+        "execution_gating_history": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "starter_governance_status": {
+          "type": "string",
+          "enum": [
+            "unclassified",
+            "general_starter",
+            "system_starter",
+            "override_required_starter",
+            "predictive_starter"
+          ],
+          "default": "unclassified"
+        },
+        "override_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "override_source": {
+          "type": "string",
+          "enum": [
+            "",
+            "none",
+            "curated_registry",
+            "self_healing_registry",
+            "manual_override",
+            "runtime_fallback"
+          ],
+          "default": ""
+        },
+        "insertion_validated_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "starter_policy_coverage_status": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "policy_complete",
+            "policy_incomplete"
+          ],
+          "default": "unknown"
+        },
+        "starter_policy_missing_component": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "starter_policy_execution_ready": {
+          "type": "boolean",
+          "default": false
+        },
+        "starter_policy_authority_source": {
+          "type": "string",
+          "default": ""
+        },
+        "starter_policy_repair_triggered": {
+          "type": "boolean",
+          "default": false
+        },
+        "starter_policy_repair_scope": {
+          "type": "string",
+          "default": ""
+        },
+        "starter_policy_repair_status": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "ready_for_manual_trigger",
+            "trigger_requested",
+            "repairing",
+            "repaired",
+            "failed"
+          ],
+          "default": "not_required"
+        },
+        "starter_policy_missing_component_set": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "policy_gap_detected": {
+          "type": "boolean",
+          "default": false
+        },
+        "binding_gap_detected": {
+          "type": "boolean",
+          "default": false
+        },
+        "system_binding_pipeline_status": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "pipeline_bound",
+            "pipeline_broken"
+          ],
+          "default": "unknown"
+        },
+        "policy_gap_repair_eligible": {
+          "type": "boolean",
+          "default": false
+        },
+        "anomaly_baseline_class": {
+          "type": "string",
+          "enum": [
+            "",
+            "general",
+            "system",
+            "predictive",
+            "override_required"
+          ],
+          "default": ""
+        }
+      },
+      "default": {}
+    },
+    "scoreSignalSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "score_name",
+        "status"
+      ],
+      "properties": {
+        "score_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "score_value": {
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "strong",
+            "stable",
+            "weak",
+            "critical",
+            "not_scored"
+          ]
+        },
+        "source_sheet": {
+          "type": "string",
+          "default": "Business Intelligence Scoreboard"
+        },
+        "last_read_at": {
+          "type": "string",
+          "default": ""
+        },
+        "notes": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "liveDataSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "signal_type",
+        "status"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "GA",
+            "SearchConsole",
+            "Other"
+          ]
+        },
+        "signal_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "warning",
+            "opportunity",
+            "critical"
+          ]
+        },
+        "affected_score": {
+          "type": "string",
+          "default": ""
+        },
+        "triggered_action": {
+          "type": "string",
+          "default": ""
+        },
+        "notes": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "brandTrackingBindingEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gsc_property",
+        "ga_property_id",
+        "gtm_container_id",
+        "binding_status",
+        "analytics_discovery_state",
+        "measurement_health_state"
+      ],
+      "properties": {
+        "gsc_property": {
+          "type": "string",
+          "default": ""
+        },
+        "ga_property_id": {
+          "type": "string",
+          "default": ""
+        },
+        "gtm_container_id": {
+          "type": "string",
+          "default": ""
+        },
+        "binding_status": {
+          "type": "string",
+          "enum": [
+            "unresolved",
+            "complete",
+            "partial",
+            "missing"
+          ],
+          "default": "unresolved"
+        },
+        "analytics_discovery_state": {
+          "type": "string",
+          "default": "not_started"
+        },
+        "measurement_health_state": {
+          "type": "string",
+          "default": "not_started"
+        },
+        "last_resolved_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "brandTrackingBindingsMap": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/brandTrackingBindingEntry"
+      }
+    },
+    "analyticsDiscoveryState": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "last_discovery_run": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "accounts_detected": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "properties_mapped": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "unmapped_brands": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "discovery_status": {
+          "type": "string",
+          "enum": [
+            "",
+            "idle",
+            "running",
+            "complete",
+            "failed"
+          ],
+          "default": ""
+        }
+      }
+    },
+    "measurementHealthContainerSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tags_count": {
+          "type": "integer",
+          "default": 0
+        },
+        "triggers_count": {
+          "type": "integer",
+          "default": 0
+        },
+        "variables_count": {
+          "type": "integer",
+          "default": 0
+        },
+        "missing_components": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "last_validated_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "measurementHealthStateMap": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/measurementHealthContainerSummary"
+      }
+    },
+    "revenueSignalPropertySummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sessions": {
+          "type": "number",
+          "default": 0
+        },
+        "conversions": {
+          "type": "number",
+          "default": 0
+        },
+        "revenue": {
+          "type": "number",
+          "default": 0
+        },
+        "trend": {
+          "type": "string",
+          "enum": [
+            "",
+            "up",
+            "down",
+            "stable"
+          ],
+          "default": ""
+        },
+        "last_report_run": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "revenueSignalStateMap": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/revenueSignalPropertySummary"
+      }
+    },
+    "autopilotTraceState": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "last_autopilot_run": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "brand_id": {
+          "type": "string",
+          "default": ""
+        },
+        "sources_used": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "seo_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "default": null
+        },
+        "revenue_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "default": null
+        },
+        "tracking_coverage": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "default": null
+        },
+        "trace_notes": {
+          "type": "string",
+          "default": ""
+        },
+        "pipeline_keys": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "analyticsSyncRequestScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "brand_count",
+        "brands",
+        "request_date",
+        "date_from",
+        "date_to",
+        "trigger_mode"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "single_brand",
+            "multi_brand",
+            "pending"
+          ],
+          "default": "pending"
+        },
+        "brand_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "brands": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "request_date": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "date_from": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "date_to": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "trigger_mode": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "scheduled_task",
+            "pending"
+          ],
+          "default": "pending"
+        }
+      }
+    },
+    "analyticsSyncState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "last_run_at",
+        "last_request_scope",
+        "last_write_status",
+        "last_written_brands",
+        "schema_validation_status",
+        "last_target_surfaces",
+        "last_execution_result"
+      ],
+      "properties": {
+        "last_run_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "last_request_scope": {
+          "$ref": "#/$defs/analyticsSyncRequestScope",
+          "default": {
+            "mode": "pending",
+            "brand_count": 0,
+            "brands": [],
+            "request_date": null,
+            "date_from": null,
+            "date_to": null,
+            "trigger_mode": "pending"
+          }
+        },
+        "last_write_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "success",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "last_written_brands": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "schema_validation_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "last_target_surfaces": {
+          "type": "array",
+          "default": [
+            "GA4 Data",
+            "GSC Data"
+          ],
+          "items": {
+            "type": "string",
+            "enum": [
+              "GA4 Data",
+              "GSC Data"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "last_execution_result": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "recovered",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        }
+      }
+    },
+    "analyticsIssueScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "brands",
+        "issue_type",
+        "execution_cycle_id"
+      ],
+      "properties": {
+        "brands": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "issue_type": {
+          "type": "string",
+          "default": ""
+        },
+        "execution_cycle_id": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "analyticsIssueTracking": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "last_detected_issues",
+        "last_issue_creation_status",
+        "last_issue_scope",
+        "issue_deduplication_keys",
+        "last_issue_resolution_status"
+      ],
+      "properties": {
+        "last_detected_issues": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "last_issue_creation_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "created",
+            "deduplicated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "last_issue_scope": {
+          "$ref": "#/$defs/analyticsIssueScope",
+          "default": {
+            "brands": [],
+            "issue_type": "",
+            "execution_cycle_id": ""
+          }
+        },
+        "issue_deduplication_keys": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "last_issue_resolution_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "resolved",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        }
+      }
+    },
+    "analyticsIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "brand_domain_required",
+        "last_domain_validation_status",
+        "last_resolved_brand_domains",
+        "last_missing_domain_brands"
+      ],
+      "properties": {
+        "brand_domain_required": {
+          "type": "boolean",
+          "default": true
+        },
+        "last_domain_validation_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "last_resolved_brand_domains": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "last_missing_domain_brands": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        }
+      }
+    },
+    "measurementPipelineState": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "last_pipeline_run": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "active_loop_keys": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "outcome_summary": {
+          "type": "string",
+          "default": ""
+        },
+        "revenue_loop_status": {
+          "type": "string",
+          "default": ""
+        },
+        "measurement_loop_status": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    }
+  }
+}

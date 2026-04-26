@@ -41,8 +41,8 @@ Verify the deployed container/process matches the committed code:
 - [ ] `SERVICE_VERSION` in health response matches `package.json` version
 - [ ] `GET /health` dependency surface matches the intended topology: `dependencies.redis`, `dependencies.queue`, and `dependencies.worker.enabled`
 - [ ] No stale environment variables from a prior deployment remain active
-- [ ] Redis/BullMQ connection is live if this instance is expected to accept async work
-- [ ] `QUEUE_WORKER_ENABLED` matches the instance role (`TRUE` for worker-enabled runtime, `FALSE` for API-only runtime)
+- [ ] Redis/BullMQ connection is live if this instance is expected to accept async work (Google Cloud Memorystore, Upstash, or Hostinger VPS)
+- [ ] `QUEUE_WORKER_ENABLED` matches the instance role (`TRUE` for worker-enabled runtime, `FALSE` for API-only runtime without Redis costs)
 - [ ] `BACKEND_API_KEY` and `GOOGLE_APPLICATION_CREDENTIALS` (or equivalent) are injected
 
 ---

@@ -1,0 +1,309 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://growth-intelligence.local/schemas/routing_transport.schema.json",
+  "title": "Growth Intelligence — Routing & Transport",
+  "$defs": {
+    "routingContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "route_id",
+        "route_status",
+        "route_mode",
+        "route_source",
+        "matched_row_id",
+        "intent_key",
+        "target_module",
+        "target_workflow",
+        "lifecycle_mode",
+        "memory_required",
+        "logging_required",
+        "review_required",
+        "executable",
+        "degraded_reason",
+        "blocked_reason",
+        "recovery_action",
+        "auto_repair_trigger",
+        "forced_repair_routing_applied",
+        "http_route_state",
+        "routing_trace"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "prompt_router"
+          ]
+        },
+        "route_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "route_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "resolved",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "route_mode": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "standard",
+            "recovery",
+            "audit",
+            "routing_audit"
+          ]
+        },
+        "route_source": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "registry_task_routes"
+          ]
+        },
+        "matched_row_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "intent_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "target_module": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "target_workflow": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "lifecycle_mode": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "memory_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "logging_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "review_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "executable": {
+          "type": "boolean",
+          "default": false
+        },
+        "degraded_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "blocked_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "recovery_action": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "auto_repair_trigger": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "enum": [
+            null,
+            "",
+            "TRIGGER_REPAIR"
+          ]
+        },
+        "forced_repair_routing_applied": {
+          "type": "boolean",
+          "default": false
+        },
+        "http_route_state": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "last_route_id",
+            "last_workflow_key",
+            "last_target_module",
+            "last_transport_module",
+            "last_target_key",
+            "last_http_method",
+            "last_http_path",
+            "last_route_validation_status",
+            "last_workflow_validation_status",
+            "last_async_job_mode",
+            "last_job_endpoint_key",
+            "last_job_status",
+            "last_job_id"
+          ],
+          "default": {
+            "last_route_id": "",
+            "last_workflow_key": "",
+            "last_target_module": "",
+            "last_transport_module": "",
+            "last_target_key": "",
+            "last_http_method": "",
+            "last_http_path": "",
+            "last_route_validation_status": "pending",
+            "last_workflow_validation_status": "pending",
+            "last_async_job_mode": "",
+            "last_job_endpoint_key": "",
+            "last_job_status": "",
+            "last_job_id": ""
+          },
+          "properties": {
+            "last_route_id": {
+              "type": "string",
+              "default": ""
+            },
+            "last_workflow_key": {
+              "type": "string",
+              "default": ""
+            },
+            "last_target_module": {
+              "type": "string",
+              "default": ""
+            },
+            "last_transport_module": {
+              "type": "string",
+              "default": ""
+            },
+            "last_target_key": {
+              "type": "string",
+              "default": ""
+            },
+            "last_http_method": {
+              "type": "string",
+              "default": ""
+            },
+            "last_http_path": {
+              "type": "string",
+              "default": ""
+            },
+            "last_route_validation_status": {
+              "type": "string",
+              "default": "pending"
+            },
+            "last_workflow_validation_status": {
+              "type": "string",
+              "default": "pending"
+            },
+            "last_async_job_mode": {
+              "type": "string",
+              "default": ""
+            },
+            "last_job_endpoint_key": {
+              "type": "string",
+              "default": ""
+            },
+            "last_job_status": {
+              "type": "string",
+              "default": ""
+            },
+            "last_job_id": {
+              "type": "string",
+              "default": ""
+            }
+          }
+        },
+        "routing_trace": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        }
+      }
+    },
+    "credentialResolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "last_storage_mode",
+        "last_target_key",
+        "last_hosting_account_key",
+        "last_api_key_reference",
+        "last_resolution_status",
+        "last_resolution_chain"
+      ],
+      "properties": {
+        "last_storage_mode": {
+          "type": "string",
+          "default": ""
+        },
+        "last_target_key": {
+          "type": "string",
+          "default": ""
+        },
+        "last_hosting_account_key": {
+          "type": "string",
+          "default": ""
+        },
+        "last_api_key_reference": {
+          "type": "string",
+          "default": ""
+        },
+        "last_resolution_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "last_resolution_chain": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,1483 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://growth-intelligence.local/schemas/execution.schema.json",
+  "title": "Growth Intelligence — Execution & Runtime",
+  "$defs": {
+    "googleWorkspaceExecutionState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "native_action_requested": {
+          "type": "boolean",
+          "default": false
+        },
+        "native_action_type": {
+          "type": "string",
+          "enum": [
+            "none",
+            "sheets",
+            "docs",
+            "drive"
+          ],
+          "default": "none"
+        },
+        "target_surface_id": {
+          "type": "string",
+          "default": ""
+        },
+        "registry_validation_required": {
+          "type": "boolean",
+          "default": true
+        },
+        "registry_binding_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "recovered",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "native_action_readiness": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "ready",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "target_validation_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "recovered",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "authorization_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "authorization_gated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "live_canonical_connection_attempted": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "default": {}
+    },
+    "registryBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spreadsheet_id",
+        "surface_name"
+      ],
+      "properties": {
+        "spreadsheet_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "surface_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worksheet_gid": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "canonicalDependencyResolutionEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_mode",
+        "resolved_source",
+        "resolved_location",
+        "resolution_state"
+      ],
+      "properties": {
+        "source_mode": {
+          "type": "string",
+          "enum": [
+            "knowledge_layer",
+            "canonical_url",
+            "drive_file"
+          ]
+        },
+        "resolved_source": {
+          "type": "string",
+          "enum": [
+            "knowledge_layer",
+            "canonical_url",
+            "drive_file"
+          ]
+        },
+        "resolved_location": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resolution_state": {
+          "type": "string",
+          "enum": [
+            "recovered",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "failure_reason": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "missing",
+            "validation",
+            "forbidden",
+            "network"
+          ]
+        }
+      }
+    },
+    "canonicalDependencyState": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/canonicalDependencyResolutionEntry"
+      }
+    },
+    "knowledgeLayerResolutionState": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "status": {
+          "type": "string",
+          "default": "not_checked",
+          "enum": [
+            "not_checked",
+            "recovered",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "last_resolved_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "resolved_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "degraded_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "blocked_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        }
+      }
+    },
+    "executionStateRuntimeRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "review_required",
+        "required_route_id",
+        "required_workflow_key",
+        "required_workflow_id",
+        "required_write_targets_declared",
+        "authoritative_writeback_complete",
+        "authoritative_writeback_verified",
+        "layout_normalization_required",
+        "runtime_validation_complete"
+      ],
+      "properties": {
+        "review_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "required_route_id": {
+          "type": "string",
+          "default": ""
+        },
+        "required_workflow_key": {
+          "type": "string",
+          "default": ""
+        },
+        "required_workflow_id": {
+          "type": "string",
+          "default": ""
+        },
+        "required_write_targets_declared": {
+          "type": "boolean",
+          "default": false
+        },
+        "authoritative_writeback_complete": {
+          "type": "boolean",
+          "default": false
+        },
+        "authoritative_writeback_verified": {
+          "type": "boolean",
+          "default": false
+        },
+        "layout_normalization_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "runtime_validation_complete": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "runtimeValidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "required": [
+        "validated_dependencies",
+        "readback_proof",
+        "authoritative_write_status",
+        "review_evidence_status",
+        "layout_validation_status",
+        "runtime_result"
+      ],
+      "properties": {
+        "validated_dependencies": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "readback_proof": {
+          "type": "boolean",
+          "default": false
+        },
+        "authoritative_write_status": {
+          "type": "string",
+          "default": "pending"
+        },
+        "runtime_result": {
+          "type": "string",
+          "default": "pending",
+          "enum": [
+            "pending",
+            "recovered",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "enforcer_active": {
+          "type": "boolean",
+          "default": true
+        },
+        "binding_validation_status": {
+          "type": "string",
+          "default": ""
+        },
+        "route_validation_status": {
+          "type": "string",
+          "default": ""
+        },
+        "workflow_validation_status": {
+          "type": "string",
+          "default": ""
+        },
+        "execution_readiness_validation_status": {
+          "type": "string",
+          "default": ""
+        },
+        "required_write_targets": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "required_authoritative_surfaces": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "write_targets_attempted": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "write_targets_succeeded": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "write_targets_failed": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "write_readback_verified": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "write_readback_failed": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "layout_validation_status": {
+          "type": "string",
+          "default": "pending"
+        },
+        "capability_route_validation_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "capability_workflow_validation_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "provider_family_validation_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "review_evidence_status": {
+          "type": "string",
+          "default": "pending"
+        },
+        "derived_surface_only_flag": {
+          "type": "boolean",
+          "default": false
+        },
+        "completion_gate_status": {
+          "type": "string",
+          "default": ""
+        },
+        "final_validation_classification": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "Recovered",
+            "Degraded",
+            "Blocked"
+          ]
+        },
+        "blocking_reason": {
+          "type": "string",
+          "default": ""
+        },
+        "degraded_reason": {
+          "type": "string",
+          "default": ""
+        },
+        "post_activation_revalidation_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "current_request_validation_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "authorization_gated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "last_validation_at": {
+          "type": "string",
+          "default": ""
+        },
+        "validation_depth": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "targeted",
+            "sampled",
+            "exhaustive"
+          ],
+          "default": "pending"
+        },
+        "required_surface_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "validated_surface_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "required_row_group_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "validated_row_group_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "coverage_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0
+        },
+        "required_surface_ids": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "validated_surface_ids": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "unvalidated_surface_ids": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "required_row_group_ids": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "validated_row_group_ids": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "unvalidated_row_group_ids": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "exhaustive_coverage_guard_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "passed",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "full_audit_completion_guard_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "passed",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        }
+      }
+    },
+    "writeProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "target_spreadsheet_id": {
+          "type": "string",
+          "default": ""
+        },
+        "target_sheet_name": {
+          "type": "string",
+          "default": ""
+        },
+        "target_gid": {
+          "type": "string",
+          "default": ""
+        },
+        "expected_start_row": {
+          "type": "string",
+          "default": ""
+        },
+        "actual_start_row": {
+          "type": "string",
+          "default": ""
+        },
+        "expected_key_fields": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": true
+        },
+        "readback_key_fields": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": true
+        },
+        "placement_valid": {
+          "type": "boolean",
+          "default": false
+        },
+        "verified": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "authoritativeWriteTargetEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "write_succeeded",
+        "readback_verified",
+        "placement_valid"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "write_succeeded": {
+          "type": "boolean",
+          "default": false
+        },
+        "readback_verified": {
+          "type": "boolean",
+          "default": false
+        },
+        "placement_valid": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "authoritativeWriteTargets": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {
+        "operations_log_unified_sheet": {
+          "required": true,
+          "write_succeeded": false,
+          "readback_verified": false,
+          "placement_valid": false
+        },
+        "review_run_history_sheet": {
+          "required": false,
+          "write_succeeded": false,
+          "readback_verified": false,
+          "placement_valid": false
+        },
+        "review_findings_log_sheet": {
+          "required": false,
+          "write_succeeded": false,
+          "readback_verified": false,
+          "placement_valid": false
+        }
+      },
+      "properties": {
+        "operations_log_unified_sheet": {
+          "$ref": "#/$defs/authoritativeWriteTargetEntry"
+        },
+        "review_run_history_sheet": {
+          "$ref": "#/$defs/authoritativeWriteTargetEntry"
+        },
+        "review_findings_log_sheet": {
+          "$ref": "#/$defs/authoritativeWriteTargetEntry"
+        }
+      }
+    },
+    "executionContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "intake_validation_status",
+        "execution_ready_status",
+        "load_status",
+        "binding_status",
+        "target_resolution_status",
+        "entry_source",
+        "resolved_route_record",
+        "resolved_workflow_record",
+        "failure_reason",
+        "recovery_action",
+        "execution_state",
+        "execution_trigger",
+        "execution_status",
+        "execution_result",
+        "execution_trace_id",
+        "http_async_status",
+        "http_async_polling_status",
+        "http_async_result_status",
+        "http_async_persistence_status",
+        "http_async_webhook_status",
+        "policy_trace_id",
+        "http_execution_state",
+        "http_transport_state",
+        "logging_status",
+        "review_writeback_status",
+        "authoritative_write_status",
+        "review_write_status",
+        "findings_write_status",
+        "stage_report_write_status",
+        "write_targets_resolved",
+        "write_targets_attempted",
+        "write_targets_succeeded",
+        "write_targets_failed"
+      ],
+      "properties": {
+        "intake_validation_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_checked",
+            "valid",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "execution_ready_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_ready",
+            "ready",
+            "degraded_ready",
+            "blocked"
+          ]
+        },
+        "load_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_started",
+            "resolved",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "binding_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_checked",
+            "valid",
+            "partial",
+            "recoverable",
+            "invalid"
+          ]
+        },
+        "target_resolution_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_checked",
+            "resolved",
+            "partial",
+            "mismatch",
+            "invalid"
+          ]
+        },
+        "entry_source": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "conversation_starter",
+            "direct_prompt",
+            "autopilot",
+            "tool_request",
+            "repair_mode",
+            "system_signal",
+            "direct_google_tooling"
+          ]
+        },
+        "policy_resolution_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "resolved",
+            "partial",
+            "recoverable",
+            "invalid"
+          ]
+        },
+        "policy_source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "policy_trace_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "applied_policy_keys": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "resolved_route_record": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "default": null,
+          "additionalProperties": true
+        },
+        "resolved_workflow_record": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "default": null,
+          "additionalProperties": true
+        },
+        "failure_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "recovery_action": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "execution_state": {
+          "oneOf": [
+            {
+              "type": "string",
+              "default": "",
+              "enum": [
+                "",
+                "Recovered",
+                "Degraded",
+                "Blocked"
+              ]
+            },
+            {
+              "$ref": "#/$defs/executionStateRuntimeRequirements"
+            }
+          ]
+        },
+        "execution_trigger": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "manual",
+            "governed_auto",
+            "human_activation",
+            "repair_trigger",
+            "review_trigger",
+            "system"
+          ]
+        },
+        "execution_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "pending",
+            "active",
+            "completed",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "execution_result": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "Recovered",
+            "Degraded",
+            "Blocked"
+          ]
+        },
+        "wordpress_multilingual_state": {
+          "$ref": "./wordpress_api.schema.json#/$defs/wordpressMultilingualState",
+          "default": {
+            "translatable_post_type_scope_active": false,
+            "target_post_type_slug": "",
+            "target_language_code": "",
+            "default_language_inferred": false,
+            "direct_rest_language_write_status": "pending",
+            "wpml_import_language_path_status": "pending",
+            "translation_scope_preflight_status": "pending",
+            "translation_linkage_status": "pending",
+            "multilingual_execution_mode": ""
+          }
+        },
+        "execution_trace_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "http_async_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "queued",
+            "running",
+            "retrying",
+            "succeeded",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "http_async_polling_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "pending",
+            "active",
+            "succeeded",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "http_async_result_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "pending",
+            "available",
+            "succeeded",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "http_async_persistence_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "http_async_webhook_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "pending",
+            "configured",
+            "delivered",
+            "failed",
+            "blocked"
+          ]
+        },
+        "http_execution_state": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "last_target_key",
+            "last_endpoint_path",
+            "last_method",
+            "last_validation_status",
+            "last_execution_status"
+          ],
+          "default": {
+            "last_target_key": "",
+            "last_endpoint_path": "",
+            "last_method": "",
+            "last_validation_status": "pending",
+            "last_execution_status": "pending"
+          },
+          "properties": {
+            "last_target_key": {
+              "type": "string",
+              "default": ""
+            },
+            "last_endpoint_path": {
+              "type": "string",
+              "default": ""
+            },
+            "last_method": {
+              "type": "string",
+              "default": ""
+            },
+            "last_validation_status": {
+              "type": "string",
+              "default": "pending"
+            },
+            "last_execution_status": {
+              "type": "string",
+              "default": "pending"
+            }
+          }
+        },
+        "http_transport_state": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "transport_module",
+            "provider_domain_resolution_status",
+            "variable_provider_domain_detected",
+            "parent_action_validation_status",
+            "endpoint_validation_status",
+            "schema_binding_status",
+            "openapi_contract_validation_status",
+            "schema_drift_detected",
+            "schema_drift_type",
+            "schema_drift_scope",
+            "schema_learning_candidate_emitted",
+            "auth_resolution_status",
+            "path_validation_status",
+            "method_validation_status",
+            "execution_status",
+            "schema_file_read",
+            "required_params_resolved",
+            "provider_retry_applicable",
+            "resilience_applied",
+            "retry_attempt_index",
+            "retry_mutation",
+            "effective_request_url",
+            "final_query"
+          ],
+          "default": {
+            "transport_module": "http_generic_api",
+            "runtime_capability_class": "",
+            "runtime_callable": false,
+            "primary_executor": "",
+            "endpoint_role": "",
+            "execution_mode": "",
+            "transport_required": false,
+            "resolved_transport_action_key": "",
+            "execution_guardrail_code": "",
+            "resolved_provider_domain_mode": "",
+            "placeholder_resolution_source": "",
+            "duplicate_header_detected": false,
+            "duplicate_header_surface": "",
+            "provider_domain_resolution_status": "pending",
+            "variable_provider_domain_detected": false,
+            "parent_action_validation_status": "pending",
+            "endpoint_validation_status": "pending",
+            "schema_binding_status": "pending",
+            "openapi_contract_validation_status": "pending",
+            "schema_drift_detected": false,
+            "schema_drift_type": "",
+            "schema_drift_scope": "",
+            "schema_learning_candidate_emitted": false,
+            "auth_resolution_status": "pending",
+            "variable_contract_status": "pending",
+            "required_variables": [],
+            "resolved_variables": [],
+            "missing_variables": [],
+            "invalid_variables": [],
+            "clarification_required_variables": [],
+            "variable_source_map": {},
+            "runtime_variable_bindings": {},
+            "variable_contract_surface_id": "",
+            "path_validation_status": "pending",
+            "method_validation_status": "pending",
+            "execution_status": "pending",
+            "schema_file_read": false,
+            "required_params_resolved": false,
+            "provider_retry_applicable": false,
+            "resilience_applied": false,
+            "retry_attempt_index": 0,
+            "retry_mutation": {},
+            "effective_request_url": "",
+            "final_query": {}
+          },
+          "properties": {
+            "transport_module": {
+              "type": "string",
+              "default": "http_generic_api",
+              "enum": [
+                "http_generic_api"
+              ]
+            },
+            "runtime_capability_class": {
+              "type": "string",
+              "enum": [
+                "",
+                "native_runtime",
+                "external_action_only",
+                "pending_binding",
+                "http_transport_executor"
+              ],
+              "default": ""
+            },
+            "runtime_callable": {
+              "type": "boolean",
+              "default": false
+            },
+            "primary_executor": {
+              "type": "string",
+              "enum": [
+                "",
+                "native_gpt",
+                "external_connector",
+                "http_client_backend"
+              ],
+              "default": ""
+            },
+            "endpoint_role": {
+              "type": "string",
+              "enum": [
+                "",
+                "primary",
+                "fallback",
+                "inventory_only",
+                "transport_delegate"
+              ],
+              "default": ""
+            },
+            "execution_mode": {
+              "type": "string",
+              "enum": [
+                "",
+                "native_direct",
+                "http_delegated",
+                "external_direct",
+                "fallback_only"
+              ],
+              "default": ""
+            },
+            "transport_required": {
+              "type": "boolean",
+              "default": false
+            },
+            "resolved_transport_action_key": {
+              "type": "string",
+              "default": ""
+            },
+            "execution_guardrail_code": {
+              "type": "string",
+              "default": ""
+            },
+            "resolved_provider_domain_mode": {
+              "type": "string",
+              "enum": [
+                "",
+                "fixed_domain",
+                "placeholder_runtime_resolved",
+                "brand_bound_domain"
+              ],
+              "default": ""
+            },
+            "placeholder_resolution_source": {
+              "type": "string",
+              "enum": [
+                "",
+                "brand_domain",
+                "target_key",
+                "brand"
+              ],
+              "default": ""
+            },
+            "duplicate_header_detected": {
+              "type": "boolean",
+              "default": false
+            },
+            "duplicate_header_surface": {
+              "type": "string",
+              "default": ""
+            },
+            "provider_domain_resolution_status": {
+              "type": "string",
+              "default": "pending"
+            },
+            "variable_provider_domain_detected": {
+              "type": "boolean",
+              "default": false
+            },
+            "parent_action_validation_status": {
+              "type": "string",
+              "default": "pending"
+            },
+            "endpoint_validation_status": {
+              "type": "string",
+              "default": "pending"
+            },
+            "schema_binding_status": {
+              "type": "string",
+              "default": "pending"
+            },
+            "openapi_contract_validation_status": {
+              "type": "string",
+              "default": "pending"
+            },
+            "schema_drift_detected": {
+              "type": "boolean",
+              "default": false
+            },
+            "schema_drift_type": {
+              "type": "string",
+              "default": ""
+            },
+            "schema_drift_scope": {
+              "type": "string",
+              "default": ""
+            },
+            "schema_learning_candidate_emitted": {
+              "type": "boolean",
+              "default": false
+            },
+            "auth_resolution_status": {
+              "type": "string",
+              "default": "pending"
+            },
+            "variable_contract_status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "validated",
+                "degraded",
+                "blocked"
+              ],
+              "default": "pending"
+            },
+            "required_variables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "resolved_variables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "missing_variables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "invalid_variables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "clarification_required_variables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "variable_source_map": {
+              "type": "object",
+              "additionalProperties": true,
+              "default": {}
+            },
+            "runtime_variable_bindings": {
+              "type": "object",
+              "additionalProperties": true,
+              "default": {}
+            },
+            "variable_contract_surface_id": {
+              "type": "string",
+              "default": ""
+            },
+            "path_validation_status": {
+              "type": "string",
+              "default": "pending"
+            },
+            "method_validation_status": {
+              "type": "string",
+              "default": "pending"
+            },
+            "execution_status": {
+              "type": "string",
+              "default": "pending"
+            },
+            "schema_file_read": {
+              "type": "boolean",
+              "default": false
+            },
+            "required_params_resolved": {
+              "type": "boolean",
+              "default": false
+            },
+            "provider_retry_applicable": {
+              "type": "boolean",
+              "default": false
+            },
+            "resilience_applied": {
+              "type": "boolean",
+              "default": false
+            },
+            "retry_attempt_index": {
+              "type": "integer",
+              "default": 0
+            },
+            "retry_mutation": {
+              "type": "object",
+              "additionalProperties": true,
+              "default": {}
+            },
+            "effective_request_url": {
+              "type": "string",
+              "default": ""
+            },
+            "final_query": {
+              "type": "object",
+              "additionalProperties": true,
+              "default": {}
+            }
+          }
+        },
+        "logging_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "complete",
+            "partial",
+            "failed",
+            "blocked"
+          ]
+        },
+        "logging_completion_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "logged",
+            "logging_incomplete",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "review_writeback_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "complete",
+            "partial",
+            "failed"
+          ]
+        },
+        "authoritative_write_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "complete",
+            "partial",
+            "failed",
+            "blocked"
+          ]
+        },
+        "review_write_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "complete",
+            "partial",
+            "failed"
+          ]
+        },
+        "findings_write_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "complete",
+            "partial",
+            "failed"
+          ]
+        },
+        "stage_report_write_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "complete",
+            "partial",
+            "failed"
+          ]
+        },
+        "output_quality_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100,
+          "default": null
+        },
+        "seo_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100,
+          "default": null
+        },
+        "business_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100,
+          "default": null
+        },
+        "execution_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100,
+          "default": null
+        },
+        "optimization_trigger": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "active_state_reused": {
+          "type": "boolean",
+          "default": false
+        },
+        "current_request_revalidation_completed": {
+          "type": "boolean",
+          "default": false
+        },
+        "optimization_request_detected": {
+          "type": "boolean",
+          "default": false
+        },
+        "outcome_summary": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "write_targets_resolved": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "write_targets_attempted": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "write_targets_succeeded": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "write_targets_failed": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        }
+      }
+    },
+    "engineReadinessState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "identity_engine_readiness_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "required_identity_engine_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "missing_identity_engine_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "inactive_identity_engine_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "non_callable_identity_engine_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "identity_engine_readiness_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        }
+      }
+    }
+  }
+}

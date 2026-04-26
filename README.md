@@ -53,6 +53,26 @@ The root canonical files define:
 
 These documents are the real architecture spine of the project.
 
+### Memory schema layer
+
+`memory_schema.json` is the persistent state contract root. It has been decomposed into 11 domain sub-schemas under `schemas/`, each referenced via JSON Schema `$ref`:
+
+| Sub-schema | Domain |
+|---|---|
+| `shared` | Primitive types shared across domains |
+| `business_identity` | Company, catalog, destinations, modules |
+| `brand` | Brand context, identity, writing engine |
+| `execution` | Runtime validation, activation, Google Workspace |
+| `analytics` | Measurement, revenue signals, tracking bindings |
+| `governance` | Schema state, drift detection, variable contracts |
+| `repair_audit` | Repair memory, audit state, anomaly clusters |
+| `routing_transport` | Routing context, HTTP transport, surface roles |
+| `graph_addition` | Graph intelligence, governed addition pipeline |
+| `operations` | System context, monitoring, writeback rules |
+| `wordpress_api` | WordPress state, API inventory, credential resolution |
+
+The root schema enforces `additionalProperties: false` and all 92 required fields. All 169 `$ref` values resolve with zero broken references.
+
 ### Registry-centered authority layer
 
 Important governed surfaces include:
@@ -97,12 +117,13 @@ Its WordPress subsystem is split into:
 
 ## Current repository status
 
-The project has completed Sprint 2 (WordPress modular extraction) and Sprint 3 (http-generic-api decomposition). The runtime is materially modular.
+The project has completed Sprint 2 (WordPress modular extraction), Sprint 3 (http-generic-api decomposition), and Sprint 4 (memory schema decomposition). The runtime and schema layer are both materially modular.
 
 Current state:
 - `http-generic-api/server.js` is decomposed — reduced from ~29,000 lines to ~4,636 lines; authority-based modules extracted
 - `http-generic-api/wordpress/` — 16 phase modules (A–P), shared.js, index.js barrel (545 exports)
-- `http-generic-api/normalization.js` — canonical normalization layer for routing, payload, and execution classification
+- `http-generic-api/normalization.js` — canonical normalization layer successfully implementing all A-H domains (Execution Intent, Policy State, Endpoint Identity, Route/Workflow State, Surface Classification, Mutation Intent, Execution Result, Sink Write Contract)
+- `memory_schema.json` decomposed into 11 domain sub-schemas in `schemas/` (112 KB root + 276 KB sub-schemas; 83 `$defs`, 169 `$ref` all resolving)
 - `http-generic-api/mutationGovernance.js`, `governedChangeControl.js`, `governedSheetWrites.js` — centralized mutation and writeback governance
 - `http-generic-api/registryResolution.js`, `routeWorkflowGovernance.js`, `registryMutations.js` — registry-backed routing and execution control
 - `http-generic-api/executionRouting.js` — isolated HTTP execution context resolution with dependency-injected guard chain
@@ -111,8 +132,8 @@ Current state:
 - governed sink handling for `Execution Log Unified` and `JSON Asset Registry` is stable
 - 168 automated tests passing across 6 suites: utility, job runner, execution routing, connectors, WordPress, and route-level
 - `/health` reports degraded dependency truth for Redis/BullMQ instead of assuming queue connectivity
-- async job submission returns `503` when the queue backend cannot accept work
-- runtime instances can run in API-only mode with `QUEUE_WORKER_ENABLED=FALSE`
+- async job submission returns `503` when the queue backend cannot accept work (safely rejects to prevent job loss)
+- runtime instances can run in API-only mode with `QUEUE_WORKER_ENABLED=FALSE`, or connect to Memorystore/Upstash/Hostinger Redis for background workers
 
 ## Upgrade direction
 
@@ -127,7 +148,7 @@ Ongoing priorities:
 
 Primary documents:
 - [`system_bootstrap.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/system_bootstrap.md>)
-- [`memory_schema.json`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/memory_schema.json>)
+- [`memory_schema.json`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/memory_schema.json>) — root schema; domain sub-schemas in [`schemas/`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/schemas/>)
 - [`direct_instructions_registry_patch.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/direct_instructions_registry_patch.md>)
 - [`module_loader.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/module_loader.md>)
 - [`prompt_router.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/prompt_router.md>)
@@ -135,7 +156,6 @@ Primary documents:
 Operations and validation:
 - [`canonical_validation_checklist.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/canonical_validation_checklist.md>)
 - [`runtime_boundary_map.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/runtime_boundary_map.md>)
-- [`runtime_registry_refactor_plan.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/runtime_registry_refactor_plan.md>)
 - [`governed_mutation_playbook.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/governed_mutation_playbook.md>)
 - [`connector_contracts.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/connector_contracts.md>)
 - [`deployment_parity_checklist.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/deployment_parity_checklist.md>)

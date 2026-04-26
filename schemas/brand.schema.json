@@ -1,0 +1,723 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://growth-intelligence.local/schemas/brand.schema.json",
+  "title": "Growth Intelligence — Brand Layer",
+  "$defs": {
+    "brandCoreAsset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_type",
+        "document_name",
+        "status"
+      ],
+      "properties": {
+        "asset_type": {
+          "type": "string",
+          "enum": [
+            "brand_positioning",
+            "messaging_framework",
+            "tone_of_voice",
+            "brand_identity",
+            "strategic_framework",
+            "pricing_psychology",
+            "conversion_framework",
+            "homepage_messaging",
+            "persona_content_angles",
+            "other"
+          ]
+        },
+        "document_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "web_link": {
+          "type": "string",
+          "minLength": 1
+        },
+        "used_by_systems": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "registered",
+            "loaded",
+            "missing_link",
+            "unavailable"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "brandRegistryResolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resolved_from_registry",
+        "resolved_brand_name",
+        "resolved_normalized_brand_name",
+        "resolved_folder_id",
+        "resolved_folder_link",
+        "brand_core_ready",
+        "maturity",
+        "default_execution_mode",
+        "workflow_availability"
+      ],
+      "properties": {
+        "resolved_from_registry": {
+          "type": "boolean",
+          "default": false
+        },
+        "resolved_brand_name": {
+          "type": "string",
+          "default": ""
+        },
+        "resolved_normalized_brand_name": {
+          "type": "string",
+          "default": ""
+        },
+        "resolved_folder_id": {
+          "type": "string",
+          "default": ""
+        },
+        "resolved_folder_link": {
+          "type": "string",
+          "default": ""
+        },
+        "brand_core_ready": {
+          "type": "boolean",
+          "default": false
+        },
+        "maturity": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "ðŸ”´ Very early",
+            "ðŸŸ¡ Good",
+            "ðŸŸ¢ Full"
+          ]
+        },
+        "default_execution_mode": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "Foundational Mode",
+            "Optimization Mode",
+            "Scale Mode"
+          ]
+        },
+        "workflow_availability": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "Limited until Brand Core is built",
+            "Optimization-first",
+            "Full"
+          ]
+        },
+        "notes": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "brandContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "active_brand_name",
+        "normalized_brand_name",
+        "brand_detected",
+        "brand_exists_in_registry",
+        "brand_auto_context_active",
+        "brand_folder",
+        "brand_core_assets_loaded",
+        "brand_core_asset_types",
+        "brand_core_rules_applied",
+        "brand_registry_resolution",
+        "auto_context_default_targets",
+        "brand_context_injection_complete",
+        "brand_context_injected_into"
+      ],
+      "properties": {
+        "active_brand_name": {
+          "type": "string",
+          "default": ""
+        },
+        "normalized_brand_name": {
+          "type": "string",
+          "default": ""
+        },
+        "brand_detected": {
+          "type": "boolean",
+          "default": false
+        },
+        "brand_exists_in_registry": {
+          "type": "boolean",
+          "default": false
+        },
+        "brand_auto_context_active": {
+          "type": "boolean",
+          "default": false
+        },
+        "brand_folder": {
+          "oneOf": [
+            {
+              "$ref": "./operations.schema.json#/$defs/driveFolderRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Canonical nested Drive folder reference for the active brand. Nested folder fields and top-level mirror fields must be updated atomically."
+        },
+        "brand_status": {
+          "type": "string",
+          "default": ""
+        },
+        "brand_folder_id": {
+          "type": "string",
+          "default": "",
+          "description": "Top-level mirror of brand_context.brand_folder.folder_id. Must be updated atomically with the nested folder reference."
+        },
+        "brand_folder_link": {
+          "type": "string",
+          "default": "",
+          "description": "Top-level mirror of brand_context.brand_folder.web_view_link. Must be updated atomically with the nested folder reference."
+        },
+        "brand_core_ready": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "default": null
+        },
+        "maturity": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "enum": [
+            null,
+            "",
+            "ðŸ”´ Very early",
+            "ðŸŸ¡ Good",
+            "ðŸŸ¢ Full"
+          ]
+        },
+        "default_execution_mode": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "enum": [
+            null,
+            "",
+            "Foundational Mode",
+            "Optimization Mode",
+            "Scale Mode"
+          ]
+        },
+        "workflow_availability": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "brand_core_assets_loaded": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/brandCoreAsset"
+          }
+        },
+        "brand_core_asset_types": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "brand_core_rules_applied": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "brand_registry_resolution": {
+          "$ref": "#/$defs/brandRegistryResolution",
+          "default": {}
+        },
+        "wordpress_multilingual_state": {
+          "$ref": "./wordpress_api.schema.json#/$defs/wordpressMultilingualState",
+          "default": {
+            "translatable_post_type_scope_active": false,
+            "target_post_type_slug": "",
+            "target_language_code": "",
+            "default_language_inferred": false,
+            "direct_rest_language_write_status": "pending",
+            "wpml_import_language_path_status": "pending",
+            "translation_scope_preflight_status": "pending",
+            "translation_linkage_status": "pending",
+            "multilingual_execution_mode": ""
+          }
+        },
+        "auto_context_default_targets": {
+          "type": "array",
+          "default": [
+            "content_generation",
+            "seo_strategy",
+            "product_design",
+            "revenue_strategy",
+            "simulations",
+            "autopilot",
+            "ai_decision_engine"
+          ],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "brand_context_injected_into": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "brand_context_injection_complete": {
+          "type": "boolean",
+          "default": false
+        },
+        "threshold_profile": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "source_coverage_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "evolution_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "score_trend": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "strategy_impact": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "growth_velocity": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "next_auto_action": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "brandMemory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "brands_root_folder",
+        "brand_creation_validation",
+        "brand_registry_binding",
+        "known_brand_folders",
+        "brand_lifecycle_status",
+        "brand_registry_master_binding",
+        "lifecycle_automation_state"
+      ],
+      "properties": {
+        "brands_root_folder": {
+          "$ref": "./operations.schema.json#/$defs/driveFolderRef"
+        },
+        "brand_creation_validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "last_validated_brand_name",
+            "last_normalized_brand_name",
+            "duplicate_match_found",
+            "matched_folder_id",
+            "matched_folder_name",
+            "matched_registry_layer"
+          ],
+          "properties": {
+            "last_validated_brand_name": {
+              "type": "string",
+              "default": ""
+            },
+            "last_normalized_brand_name": {
+              "type": "string",
+              "default": ""
+            },
+            "duplicate_match_found": {
+              "type": "boolean",
+              "default": false
+            },
+            "matched_folder_id": {
+              "type": "string",
+              "default": ""
+            },
+            "matched_folder_name": {
+              "type": "string",
+              "default": ""
+            },
+            "matched_registry_layer": {
+              "type": "string",
+              "default": "",
+              "enum": [
+                "",
+                "Brand Registry",
+                "Brand Core Registry",
+                "Brands Root Folder"
+              ]
+            }
+          }
+        },
+        "brand_registry_binding": {
+          "oneOf": [
+            {
+              "$ref": "./execution.schema.json#/$defs/registryBinding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "known_brand_folders": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "./operations.schema.json#/$defs/driveFolderRef"
+          }
+        },
+        "brand_lifecycle_status": {
+          "type": "string",
+          "enum": [
+            "uninitialized",
+            "validated_existing",
+            "validated_new",
+            "created",
+            "registered",
+            "active",
+            "create_new_brand",
+            "reuse_existing_brand"
+          ],
+          "default": "uninitialized"
+        },
+        "brand_registry_master_binding": {
+          "$ref": "./execution.schema.json#/$defs/registryBinding"
+        },
+        "lifecycle_automation_state": {
+          "$ref": "./operations.schema.json#/$defs/lifecycleAutomationState",
+          "default": {}
+        }
+      }
+    },
+    "brandOnboardingState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "brand_onboarding_requested": {
+          "type": "boolean",
+          "default": false
+        },
+        "brand_onboarding_type": {
+          "type": "string",
+          "enum": [
+            "",
+            "brand_entity_registration",
+            "brand_identity_formation",
+            "brand_property_runtime_binding",
+            "full_brand_onboarding"
+          ],
+          "default": ""
+        },
+        "brand_onboarding_decision_class": {
+          "type": "string",
+          "enum": [
+            "",
+            "reuse_existing_brand",
+            "create_brand_candidate",
+            "brand_folder_required",
+            "brand_folder_created",
+            "brand_identity_build_required",
+            "brand_identity_partial",
+            "property_binding_required",
+            "runtime_binding_required",
+            "blocked_duplicate_brand",
+            "degraded_missing_brand_dependencies",
+            "pending_validation"
+          ],
+          "default": ""
+        },
+        "brand_entity_registration_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "brand_identity_formation_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "brand_property_runtime_binding_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "brand_core_read_precedence_required": {
+          "type": "boolean",
+          "default": true
+        },
+        "json_asset_registry_derived_only_exception": {
+          "type": "boolean",
+          "default": true
+        },
+        "brand_onboarding_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        }
+      }
+    },
+    "brandIdentityState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "brand_core_ready": {
+          "type": "boolean",
+          "default": false
+        },
+        "brand_core_asset_home_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "brand_identity_formation_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "maturity_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "foundational",
+            "growth_ready",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "identity_assets_missing": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "identity_read_home": {
+          "type": "string",
+          "enum": [
+            "brand_core_registry",
+            "json_asset_registry",
+            ""
+          ],
+          "default": "brand_core_registry"
+        }
+      }
+    },
+    "brandPropertyBindingState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ga_property_binding_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "gtm_binding_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "gsc_binding_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "hosting_binding_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "website_runtime_binding_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "transport_binding_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "auth_binding_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        },
+        "framework_classification_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        }
+      }
+    },
+    "brandPromotionState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "brand_candidate_write_performed": {
+          "type": "boolean",
+          "default": false
+        },
+        "brand_candidate_validation_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "brand_candidate_validation_rows_written": {
+          "type": "boolean",
+          "default": false
+        },
+        "brand_candidate_validation_row_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "brand_promotion_blockers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "brand_promotion_prerequisites": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "brand_promotion_ready": {
+          "type": "boolean",
+          "default": false
+        },
+        "brand_promotion_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "validated",
+            "degraded",
+            "blocked"
+          ],
+          "default": "pending"
+        }
+      }
+    }
+  }
+}

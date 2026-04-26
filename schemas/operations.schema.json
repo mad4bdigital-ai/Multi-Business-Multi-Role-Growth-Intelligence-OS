@@ -1,0 +1,3088 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://growth-intelligence.local/schemas/operations.schema.json",
+  "title": "Growth Intelligence — Operations & System",
+  "$defs": {
+    "architectureReconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "status",
+        "affected_surfaces",
+        "last_completed_at"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean",
+          "default": true
+        },
+        "status": {
+          "type": "string",
+          "default": "pending",
+          "enum": [
+            "pending",
+            "active",
+            "completed",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "affected_surfaces": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "enum": [
+              "Registry Surfaces Catalog",
+              "Validation & Repair Registry",
+              "Actions Registry",
+              "API Actions Endpoint Registry",
+              "Execution Bindings",
+              "Execution Chains Registry",
+              "Task Routes",
+              "Workflow Registry",
+              "Execution Policy Registry",
+              "Brand Registry",
+              "Brand Core Registry",
+              "Review Stage Registry",
+              "Review Component Registry"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "last_completed_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "driveFolderRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "folder_id",
+        "folder_name",
+        "web_view_link"
+      ],
+      "properties": {
+        "folder_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "folder_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "web_view_link": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parent_folder_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "canonicalFilenameMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {
+        "system_bootstrap": "system_bootstrap.md",
+        "memory_schema.json": "memory_schema.json",
+        "direct_instructions_registry_patch": "direct_instructions_registry_patch.md",
+        "module_loader": "module_loader.md",
+        "prompt_router": "prompt_router.md"
+      },
+      "properties": {
+        "system_bootstrap": {
+          "type": "string",
+          "default": "system_bootstrap.md"
+        },
+        "memory_schema.json": {
+          "type": "string",
+          "default": "memory_schema.json"
+        },
+        "direct_instructions_registry_patch": {
+          "type": "string",
+          "default": "direct_instructions_registry_patch.md"
+        },
+        "module_loader": {
+          "type": "string",
+          "default": "module_loader.md"
+        },
+        "prompt_router": {
+          "type": "string",
+          "default": "prompt_router.md"
+        }
+      }
+    },
+    "lifecycleAutomationState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "automation_active",
+        "request_type",
+        "duplicate_validation_completed",
+        "creation_mode",
+        "reuse_existing_brand",
+        "subfolder_template",
+        "registry_sync_completed",
+        "lifecycle_outcome"
+      ],
+      "properties": {
+        "automation_active": {
+          "type": "boolean",
+          "default": false
+        },
+        "request_type": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "new_brand_create",
+            "existing_brand_reuse",
+            "brand_update"
+          ]
+        },
+        "duplicate_validation_completed": {
+          "type": "boolean",
+          "default": false
+        },
+        "creation_mode": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "create_new",
+            "reuse_existing",
+            "abort_duplicate"
+          ]
+        },
+        "reuse_existing_brand": {
+          "type": "boolean",
+          "default": false
+        },
+        "subfolder_template": {
+          "type": "array",
+          "default": [
+            "00_Brand_Core",
+            "01_Inputs",
+            "02_Analysis",
+            "03_Strategy",
+            "04_Content",
+            "05_Tracking"
+          ],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "registry_sync_completed": {
+          "type": "boolean",
+          "default": false
+        },
+        "created_subfolders": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "new_brand_request_handling": {
+          "type": "string",
+          "default": ""
+        },
+        "last_completed_action": {
+          "type": "string",
+          "default": ""
+        },
+        "lifecycle_outcome": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "create_new_brand",
+            "reuse_existing_brand",
+            "abort_duplicate",
+            "brand_update"
+          ]
+        }
+      }
+    },
+    "workflowContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "active_workflow_id",
+        "active_workflow_name",
+        "active_module_mode",
+        "active_growth_loop",
+        "active_query_type",
+        "active_simulation_type",
+        "active_strategy_type",
+        "active_decision_type",
+        "triggered_workflows",
+        "triggered_engines",
+        "execution_mode",
+        "brand_context_required",
+        "execution_trace",
+        "active_workflow_ids",
+        "route_candidates",
+        "route_scores",
+        "selected_route_keys",
+        "route_selection_reason"
+      ],
+      "properties": {
+        "active_workflow_id": {
+          "type": "string",
+          "default": ""
+        },
+        "active_workflow_name": {
+          "type": "string",
+          "default": ""
+        },
+        "active_module_mode": {
+          "type": "string",
+          "enum": [
+            "",
+            "Single",
+            "Chain"
+          ],
+          "default": ""
+        },
+        "active_growth_loop": {
+          "type": "string",
+          "default": ""
+        },
+        "active_query_type": {
+          "type": "string",
+          "default": ""
+        },
+        "active_simulation_type": {
+          "type": "string",
+          "default": ""
+        },
+        "active_strategy_type": {
+          "type": "string",
+          "default": ""
+        },
+        "active_decision_type": {
+          "type": "string",
+          "default": ""
+        },
+        "triggered_workflows": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "triggered_engines": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "execution_mode": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "Foundational Mode",
+            "Optimization Mode",
+            "Scale Mode"
+          ]
+        },
+        "brand_context_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "execution_trace": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "active_workflow_ids": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "route_candidates": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "route_scores": {
+          "type": "object",
+          "default": {},
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": [
+              "number",
+              "string",
+              "object"
+            ]
+          }
+        },
+        "selected_route_keys": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "route_selection_reason": {
+          "type": "string",
+          "default": ""
+        },
+        "wordpress_multilingual_state": {
+          "$ref": "./wordpress_api.schema.json#/$defs/wordpressMultilingualState",
+          "default": {
+            "translatable_post_type_scope_active": false,
+            "target_post_type_slug": "",
+            "target_language_code": "",
+            "default_language_inferred": false,
+            "direct_rest_language_write_status": "pending",
+            "wpml_import_language_path_status": "pending",
+            "translation_scope_preflight_status": "pending",
+            "translation_linkage_status": "pending",
+            "multilingual_execution_mode": ""
+          }
+        },
+        "route_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "route_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "enum": [
+            null,
+            "",
+            "resolved",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "route_source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "enum": [
+            null,
+            "",
+            "registry_task_routes"
+          ]
+        },
+        "matched_row_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "target_module": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "target_workflow": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "chain_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "decision_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "route_override_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "lifecycle_mode": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "executable": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "default": null
+        },
+        "selected_route_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "selected_workflow_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "selected_workflow_ids": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "workflow_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "module_mode": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "trigger_source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "primary_objective": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "input_payload_summary": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "execution_class": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "enum": [
+            null,
+            "",
+            "standard",
+            "system audit",
+            "repair",
+            "autonomous chain"
+          ]
+        }
+      }
+    },
+    "intelligenceContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scoreboard_signals",
+        "decision_triggers",
+        "autopilot_signals",
+        "graph_entry_nodes",
+        "graph_paths_used",
+        "output_templates_used",
+        "auto_update_state",
+        "live_data_signals"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "default": "manual_or_staged"
+        },
+        "scoreboard_signals": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "decision_triggers": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "autopilot_signals": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "graph_entry_nodes": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "graph_paths_used": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "output_templates_used": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "auto_update_state": {
+          "$ref": "./governance.schema.json#/$defs/autoUpdateState",
+          "default": {}
+        },
+        "live_data_signals": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "./analytics.schema.json#/$defs/liveDataSignal"
+          }
+        },
+        "normalized_signals": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "score_states": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "decision_queue": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "autopilot_readiness": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "growth_loop_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "inactive",
+            "evaluating",
+            "triggered",
+            "queued",
+            "completed",
+            "blocked"
+          ]
+        },
+        "growth_loop_candidates": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "adaptive_optimization_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "inactive",
+            "suggested",
+            "armed",
+            "active",
+            "blocked"
+          ]
+        },
+        "feedback_injection_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "complete",
+            "partial",
+            "failed"
+          ]
+        },
+        "last_signal_refresh": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "last_score_refresh": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "last_growth_loop_refresh": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "last_decision_refresh": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "canonical_dependency_state": {
+          "$ref": "./execution.schema.json#/$defs/canonicalDependencyState",
+          "default": {}
+        },
+        "knowledge_layer_resolution_state": {
+          "$ref": "./execution.schema.json#/$defs/knowledgeLayerResolutionState",
+          "default": {}
+        },
+        "canonical_filename_map": {
+          "$ref": "#/$defs/canonicalFilenameMap",
+          "default": {}
+        }
+      }
+    },
+    "dataContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "live_data_hub": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "connection_status": {
+              "type": "string",
+              "default": "not_connected_yet"
+            },
+            "sources": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": [
+                  "string",
+                  "object"
+                ]
+              }
+            },
+            "brand_mappings": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": [
+                  "string",
+                  "object"
+                ]
+              }
+            },
+            "active_signal_rules": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": [
+                  "string",
+                  "object"
+                ]
+              }
+            }
+          }
+        },
+        "metrics_warehouse": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "summary_status": {
+              "type": "string",
+              "default": "available"
+            },
+            "brand_daily_kpi_summary": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": [
+                  "string",
+                  "object"
+                ]
+              }
+            },
+            "seo_daily_summary": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": [
+                  "string",
+                  "object"
+                ]
+              }
+            },
+            "conversion_summary": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": [
+                  "string",
+                  "object"
+                ]
+              }
+            },
+            "revenue_summary": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": [
+                  "string",
+                  "object"
+                ]
+              }
+            },
+            "alert_snapshot": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": [
+                  "string",
+                  "object"
+                ]
+              }
+            },
+            "execution_score_summary": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": [
+                  "string",
+                  "object"
+                ]
+              }
+            },
+            "optimization_feedback_snapshot": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": [
+                  "string",
+                  "object"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "systemContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approved_registry_bindings",
+        "active_sheet_bindings",
+        "system_layers_active",
+        "approved_registry_tabs",
+        "live_data_layer_ready",
+        "control_center_state"
+      ],
+      "properties": {
+        "platform_name": {
+          "type": "string",
+          "default": "Multi-Business Growth Intelligence Platform"
+        },
+        "registry_workbook": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "default": "1RV185rQo58pGppg27r81eD9hPE8pXPyBY1pfHANip4o"
+            },
+            "title": {
+              "type": "string",
+              "default": "Growth Intelligence OS - Registry Workbook"
+            },
+            "role": {
+              "type": "string",
+              "default": "structural_truth"
+            }
+          }
+        },
+        "operations_workbook_binding": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {},
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "default": "1D0uiZteobSqPL9c6zygq3UVWTe56H3R7IHL1yJcwP5k"
+            },
+            "title": {
+              "type": "string",
+              "default": "Growth Intelligence OS - Operations Workbook"
+            },
+            "role": {
+              "type": "string",
+              "default": "runtime_control_surface"
+            }
+          }
+        },
+        "metrics_warehouse_workbook": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "default": "1NsQ2dfGKpNX12k3LoclPvscW3kSyB5_anuXDLd1fgJs"
+            },
+            "title": {
+              "type": "string",
+              "default": "Business Metrics Warehouse"
+            },
+            "role": {
+              "type": "string",
+              "default": "summary_kpi_layer"
+            }
+          }
+        },
+        "live_data_workbook": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "default": "1BQz5KIcub66n6PQf_Qui9wkYVt8WsiyUGEocNbDddTc"
+            },
+            "title": {
+              "type": "string",
+              "default": "Business Live Data Hub"
+            },
+            "role": {
+              "type": "string",
+              "default": "live_data_intake_and_signal_governance"
+            }
+          }
+        },
+        "review_workbook": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "default": "1SyFXE8bhcLH1-uWkV8ngd2AlV7B-BI_gvbHRx8ZnB6A"
+            },
+            "title": {
+              "type": "string",
+              "default": "System Integration Review Layer"
+            },
+            "role": {
+              "type": "string",
+              "default": "audit_and_remediation"
+            }
+          }
+        },
+        "brands_root_folder_id": {
+          "type": "string",
+          "default": "1a7I8JOH3XQ-ILkGp4UJDjpOjAqqPb6T6"
+        },
+        "registry_control_center": {
+          "type": "string",
+          "default": "Growth Intelligence Control Center"
+        },
+        "operations_control_center": {
+          "type": "string",
+          "default": "Control Center"
+        },
+        "approved_registry_bindings": {
+          "type": "object",
+          "default": {},
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "$ref": "./execution.schema.json#/$defs/registryBinding"
+          }
+        },
+        "active_sheet_bindings": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "system_layers_active": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "approved_registry_tabs": {
+          "type": "array",
+          "default": [
+            "Brand Registry",
+            "Brand Core Registry",
+            "Workflow Registry",
+            "Knowledge Graph Node Registry",
+            "Relationship Graph Registry",
+            "Growth Loop Engine Registry",
+            "Tourism Intelligence Query Engine",
+            "Tourism Simulation Engine",
+            "Tourism Intelligence Scoreboard",
+            "Tourism Intelligence Control Center",
+            "Tourism Strategy Autopilot",
+            "Tourism AI Decision Engine",
+            "Business Intelligence Query Engine",
+            "Business Simulation Engine",
+            "Business Intelligence Scoreboard",
+            "Business Intelligence Control Center",
+            "Business Strategy Autopilot",
+            "Business AI Decision Engine",
+            "Conversation Starter",
+            "Task Routes",
+            "Engines Registry"
+          ],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "live_data_layer_ready": {
+          "type": "boolean",
+          "default": false
+        },
+        "metrics_layer_ready": {
+          "type": "boolean",
+          "default": true
+        },
+        "review_layer_ready": {
+          "type": "boolean",
+          "default": true
+        },
+        "intelligence_layer_ready": {
+          "type": "boolean",
+          "default": false
+        },
+        "control_center_state": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "active",
+            "last_update_applied",
+            "tracked_layers"
+          ],
+          "properties": {
+            "active": {
+              "type": "boolean",
+              "default": false
+            },
+            "last_update_applied": {
+              "type": "string",
+              "default": ""
+            },
+            "tracked_layers": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "system_health": {
+              "type": "string",
+              "default": ""
+            },
+            "notes": {
+              "type": "string",
+              "default": ""
+            }
+          }
+        },
+        "operations_workbook": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {},
+          "required": [
+            "spreadsheet_id",
+            "title"
+          ],
+          "properties": {
+            "spreadsheet_id": {
+              "type": "string",
+              "default": "1D0uiZteobSqPL9c6zygq3UVWTe56H3R7IHL1yJcwP5k"
+            },
+            "title": {
+              "type": "string",
+              "default": "Growth Intelligence OS - Operations Workbook"
+            },
+            "role": {
+              "type": "string",
+              "default": "runtime_control_surface"
+            }
+          }
+        },
+        "logging_surface": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {},
+          "required": [
+            "source",
+            "dependency_key",
+            "worksheet"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "default": "registry",
+              "enum": [
+                "registry"
+              ]
+            },
+            "dependency_key": {
+              "type": "string",
+              "default": "operations_log_unified_sheet",
+              "enum": [
+                "operations_log_unified_sheet"
+              ]
+            },
+            "worksheet": {
+              "type": "string",
+              "default": "Execution Log Unified",
+              "enum": [
+                "Execution Log Unified"
+              ]
+            }
+          }
+        },
+        "runtime_state": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {},
+          "properties": {
+            "overall_health": {
+              "type": "string",
+              "default": ""
+            },
+            "next_auto_route": {
+              "type": "string",
+              "default": ""
+            },
+            "top_product_ready": {
+              "type": "string",
+              "default": ""
+            },
+            "next_best_action": {
+              "type": "string",
+              "default": ""
+            },
+            "last_history_timestamp": {
+              "type": "string",
+              "default": ""
+            }
+          }
+        },
+        "file_resolution_policy": {
+          "type": "string",
+          "default": "Prefer the latest canonical dependency file revision; treat same-day older drafts as deprecated. `system_bootstrap.file_based.md` is a compatibility alias for `system_bootstrap.md` only."
+        }
+      }
+    },
+    "operationsContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "history_events": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "dashboard_snapshot": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "recommendations": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "control_center_alerts": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "execution_decisions": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "autopilot_state": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "product_engine_state": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "system_status": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "anomaly_detection_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "inactive",
+            "monitoring",
+            "detected",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "repair_queue_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "idle",
+            "queued",
+            "active",
+            "drained",
+            "blocked"
+          ]
+        },
+        "governed_trigger_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_checked",
+            "eligible",
+            "triggered",
+            "suppressed",
+            "blocked"
+          ]
+        },
+        "wordpress_preflight": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {},
+          "properties": {
+            "brand_playbook_asset_key": {
+              "type": "string",
+              "default": ""
+            },
+            "brand_playbook_sheet_gid": {
+              "type": "string",
+              "default": ""
+            },
+            "playbook_coverage_status": {
+              "type": "string",
+              "default": "",
+              "enum": [
+                "",
+                "covered",
+                "missing_for_cpt",
+                "missing_asset",
+                "not_applicable"
+              ]
+            },
+            "playbook_backfill_required": {
+              "type": "boolean",
+              "default": false
+            },
+            "fallback_template_mode": {
+              "type": "string",
+              "default": "",
+              "enum": [
+                "",
+                "runtime_contract_only",
+                "runtime_plus_sample_hint",
+                "runtime_plus_playbook_hint"
+              ]
+            },
+            "cpt_schema_asset_key": {
+              "type": "string",
+              "default": ""
+            },
+            "last_cpt_slug": {
+              "type": "string",
+              "default": ""
+            },
+            "last_rest_base": {
+              "type": "string",
+              "default": ""
+            },
+            "last_readiness_state": {
+              "type": "string",
+              "default": ""
+            }
+          }
+        },
+        "trigger_key_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "HIGH_PRIORITY",
+            "READY_TRIGGER",
+            "PASSIVE"
+          ]
+        },
+        "trigger_mode_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "governed_auto",
+            "manual"
+          ]
+        },
+        "activation_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "inactive",
+            "eligible",
+            "armed",
+            "active",
+            "completed",
+            "blocked"
+          ]
+        },
+        "repair_execution_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "queued",
+            "active",
+            "recovered",
+            "degraded",
+            "blocked",
+            "completed"
+          ]
+        },
+        "repair_execution_feed_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "active",
+            "complete",
+            "partial",
+            "failed"
+          ]
+        },
+        "unified_log_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "authoritative",
+            "stale",
+            "failed"
+          ]
+        },
+        "execution_logging": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {},
+          "properties": {
+            "logging_enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "pending_loggable_execution": {
+              "type": "boolean",
+              "default": false
+            },
+            "last_execution_trace_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_route_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_route_status": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_route_source": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_matched_row_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_target_module": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_target_workflow": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_chain_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_decision_status": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_route_override_status": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_execution_class": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_intake_validation_status": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_execution_ready_status": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_failure_reason": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_recovery_action": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_entry_type": {
+              "type": "string",
+              "default": "",
+              "enum": [
+                "",
+                "Manual",
+                "Autopilot",
+                "Decision",
+                "Review",
+                "System"
+              ]
+            },
+            "last_source_layer": {
+              "type": "string",
+              "default": "",
+              "enum": [
+                "",
+                "Prompt Router",
+                "Autopilot Engine",
+                "Execution Decision",
+                "Review Layer",
+                "System Bootstrap"
+              ]
+            },
+            "last_execution_status": {
+              "type": "string",
+              "default": "",
+              "enum": [
+                "",
+                "Success",
+                "Failed",
+                "Partial",
+                "Skipped"
+              ]
+            },
+            "last_history_write_completed": {
+              "type": "boolean",
+              "default": false
+            },
+            "last_history_row_fingerprint": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_logged_route_keys": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "last_logged_workflow_ids": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "last_decision_trigger": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_output_quality_score": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "default": null
+            },
+            "last_seo_score": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "default": null
+            },
+            "last_business_score": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "default": null
+            },
+            "last_execution_score": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "default": null
+            },
+            "last_optimization_trigger": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_output_summary": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            }
+          }
+        },
+        "routing_audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {},
+          "properties": {
+            "audit_active": {
+              "type": "boolean",
+              "default": false
+            },
+            "last_audit_status": {
+              "type": "string",
+              "default": "",
+              "enum": [
+                "",
+                "recoverable",
+                "degraded",
+                "blocked"
+              ]
+            },
+            "last_gap_type": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "last_missing_dependency": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "fallback_applied": {
+              "type": "boolean",
+              "default": false
+            },
+            "degraded_execution_used": {
+              "type": "boolean",
+              "default": false
+            },
+            "user_exposure_required": {
+              "type": "boolean",
+              "default": false
+            },
+            "last_audit_summary": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            }
+          }
+        },
+        "recovery_scoring": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {},
+          "properties": {
+            "scoring_enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "last_recovery_status": {
+              "type": "string",
+              "default": "",
+              "enum": [
+                "",
+                "Recovered",
+                "Degraded",
+                "Blocked"
+              ]
+            },
+            "last_recovery_score": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "default": null
+            },
+            "last_recovery_note": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "average_recovery_score": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "default": null
+            },
+            "recovery_escalation_required": {
+              "type": "boolean",
+              "default": false
+            },
+            "blocked_state_present": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      }
+    },
+    "reviewContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "review_run_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "review_mode": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "current_stage": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "active_review_stage": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "current_task_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "review_task_queue_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "review_task_queue_task_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "provider_family_review_scope": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "findings": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "stage_reports": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "health_score": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "feedback_scoring_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "complete",
+            "partial",
+            "failed"
+          ]
+        },
+        "run_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "new_scope_detected": {
+          "type": "boolean",
+          "default": false
+        },
+        "review_bindings_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_checked",
+            "resolved",
+            "partial",
+            "recoverable",
+            "invalid"
+          ]
+        },
+        "review_writeback_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "partial",
+            "complete",
+            "failed"
+          ]
+        },
+        "review_run_history_write_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "partial",
+            "complete",
+            "failed"
+          ]
+        },
+        "review_findings_write_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "partial",
+            "complete",
+            "failed"
+          ]
+        },
+        "execution_view_write_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "partial",
+            "complete",
+            "failed"
+          ]
+        },
+        "review_stage_reports_write_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "partial",
+            "complete",
+            "failed"
+          ]
+        },
+        "repair_control_write_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "partial",
+            "complete",
+            "failed"
+          ]
+        },
+        "review_runtime_surfaces": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "review_computed_surfaces": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "review_helper_surfaces": {
+          "$ref": "./shared.schema.json#/$defs/stringList"
+        },
+        "review_write_plan": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {},
+          "properties": {
+            "direct_write": {
+              "$ref": "./shared.schema.json#/$defs/stringList"
+            },
+            "computed_read": {
+              "$ref": "./shared.schema.json#/$defs/stringList"
+            },
+            "config_read": {
+              "$ref": "./shared.schema.json#/$defs/stringList"
+            },
+            "helper_blocked": {
+              "$ref": "./shared.schema.json#/$defs/stringList"
+            },
+            "write_order": {
+              "$ref": "./shared.schema.json#/$defs/stringList"
+            }
+          }
+        },
+        "review_write_results": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {},
+          "properties": {
+            "write_targets_resolved": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "write_targets_attempted": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "write_targets_succeeded": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "write_targets_failed": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        },
+        "binding_schema_review_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "completed",
+            "degraded",
+            "blocked"
+          ]
+        },
+        "binding_rows_checked": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "binding_rows_repaired": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "binding_rows_migrated": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "binding_rows_cleaned": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "binding_rows_blocked": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "binding_repair_handler": {
+          "type": "string",
+          "default": ""
+        },
+        "binding_schema_result_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "Recovered",
+            "Degraded",
+            "Blocked"
+          ]
+        },
+        "repair_loop_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "inactive",
+            "pending",
+            "active",
+            "rerun_ready",
+            "blocked",
+            "completed"
+          ]
+        },
+        "scope_lifecycle_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "not_checked",
+            "incomplete",
+            "repair_required",
+            "revalidation_required",
+            "complete",
+            "blocked"
+          ]
+        },
+        "scope_repair_mapping_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "not_checked",
+            "mapped",
+            "partial",
+            "unmapped",
+            "invalid"
+          ]
+        },
+        "active_findings_index": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "latest_review_run": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {},
+          "properties": {
+            "run_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "route_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "target_workflow": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "target_module": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "execution_trace_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "execution_state": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            }
+          }
+        }
+      }
+    },
+    "monitoringContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "monitoring_required",
+        "execution_view_binding",
+        "active_issues_dashboard_binding",
+        "monitoring_resolution_status",
+        "monitoring_validation_status",
+        "monitoring_degraded_notes",
+        "derived_view_refresh_expected",
+        "derived_view_refresh_status",
+        "observability_validation_state",
+        "observability_issues"
+      ],
+      "properties": {
+        "execution_view_binding": {
+          "oneOf": [
+            {
+              "$ref": "./execution.schema.json#/$defs/registryBinding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "active_issues_dashboard_binding": {
+          "oneOf": [
+            {
+              "$ref": "./execution.schema.json#/$defs/registryBinding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "monitoring_resolution_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "resolved",
+            "partial",
+            "recoverable",
+            "invalid"
+          ]
+        },
+        "monitoring_validation_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_checked",
+            "valid",
+            "degraded",
+            "failed"
+          ]
+        },
+        "monitoring_degraded_notes": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "derived_view_refresh_expected": {
+          "type": "boolean",
+          "default": false
+        },
+        "derived_view_refresh_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "refreshing",
+            "complete",
+            "stale",
+            "failed"
+          ]
+        },
+        "observability_validation_state": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "not_required",
+            "pending",
+            "valid",
+            "degraded",
+            "failed"
+          ]
+        },
+        "observability_issues": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        "last_monitoring_check_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "execution_view_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "valid",
+            "degraded",
+            "failed",
+            "missing"
+          ]
+        },
+        "active_issues_dashboard_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "valid",
+            "degraded",
+            "failed",
+            "missing"
+          ]
+        },
+        "anomaly_detection_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "valid",
+            "degraded",
+            "failed",
+            "missing"
+          ]
+        },
+        "execution_log_unified_status": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "valid",
+            "degraded",
+            "failed",
+            "missing"
+          ]
+        },
+        "monitoring_required": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "memoryPaths": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {
+        "system_context.live_data_layer_ready": "Boolean readiness of Tourism Live Data Hub",
+        "system_context.metrics_layer_ready": "Boolean readiness of Tourism Metrics Warehouse",
+        "system_context.review_layer_ready": "Boolean readiness of System Integration Review Layer",
+        "workflow_context.execution_trace": "Ordered trace of route/workflow/engine execution",
+        "workflow_context.selected_route_keys": "One or many selected route keys for current execution",
+        "routing_context.source": "Canonical routed handoff source; must be prompt_router for strict execution.",
+        "routing_context.route_id": "Canonical route identifier resolved from Task Routes.",
+        "routing_context.route_status": "Strict routed status: resolved, degraded, or blocked.",
+        "routing_context.route_mode": "Routed operating mode such as standard, recovery, audit, or routing_audit.",
+        "routing_context.route_source": "Registry-governed source of route authority; expected registry_task_routes.",
+        "routing_context.matched_row_id": "Matched Task Routes row identifier used for traceability.",
+        "routing_context.intent_key": "Canonical classified intent key used for route selection.",
+        "routing_context.target_module": "Governed target module selected by routed authority.",
+        "routing_context.target_workflow": "Governed target workflow selected by routed authority.",
+        "workflow_context.chain_id": "Canonical chain identifier for autonomous-chain routing or execution when a governed chain is active.",
+        "workflow_context.decision_status": "Current decision-routing status emitted by prompt_router when decision-aware routing is evaluated.",
+        "workflow_context.route_override_status": "Current override status showing whether the routed path was superseded by governed decision or chain logic.",
+        "routing_context.lifecycle_mode": "Lifecycle mode expected downstream in system_bootstrap.",
+        "routing_context.executable": "Boolean indicator showing whether routing produced executable readiness.",
+        "routing_context.degraded_reason": "Reason the routed handoff degraded.",
+        "routing_context.blocked_reason": "Reason the routed handoff blocked.",
+        "routing_context.recovery_action": "Recovery action proposed by routed handoff.",
+        "routing_context.auto_repair_trigger": "Governed review or control signal that can force repair routing when set to TRIGGER_REPAIR.",
+        "routing_context.forced_repair_routing_applied": "Boolean trace showing whether prompt_router forced system_repair from a governed auto-repair trigger.",
+        "routing_context.http_route_state.last_route_id": "Most recent governed route identifier used for HTTP-oriented governed routing.",
+        "routing_context.http_route_state.last_workflow_key": "Most recent governed workflow key selected for HTTP-oriented governed routing.",
+        "routing_context.http_route_state.last_target_module": "Most recent governed target module selected by routing for HTTP-oriented execution paths.",
+        "routing_context.http_route_state.last_transport_module": "Most recent governed transport module selected for HTTP-oriented execution paths.",
+        "routing_context.http_route_state.last_target_key": "Most recent governed target key selected for routed HTTP transport execution.",
+        "routing_context.http_route_state.last_http_method": "Most recent governed HTTP method selected by routed HTTP execution context.",
+        "routing_context.http_route_state.last_http_path": "Most recent governed HTTP path selected by routed HTTP execution context.",
+        "routing_context.http_route_state.last_route_validation_status": "Most recent route-validation status for HTTP-oriented governed routing.",
+        "routing_context.http_route_state.last_workflow_validation_status": "Most recent workflow-validation status for HTTP-oriented governed routing.",
+        "routing_context.http_route_state.last_async_job_mode": "Most recent HTTP execution mode for governed HTTP transport: sync or async.",
+        "routing_context.http_route_state.last_job_endpoint_key": "Most recent async job lifecycle endpoint key used for governed HTTP execution.",
+        "routing_context.http_route_state.last_job_status": "Most recent async job lifecycle status for governed HTTP execution.",
+        "routing_context.http_route_state.last_job_id": "Most recent governed async job identifier returned by the HTTP client backend.",
+        "execution_context.intake_validation_status": "system_bootstrap intake validation result for the routed handoff.",
+        "execution_context.execution_ready_status": "Execution-readiness classification after intake and loader validation.",
+        "execution_context.load_status": "module_loader loading outcome for the current execution path.",
+        "execution_context.binding_status": "Registry binding validity status for the current execution path.",
+        "execution_context.target_resolution_status": "Route and workflow target revalidation result.",
+        "execution_context.entry_source": "Authoritative entry source for the current execution path, such as conversation_starter, direct_prompt, autopilot, or direct_google_tooling.",
+        "execution_context.policy_resolution_status": "Resolution state for execution-governing policy during routed loading and bootstrap enforcement.",
+        "execution_context.policy_source": "Traceable source of the policy authority used for the current execution path.",
+        "execution_context.applied_policy_keys": "Canonical policy keys applied or attached for the active execution context.",
+        "execution_context.policy_trace_id": "Canonical identifier linking pre-execution policy resolution evidence to execution and logging continuity.",
+        "execution_context.resolved_route_record": "Resolved Task Routes record used for strict execution validation.",
+        "execution_context.resolved_workflow_record": "Resolved Workflow Registry record used for strict execution validation.",
+        "execution_context.failure_reason": "Canonical reason for degraded or blocked execution intake or loading.",
+        "execution_context.recovery_action": "Canonical recovery action selected during routed execution enforcement.",
+        "execution_context.execution_state": "Current execution state after strict routing, loading, and bootstrap enforcement.",
+        "execution_context.execution_trigger": "Reason the current execution became eligible, such as manual activation, governed auto-triggering, repair triggering, or review-triggered continuation.",
+        "execution_context.execution_status": "Current lifecycle progression state for the active execution, such as pending, active, completed, degraded, or blocked.",
+        "execution_context.execution_result": "Final governed result classification for the active execution: Recovered, Degraded, or Blocked.",
+        "execution_context.execution_trace_id": "Canonical identifier tying routing, loading, execution, and logging together.",
+        "execution_context.http_async_status": "Current async HTTP execution lifecycle status: queued, running, retrying, succeeded, failed, or cancelled.",
+        "execution_context.http_async_polling_status": "Latest polling lifecycle state for governed async HTTP execution.",
+        "execution_context.http_async_result_status": "Latest result retrieval state for governed async HTTP execution.",
+        "execution_context.http_async_persistence_status": "Durability status for governed async job state: pending, validated, degraded, or blocked.",
+        "execution_context.http_async_webhook_status": "Webhook lifecycle status for the most recent governed async HTTP execution.",
+        "execution_context.http_execution_state.last_target_key": "Most recent governed http_generic_api target key used during external execution.",
+        "execution_context.http_execution_state.last_endpoint_path": "Most recent governed endpoint path used during external execution.",
+        "execution_context.http_execution_state.last_method": "Most recent governed HTTP method used during external execution.",
+        "execution_context.http_execution_state.last_validation_status": "Most recent validation outcome for governed http_generic_api execution readiness and guardrails.",
+        "execution_context.http_execution_state.last_execution_status": "Most recent execution outcome status for governed http_generic_api transport execution.",
+        "execution_context.http_transport_state.transport_module": "Governed transport module used for HTTP transport execution; expected http_generic_api.",
+        "execution_context.http_transport_state.provider_domain_resolution_status": "Most recent provider-domain resolution state for governed HTTP transport execution.",
+        "execution_context.http_transport_state.variable_provider_domain_detected": "Indicates whether a variable provider_domain placeholder was detected for the active governed HTTP execution path.",
+        "execution_context.http_transport_state.parent_action_validation_status": "Most recent parent action authority validation state for governed HTTP transport execution.",
+        "execution_context.http_transport_state.endpoint_validation_status": "Most recent endpoint-key validation state for governed HTTP transport execution.",
+        "execution_context.http_transport_state.schema_binding_status": "Most recent schema-binding validation state for governed HTTP transport execution.",
+        "execution_context.http_transport_state.openapi_contract_validation_status": "Most recent YAML/OpenAPI contract validation state for governed HTTP transport execution.",
+        "execution_context.http_transport_state.schema_drift_detected": "Indicates whether governed request or response payloads diverged from the authoritative YAML/OpenAPI contract during transport validation.",
+        "execution_context.http_transport_state.schema_drift_type": "Classified governed HTTP schema drift type: additive, missing_required, renamed, type_mismatch, enum_mismatch, or structure_mismatch.",
+        "execution_context.http_transport_state.schema_drift_scope": "Scope where governed HTTP schema drift was detected: request or response.",
+        "execution_context.http_transport_state.schema_learning_candidate_emitted": "Indicates whether candidate-only schema learning output was emitted for governed HTTP schema drift.",
+        "execution_context.http_transport_state.auth_resolution_status": "Most recent authentication resolution state for governed HTTP transport execution.",
+        "execution_context.http_transport_state.path_validation_status": "Most recent path validation state for governed HTTP transport execution.",
+        "execution_context.http_transport_state.method_validation_status": "Most recent method validation state for governed HTTP transport execution.",
+        "execution_context.http_transport_state.execution_status": "Most recent transport execution lifecycle state for governed HTTP transport execution.",
+        "execution_context.logging_status": "Canonical logging outcome for the current execution path.",
+        "execution_context.review_writeback_status": "Canonical overall review writeback outcome emitted by system_bootstrap.",
+        "execution_context.authoritative_write_status": "Canonical summary of authoritative source-surface write completion for the current execution.",
+        "execution_context.review_write_status": "Canonical status of Review Run History write completion when review evidence is required.",
+        "execution_context.findings_write_status": "Canonical status of Review Findings Log write completion when findings are emitted.",
+        "execution_context.stage_report_write_status": "Canonical status of Review Stage Reports write completion when stage reporting is required.",
+        "execution_context.output_quality_score": "Governed score for the quality of the produced output on a 0-100 scale when growth feedback is available.",
+        "execution_context.seo_score": "Governed SEO-oriented execution score on a 0-100 scale when growth feedback is available.",
+        "execution_context.business_score": "Governed business-value score on a 0-100 scale when growth feedback is available.",
+        "execution_context.execution_score": "Governed execution performance score on a 0-100 scale used by growth-loop rules and optimization triggers.",
+        "execution_context.optimization_trigger": "Governed optimization trigger emitted when a growth-loop rule qualifies a follow-up workflow or repair path.",
+        "execution_context.outcome_summary": "Concise summary of final execution outcome and writeback result.",
+        "execution_context.write_targets_resolved": "Count of review write targets resolved for the current execution.",
+        "execution_context.write_targets_attempted": "Count of review write targets actually attempted during execution.",
+        "execution_context.write_targets_succeeded": "Count of review write targets successfully written during execution.",
+        "execution_context.write_targets_failed": "Count of review write targets that failed during execution.",
+        "architecture_reconciliation.required": "Boolean flag indicating whether architecture reconciliation is required for the active structural-change lifecycle.",
+        "architecture_reconciliation.status": "Current architecture reconciliation status: pending, active, completed, degraded, or blocked.",
+        "architecture_reconciliation.affected_surfaces": "Registry, binding, authority, and validation surfaces currently in reconciliation scope for the active architecture change.",
+        "architecture_reconciliation.last_completed_at": "Timestamp of the most recent completed architecture reconciliation pass.",
+        "runtime_validation.validated_dependencies": "Dependencies validated by runtime validation for the active execution lifecycle.",
+        "runtime_validation.readback_proof": "Boolean proof that authoritative write readback checks succeeded for required runtime surfaces.",
+        "runtime_validation.authoritative_write_status": "Runtime authoritative write state, expected to begin at pending.",
+        "runtime_validation.review_evidence_status": "Runtime review evidence state, expected to begin at pending.",
+        "runtime_validation.layout_validation_status": "Runtime layout-validation state, expected to begin at pending.",
+        "runtime_validation.runtime_result": "Runtime validation result: pending, recovered, degraded, or blocked.",
+        "brand_tracking_bindings.gsc_property": "Resolved Search Console property for the active brand context.",
+        "brand_tracking_bindings.ga_property_id": "Resolved Google Analytics property identifier for the active brand context.",
+        "brand_tracking_bindings.gtm_container_id": "Resolved Google Tag Manager container identifier for the active brand context.",
+        "brand_tracking_bindings.binding_status": "Overall binding resolution state for required tracking bindings.",
+        "brand_tracking_bindings.analytics_discovery_state": "Discovery lifecycle state for analytics property resolution.",
+        "brand_tracking_bindings.measurement_health_state": "Measurement-health lifecycle state for GTM/measurement readiness.",
+        "analytics_sync.last_run_at": "Timestamp of the most recent analytics sheet-sync execution.",
+        "analytics_sync.last_request_scope.mode": "Scope mode for the last analytics sync request: single_brand, multi_brand, or pending.",
+        "analytics_sync.last_request_scope.brand_count": "Brand count included in the last analytics sync request scope.",
+        "analytics_sync.last_request_scope.brands": "Brand set included in the last analytics sync request scope.",
+        "analytics_sync.last_request_scope.request_date": "Request-date identity used for the last analytics sync request when provided.",
+        "analytics_sync.last_request_scope.date_from": "Lower date boundary used for the last analytics sync request when provided.",
+        "analytics_sync.last_request_scope.date_to": "Upper date boundary used for the last analytics sync request when provided.",
+        "analytics_sync.last_request_scope.trigger_mode": "Trigger mode for the last analytics sync request: manual, scheduled_task, or pending.",
+        "analytics_sync.last_write_status": "Write status for the most recent analytics sheet-sync run.",
+        "analytics_sync.last_written_brands": "Brands successfully written in the most recent analytics sheet-sync run.",
+        "analytics_sync.schema_validation_status": "Schema-validation status for the most recent analytics sheet-sync run.",
+        "analytics_sync.last_target_surfaces": "Analytics warehouse target surfaces used in the most recent sync run.",
+        "analytics_sync.last_execution_result": "Final execution result for the most recent analytics sheet-sync run.",
+        "analytics_identity.brand_domain_required": "Boolean flag indicating domain-aware identity is required for domain-bound analytics execution.",
+        "analytics_identity.last_domain_validation_status": "Most recent domain validation result: pending, validated, degraded, or blocked.",
+        "analytics_identity.last_resolved_brand_domains": "Brand-domain pairs or domains resolved successfully for the most recent domain-aware analytics validation cycle.",
+        "analytics_identity.last_missing_domain_brands": "Brands that remained without a resolved domain during the most recent domain-aware analytics validation cycle.",
+        "analytics_issue_tracking.last_detected_issues": "Most recent analytics identity issues detected for governed execution cycles.",
+        "analytics_issue_tracking.last_issue_creation_status": "Issue-creation lifecycle status for analytics identity defects in the latest governed cycle.",
+        "analytics_issue_tracking.last_issue_scope.brands": "Brands included in the latest analytics identity issue scope.",
+        "analytics_issue_tracking.last_issue_scope.issue_type": "Analytics issue type tracked for the latest issue scope.",
+        "analytics_issue_tracking.last_issue_scope.execution_cycle_id": "Execution cycle identifier used to scope analytics issue creation and deduplication.",
+        "analytics_issue_tracking.issue_deduplication_keys": "Deduplication keys applied to analytics identity issues to prevent duplicate findings per cycle and defect type.",
+        "analytics_issue_tracking.last_issue_resolution_status": "Latest resolution lifecycle status for tracked analytics identity issues.",
+        "api_action_inventory.last_capability_registry_validation": "Latest validation outcome for parent capability authority resolved through Actions Registry.",
+        "api_action_inventory.last_endpoint_inventory_validation": "Latest validation outcome for endpoint metadata readiness resolved through API Actions Endpoint Registry.",
+        "api_action_inventory.last_incomplete_endpoint_metadata": "Endpoint rows where required metadata (schema, auth, privacy, callback where applicable) was incomplete in the latest validation cycle.",
+        "api_action_inventory.last_parent_endpoint_mismatches": "Capability-to-endpoint mismatches detected between Actions Registry parent identity and API Actions Endpoint Registry endpoint inventory.",
+        "api_action_inventory.last_async_job_validation": "Latest validation outcome for governed HTTP async job lifecycle support.",
+        "api_action_inventory.last_credential_resolver_chain": "Latest governed credential resolver chain used for per-target API auth resolution.",
+        "api_action_inventory.last_hosting_account_registry_validation": "Latest validation outcome for Hosting Account Registry dependency readiness.",
+        "credential_resolution.last_storage_mode": "Latest resolved governed credential storage mode for API execution.",
+        "credential_resolution.last_target_key": "Target key used for the latest governed credential resolution cycle.",
+        "credential_resolution.last_hosting_account_key": "Hosting account key resolved from Brand Registry for the latest per-target credential flow.",
+        "credential_resolution.last_api_key_reference": "Account-level credential reference resolved from Hosting Account Registry for the latest per-target credential flow.",
+        "credential_resolution.last_resolution_status": "Latest credential resolution status: pending, validated, degraded, or blocked.",
+        "credential_resolution.last_resolution_chain": "Latest governed resolver chain used during credential resolution.",
+        "intelligence_context.live_data_signals": "Signals normalized from live data hub or manual staging",
+        "intelligence_context.scoreboard_signals": "Signals derived from scoreboard and metrics summaries",
+        "intelligence_context.decision_triggers": "Structured triggers that can produce decisions",
+        "intelligence_context.autopilot_signals": "Signals used to evaluate autopilot suitability",
+        "intelligence_context.growth_loop_state": "Current lifecycle state for governed growth-loop evaluation.",
+        "intelligence_context.growth_loop_candidates": "Governed optimization or follow-up loop candidates derived from scoring feedback and loop rules.",
+        "intelligence_context.adaptive_optimization_state": "Current adaptive-optimization state for workflow prioritization, sequencing, or routing-weight recommendations.",
+        "intelligence_context.feedback_injection_state": "Status of injecting governed feedback context into the active execution path.",
+        "operations_context.execution_decisions": "Structured operational decision objects from the Registry-resolved operations workbook runtime surfaces, excluding the logging-only Execution Log Unified worksheet.",
+        "review_context.findings": "Structured audit findings from review workbook",
+        "review_context.active_review_stage": "Explicit governed review stage currently driving review or scope lifecycle enforcement.",
+        "review_context.feedback_scoring_status": "Status of governed review-layer feedback or scoring evidence when review contributes to growth feedback.",
+        "review_context.new_scope_detected": "Boolean flag indicating that a new governed scope or review stage has been introduced and requires lifecycle completeness validation.",
+        "review_context.review_bindings_state": "Registry-resolution state for review-layer bindings required by the active execution.",
+        "review_context.review_writeback_status": "Overall status for review-layer writeback completion across required review output surfaces.",
+        "review_context.review_run_history_write_status": "Writeback completion state for review_run_history_sheet persistence.",
+        "review_context.review_findings_write_status": "Writeback completion state for review_findings_log_sheet persistence.",
+        "review_context.execution_view_write_status": "Legacy compatibility state for execution_view_sheet; under dynamic observability governance this should normally remain not_required because Execution View is derived.",
+        "review_context.review_stage_reports_write_status": "Writeback completion state for review_stage_reports_sheet persistence.",
+        "review_context.repair_control_write_status": "Writeback completion state for repair_control_sheet persistence.",
+        "review_context.review_write_plan": "Memory mirror of the canonical prompt_router review write plan.",
+        "review_context.review_write_results": "Memory mirror of system_bootstrap review writeback counters.",
+        "review_context.binding_schema_review_status": "Status of the binding_schema_migration_review stage for the active governed run.",
+        "review_context.binding_rows_checked": "Count of authoritative binding rows checked during binding schema migration review.",
+        "review_context.binding_rows_repaired": "Count of authoritative binding rows repaired during binding schema migration review.",
+        "review_context.binding_rows_migrated": "Count of authoritative binding rows migrated into canonical schema during binding schema migration review.",
+        "review_context.binding_rows_cleaned": "Count of authoritative binding rows cleaned without requiring full migration.",
+        "review_context.binding_rows_blocked": "Count of authoritative binding rows that remained blocked after migration review.",
+        "review_context.binding_repair_handler": "Governed repair handler responsible for binding schema remediation, such as binding_schema_migration_repair.",
+        "review_context.binding_schema_result_state": "Final result state for binding schema migration review: Recovered, Degraded, or Blocked.",
+        "review_context.review_runtime_surfaces": "Direct-write review surfaces resolved for the active execution.",
+        "review_context.review_computed_surfaces": "Computed review surfaces resolved for read or monitoring only.",
+        "review_context.review_helper_surfaces": "Helper or blocked review surfaces that must not be treated as runtime write targets.",
+        "review_context.repair_loop_state": "Current repair-loop or rerun governance lifecycle state.",
+        "review_context.scope_lifecycle_state": "Lifecycle completeness state for the active governed scope under review enforcement.",
+        "review_context.scope_repair_mapping_status": "Governed mapping state showing whether the active scope has a valid repair handler or mapped repair path.",
+        "review_context.active_findings_index": "Active/open findings currently tracked for remediation or dashboard aggregation.",
+        "review_context.latest_review_run": "Most recent review-aware execution run mirrored for review compatibility and remediation traceability.",
+        "brand_context.next_auto_action": "Latest next-step recommendation for the active brand",
+        "data_context.metrics_warehouse.execution_score_summary": "Metrics-warehouse summaries of execution scoring outcomes used for growth-loop analysis.",
+        "data_context.metrics_warehouse.optimization_feedback_snapshot": "Metrics-warehouse snapshot of optimization outcomes, triggers, or loop feedback signals.",
+        "operations_context.anomaly_detection_state": "Current state of the anomaly-detection layer that may feed governed repair or observability workflows.",
+        "operations_context.anomaly_cluster_state": "Current clustering state for recurring or pattern-similar failed, blocked, or retry execution outcomes.",
+        "operations_context.cluster_auto_repair_state": "Current governed auto-repair state for anomaly-cluster-triggered repair selection, execution, and post-repair readback.",
+        "operations_context.repair_queue_state": "Current lifecycle state of the governed repair queue.",
+        "operations_context.governed_trigger_state": "Current eligibility or firing state of governed trigger logic.",
+        "operations_context.trigger_key_state": "Current trigger-key classification driving governed activation, such as HIGH_PRIORITY, READY_TRIGGER, or PASSIVE.",
+        "operations_context.trigger_mode_state": "Current trigger mode for governed activation, such as governed_auto or manual.",
+        "operations_context.activation_state": "Current activation lifecycle state for governed execution readiness.",
+        "operations_context.repair_execution_state": "Current lifecycle state of governed repair execution.",
+        "operations_context.repair_execution_feed_status": "Current status of the derived repair-execution feed used for downstream observability and repair traceability.",
+        "operations_context.unified_log_state": "State for the authoritative master raw execution log surface, expected to resolve to Execution Log Unified when active.",
+        "operations_context.execution_logging.logging_enabled": "Boolean flag controlling whether canonical execution logging is active for valid execution events.",
+        "operations_context.execution_logging.pending_loggable_execution": "Indicates that a valid route and workflow resolution has entered execution and should be finalized into Execution Log Unified after completion.",
+        "operations_context.execution_logging.last_execution_trace_id": "Most recent execution trace identifier associated with the latest loggable execution pass.",
+        "operations_context.execution_logging.last_chain_id": "Most recent chain identifier associated with the latest loggable autonomous-chain execution when present.",
+        "operations_context.execution_logging.last_decision_status": "Most recent decision-routing status written or prepared for the canonical execution log.",
+        "operations_context.execution_logging.last_route_override_status": "Most recent route-override status written or prepared for the canonical execution log.",
+        "operations_context.execution_logging.last_execution_class": "Most recent execution class written or prepared for the canonical execution log.",
+        "operations_context.execution_logging.last_entry_type": "Most recent canonical execution entry type prepared for or written to Execution Log Unified.",
+        "operations_context.execution_logging.last_source_layer": "Most recent source layer that initiated a loggable execution event.",
+        "operations_context.execution_logging.last_execution_status": "Most recent execution outcome used for canonical Execution Log Unified logging.",
+        "operations_context.execution_logging.last_history_write_completed": "Boolean flag indicating whether the latest eligible execution was successfully written to Execution Log Unified.",
+        "operations_context.execution_logging.last_history_row_fingerprint": "Duplicate-protection fingerprint for the most recent Execution Log Unified write attempt or completed log row.",
+        "operations_context.execution_logging.last_logged_route_keys": "Most recent route keys written or prepared for the canonical execution ledger.",
+        "operations_context.execution_logging.last_logged_workflow_ids": "Most recent workflow identifiers written or prepared for the canonical execution ledger.",
+        "operations_context.execution_logging.last_decision_trigger": "Most recent decision or autopilot trigger associated with a loggable execution.",
+        "operations_context.execution_logging.last_output_quality_score": "Most recent output-quality score written or prepared for the authoritative execution log.",
+        "operations_context.execution_logging.last_seo_score": "Most recent SEO score written or prepared for the authoritative execution log.",
+        "operations_context.execution_logging.last_business_score": "Most recent business-value score written or prepared for the authoritative execution log.",
+        "operations_context.execution_logging.last_execution_score": "Most recent execution score written or prepared for the authoritative execution log.",
+        "operations_context.execution_logging.last_optimization_trigger": "Most recent optimization trigger written or prepared for the authoritative execution log.",
+        "operations_context.execution_logging.last_output_summary": "Most recent concise output summary prepared for the canonical execution ledger.",
+        "operations_context.execution_logging.logging_sink_surface_id": "Authoritative operational logging sink surface_id resolved for the active execution, expected to be surface.operations_log_unified_sheet when active.",
+        "operations_context.execution_logging.logging_write_status": "Current write status for the authoritative execution log handoff.",
+        "operations_context.execution_logging.pre_response_log_guard_passed": "Whether required canonical execution logging completed before the user-facing response.",
+        "execution_logging_state.logging_sink_role": "Role of the resolved runtime logging sink. authoritative_raw_execution_log indicates the single source of raw execution truth.",
+        "surface_role_state.raw_execution_log_surface_id": "Authoritative raw execution log surface identity for runtime execution logging.",
+        "surface_role_state.legacy_log_surface_ids": "Legacy or intake-only log-like surfaces that are present but must not be used as raw runtime logging sinks.",
+        "surface_role_state.derived_view_surface_ids": "Derived view surfaces that remain non-authoritative projections and must not receive primary raw execution writes.",
+        "surface_role_state.findings_surface_id": "Scoped interpreted-output surface for findings records.",
+        "surface_role_state.anomaly_surface_id": "Scoped interpreted-output surface for anomaly records and clustering outputs.",
+        "surface_role_state.repair_surface_id": "Scoped interpreted-output surface for repair records and coordination outputs.",
+        "operations_context.routing_audit.audit_active": "Boolean flag indicating whether a routing audit is currently active for dependency recovery.",
+        "operations_context.routing_audit.last_audit_status": "Most recent routing-audit outcome classification: recoverable, degraded, or blocked.",
+        "operations_context.routing_audit.last_gap_type": "Most recent dependency-gap category detected during routing or orchestration.",
+        "operations_context.routing_audit.last_missing_dependency": "Most recent missing dependency identifier or unresolved binding captured by routing audit.",
+        "operations_context.routing_audit.fallback_applied": "Boolean flag indicating whether fallback recovery was successfully applied.",
+        "operations_context.routing_audit.degraded_execution_used": "Boolean flag indicating whether execution continued in degraded mode after dependency audit.",
+        "operations_context.routing_audit.user_exposure_required": "Boolean flag indicating whether the dependency state had to be surfaced to the user as a blocker.",
+        "operations_context.routing_audit.last_audit_summary": "Concise internal summary of the latest routing-audit and dependency-recovery outcome.",
+        "operations_context.recovery_scoring.scoring_enabled": "Boolean flag controlling whether recovery-aware scoring is active.",
+        "operations_context.recovery_scoring.last_recovery_status": "Most recent canonical recovery result mapped from routing audit outcome.",
+        "operations_context.recovery_scoring.last_recovery_score": "Most recent numeric recovery score mapped from execution recovery state.",
+        "operations_context.recovery_scoring.last_recovery_note": "Most recent concise note describing fallback quality or blocked-state reason.",
+        "operations_context.recovery_scoring.average_recovery_score": "Average recovery score across recent execution context when available.",
+        "operations_context.recovery_scoring.recovery_escalation_required": "Boolean flag indicating that recovery performance has dropped into escalation territory.",
+        "operations_context.recovery_scoring.blocked_state_present": "Boolean flag indicating that at least one blocked recovery state is present in active operational context.",
+        "brand_context.brand_folder.folder_id": "Canonical nested Drive folder identifier for the active brand; must remain atomically aligned with brand_context.brand_folder_id.",
+        "brand_context.brand_folder.web_view_link": "Canonical nested Drive folder link for the active brand; must remain atomically aligned with brand_context.brand_folder_link.",
+        "brand_context.brand_folder_id": "Top-level mirror of brand_context.brand_folder.folder_id; must be updated atomically with the nested folder identifier.",
+        "brand_context.brand_folder_link": "Top-level mirror of brand_context.brand_folder.web_view_link; must be updated atomically with the nested folder link.",
+        "repair_memory.repair_active": "Boolean flag indicating whether a system_repair lifecycle is currently active.",
+        "repair_memory.active_route": "Current repair route being executed; must remain system_repair when repair lifecycle is active.",
+        "repair_memory.active_subtype": "Current repair subtype selected by prompt_router.",
+        "repair_memory.repair_scope": "Current repair scope classification for the active repair lifecycle.",
+        "repair_memory.affected_layers": "Canonical layers affected by the active or most recent repair lifecycle.",
+        "repair_memory.authority_checks_required": "Boolean flag indicating whether authority validation is required for the active repair lifecycle.",
+        "repair_memory.dependency_checks_required": "Boolean flag indicating whether dependency validation is required for the active repair lifecycle.",
+        "repair_memory.authority_state": "Latest authority-state classification for repair execution.",
+        "repair_memory.dependency_state": "Latest dependency-state classification for repair execution.",
+        "repair_memory.candidate_repair_actions": "Repair actions proposed by routing/bootstrap prior to execution.",
+        "repair_memory.repair_actions_taken": "Repair actions actually executed during the active or most recent repair lifecycle.",
+        "repair_memory.unresolved_blockers": "Structured unresolved blockers remaining after repair execution.",
+        "repair_memory.diagnostics.repaired_items": "Items successfully repaired during the active or most recent repair lifecycle.",
+        "repair_memory.diagnostics.remaining_limitations": "Remaining limitations after repair execution completes.",
+        "repair_memory.diagnostics.resolution_type": "Repair resolution classification mirrored in diagnostics output.",
+        "repair_memory.outcome_class": "Final repair outcome classification: Recovered, Degraded, or Blocked.",
+        "repair_memory.degraded_state.is_degraded": "Boolean flag indicating whether the system remains in degraded state after repair or execution.",
+        "repair_memory.degraded_state.reason": "Reason the system remains degraded after repair execution.",
+        "repair_memory.degraded_state.affected_layers": "Affected layers associated with the current degraded state.",
+        "repair_memory.degraded_state.since_timestamp": "Timestamp marking when degraded state began.",
+        "repair_memory.repair_history": "Structured history of prior repair lifecycle executions for recurrence tracking and review compatibility.",
+        "repair_intelligence.pattern_type": "Current derived repair pattern classification based on repair history and blocker recurrence.",
+        "repair_intelligence.repair_priority": "Current derived repair priority ranked from low to critical.",
+        "repair_intelligence.recurrence_score": "Derived recurrence score from repeated blockers, repeated affected layers, and repeated degraded or blocked outcomes.",
+        "repair_intelligence.stability_risk_score": "Derived stability risk score based on authority failures, invalid validation states, affected layer breadth, and unresolved blockers.",
+        "repair_intelligence.escalation_required": "Boolean flag indicating that repair instability has crossed escalation threshold.",
+        "repair_intelligence.watchlist_layers": "Layers that should remain under observation because of repeated or high-risk instability.",
+        "repair_intelligence.recommended_next_action": "Recommended next action derived from current repair patterns and outcome history.",
+        "repair_intelligence.last_intelligence_refresh": "Timestamp of the most recent repair intelligence computation.",
+        "repair_intelligence.intelligence_history": "Structured history of prior repair intelligence snapshots for trend and recurrence analysis.",
+        "session_context.memory_isolation_key": "Canonical memory-isolation key used to prevent cross-brand, cross-session, or cross-scope state contamination.",
+        "session_context.active_brand_isolation_key": "Brand-specific isolation key for the active brand scope.",
+        "session_context.cross_brand_memory_guard": "Boolean guard requiring explicit scope alignment before brand-sensitive memory writes occur.",
+        "workflow_context.execution_class": "Current routed execution class: standard, system audit, repair, or autonomous chain.",
+        "repair_memory.execution_mode": "Execution mode for the current or most recent repair lifecycle; should be normal or system_repair.",
+        "repair_memory.repair_severity": "Current repair severity classification: minor, major, or critical.",
+        "repair_memory.repair_trigger_source": "Indicates whether repair was initiated by user intent or system detection.",
+        "repair_memory.validation_state": "Latest registry-aware validation state available to repair lifecycle execution.",
+        "repair_memory.fallback_used": "Explicit fallback basis used during degraded or recovered continuation.",
+        "repair_memory.resolution_type": "Repair resolution classification written by system_bootstrap: auto, partial, or manual.",
+        "repair_memory.scope_brand_name": "Brand name associated with the active or most recent repair write scope.",
+        "repair_memory.scope_normalized_brand_name": "Normalized brand name associated with the active or most recent repair write scope.",
+        "repair_memory.scope_session_id": "Session identifier associated with the active or most recent repair lifecycle.",
+        "repair_memory.memory_isolation_key": "Isolation key that must match active session or brand scope before repair memory may be reused.",
+        "repair_memory.final_outcome_status": "Final repair outcome classification mirrored for bootstrap-aligned diagnostics continuity.",
+        "repair_memory.degraded_state.status": "Current degraded-state lifecycle status: normal, degraded, blocked, or recovered.",
+        "repair_memory.degraded_state.source": "Source layer that most directly caused the current degraded state.",
+        "repair_memory.degraded_state.last_transition_at": "Timestamp of the most recent degraded-state status transition.",
+        "repair_memory.degraded_state.cleared_at": "Timestamp when degraded state was explicitly cleared or marked recovered.",
+        "monitoring_context.execution_view_binding": "Resolved registry binding for Execution View monitoring surface.",
+        "monitoring_context.active_issues_dashboard_binding": "Resolved registry binding for Active Issues Dashboard monitoring surface.",
+        "monitoring_context.monitoring_resolution_status": "Overall resolution state for registered monitoring surfaces.",
+        "monitoring_context.monitoring_validation_status": "Latest validation outcome for monitoring surfaces after execution/review compatibility checks.",
+        "monitoring_context.monitoring_degraded_notes": "Structured degraded notes when monitoring surfaces are missing, broken, or only partially usable.",
+        "monitoring_context.derived_view_refresh_expected": "Boolean flag indicating that derived observability surfaces are expected to refresh from authoritative sources after execution.",
+        "monitoring_context.derived_view_refresh_status": "Current refresh state for derived observability surfaces after authoritative writes complete.",
+        "monitoring_context.observability_validation_state": "Canonical observability-validation outcome for derived views after authoritative writes complete.",
+        "monitoring_context.observability_issues": "Structured issues affecting derived observability surfaces such as formula breakage, stale views, or missing authoritative sources.",
+        "monitoring_context.last_monitoring_check_at": "Timestamp of the most recent monitoring surface validation pass.",
+        "monitoring_context.execution_view_status": "Latest validation state for Execution View.",
+        "monitoring_context.active_issues_dashboard_status": "Latest validation state for Active Issues Dashboard.",
+        "monitoring_context.anomaly_detection_status": "Latest validation or refresh state for the derived Anomaly Detection surface.",
+        "monitoring_context.execution_log_unified_status": "Latest validation or runtime status for the authoritative Execution Log Unified surface.",
+        "audit_context.dependencies_read": "Authoritative dependency files, sheets, or live-bound sources explicitly read during the current audit or validation pass.",
+        "audit_context.validation_sources": "Specific authoritative sources used to support the current audit or validation result.",
+        "audit_context.validation_mode": "Indicates whether the current audit or validation used real-time, partial, or inferred source validation.",
+        "audit_context.audit_validity": "Validity classification for the current audit or validation result: valid, degraded, or invalid.",
+        "monitoring_context.monitoring_required": "Boolean flag indicating whether monitoring surface validation is required for the current execution path."
+      }
+    },
+    "writeRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "always_update_after_execution": {
+          "type": "array",
+          "default": [
+            "workflow_context.execution_trace",
+            "operations_context.execution_decisions"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "update_when_routing_runs": {
+          "type": "array",
+          "default": [
+            "routing_context.source",
+            "routing_context.route_id",
+            "routing_context.route_status",
+            "routing_context.route_mode",
+            "routing_context.route_source",
+            "routing_context.matched_row_id",
+            "routing_context.intent_key",
+            "routing_context.target_module",
+            "routing_context.target_workflow",
+            "routing_context.lifecycle_mode",
+            "routing_context.memory_required",
+            "routing_context.logging_required",
+            "routing_context.review_required",
+            "routing_context.executable",
+            "routing_context.degraded_reason",
+            "routing_context.blocked_reason",
+            "routing_context.recovery_action",
+            "routing_context.auto_repair_trigger",
+            "routing_context.forced_repair_routing_applied",
+            "routing_context.routing_trace",
+            "routing_context.http_route_state.last_route_id",
+            "routing_context.http_route_state.last_workflow_key",
+            "routing_context.http_route_state.last_target_module",
+            "routing_context.http_route_state.last_transport_module",
+            "routing_context.http_route_state.last_target_key",
+            "routing_context.http_route_state.last_http_method",
+            "routing_context.http_route_state.last_http_path",
+            "routing_context.http_route_state.last_route_validation_status",
+            "routing_context.http_route_state.last_workflow_validation_status",
+            "routing_context.http_route_state.last_async_job_mode",
+            "routing_context.http_route_state.last_job_endpoint_key",
+            "routing_context.http_route_state.last_job_status",
+            "routing_context.http_route_state.last_job_id",
+            "analytics_issue_tracking.last_detected_issues",
+            "analytics_issue_tracking.last_issue_creation_status",
+            "analytics_issue_tracking.last_issue_scope.brands",
+            "analytics_issue_tracking.last_issue_scope.issue_type",
+            "analytics_issue_tracking.last_issue_scope.execution_cycle_id",
+            "analytics_issue_tracking.issue_deduplication_keys",
+            "api_action_inventory.last_capability_registry_validation",
+            "api_action_inventory.last_endpoint_inventory_validation",
+            "api_action_inventory.last_parent_endpoint_mismatches",
+            "api_action_inventory.last_async_job_validation",
+            "api_action_inventory.last_credential_resolver_chain",
+            "api_action_inventory.last_hosting_account_registry_validation"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "update_when_execution_intake_runs": {
+          "type": "array",
+          "default": [
+            "execution_context.intake_validation_status",
+            "execution_context.execution_ready_status",
+            "execution_context.load_status",
+            "execution_context.binding_status",
+            "execution_context.target_resolution_status",
+            "execution_context.entry_source",
+            "execution_context.policy_resolution_status",
+            "execution_context.policy_source",
+            "execution_context.applied_policy_keys",
+            "execution_context.policy_trace_id",
+            "execution_context.resolved_route_record",
+            "execution_context.resolved_workflow_record",
+            "execution_context.failure_reason",
+            "execution_context.recovery_action",
+            "execution_context.execution_state",
+            "execution_context.execution_trigger",
+            "execution_context.execution_status",
+            "execution_context.execution_result",
+            "execution_context.execution_trace_id",
+            "execution_context.http_async_status",
+            "execution_context.http_async_polling_status",
+            "execution_context.http_async_result_status",
+            "execution_context.http_async_persistence_status",
+            "execution_context.http_async_webhook_status",
+            "execution_context.http_execution_state.last_target_key",
+            "execution_context.http_execution_state.last_endpoint_path",
+            "execution_context.http_execution_state.last_method",
+            "execution_context.http_execution_state.last_validation_status",
+            "execution_context.http_execution_state.last_execution_status",
+            "execution_context.http_transport_state.transport_module",
+            "execution_context.http_transport_state.provider_domain_resolution_status",
+            "execution_context.http_transport_state.variable_provider_domain_detected",
+            "execution_context.http_transport_state.parent_action_validation_status",
+            "execution_context.http_transport_state.endpoint_validation_status",
+            "execution_context.http_transport_state.schema_binding_status",
+            "execution_context.http_transport_state.openapi_contract_validation_status",
+            "execution_context.http_transport_state.schema_drift_detected",
+            "execution_context.http_transport_state.schema_drift_type",
+            "execution_context.http_transport_state.schema_drift_scope",
+            "execution_context.http_transport_state.schema_learning_candidate_emitted",
+            "execution_context.http_transport_state.auth_resolution_status",
+            "execution_context.http_transport_state.path_validation_status",
+            "execution_context.http_transport_state.method_validation_status",
+            "execution_context.http_transport_state.execution_status",
+            "execution_context.logging_status",
+            "execution_context.review_writeback_status",
+            "execution_context.authoritative_write_status",
+            "execution_context.review_write_status",
+            "execution_context.findings_write_status",
+            "execution_context.stage_report_write_status",
+            "execution_context.output_quality_score",
+            "execution_context.seo_score",
+            "execution_context.business_score",
+            "execution_context.execution_score",
+            "execution_context.optimization_trigger",
+            "execution_context.outcome_summary",
+            "execution_context.write_targets_resolved",
+            "execution_context.write_targets_attempted",
+            "execution_context.write_targets_succeeded",
+            "execution_context.write_targets_failed",
+            "architecture_reconciliation.required",
+            "architecture_reconciliation.status",
+            "architecture_reconciliation.affected_surfaces",
+            "architecture_reconciliation.last_completed_at",
+            "runtime_validation.validated_dependencies",
+            "runtime_validation.readback_proof",
+            "runtime_validation.authoritative_write_status",
+            "runtime_validation.review_evidence_status",
+            "runtime_validation.layout_validation_status",
+            "runtime_validation.runtime_result",
+            "analytics_sync.last_run_at",
+            "analytics_sync.last_request_scope.mode",
+            "analytics_sync.last_request_scope.brand_count",
+            "analytics_sync.last_request_scope.brands",
+            "analytics_sync.last_request_scope.request_date",
+            "analytics_sync.last_request_scope.date_from",
+            "analytics_sync.last_request_scope.date_to",
+            "analytics_sync.last_request_scope.trigger_mode",
+            "analytics_sync.last_write_status",
+            "analytics_sync.last_written_brands",
+            "analytics_sync.schema_validation_status",
+            "analytics_sync.last_target_surfaces",
+            "analytics_sync.last_execution_result",
+            "analytics_identity.brand_domain_required",
+            "analytics_identity.last_domain_validation_status",
+            "analytics_identity.last_resolved_brand_domains",
+            "analytics_identity.last_missing_domain_brands",
+            "analytics_issue_tracking.last_detected_issues",
+            "analytics_issue_tracking.last_issue_creation_status",
+            "analytics_issue_tracking.last_issue_scope.brands",
+            "analytics_issue_tracking.last_issue_scope.issue_type",
+            "analytics_issue_tracking.last_issue_scope.execution_cycle_id",
+            "analytics_issue_tracking.issue_deduplication_keys",
+            "analytics_issue_tracking.last_issue_resolution_status",
+            "api_action_inventory.last_capability_registry_validation",
+            "api_action_inventory.last_endpoint_inventory_validation",
+            "api_action_inventory.last_incomplete_endpoint_metadata",
+            "api_action_inventory.last_parent_endpoint_mismatches",
+            "api_action_inventory.last_async_job_validation",
+            "api_action_inventory.last_credential_resolver_chain",
+            "api_action_inventory.last_hosting_account_registry_validation",
+            "credential_resolution.last_storage_mode",
+            "credential_resolution.last_target_key",
+            "credential_resolution.last_hosting_account_key",
+            "credential_resolution.last_api_key_reference",
+            "credential_resolution.last_resolution_status",
+            "credential_resolution.last_resolution_chain"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "update_when_brand_resolved": {
+          "type": "array",
+          "default": [
+            "brand_context.active_brand_name",
+            "brand_context.normalized_brand_name",
+            "brand_context.brand_core_ready",
+            "brand_context.maturity",
+            "brand_context.default_execution_mode",
+            "brand_context.workflow_availability",
+            "brand_tracking_bindings.gsc_property",
+            "brand_tracking_bindings.ga_property_id",
+            "brand_tracking_bindings.gtm_container_id",
+            "brand_tracking_bindings.binding_status",
+            "brand_tracking_bindings.analytics_discovery_state",
+            "brand_tracking_bindings.measurement_health_state",
+            "analytics_identity.brand_domain_required",
+            "analytics_identity.last_domain_validation_status",
+            "analytics_identity.last_resolved_brand_domains",
+            "analytics_identity.last_missing_domain_brands"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "update_when_brand_registry_changes": {
+          "type": "array",
+          "default": [
+            "brand_context.evolution_status",
+            "brand_context.score_trend",
+            "brand_context.strategy_impact",
+            "brand_context.growth_velocity",
+            "brand_context.next_auto_action"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "update_when_review_runs": {
+          "type": "array",
+          "default": [
+            "review_context.review_run_id",
+            "review_context.findings",
+            "review_context.stage_reports",
+            "review_context.active_review_stage",
+            "review_context.health_score",
+            "review_context.feedback_scoring_status",
+            "review_context.run_status",
+            "review_context.new_scope_detected",
+            "review_context.review_writeback_status",
+            "review_context.review_run_history_write_status",
+            "review_context.review_findings_write_status",
+            "review_context.execution_view_write_status",
+            "review_context.review_bindings_state",
+            "review_context.review_write_plan",
+            "review_context.review_write_results",
+            "review_context.binding_schema_review_status",
+            "review_context.binding_rows_checked",
+            "review_context.binding_rows_repaired",
+            "review_context.binding_rows_migrated",
+            "review_context.binding_rows_cleaned",
+            "review_context.binding_rows_blocked",
+            "review_context.binding_repair_handler",
+            "review_context.binding_schema_result_state",
+            "review_context.review_runtime_surfaces",
+            "review_context.review_computed_surfaces",
+            "review_context.review_helper_surfaces",
+            "review_context.review_stage_reports_write_status",
+            "review_context.repair_control_write_status",
+            "review_context.repair_loop_state",
+            "review_context.scope_lifecycle_state",
+            "review_context.scope_repair_mapping_status",
+            "review_context.active_findings_index",
+            "review_context.latest_review_run",
+            "analytics_issue_tracking.last_detected_issues",
+            "analytics_issue_tracking.last_issue_resolution_status",
+            "api_action_inventory.last_endpoint_inventory_validation",
+            "api_action_inventory.last_incomplete_endpoint_metadata",
+            "api_action_inventory.last_async_job_validation",
+            "api_action_inventory.last_hosting_account_registry_validation",
+            "api_action_inventory.last_credential_resolver_chain"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "update_when_data_is_available": {
+          "type": "array",
+          "default": [
+            "intelligence_context.live_data_signals",
+            "intelligence_context.scoreboard_signals",
+            "intelligence_context.score_states",
+            "data_context.metrics_warehouse.execution_score_summary",
+            "data_context.metrics_warehouse.optimization_feedback_snapshot",
+            "intelligence_context.growth_loop_candidates",
+            "intelligence_context.growth_loop_state",
+            "intelligence_context.adaptive_optimization_state",
+            "intelligence_context.feedback_injection_state"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "update_when_operations_are_read": {
+          "type": "array",
+          "default": [
+            "operations_context.dashboard_snapshot",
+            "operations_context.control_center_alerts",
+            "operations_context.recommendations",
+            "operations_context.autopilot_state",
+            "operations_context.product_engine_state",
+            "operations_context.system_status",
+            "operations_context.anomaly_detection_state",
+            "operations_context.repair_queue_state",
+            "operations_context.governed_trigger_state",
+            "operations_context.trigger_key_state",
+            "operations_context.trigger_mode_state",
+            "operations_context.activation_state",
+            "operations_context.repair_execution_state",
+            "operations_context.repair_execution_feed_status",
+            "operations_context.unified_log_state",
+            "operations_context.execution_logging.last_output_quality_score",
+            "operations_context.execution_logging.last_seo_score",
+            "operations_context.execution_logging.last_business_score",
+            "operations_context.execution_logging.last_execution_score",
+            "operations_context.execution_logging.last_optimization_trigger"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "update_when_monitoring_runs": {
+          "type": "array",
+          "default": [
+            "monitoring_context.execution_view_binding",
+            "monitoring_context.active_issues_dashboard_binding",
+            "monitoring_context.monitoring_resolution_status",
+            "monitoring_context.monitoring_validation_status",
+            "monitoring_context.monitoring_degraded_notes",
+            "monitoring_context.derived_view_refresh_expected",
+            "monitoring_context.derived_view_refresh_status",
+            "monitoring_context.observability_validation_state",
+            "monitoring_context.observability_issues",
+            "monitoring_context.last_monitoring_check_at",
+            "monitoring_context.execution_view_status",
+            "monitoring_context.active_issues_dashboard_status",
+            "monitoring_context.anomaly_detection_status",
+            "monitoring_context.execution_log_unified_status"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "mirror_field_atomic_update_rules": {
+          "type": "array",
+          "default": [
+            "brand_context.brand_folder.folder_id <-> brand_context.brand_folder_id",
+            "brand_context.brand_folder.web_view_link <-> brand_context.brand_folder_link"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Mirror-field pairs that MUST be updated atomically. When a nested folder reference is created, changed, or cleared, the corresponding mirror fields must be written in the same logical update. Partial writes are invalid because they introduce runtime drift."
+        },
+        "atomic_write_requirements": {
+          "type": "array",
+          "default": [
+            "Nested driveFolderRef fields and their mirror fields must be written in one logical update operation.",
+            "If brand_context.brand_folder is null, brand_context.brand_folder_id and brand_context.brand_folder_link must also be cleared in the same update.",
+            "If brand_context.brand_folder.folder_id changes, brand_context.brand_folder_id must match immediately after the same write.",
+            "If brand_context.brand_folder.web_view_link changes, brand_context.brand_folder_link must match immediately after the same write."
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Canonical atomicity rules for nested folder references and top-level mirror fields."
+        },
+        "update_when_repair_runs": {
+          "type": "array",
+          "default": [
+            "repair_memory.repair_active",
+            "repair_memory.active_route",
+            "repair_memory.active_subtype",
+            "repair_memory.repair_scope",
+            "repair_memory.affected_layers",
+            "repair_memory.authority_checks_required",
+            "repair_memory.dependency_checks_required",
+            "repair_memory.authority_state",
+            "repair_memory.dependency_state",
+            "repair_memory.candidate_repair_actions",
+            "repair_memory.repair_actions_taken",
+            "repair_memory.unresolved_blockers",
+            "repair_memory.diagnostics",
+            "repair_memory.outcome_class",
+            "repair_memory.degraded_state",
+            "repair_memory.repair_history",
+            "repair_memory.execution_mode",
+            "repair_memory.repair_severity",
+            "repair_memory.repair_trigger_source",
+            "repair_memory.validation_state",
+            "repair_memory.fallback_used",
+            "repair_memory.resolution_type",
+            "repair_memory.scope_brand_name",
+            "repair_memory.scope_normalized_brand_name",
+            "repair_memory.scope_session_id",
+            "repair_memory.memory_isolation_key",
+            "repair_memory.final_outcome_status"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "update_when_repair_intelligence_refreshes": {
+          "type": "array",
+          "default": [
+            "repair_intelligence.pattern_type",
+            "repair_intelligence.repair_priority",
+            "repair_intelligence.recurrence_score",
+            "repair_intelligence.stability_risk_score",
+            "repair_intelligence.escalation_required",
+            "repair_intelligence.watchlist_layers",
+            "repair_intelligence.recommended_next_action",
+            "repair_intelligence.last_intelligence_refresh",
+            "repair_intelligence.intelligence_history"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "repair_scope_guard_rules": {
+          "type": "array",
+          "default": [
+            "repair_memory writes must include scope_brand_name, scope_normalized_brand_name, scope_session_id, or a matching memory_isolation_key when a brand scope exists.",
+            "repair_history append operations are invalid when the incoming memory_isolation_key conflicts with the active session or brand isolation scope.",
+            "repair_memory from one brand or session must not overwrite another brand or session unless an explicit governed merge path exists.",
+            "degraded_state may persist across turns only when the same memory_isolation_key or compatible global system scope remains active."
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "update_when_audit_runs": {
+          "type": "array",
+          "default": [
+            "audit_context.dependencies_read",
+            "audit_context.validation_sources",
+            "audit_context.validation_mode",
+            "audit_context.audit_validity"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "prewrite_guard_required": {
+          "type": "boolean",
+          "default": true
+        },
+        "prewrite_header_schema_check_required": {
+          "type": "boolean",
+          "default": true
+        },
+        "prewrite_row2_template_check_required": {
+          "type": "boolean",
+          "default": true
+        },
+        "spill_formula_avoidance_required": {
+          "type": "boolean",
+          "default": true
+        },
+        "protected_unified_log_columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "target_module",
+            "target_workflow",
+            "execution_trace_id",
+            "log_source",
+            "Monitored Row",
+            "Performance Impact Row"
+          ]
+        },
+        "write_guard_surface_scope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "surface.operations_log_unified_sheet"
+          ]
+        }
+      },
+      "default": {
+        "prewrite_guard_required": true,
+        "prewrite_header_schema_check_required": true,
+        "prewrite_row2_template_check_required": true,
+        "spill_formula_avoidance_required": true,
+        "protected_unified_log_columns": [
+          "target_module",
+          "target_workflow",
+          "execution_trace_id",
+          "log_source",
+          "Monitored Row",
+          "Performance Impact Row"
+        ],
+        "write_guard_surface_scope": [
+          "surface.operations_log_unified_sheet"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://growth-intelligence.local/schemas/governance.schema.json",
+  "title": "Growth Intelligence — Governance & Schema",
+  "$defs": {
+    "schemaGovernanceState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_validation_enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "header_signature_enforced": {
+          "type": "boolean",
+          "default": true
+        },
+        "column_count_enforced": {
+          "type": "boolean",
+          "default": true
+        },
+        "schema_drift_handling": {
+          "type": "string",
+          "enum": [
+            "BLOCK_AND_REPAIR"
+          ],
+          "default": "BLOCK_AND_REPAIR"
+        },
+        "schema_ref": {
+          "type": "string",
+          "default": ""
+        },
+        "schema_version": {
+          "type": "string",
+          "default": ""
+        },
+        "header_signature": {
+          "type": "string",
+          "default": ""
+        },
+        "expected_column_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "binding_mode": {
+          "type": "string",
+          "default": "gid_based"
+        },
+        "schema_validation_status": {
+          "type": "string",
+          "enum": [
+            "valid",
+            "degraded",
+            "blocked",
+            "unknown"
+          ],
+          "default": "unknown"
+        },
+        "header_match_status": {
+          "type": "string",
+          "enum": [
+            "match",
+            "mismatch",
+            "unknown"
+          ],
+          "default": "unknown"
+        },
+        "schema_drift_detected": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "default": {}
+    },
+    "schemaMigrationState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "migration_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "migration_status": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "pending",
+            "migrated",
+            "rolled_back",
+            "failed"
+          ],
+          "default": "not_required"
+        },
+        "before_header_signature": {
+          "type": "string",
+          "default": ""
+        },
+        "after_header_signature": {
+          "type": "string",
+          "default": ""
+        },
+        "rollback_applied": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "default": {}
+    },
+    "autoUpdateState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "active",
+        "scoreboard_read_rule",
+        "maturity_update_logic",
+        "decision_trigger_logic",
+        "next_auto_action"
+      ],
+      "properties": {
+        "active": {
+          "type": "boolean",
+          "default": false
+        },
+        "scoreboard_read_rule": {
+          "type": "string",
+          "default": ""
+        },
+        "maturity_update_logic": {
+          "type": "string",
+          "default": ""
+        },
+        "decision_trigger_logic": {
+          "type": "string",
+          "default": ""
+        },
+        "next_auto_action": {
+          "type": "string",
+          "default": ""
+        },
+        "previous_maturity": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "ðŸ”´ Very early",
+            "ðŸŸ¡ Good",
+            "ðŸŸ¢ Full"
+          ]
+        },
+        "last_maturity_review": {
+          "type": "string",
+          "default": ""
+        },
+        "evolution_status": {
+          "type": "string",
+          "default": ""
+        },
+        "score_trend": {
+          "type": "string",
+          "default": ""
+        },
+        "strategy_impact": {
+          "type": "string",
+          "default": ""
+        },
+        "growth_velocity": {
+          "type": "string",
+          "default": ""
+        },
+        "score_signals": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "./analytics.schema.json#/$defs/scoreSignalSnapshot"
+          }
+        }
+      }
+    }
+  }
+}
