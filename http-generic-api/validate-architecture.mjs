@@ -131,6 +131,22 @@ for (const doc of REQUIRED_DOCS) {
   assert(`${doc} exists`, existsSync(docPath(doc)));
 }
 
+section("Canonical source workflow files");
+
+const REQUIRED_CANONICAL_WORKFLOW_FILES = [
+  "build-canonicals.mjs",
+  "canonical-manifest.mjs",
+  "validate-canonical-sources.mjs",
+  "canonicals/system_bootstrap",
+  "canonicals/direct_instructions_registry_patch",
+  "canonicals/module_loader",
+  "canonicals/prompt_router"
+];
+
+for (const rel of REQUIRED_CANONICAL_WORKFLOW_FILES) {
+  assert(`${rel} exists`, existsSync(docPath(rel)));
+}
+
 section("WordPress barrel export count");
 
 const wpModule = await import("./wordpress/index.js");
