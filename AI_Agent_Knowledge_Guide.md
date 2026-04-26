@@ -21,6 +21,28 @@ Agents should treat these files as the primary knowledge sources, in this order:
 
 `README.md` is not the authoritative architectural source unless aligned with the canonicals.
 
+### Canonical source workflow
+
+The four root canonical markdown files are generated outputs:
+- `system_bootstrap.md`
+- `direct_instructions_registry_patch.md`
+- `module_loader.md`
+- `prompt_router.md`
+
+Agents should edit the matching source files under `canonicals/`, then run:
+
+```powershell
+node build-canonicals.mjs
+```
+
+Before completing canonical edits, verify generated roots are current:
+
+```powershell
+node build-canonicals.mjs --check
+```
+
+Do not edit generated root canonical files directly unless the same change is also applied to the matching `canonicals/` source file.
+
 ## 2. Core execution model
 The architecture is governed, registry-driven, and validation-first.
 
@@ -215,8 +237,8 @@ Schema layer:
 
 Test and validation baselines (as of 2026-04-26):
 - 168 automated tests across 6 suites (`npm test`)
-- 104 architecture checks (`npm run validate`)
-- CI enforces syntax, tests, drift detection, export floors on every push
+- 138 architecture checks (`npm run validate`)
+- CI enforces canonical generated-output checks, syntax, tests, drift detection, export floors on every push
 
 ## 13. Short operational summary
 If you are an AI agent working in this repo:

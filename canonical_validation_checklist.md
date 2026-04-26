@@ -8,6 +8,8 @@
 - [ ] `direct_instructions_registry_patch.md` is treated as hard enforcement authority
 - [ ] `module_loader.md` is treated as execution-readiness/loading authority
 - [ ] `prompt_router.md` is treated as routing authority
+- [ ] Root canonical markdown files are treated as generated outputs, with source edits made under `canonicals/`
+- [ ] `node build-canonicals.mjs --check` passes before canonical changes are considered complete
 - [ ] `README.md` does not contradict canonical behavior
 
 ## 2. Execution chain validation
@@ -69,7 +71,7 @@
 - [ ] Job runner enqueue/failure paths are covered in `test-job-runner.mjs`
 - [ ] Canonical/runtime drift checks are possible and documented
 - [ ] File-level validation and runtime-level validation are explicitly distinguished
-- [ ] Architecture drift is detected in CI: inline redefinition check (6 modules), line count guard, export floor
+- [ ] Architecture drift is detected in CI: canonical generated-output check, inline redefinition check (6 modules), line count guard, export floor
 - [ ] 168 automated tests across 6 suites pass before any deployment is considered ready
 
 ## 9. Upgrade readiness gates
