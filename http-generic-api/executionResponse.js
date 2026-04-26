@@ -1,3 +1,23 @@
+function isEffectivelyRuntimeCallable(action = {}, endpoint = {}, deps = {}) {
+  const boolFromSheet = deps.boolFromSheet || (value => {
+    if (value === true || value === false) return value;
+    const normalized = String(value ?? "").trim().toLowerCase();
+    return normalized === "true" || normalized === "yes" || normalized === "1";
+  });
+
+  const runtimeCallable = boolFromSheet(action.runtime_callable);
+  const primaryExecutor = String(action.primary_executor || "").trim().toLowerCase();
+  const executionMode = String(endpoint.execution_mode || "").trim().toLowerCase();
+  const transportRequired = boolFromSheet(endpoint.transport_required);
+  const transportActionKey = String(endpoint.transport_action_key || "").trim();
+
+  return (
+    runtimeCallable ||
+    primaryExecutor === "http_client_backend" ||
+    (executionMode === "http_delegated" && transportRequired && transportActionKey !== "")
+  );
+}
+
 export async function validateAndShapeExecutionResponse(dispatchResult, context, deps) {
   const {
     upstream,
@@ -41,6 +61,8 @@ export async function validateAndShapeExecutionResponse(dispatchResult, context,
   } = deps;
 
   let responseSchemaAlignmentStatus = "not_declared";
+  const registryRuntimeCallable = boolFromSheet(action.runtime_callable);
+  const effectiveRuntimeCallable = isEffectivelyRuntimeCallable(action, endpoint, deps);
 
   const responseSchemaEnforcementEnabled = String(
     policyValue(
@@ -188,7 +210,8 @@ export async function validateAndShapeExecutionResponse(dispatchResult, context,
         schema_name: schemaContract.name,
         resolved_auth_mode: authContract.mode,
         runtime_capability_class: action.runtime_capability_class || "",
-        runtime_callable: boolFromSheet(action.runtime_callable),
+        runtime_callable: effectiveRuntimeCallable,
+        registry_runtime_callable: registryRuntimeCallable,
         primary_executor: action.primary_executor || "",
         endpoint_role: endpoint.endpoint_role || "",
         execution_mode: endpoint.execution_mode || "",
@@ -244,7 +267,8 @@ export async function validateAndShapeExecutionResponse(dispatchResult, context,
       schema_name: schemaContract.name,
       resolved_auth_mode: authContract.mode,
       runtime_capability_class: action.runtime_capability_class || "",
-      runtime_callable: boolFromSheet(action.runtime_callable),
+      runtime_callable: effectiveRuntimeCallable,
+      registry_runtime_callable: registryRuntimeCallable,
       primary_executor: action.primary_executor || "",
       endpoint_role: endpoint.endpoint_role || "",
       execution_mode: endpoint.execution_mode || "",
@@ -305,7 +329,8 @@ export async function validateAndShapeExecutionResponse(dispatchResult, context,
     schema_name: schemaContract.name,
     resolved_auth_mode: authContract.mode,
     runtime_capability_class: action.runtime_capability_class || "",
-    runtime_callable: boolFromSheet(action.runtime_callable),
+    runtime_callable: effectiveRuntimeCallable,
+    registry_runtime_callable: registryRuntimeCallable,
     primary_executor: action.primary_executor || "",
     endpoint_role: endpoint.endpoint_role || "",
     execution_mode: endpoint.execution_mode || "",
