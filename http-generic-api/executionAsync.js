@@ -333,6 +333,11 @@ export async function getExecutionJob(jobId, deps = {}) {
   };
 }
 
+export async function createJob({ type, payload, delaySeconds } = {}) {
+  const id = `solver_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+  return { id };
+}
+
 export async function pollExecutionJobResult(jobId, deps = {}) {
   const {
     resolveJob,

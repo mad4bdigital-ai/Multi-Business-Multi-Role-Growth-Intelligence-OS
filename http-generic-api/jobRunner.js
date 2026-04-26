@@ -16,6 +16,7 @@ import {
 } from "./config.js";
 import { githubGitBlobChunkRead } from "./github.js";
 import { hostingerSshRuntimeRead as hostingerSshRuntimeReadBase } from "./hostinger.js";
+import { resumeValidationJob as resumeValidationJobBase, SOLVER_JOB_TYPE } from "./registryValidationAsyncSolver.js";
 
 function createExecutionTraceId() {
   return `trace_${crypto.randomUUID().replace(/-/g, "")}`;
@@ -274,6 +275,8 @@ export function configureJobRunner(
   deps = {}
 ) {
   const queueApi = deps.queueApi || jobQueue;
+  const resumeValidationJob = deps.resumeValidationJob || resumeValidationJobBase;
+  const sheetsClient = deps.sheetsClient || null;
 
   function getJob(jobId) {
     const id = normalizeJobId(jobId);
@@ -326,6 +329,30 @@ export function configureJobRunner(
   async function executeQueuedJobByType(job) {
     const jobType = String(job?.job_type || "http_execute").trim();
     if (jobType === "site_migration") return await executeSiteMigrationJob(job);
+    if (jobType === SOLVER_JOB_TYPE) {
+      try {
+        const result = await resumeValidationJob(job.request_payload, sheetsClient);
+        return { success: true, statusCode: 200, payload: result };
+      } catch (err) {
+        const is429 = err?.code === 429 || err?.status === 429;
+        if (is429 && err.resumableContext) {
+          return {
+            success: false,
+            statusCode: 429,
+            payload: {
+              ok: false,
+              resumable_context: err.resumableContext,
+              error: { code: "sheets_rate_limited_resumable", message: err?.message || String(err) }
+            }
+          };
+        }
+        return {
+          success: false,
+          statusCode: 500,
+          payload: { ok: false, error: { code: "solver_execution_failed", message: err?.message || String(err) } }
+        };
+      }
+    }
     return await executeJobThroughHttpEndpoint(job);
   }
 
@@ -351,7 +378,11 @@ export function configureJobRunner(
     const success = outcome.success === true;
 
     if (success) {
-      updateJob(job, { status: "succeeded", result_payload: outcome.payload || null, error_payload: null, completed_at: nowIso() });
+      const successPatch = { status: "succeeded", result_payload: outcome.payload || null, error_payload: null, completed_at: nowIso() };
+      if (String(job.job_type || "").trim() === SOLVER_JOB_TYPE && outcome.payload?.runtime_classification) {
+        successPatch.runtime_classification = outcome.payload.runtime_classification;
+      }
+      updateJob(job, successPatch);
       await performUniversalServerWriteback({
         mode: "async", job_id: job.job_id, target_key: job.target_key,
         parent_action_key: job.parent_action_key, endpoint_key: job.endpoint_key,
@@ -375,6 +406,9 @@ export function configureJobRunner(
     const canRetry = retryable && Number(job.attempt_count || 0) < Number(job.max_attempts || 1);
 
     if (canRetry) {
+      if (String(job.job_type || "").trim() === SOLVER_JOB_TYPE && job.error_payload?.resumable_context) {
+        job.request_payload = { ...job.request_payload, validation_context: job.error_payload.resumable_context };
+      }
       await logRetryWriteback({
         job_id: job.job_id, target_key: job.target_key,
         parent_action_key: job.parent_action_key, endpoint_key: job.endpoint_key,

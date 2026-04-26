@@ -102,6 +102,171 @@ section("jobRunner — enqueueJob");
   assert("enqueueJob preserves queue error message", result?.error?.message === "Redis unavailable", JSON.stringify(result));
 }
 
+section("jobRunner — solver dispatch → alignment pass → active");
+
+{
+  const solverJob = {
+    job_id: "job_solver_1",
+    job_type: "registry_validation_async_solver",
+    status: "queued",
+    attempt_count: 0,
+    max_attempts: 3,
+    request_payload: {
+      job_type: "registry_validation_async_solver",
+      validation_context: {
+        activation_id: "act_123",
+        spreadsheet_id: "sheet_abc",
+        auth: {},
+        pending_reads: ["Sheet1!A1:D10"],
+        completed_stages: ["drive_validation"],
+        retry_count: 0
+      }
+    },
+    parent_action_key: "registry_validation_solver",
+    endpoint_key: "resume_validation",
+    target_key: "", route_id: "", target_module: "", target_workflow: "", brand_name: "", execution_trace_id: ""
+  };
+
+  let capturedPayload = null;
+  const runner = configureJobRunner(
+    {
+      jobRepository: createJobRepository(solverJob),
+      async executeSiteMigrationJob() { return { success: false, statusCode: 500, payload: { ok: false } }; },
+      async performUniversalServerWriteback() {},
+      async logRetryWriteback() {}
+    },
+    {
+      queueApi: { async add() { return { id: "bull_2" }; } },
+      resumeValidationJob: async (jobPayload) => {
+        capturedPayload = jobPayload;
+        return {
+          status: "active",
+          runtime_classification: { activation_status: "active", reason_code: "provider_chain_complete" },
+          alignment_audit: {},
+          alignment_validation: { valid: true },
+          activation_id: "act_123",
+          completed_stages: ["drive_validation", "sheets_validation"]
+        };
+      }
+    }
+  );
+
+  await runner.executeSingleQueuedJob(solverJob);
+  assert("solver dispatch — resumeValidationJob called with request_payload", capturedPayload?.validation_context?.activation_id === "act_123", JSON.stringify(capturedPayload));
+  assert("solver dispatch — alignment pass → job succeeded", solverJob.status === "succeeded", solverJob.status);
+  assert("solver dispatch — runtime_classification hoisted to job", solverJob.runtime_classification?.activation_status === "active", JSON.stringify(solverJob.runtime_classification));
+}
+
+section("jobRunner — solver alignment failure → degraded");
+
+{
+  const solverJob2 = {
+    job_id: "job_solver_2",
+    job_type: "registry_validation_async_solver",
+    status: "queued",
+    attempt_count: 0,
+    max_attempts: 3,
+    request_payload: {
+      job_type: "registry_validation_async_solver",
+      validation_context: {
+        activation_id: "act_456",
+        spreadsheet_id: "sheet_def",
+        auth: {},
+        pending_reads: ["Sheet1!A1:D10"],
+        completed_stages: [],
+        retry_count: 0
+      }
+    },
+    parent_action_key: "registry_validation_solver",
+    endpoint_key: "resume_validation",
+    target_key: "", route_id: "", target_module: "", target_workflow: "", brand_name: "", execution_trace_id: ""
+  };
+
+  const runner2 = configureJobRunner(
+    {
+      jobRepository: createJobRepository(solverJob2),
+      async executeSiteMigrationJob() { return { success: false, statusCode: 500, payload: { ok: false } }; },
+      async performUniversalServerWriteback() {},
+      async logRetryWriteback() {}
+    },
+    {
+      queueApi: { async add() { return { id: "bull_3" }; } },
+      resumeValidationJob: async () => ({
+        status: "degraded",
+        runtime_classification: { activation_status: "degraded", reason_code: "executable_binding_mismatch" },
+        alignment_audit: {},
+        alignment_validation: { valid: false },
+        activation_id: "act_456",
+        completed_stages: []
+      })
+    }
+  );
+
+  await runner2.executeSingleQueuedJob(solverJob2);
+  assert("solver alignment fail → job succeeded (non-error return)", solverJob2.status === "succeeded", solverJob2.status);
+  assert("solver alignment fail → runtime_classification degraded", solverJob2.runtime_classification?.activation_status === "degraded", JSON.stringify(solverJob2.runtime_classification));
+}
+
+section("jobRunner — solver Sheets 429 → retry with resumable context preserved");
+
+{
+  const resumableCtx = {
+    activation_id: "act_789",
+    spreadsheet_id: "sheet_ghi",
+    auth: {},
+    pending_reads: ["Sheet2!A1:B5"],
+    completed_stages: [],
+    retry_count: 1
+  };
+
+  const solverJob3 = {
+    job_id: "job_solver_3",
+    job_type: "registry_validation_async_solver",
+    status: "queued",
+    attempt_count: 0,
+    max_attempts: 3,
+    request_payload: {
+      job_type: "registry_validation_async_solver",
+      validation_context: {
+        activation_id: "act_789",
+        spreadsheet_id: "sheet_ghi",
+        auth: {},
+        pending_reads: ["Sheet1!A1:D10", "Sheet2!A1:B5"],
+        completed_stages: [],
+        retry_count: 0
+      }
+    },
+    parent_action_key: "registry_validation_solver",
+    endpoint_key: "resume_validation",
+    target_key: "", route_id: "", target_module: "", target_workflow: "", brand_name: "", execution_trace_id: ""
+  };
+
+  const retryAdds = [];
+  const runner3 = configureJobRunner(
+    {
+      jobRepository: createJobRepository(solverJob3),
+      async executeSiteMigrationJob() { return { success: false, statusCode: 500, payload: { ok: false } }; },
+      async performUniversalServerWriteback() {},
+      async logRetryWriteback() {}
+    },
+    {
+      queueApi: { async add(name, job, opts) { retryAdds.push({ name, job, opts }); return { id: "bull_4" }; } },
+      resumeValidationJob: async () => {
+        const err = new Error("Sheets rate limited");
+        err.code = 429;
+        err.resumableContext = resumableCtx;
+        throw err;
+      }
+    }
+  );
+
+  await runner3.executeSingleQueuedJob(solverJob3);
+  assert("solver 429 → job status retrying", solverJob3.status === "retrying", solverJob3.status);
+  assert("solver 429 → retry enqueued", retryAdds.length >= 1, JSON.stringify(retryAdds.map(r => r.name)));
+  assert("solver 429 → request_payload updated with resumable pending_reads", solverJob3.request_payload?.validation_context?.pending_reads?.[0] === "Sheet2!A1:B5", JSON.stringify(solverJob3.request_payload?.validation_context));
+  assert("solver 429 → resumable retry_count preserved", solverJob3.request_payload?.validation_context?.retry_count === 1, JSON.stringify(solverJob3.request_payload?.validation_context?.retry_count));
+}
+
 console.log(`\n${"─".repeat(50)}`);
 console.log(`Results: ${passed} passed, ${failed} failed`);
 if (failed === 0) {
