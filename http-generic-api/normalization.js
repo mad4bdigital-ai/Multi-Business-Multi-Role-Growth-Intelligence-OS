@@ -314,3 +314,160 @@ export function assertHostingerTargetTier(payload = {}) {
 
   return { ok: true };
 }
+
+/**
+ * Canonical Normalization Contract - Staging Boundary
+ * 
+ * Converts free-form runtime inputs (sheet literals, aliases, raw objects)
+ * into deterministic canonical governed objects before execution, mutation, 
+ * or sink writeback.
+ */
+
+/**
+ * A. NormalizedExecutionIntent
+ * Represents the normalized execution request after request-shape cleanup and intent-level classification.
+ */
+export function normalizeExecutionIntent(raw = {}) {
+  return {
+    intent_family: raw.intent_family || '',
+    execution_class: raw.execution_class || '',
+    route_selection_mode: raw.route_selection_mode || '',
+    workflow_selection_mode: raw.workflow_selection_mode || '',
+    addition_intake_required: Boolean(raw.addition_intake_required),
+    patch_parity_verification_required: Boolean(raw.patch_parity_verification_required),
+    brand_onboarding_required: Boolean(raw.brand_onboarding_required),
+    transport_mode_requested: raw.transport_mode_requested || '',
+    user_trigger_required: Boolean(raw.user_trigger_required),
+    execution_trace_id: raw.execution_trace_id || ''
+  };
+}
+
+/**
+ * B. NormalizedPolicyState
+ * Converts sheet policy literals and aliases into canonical boolean and enum state.
+ */
+export function normalizePolicyState(raw = {}) {
+  const rawEnabled = raw.enabled ?? raw.raw_value;
+  const isEnabled = rawEnabled === true || String(rawEnabled).trim().toUpperCase() === 'TRUE';
+  
+  return {
+    policy_group: raw.policy_group || '',
+    policy_key: raw.policy_key || '',
+    normalized_key: String(raw.policy_key || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '_'),
+    enabled: isEnabled,
+    mode: raw.mode || '',
+    enum_value: raw.enum_value || null,
+    raw_value: raw.raw_value ?? null,
+    source_surface: raw.source_surface || '',
+    source_row_context: raw.source_row_context || null
+  };
+}
+
+/**
+ * C. NormalizedEndpointIdentity
+ * Resolves and normalizes action/endpoint identity before transport execution.
+ */
+export function normalizeEndpointIdentity(raw = {}) {
+  return {
+    parent_action_key: raw.parent_action_key || '',
+    endpoint_key: raw.endpoint_key || '',
+    normalized_action_key: String(raw.parent_action_key || '').trim().toLowerCase(),
+    normalized_endpoint_key: String(raw.endpoint_key || '').trim().toLowerCase(),
+    provider_domain_mode: raw.provider_domain_mode || '',
+    resolved_auth_mode: raw.resolved_auth_mode || '',
+    request_schema_alignment_required: Boolean(raw.request_schema_alignment_required),
+    transport_compatible: Boolean(raw.transport_compatible),
+    native_only_required: Boolean(raw.native_only_required),
+    connector_family: raw.connector_family || ''
+  };
+}
+
+/**
+ * D. NormalizedRouteWorkflowState
+ * Normalizes route and workflow readiness state.
+ */
+export function normalizeRouteWorkflowState(raw = {}) {
+  return {
+    route_id: raw.route_id || '',
+    workflow_id: raw.workflow_id || '',
+    route_status: raw.route_status || '',
+    workflow_status: raw.workflow_status || '',
+    selection_basis: raw.selection_basis || '',
+    overlap_status: raw.overlap_status || '',
+    chain_required: Boolean(raw.chain_required),
+    promotion_blocked: Boolean(raw.promotion_blocked),
+    validation_required: Boolean(raw.validation_required)
+  };
+}
+
+/**
+ * E. NormalizedSurfaceClassification
+ * Classifies target surfaces for reads, writes, validation, and authority rules.
+ */
+export function normalizeSurfaceClassification(raw = {}) {
+  return {
+    surface_id: raw.surface_id || '',
+    surface_name: raw.surface_name || '',
+    surface_family: raw.surface_family || '',
+    sheet_role: raw.sheet_role || '',
+    authority_level: raw.authority_level || '',
+    binding_mode: raw.binding_mode || '',
+    required_for_execution: Boolean(raw.required_for_execution),
+    candidate_surface: Boolean(raw.candidate_surface),
+    sink_surface: Boolean(raw.sink_surface)
+  };
+}
+
+/**
+ * F. NormalizedMutationIntent
+ * Makes mutation behavior deterministic before duplicate checks and write planning.
+ */
+export function normalizeMutationIntent(raw = {}) {
+  return {
+    mutation_class: raw.mutation_class || '',
+    target_surface_family: raw.target_surface_family || '',
+    authority_mode: raw.authority_mode || '',
+    candidate_only: Boolean(raw.candidate_only),
+    duplicate_check_required: Boolean(raw.duplicate_check_required),
+    equivalence_check_required: Boolean(raw.equivalence_check_required),
+    readback_required: Boolean(raw.readback_required),
+    evidence_required: Boolean(raw.evidence_required),
+    sink_exemption_class: raw.sink_exemption_class || ''
+  };
+}
+
+/**
+ * G. NormalizedExecutionResult
+ * Gives sink and writeback layers a canonical result contract.
+ */
+export function normalizeExecutionResult(raw = {}) {
+  return {
+    execution_status: raw.execution_status || '',
+    result_class: raw.result_class || '',
+    degraded: Boolean(raw.degraded),
+    blocked: Boolean(raw.blocked),
+    output_summary: raw.output_summary || '',
+    error_code: raw.error_code || '',
+    http_status: raw.http_status || null,
+    async_mode: Boolean(raw.async_mode),
+    oversized: Boolean(raw.oversized),
+    authoritative_evidence_class: raw.authoritative_evidence_class || ''
+  };
+}
+
+/**
+ * H. NormalizedSinkWriteContract
+ * Standardizes what a governed sink write expects before row shaping.
+ */
+export function normalizeSinkWriteContract(raw = {}) {
+  return {
+    sink_name: raw.sink_name || '',
+    sink_surface_id: raw.sink_surface_id || '',
+    write_contract_status: raw.write_contract_status || '',
+    raw_writeback_required: Boolean(raw.raw_writeback_required),
+    formula_protection_required: Boolean(raw.formula_protection_required),
+    header_validation_required: Boolean(raw.header_validation_required),
+    exemption_class: raw.exemption_class || '',
+    row_object: raw.row_object || {}
+  };
+}

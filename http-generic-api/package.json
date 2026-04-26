@@ -1,6 +1,6 @@
 {
   "name": "http-generic-api-connector",
-  "version": "2.3.4-final-verified-wordpress",
+  "version": "2.5.0-wordpress-aware-migration",
   "private": true,
   "type": "module",
   "main": "server.js",
