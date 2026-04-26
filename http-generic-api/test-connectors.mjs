@@ -150,10 +150,85 @@ globalThis.fetch = async (url, init = {}) => {
   assert("returns byte_offset field", result.byte_offset === 1, JSON.stringify(result));
   assert("returns expected base64 chunk", result.content === Buffer.from("bcd", "utf8").toString("base64"), result.content);
   assert("preserves reported chunk length", result.length === 3, `got ${result.length}`);
-  assert("github fetch sends bearer auth header", fetchCalls[0]?.init?.headers?.Authorization === "Bearer test_token", JSON.stringify(fetchCalls[0]));
+assert("github fetch sends bearer auth header", fetchCalls[0]?.init?.headers?.Authorization === "Bearer test_token", JSON.stringify(fetchCalls[0]));
 }
 
 {
+  fetchCalls.length = 0;
+  globalThis.fetch = async (url, init = {}) => {
+    fetchCalls.push({ url: String(url), init });
+    if (String(init.method || "GET") === "GET") {
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            type: "file",
+            sha: "old_sha"
+          });
+        }
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      async text() {
+        return JSON.stringify({
+          content: {
+            sha: "new_content_sha",
+            html_url: "https://github.com/octo/repo/blob/main/README.md"
+          },
+          commit: {
+            sha: "commit_sha",
+            html_url: "https://github.com/octo/repo/commit/commit_sha"
+          }
+        });
+      }
+    };
+  };
+
+  const { githubApplyFileUpdates } = await importGithubModule("apply-file-updates");
+  const result = await githubApplyFileUpdates({
+    input: {
+      owner: "octo",
+      repo: "repo",
+      branch: "main",
+      message: "Update README",
+      files: [
+        {
+          path: "README.md",
+          content: "hello"
+        }
+      ]
+    }
+  });
+
+  const putCall = fetchCalls.find(call => call.init?.method === "PUT");
+  const putBody = JSON.parse(putCall?.init?.body || "{}");
+
+  assert("github apply file updates succeeds", result.ok === true, JSON.stringify(result));
+  assert("github apply fetches existing file sha", fetchCalls.some(call => call.init?.method === "GET"), JSON.stringify(fetchCalls));
+  assert("github apply sends PUT contents request", !!putCall, JSON.stringify(fetchCalls));
+  assert("github apply includes existing sha", putBody.sha === "old_sha", JSON.stringify(putBody));
+  assert("github apply base64 encodes content", putBody.content === Buffer.from("hello", "utf8").toString("base64"), JSON.stringify(putBody));
+}
+
+{
+  fetchCalls.length = 0;
+  globalThis.fetch = async (url, init = {}) => {
+    fetchCalls.push({ url: String(url), init });
+    return {
+      ok: true,
+      status: 200,
+      async text() {
+        return JSON.stringify({
+          encoding: "base64",
+          content: Buffer.from("abcdef", "utf8").toString("base64")
+        });
+      }
+    };
+  };
+
   const { githubGitBlobChunkRead } = await importGithubModule("range-check");
   const result = await githubGitBlobChunkRead({
     input: {

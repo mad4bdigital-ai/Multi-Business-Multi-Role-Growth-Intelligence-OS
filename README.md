@@ -204,6 +204,35 @@ Do not edit generated root canonical files directly. The authoritative canonical
 - Keep module boundaries explicit.
 - Avoid bypassing the canonical chain with route-local improvisation.
 
+## Governed GitHub File Updates
+
+The runtime exposes a backend-protected GitHub write helper for HTTP clients:
+
+`POST /github/apply-file-updates`
+
+Required environment:
+- `BACKEND_API_KEY`
+- `GITHUB_TOKEN`
+
+Example payload:
+
+```json
+{
+  "owner": "mad4bdigital-ai",
+  "repo": "multi-business-multi-role-growth-intelligence-os",
+  "branch": "main",
+  "message": "Apply governed file update",
+  "files": [
+    {
+      "path": "README.md",
+      "content": "new file contents"
+    }
+  ]
+}
+```
+
+Each file is applied through the GitHub Contents API after resolving the current file SHA. Use `content_base64` instead of `content` when sending pre-encoded content.
+
 ## Immediate next implementation focus
 
 All 9 upgrade phases are complete. The project is in a production-ready, fully governed state.

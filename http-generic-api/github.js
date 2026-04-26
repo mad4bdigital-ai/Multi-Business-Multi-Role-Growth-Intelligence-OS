@@ -38,6 +38,10 @@ function decodeGithubBase64ToBuffer(value) {
   return Buffer.from(String(value || "").replace(/\s+/g, ""), "base64");
 }
 
+function encodeStringToBase64(value) {
+  return Buffer.from(String(value ?? ""), "utf8").toString("base64");
+}
+
 function encodeGitHubContentPath(value) {
   return String(value || "")
     .split("/")
@@ -133,6 +137,155 @@ export async function fetchGitHubBlobPayload({ owner, repo, fileSha }) {
   }
 
   return upstream.payload;
+}
+
+export async function fetchGitHubContentFile({ owner, repo, path, branch }) {
+  const normalizedOwner = assertGithubParam(owner, "owner");
+  const normalizedRepo = assertGithubParam(repo, "repo");
+  const normalizedPath = assertGithubParam(path, "path");
+
+  const upstream = await proxyGitHubJson({
+    method: "GET",
+    pathname:
+      `/repos/${encodeURIComponent(normalizedOwner)}` +
+      `/${encodeURIComponent(normalizedRepo)}` +
+      `/contents/${encodeGitHubContentPath(normalizedPath)}`,
+    searchParams: {
+      ref: branch
+    }
+  });
+
+  if (!upstream.ok) {
+    if (upstream.status === 404) return null;
+    const err = new Error(
+      upstream.payload?.message ||
+      `GitHub content fetch failed with status ${upstream.status}.`
+    );
+    err.code = "github_content_fetch_failed";
+    err.status = upstream.status || 502;
+    throw err;
+  }
+
+  if (Array.isArray(upstream.payload) || upstream.payload?.type !== "file") {
+    const err = new Error(`GitHub content path is not a file: ${normalizedPath}`);
+    err.code = "github_content_not_file";
+    err.status = 409;
+    throw err;
+  }
+
+  return upstream.payload;
+}
+
+export async function githubPutContents({ input = {} }) {
+  const owner = assertGithubParam(input.owner, "owner");
+  const repo = assertGithubParam(input.repo, "repo");
+  const path = assertGithubParam(input.path, "path");
+  const message = assertGithubParam(input.message, "message");
+  const branch = String(input.branch || "").trim() || undefined;
+  const existingSha = String(input.sha || "").trim();
+  const content =
+    input.content_base64 !== undefined
+      ? String(input.content_base64 || "").replace(/\s+/g, "")
+      : encodeStringToBase64(input.content);
+
+  if (!content) {
+    const err = new Error("content or content_base64 is required.");
+    err.code = "invalid_request";
+    err.status = 400;
+    throw err;
+  }
+
+  const upstream = await proxyGitHubJson({
+    method: "PUT",
+    pathname:
+      `/repos/${encodeURIComponent(owner)}` +
+      `/${encodeURIComponent(repo)}` +
+      `/contents/${encodeGitHubContentPath(path)}`,
+    body: {
+      message,
+      content,
+      ...(branch ? { branch } : {}),
+      ...(existingSha ? { sha: existingSha } : {}),
+      ...(input.committer ? { committer: input.committer } : {}),
+      ...(input.author ? { author: input.author } : {})
+    }
+  });
+
+  if (!upstream.ok) {
+    const err = new Error(
+      upstream.payload?.message ||
+      `GitHub content write failed with status ${upstream.status}.`
+    );
+    err.code = "github_put_contents_failed";
+    err.status = upstream.status || 502;
+    err.details = upstream.payload || null;
+    throw err;
+  }
+
+  return {
+    ok: true,
+    statusCode: upstream.status,
+    owner,
+    repo,
+    branch: branch || "",
+    path,
+    content_sha: upstream.payload?.content?.sha || "",
+    commit_sha: upstream.payload?.commit?.sha || "",
+    commit_html_url: upstream.payload?.commit?.html_url || "",
+    content_html_url: upstream.payload?.content?.html_url || ""
+  };
+}
+
+export async function githubApplyFileUpdates({ input = {} }) {
+  const owner = assertGithubParam(input.owner, "owner");
+  const repo = assertGithubParam(input.repo, "repo");
+  const branch = String(input.branch || "").trim() || undefined;
+  const message = assertGithubParam(input.message, "message");
+  const files = Array.isArray(input.files) ? input.files : [];
+
+  if (!files.length) {
+    const err = new Error("files must be a non-empty array.");
+    err.code = "invalid_request";
+    err.status = 400;
+    throw err;
+  }
+
+  const results = [];
+
+  for (const file of files) {
+    const path = assertGithubParam(file.path, "files[].path");
+    const existing = await fetchGitHubContentFile({ owner, repo, path, branch });
+    const writeResult = await githubPutContents({
+      input: {
+        owner,
+        repo,
+        branch,
+        path,
+        message: file.message || message,
+        sha: file.sha || existing?.sha || "",
+        content: file.content,
+        content_base64: file.content_base64,
+        committer: input.committer,
+        author: input.author
+      }
+    });
+
+    results.push({
+      ...writeResult,
+      operation: existing ? "update" : "create",
+      previous_sha: existing?.sha || ""
+    });
+  }
+
+  return {
+    ok: true,
+    owner,
+    repo,
+    branch: branch || "",
+    files_changed: results.length,
+    results,
+    final_commit_sha: results[results.length - 1]?.commit_sha || ""
+  };
 }
 
 export async function githubGitBlobChunkRead({ input = {} }) {

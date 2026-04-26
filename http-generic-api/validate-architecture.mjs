@@ -394,9 +394,12 @@ section("Connector API surface");
 const ghModule = await import("./github.js");
 assert("github.js exports githubGitBlobChunkRead", "githubGitBlobChunkRead" in ghModule);
 assert("github.js exports fetchGitHubBlobPayload", "fetchGitHubBlobPayload" in ghModule);
+assert("github.js exports fetchGitHubContentFile", "fetchGitHubContentFile" in ghModule);
+assert("github.js exports githubPutContents", "githubPutContents" in ghModule);
+assert("github.js exports githubApplyFileUpdates", "githubApplyFileUpdates" in ghModule);
 assert(
   "github.js exports no unexpected symbols",
-  Object.keys(ghModule).length === 2,
+  Object.keys(ghModule).length === 5,
   `got ${Object.keys(ghModule).length} exports: ${Object.keys(ghModule).join(", ")}`
 );
 
@@ -442,7 +445,8 @@ const ROUTE_FILES = [
   "routes/executeRoutes.js",
   "routes/jobRoutes.js",
   "routes/mcpRoutes.js",
-  "routes/governanceRoutes.js"
+  "routes/governanceRoutes.js",
+  "routes/githubRoutes.js"
 ];
 
 for (const rel of ROUTE_FILES) {
