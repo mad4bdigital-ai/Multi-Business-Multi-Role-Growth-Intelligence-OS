@@ -74,6 +74,9 @@ export async function submitSiteMigrationJob(reqBody, requestedBy, idempotencyKe
     status: 202,
     body: {
       ...toJobSummary(job),
+      runtime_classification: job.runtime_classification || null,
+      recovery: job.recovery || null,
+      operator_view: job.operator_view || null,
       route: "/site-migrate",
       execution_class: "migration"
     }

@@ -103,6 +103,12 @@ const REQUIRED_MODULES = [
   "wordpress-cpt-preflight.js",
   "github.js",
   "hostinger.js",
+  "activationClassification.js",
+  "activationProgress.js",
+  "activationRecoveryPolicy.js",
+  "activationOperatorView.js",
+  "activationConsistencyCheck.js",
+  "activationResponse.js",
   "wordpress/index.js",
   "wordpress/shared.js",
   "wordpress/phaseA.js"

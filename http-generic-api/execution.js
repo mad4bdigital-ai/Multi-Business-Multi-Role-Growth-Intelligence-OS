@@ -28,6 +28,11 @@ import {
   makeActivationBootstrapRowCacheKey,
   makeActivationSheetsBackoffKey
 } from "./activationBootstrapCache.js";
+import { buildActivationEnvelope } from "./activationResponse.js";
+
+function buildActivationEnvelopeFromEvidence(evidence = {}) {
+  return buildActivationEnvelope(evidence);
+}
 
 export function retryMutationEnabled(policies = []) {
   return String(
@@ -1253,13 +1258,31 @@ function isSheets429(upstream, data) {
 }
 
 function buildValidationRateLimitedBody(base = {}) {
+  const envelope = buildActivationEnvelopeFromEvidence({
+    transport_attempted: true,
+    drive_attempted: true,
+    drive_ok: true,
+    sheets_attempted: true,
+    sheets_ok: false,
+    github_attempted: false,
+    github_ok: false,
+    bootstrap_row_read: false,
+    binding_resolved: false,
+    validation_complete: false,
+    rate_limited: true,
+    auth_failed: false
+  });
+
   return {
     ...base,
     ok: false,
     code: "validation_rate_limited",
     activation_state: "validation_rate_limited",
     message: "Google Sheets activation binding read is rate-limited. Retry after backoff.",
-    retryable: true
+    retryable: true,
+    runtime_classification: envelope.runtime_classification,
+    recovery: envelope.recovery,
+    operator_view: envelope.operator_view
   };
 }
 
@@ -1286,11 +1309,22 @@ export async function executeUpstreamAttempt({
   if (isActivationSheetOpenRequest(requestPayload) || isActivationBootstrapRowRead(requestPayload)) {
     const backoffUntil = await getActivationBackoffUntil(makeActivationSheetsBackoffKey());
     if (backoffUntil && Date.now() < backoffUntil) {
+      const envelope = buildActivationEnvelopeFromEvidence({
+        transport_attempted: true,
+        drive_attempted: true,
+        drive_ok: true,
+        sheets_attempted: true,
+        sheets_ok: false,
+        rate_limited: true
+      });
       return {
         shortCircuitResponse: {
           status: 429,
           body: buildValidationRateLimitedBody({
-            backoff_until: new Date(backoffUntil).toISOString()
+            backoff_until: new Date(backoffUntil).toISOString(),
+            runtime_classification: envelope.runtime_classification,
+            recovery: envelope.recovery,
+            operator_view: envelope.operator_view
           })
         }
       };

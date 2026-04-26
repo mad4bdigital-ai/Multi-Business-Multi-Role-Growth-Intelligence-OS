@@ -48,6 +48,10 @@ export function toJobSummary(job) {
     attempt_count: job.attempt_count,
     max_attempts: job.max_attempts,
     next_retry_at: job.next_retry_at || null,
+    runtime_classification: job.runtime_classification || null,
+    recovery: job.recovery || null,
+    operator_view: job.operator_view || null,
+    activation_status: job.runtime_classification?.activation_status || "",
     status_url: `/jobs/${job.job_id}`,
     result_url: `/jobs/${job.job_id}/result`
   };
@@ -64,6 +68,10 @@ export function buildWebhookPayload(job) {
     updated_at: job.updated_at,
     completed_at: job.completed_at || null,
     result: job.result_payload || null,
+    runtime_classification: job.runtime_classification || null,
+    recovery: job.recovery || null,
+    operator_view: job.operator_view || null,
+    activation_status: job.runtime_classification?.activation_status || "",
     error: job.error_payload || null
   };
 }
