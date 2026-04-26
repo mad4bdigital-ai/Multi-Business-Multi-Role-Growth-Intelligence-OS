@@ -102,5 +102,60 @@ function makeFakeSheets(responsesByRange = {}) {
   );
 }
 
+// --- Grid limit recovery: chunk read stops cleanly when sheet grid is smaller than dataEndRow ---
+{
+  let callCount = 0;
+  const gridLimitSheets = {
+    calls: [],
+    spreadsheets: {
+      values: {
+        batchGet: async request => {
+          const range = request.ranges[0];
+          gridLimitSheets.calls.push(range);
+          callCount++;
+          // Header row always succeeds
+          if (range.includes("!A1:")) {
+            return { data: { valueRanges: [{ range, values: [["col_a", "col_b"]] }] } };
+          }
+          // First data chunk returns data
+          if (callCount === 2) {
+            return { data: { valueRanges: [{ range, values: [["row1", "val1"]] }] } };
+          }
+          // Second data chunk simulates grid limit exceeded
+          const err = new Error("Range exceeds grid limits");
+          err.status = 400;
+          throw err;
+        }
+      }
+    }
+  };
+
+  const values = await fetchChunkedTable(gridLimitSheets, {
+    spreadsheetId: "registry",
+    sheetName: "Policy Registry",
+    columnStart: "A",
+    columnEnd: "H",
+    dataEndRow: 2000,
+    chunkDelayMs: 0,
+    cycleDelayMs: 0
+  });
+
+  assert(
+    "stops cleanly when chunk hits Range exceeds grid limits",
+    values.some(row => row[0] === "row1"),
+    JSON.stringify({ calls: gridLimitSheets.calls, values })
+  );
+  assert(
+    "does not throw on Range exceeds grid limits",
+    Array.isArray(values),
+    "expected array"
+  );
+  assert(
+    "returns header row even when data chunk errors",
+    values[0]?.includes("col_a"),
+    JSON.stringify(values[0])
+  );
+}
+
 console.log(`Results: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

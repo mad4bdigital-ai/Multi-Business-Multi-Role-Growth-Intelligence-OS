@@ -112,6 +112,13 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function isRangeExceedsGridError(err) {
+  const msg = String(
+    err?.message || err?.response?.data?.error?.message || ""
+  ).toLowerCase();
+  return msg.includes("range exceeds grid limits");
+}
+
 function normalizePositiveInt(value, fallback) {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
@@ -326,7 +333,14 @@ export async function fetchChunkedTable(
     if (chunkReads > 0 && normalizedDelayMs > 0) {
       await sleep(normalizedDelayMs);
     }
-    const [chunk] = await fetchRanges(sheets, normalizedSpreadsheetId, [range], readPolicy);
+    let chunk;
+    try {
+      [chunk] = await fetchRanges(sheets, normalizedSpreadsheetId, [range], readPolicy);
+    } catch (err) {
+      // Sheet grid is smaller than dataEndRow — treat as end-of-data, not a fatal error.
+      if (isRangeExceedsGridError(err)) break;
+      throw err;
+    }
     chunkReads++;
     if (!chunk.length && stopAfterEmptyChunk) break;
     rows.push(...chunk);
