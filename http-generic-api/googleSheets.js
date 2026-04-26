@@ -18,6 +18,9 @@ function requireEnv(name) {
 let globalClientsPromise = null;
 
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+const DEFAULT_CHUNK_ROW_COUNT = 50;
+const DEFAULT_MAX_CHUNK_READS = 10;
+const DEFAULT_CHUNK_DELAY_MS = 150;
 
 const cache = {
   ranges: new Map(),
@@ -77,7 +80,8 @@ async function executeWithRetry(fn) {
       const result = await fn();
       return result;
     } catch (err) {
-      if (err.code === 429 && attempt < MAX_RETRIES) {
+      const status = Number(err?.code || err?.status || err?.response?.status || 0);
+      if (status === 429 && attempt < MAX_RETRIES) {
         attempt++;
         const jitter = Math.floor(Math.random() * 500);
         const backoff = (Math.pow(2, attempt) * 1000) + jitter;
@@ -90,6 +94,46 @@ async function executeWithRetry(fn) {
       releaseRateLimit();
     }
   }
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function normalizePositiveInt(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+}
+
+function tableCacheKey({
+  spreadsheetId,
+  sheetName,
+  columnStart,
+  columnEnd,
+  headerRow,
+  dataStartRow,
+  dataEndRow,
+  chunkRowCount,
+  maxChunkReads
+}) {
+  return [
+    "chunked-table",
+    spreadsheetId,
+    sheetName,
+    `${columnStart}:${columnEnd}`,
+    `h${headerRow}`,
+    `${dataStartRow}-${dataEndRow}`,
+    `c${chunkRowCount}`,
+    `m${maxChunkReads}`
+  ].join(":");
+}
+
+function sheetRange(sheetName, a1Tail) {
+  const raw = String(sheetName || "").trim();
+  const quoted = raw.startsWith("'") && raw.endsWith("'")
+    ? raw
+    : `'${raw.replace(/'/g, "''")}'`;
+  return `${quoted}!${a1Tail}`;
 }
 
 // --- Exported Methods ---
@@ -176,6 +220,91 @@ export async function fetchRanges(sheets, spreadsheetId, ranges, readPolicy = RE
   }
 
   return ranges.map(range => results[range] || []);
+}
+
+export async function fetchChunkedTable(
+  sheets,
+  {
+    spreadsheetId = REGISTRY_SPREADSHEET_ID,
+    sheetName,
+    columnStart = "A",
+    columnEnd,
+    headerRow = 1,
+    dataStartRow = 2,
+    dataEndRow = 2000,
+    chunkRowCount = DEFAULT_CHUNK_ROW_COUNT,
+    maxChunkReads = DEFAULT_MAX_CHUNK_READS,
+    chunkDelayMs = DEFAULT_CHUNK_DELAY_MS,
+    stopAfterEmptyChunk = true
+  } = {},
+  readPolicy = READ_POLICIES.CACHED_NORMAL
+) {
+  const normalizedSheetName = String(sheetName || "").trim();
+  const normalizedColumnStart = String(columnStart || "A").trim().toUpperCase();
+  const normalizedColumnEnd = String(columnEnd || "").trim().toUpperCase();
+  if (!normalizedSheetName || !normalizedColumnEnd) {
+    const err = new Error("Chunked Sheets read requires sheetName and columnEnd.");
+    err.code = "chunked_sheet_read_invalid";
+    err.status = 500;
+    throw err;
+  }
+
+  const normalizedSpreadsheetId = String(spreadsheetId || REGISTRY_SPREADSHEET_ID || "").trim();
+  const normalizedHeaderRow = normalizePositiveInt(headerRow, 1);
+  const normalizedDataStartRow = normalizePositiveInt(dataStartRow, normalizedHeaderRow + 1);
+  const normalizedDataEndRow = normalizePositiveInt(dataEndRow, normalizedDataStartRow);
+  const normalizedChunkRows = normalizePositiveInt(chunkRowCount, DEFAULT_CHUNK_ROW_COUNT);
+  const normalizedMaxReads = normalizePositiveInt(maxChunkReads, DEFAULT_MAX_CHUNK_READS);
+  const normalizedDelayMs = normalizePositiveInt(chunkDelayMs, DEFAULT_CHUNK_DELAY_MS);
+
+  const cacheKey = tableCacheKey({
+    spreadsheetId: normalizedSpreadsheetId,
+    sheetName: normalizedSheetName,
+    columnStart: normalizedColumnStart,
+    columnEnd: normalizedColumnEnd,
+    headerRow: normalizedHeaderRow,
+    dataStartRow: normalizedDataStartRow,
+    dataEndRow: normalizedDataEndRow,
+    chunkRowCount: normalizedChunkRows,
+    maxChunkReads: normalizedMaxReads
+  });
+  const cached = getFromCache(cache.ranges, cacheKey, readPolicy);
+  if (cached) return cached;
+
+  const headerRange = sheetRange(
+    normalizedSheetName,
+    `${normalizedColumnStart}${normalizedHeaderRow}:${normalizedColumnEnd}${normalizedHeaderRow}`
+  );
+  const headerValues = await fetchRanges(
+    sheets,
+    normalizedSpreadsheetId,
+    [headerRange],
+    readPolicy
+  );
+
+  const rows = [headerValues[0]?.[0] || []];
+  let chunkReads = 0;
+  for (
+    let startRow = normalizedDataStartRow;
+    startRow <= normalizedDataEndRow && chunkReads < normalizedMaxReads;
+    startRow += normalizedChunkRows
+  ) {
+    const endRow = Math.min(startRow + normalizedChunkRows - 1, normalizedDataEndRow);
+    const range = sheetRange(
+      normalizedSheetName,
+      `${normalizedColumnStart}${startRow}:${normalizedColumnEnd}${endRow}`
+    );
+    if (chunkReads > 0 && normalizedDelayMs > 0) {
+      await sleep(normalizedDelayMs);
+    }
+    const [chunk] = await fetchRanges(sheets, normalizedSpreadsheetId, [range], readPolicy);
+    chunkReads++;
+    if (!chunk.length && stopAfterEmptyChunk) break;
+    rows.push(...chunk);
+  }
+
+  setInCache(cache.ranges, cacheKey, rows);
+  return rows;
 }
 
 export async function assertSheetExistsInSpreadsheet(spreadsheetId, sheetName, readPolicy = READ_POLICIES.CACHED_NORMAL) {

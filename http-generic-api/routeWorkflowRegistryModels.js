@@ -24,10 +24,20 @@ export async function loadTaskRoutesRegistry(sheets, options = {}, deps = {}) {
     fallbackColumns: deps.TASK_ROUTES_CANONICAL_COLUMNS
   });
 
-  const values = await deps.fetchRange(
-    sheets,
-    deps.toValuesApiRange(deps.TASK_ROUTES_SHEET, "A1:AF2000")
-  );
+  const values = typeof deps.fetchChunkedTable === "function"
+    ? await deps.fetchChunkedTable(sheets, {
+        spreadsheetId: deps.REGISTRY_SPREADSHEET_ID,
+        sheetName: deps.TASK_ROUTES_SHEET,
+        columnStart: "A",
+        columnEnd: "AF",
+        headerRow: 1,
+        dataStartRow: 2,
+        dataEndRow: 2000
+      })
+    : await deps.fetchRange(
+        sheets,
+        deps.toValuesApiRange(deps.TASK_ROUTES_SHEET, "A1:AF2000")
+      );
   if (!values.length) throw deps.registryError("Task Routes");
   const headers = (values[0] || []).map(value => String(value || "").trim());
   deps.assertHeaderMatchesSurfaceMetadata({
@@ -157,10 +167,20 @@ export async function loadWorkflowRegistry(sheets, options = {}, deps = {}) {
     fallbackColumns: deps.WORKFLOW_REGISTRY_CANONICAL_COLUMNS
   });
 
-  const values = await deps.fetchRange(
-    sheets,
-    deps.toValuesApiRange(deps.WORKFLOW_REGISTRY_SHEET, "A1:AL2000")
-  );
+  const values = typeof deps.fetchChunkedTable === "function"
+    ? await deps.fetchChunkedTable(sheets, {
+        spreadsheetId: deps.REGISTRY_SPREADSHEET_ID,
+        sheetName: deps.WORKFLOW_REGISTRY_SHEET,
+        columnStart: "A",
+        columnEnd: "AL",
+        headerRow: 1,
+        dataStartRow: 2,
+        dataEndRow: 2000
+      })
+    : await deps.fetchRange(
+        sheets,
+        deps.toValuesApiRange(deps.WORKFLOW_REGISTRY_SHEET, "A1:AL2000")
+      );
   if (!values.length) throw deps.registryError("Workflow Registry");
   const headers = (values[0] || []).map(value => String(value || "").trim());
   deps.assertHeaderMatchesSurfaceMetadata({

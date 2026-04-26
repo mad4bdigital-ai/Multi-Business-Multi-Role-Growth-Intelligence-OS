@@ -205,6 +205,7 @@ import {
   getGoogleClients as getGoogleClientsBase,
   getGoogleClientsForSpreadsheet as getGoogleClientsForSpreadsheetBase,
   fetchRange as fetchRangeBase,
+  fetchChunkedTable as fetchChunkedTableBase,
   assertSheetExistsInSpreadsheet as assertSheetExistsInSpreadsheetBase
 } from "./googleSheets.js";
 import {
@@ -1325,6 +1326,9 @@ async function assertGovernedSinkSheetsExist() {
 }
 
 async function fetchRange(sheets, range) { return fetchRangeBase(sheets, range); }
+async function fetchChunkedTable(sheets, options = {}) {
+  return fetchChunkedTableBase(sheets, options);
+}
 
 function toSheetCellValue(value) {
   return toSheetCellValueCore(value);
@@ -1345,6 +1349,7 @@ async function getRegistrySurfaceCatalogRowBySurfaceId(surfaceId = "") {
   return getRegistrySurfaceCatalogRowBySurfaceIdCore(surfaceId, {
     REGISTRY_SPREADSHEET_ID,
     REGISTRY_SURFACES_CATALOG_SHEET,
+    fetchChunkedTable,
     getGoogleClientsForSpreadsheet,
     getCell,
     headerMap,
@@ -1577,6 +1582,7 @@ async function loadBrandRegistry(sheets) {
   return loadBrandRegistryCore(sheets, {
     BRAND_REGISTRY_SHEET,
     REGISTRY_SPREADSHEET_ID,
+    fetchChunkedTable,
     getCell,
     headerMap,
     registryError
@@ -1588,6 +1594,7 @@ async function loadHostingAccountRegistry(sheets) {
     HOSTING_ACCOUNT_REGISTRY_COLUMNS,
     HOSTING_ACCOUNT_REGISTRY_SHEET,
     REGISTRY_SPREADSHEET_ID,
+    fetchChunkedTable,
     getCell,
     headerMap,
     registryError
@@ -1598,6 +1605,7 @@ async function loadActionsRegistry(sheets) {
   return loadActionsRegistryCore(sheets, {
     ACTIONS_REGISTRY_SHEET,
     REGISTRY_SPREADSHEET_ID,
+    fetchChunkedTable,
     getCell,
     headerMap,
     registryError
@@ -1609,6 +1617,7 @@ async function loadEndpointRegistry(sheets) {
     ENDPOINT_REGISTRY_SHEET,
     REGISTRY_SPREADSHEET_ID,
     debugLog,
+    fetchChunkedTable,
     getCell,
     headerMap,
     registryError
@@ -1620,6 +1629,7 @@ async function loadExecutionPolicies(sheets) {
     EXECUTION_POLICY_SHEET,
     REGISTRY_SPREADSHEET_ID,
     boolFromSheet,
+    fetchChunkedTable,
     getCell,
     headerMap,
     registryError
@@ -1630,6 +1640,7 @@ async function readExecutionPolicyRegistryLive() {
   return readExecutionPolicyRegistryLiveCore({
     EXECUTION_POLICY_SHEET,
     REGISTRY_SPREADSHEET_ID,
+    fetchChunkedTable,
     getGoogleClientsForSpreadsheet,
     headerMap,
     registryError,
@@ -2425,6 +2436,7 @@ async function loadTaskRoutesRegistry(sheets, options = {}) {
     TASK_ROUTES_SHEET,
     assertHeaderMatchesSurfaceMetadata,
     assertSingleActiveRowByKey,
+    fetchChunkedTable,
     fetchRange,
     getCanonicalSurfaceMetadata,
     getCell,
@@ -2445,6 +2457,7 @@ async function loadWorkflowRegistry(sheets, options = {}) {
     WORKFLOW_REGISTRY_SHEET,
     assertHeaderMatchesSurfaceMetadata,
     assertSingleActiveRowByKey,
+    fetchChunkedTable,
     fetchRange,
     getCanonicalSurfaceMetadata,
     getCell,

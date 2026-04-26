@@ -7,6 +7,28 @@ function localFetchRange(sheets, spreadsheetId, range) {
     .then(response => response.data.values || []);
 }
 
+async function readRegistryTable(
+  sheets,
+  deps,
+  { spreadsheetId, sheetName, columnEnd, dataEndRow = 2000, columnStart = "A" }
+) {
+  if (typeof deps.fetchChunkedTable === "function") {
+    return deps.fetchChunkedTable(sheets, {
+      spreadsheetId,
+      sheetName,
+      columnStart,
+      columnEnd,
+      headerRow: 1,
+      dataStartRow: 2,
+      dataEndRow
+    });
+  }
+
+  const normalizedSheetName = String(sheetName || "").trim().replace(/'/g, "''");
+  const range = `'${normalizedSheetName}'!${columnStart}1:${columnEnd}${dataEndRow}`;
+  return localFetchRange(sheets, spreadsheetId, range);
+}
+
 export async function getRegistrySurfaceCatalogRowBySurfaceId(surfaceId = "", deps = {}) {
   const normalizedSurfaceId = String(surfaceId || "").trim();
   if (!normalizedSurfaceId) return null;
@@ -21,11 +43,12 @@ export async function getRegistrySurfaceCatalogRowBySurfaceId(surfaceId = "", de
   } = deps;
 
   const { sheets } = await getGoogleClientsForSpreadsheet(REGISTRY_SPREADSHEET_ID);
-  const values = await localFetchRange(
-    sheets,
-    REGISTRY_SPREADSHEET_ID,
-    toValuesApiRange(REGISTRY_SURFACES_CATALOG_SHEET, "A:AG")
-  );
+  const values = await readRegistryTable(sheets, deps, {
+    spreadsheetId: REGISTRY_SPREADSHEET_ID,
+    sheetName: REGISTRY_SURFACES_CATALOG_SHEET,
+    columnEnd: "AG",
+    dataEndRow: 2000
+  });
 
   if (values.length < 2) return null;
 
@@ -70,11 +93,12 @@ export async function loadBrandRegistry(sheets, deps = {}) {
     headerMap,
     registryError
   } = deps;
-  const values = await localFetchRange(
-    sheets,
-    REGISTRY_SPREADSHEET_ID,
-    `'${BRAND_REGISTRY_SHEET}'!A1:CX1000`
-  );
+  const values = await readRegistryTable(sheets, deps, {
+    spreadsheetId: REGISTRY_SPREADSHEET_ID,
+    sheetName: BRAND_REGISTRY_SHEET,
+    columnEnd: "CX",
+    dataEndRow: 1000
+  });
   if (!values.length) throw registryError("Brand Registry");
   const headers = values[0];
   const map = headerMap(headers, BRAND_REGISTRY_SHEET);
@@ -120,11 +144,12 @@ export async function loadHostingAccountRegistry(sheets, deps = {}) {
     headerMap,
     registryError
   } = deps;
-  const values = await localFetchRange(
-    sheets,
-    REGISTRY_SPREADSHEET_ID,
-    `'${HOSTING_ACCOUNT_REGISTRY_SHEET}'!A1:AZ1000`
-  );
+  const values = await readRegistryTable(sheets, deps, {
+    spreadsheetId: REGISTRY_SPREADSHEET_ID,
+    sheetName: HOSTING_ACCOUNT_REGISTRY_SHEET,
+    columnEnd: "AZ",
+    dataEndRow: 1000
+  });
   if (!values.length) throw registryError("Hosting Account Registry");
 
   const headers = values[0];
@@ -189,11 +214,12 @@ export async function loadActionsRegistry(sheets, deps = {}) {
     headerMap,
     registryError
   } = deps;
-  const values = await localFetchRange(
-    sheets,
-    REGISTRY_SPREADSHEET_ID,
-    `'${ACTIONS_REGISTRY_SHEET}'!A1:AM1000`
-  );
+  const values = await readRegistryTable(sheets, deps, {
+    spreadsheetId: REGISTRY_SPREADSHEET_ID,
+    sheetName: ACTIONS_REGISTRY_SHEET,
+    columnEnd: "AM",
+    dataEndRow: 1000
+  });
   if (!values.length) throw registryError("Actions Registry");
   const headers = values[0];
   const map = headerMap(headers, ACTIONS_REGISTRY_SHEET);
@@ -230,11 +256,12 @@ export async function loadEndpointRegistry(sheets, deps = {}) {
     headerMap,
     registryError
   } = deps;
-  const values = await localFetchRange(
-    sheets,
-    REGISTRY_SPREADSHEET_ID,
-    `'${ENDPOINT_REGISTRY_SHEET}'!A1:BA2000`
-  );
+  const values = await readRegistryTable(sheets, deps, {
+    spreadsheetId: REGISTRY_SPREADSHEET_ID,
+    sheetName: ENDPOINT_REGISTRY_SHEET,
+    columnEnd: "BA",
+    dataEndRow: 2000
+  });
   if (!values.length) throw registryError("API Actions Endpoint Registry");
   const headers = values[0];
   const map = headerMap(headers, ENDPOINT_REGISTRY_SHEET);
@@ -285,11 +312,12 @@ export async function loadExecutionPolicies(sheets, deps = {}) {
     headerMap,
     registryError
   } = deps;
-  const values = await localFetchRange(
-    sheets,
-    REGISTRY_SPREADSHEET_ID,
-    `'${EXECUTION_POLICY_SHEET}'!A1:H2000`
-  );
+  const values = await readRegistryTable(sheets, deps, {
+    spreadsheetId: REGISTRY_SPREADSHEET_ID,
+    sheetName: EXECUTION_POLICY_SHEET,
+    columnEnd: "H",
+    dataEndRow: 2000
+  });
   if (!values.length) throw registryError("Execution Policy Registry");
   const headers = values[0];
   const map = headerMap(headers, EXECUTION_POLICY_SHEET);
@@ -319,11 +347,12 @@ export async function readExecutionPolicyRegistryLive(deps = {}) {
     toValuesApiRange
   } = deps;
   const { sheets } = await getGoogleClientsForSpreadsheet(REGISTRY_SPREADSHEET_ID);
-  const values = await localFetchRange(
-    sheets,
-    REGISTRY_SPREADSHEET_ID,
-    toValuesApiRange(EXECUTION_POLICY_SHEET, "A1:H2000")
-  );
+  const values = await readRegistryTable(sheets, deps, {
+    spreadsheetId: REGISTRY_SPREADSHEET_ID,
+    sheetName: EXECUTION_POLICY_SHEET,
+    columnEnd: "H",
+    dataEndRow: 2000
+  });
   if (!values.length) throw registryError("Execution Policy Registry");
 
   const header = values[0].map(value => String(value || "").trim());

@@ -93,6 +93,7 @@ Owns:
 - registry surface catalog lookup by `surface_id`
 - live execution-policy registry read-model helpers
 - execution-policy row shaping and row-number resolution helpers
+- Sheets access policy: classify/probe first, read headers separately, load bounded row/column chunks with pacing, cache stable metadata, and write only exact cells or bounded rows. Full-sheet reads are audit-only and must stay segmented with bounded retries.
 
 ### Registry mutation boundary
 
@@ -156,6 +157,7 @@ Owns:
 - Workflow Registry row shaping into governed runtime records
 - executable-authority evaluation for route/workflow records
 - candidate-inspection versus executable-only filtering for route/workflow loaders
+- chunked default reads for route/workflow authority surfaces; broad `A1:*2000` style sweeps are reserved for explicit audits and still use paced chunks
 
 ### Governed record-resolution boundary
 
