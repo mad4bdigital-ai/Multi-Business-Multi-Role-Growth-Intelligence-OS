@@ -245,6 +245,43 @@ export async function resolveExecutionRequest(reqBody = {}, deps = {}) {
   const body = requestPayload.body;
   const pathParams = requestPayload.path_params || {};
 
+  // Guard: getSheetValues range must come explicitly from path_params, not query or body
+  if (
+    String(parent_action_key || "").trim() === "google_sheets_api" &&
+    String(endpoint_key || "").trim() === "getSheetValues"
+  ) {
+    const requestedRange = String(pathParams.range || "").trim();
+    if (!requestedRange) {
+      return {
+        ok: false,
+        response: {
+          status: 400,
+          body: {
+            ok: false,
+            error: {
+              code: "missing_required_range_param",
+              message: "getSheetValues requires path_params.range — range must be explicit, no fallback allowed.",
+              details: {
+                parent_action_key,
+                endpoint_key,
+                path_params_received: Object.keys(pathParams)
+              }
+            }
+          }
+        },
+        requestPayload,
+        execution_trace_id
+      };
+    }
+    debugLog("SHEETS_RANGE_SNAPSHOT:", JSON.stringify({
+      requested_spreadsheetId: String(pathParams.spreadsheetId || "").trim(),
+      requested_range: requestedRange,
+      range_source: "path_params",
+      force_refresh: !!requestPayload.force_refresh,
+      readback_mode: requestPayload.readback?.mode || ""
+    }));
+  }
+
   debugLog("NORMALIZED_TOP_LEVEL_ROUTING_FIELDS:", JSON.stringify({
     provider_domain: requestPayload.provider_domain || "",
     parent_action_key: requestPayload.parent_action_key || "",
@@ -285,6 +322,53 @@ export async function resolveExecutionRequest(reqBody = {}, deps = {}) {
       ensureMethodAndPathMatchEndpoint
     }
   );
+
+  // Post-resolution drift guard for getSheetValues
+  if (
+    String(parent_action_key || "").trim() === "google_sheets_api" &&
+    String(endpoint_key || "").trim() === "getSheetValues"
+  ) {
+    const requestedRange = String(pathParams.range || "").trim();
+    const resolvedPath = String(executionContext.resolvedMethodPath?.path || "");
+    const encodedRange = encodeURIComponent(requestedRange);
+
+    debugLog("SHEETS_REQUEST_TRACE:", JSON.stringify({
+      parent_action_key,
+      endpoint_key,
+      requested_spreadsheetId: String(pathParams.spreadsheetId || "").trim(),
+      requested_range: requestedRange,
+      resolved_path: resolvedPath,
+      encoded_range_in_path: resolvedPath.includes(encodedRange),
+      range_source: "path_params",
+      force_refresh: !!requestPayload.force_refresh,
+      readback_mode: requestPayload.readback?.mode || ""
+    }));
+
+    if (requestedRange && !resolvedPath.includes(encodedRange)) {
+      return {
+        ok: false,
+        response: {
+          status: 400,
+          body: {
+            ok: false,
+            error: {
+              code: "sheets_range_resolution_mismatch",
+              message: `Sheets range drifted before execution. Requested range not found in resolved path.`,
+              details: {
+                requested_range: requestedRange,
+                resolved_path: resolvedPath,
+                requested_spreadsheetId: String(pathParams.spreadsheetId || "").trim(),
+                endpoint_key,
+                parent_action_key
+              }
+            }
+          }
+        },
+        requestPayload,
+        execution_trace_id
+      };
+    }
+  }
 
   return {
     ok: true,

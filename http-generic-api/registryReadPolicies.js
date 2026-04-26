@@ -18,5 +18,9 @@ export const DEFAULT_SHEETS_ACCESS_POLICY = {
   chunkDelayMs: 150,
   cycleDelayMs: 400,
   allowlistedSheetRoles: ["authority", "operational", "review", "blocked"],
-  writeMode: "exact_cell_or_bounded_row"
+  writeMode: "exact_cell_or_bounded_row",
+  allowNativeFallbackOnResolverDrift: true,
+  blockGovernedSingleRangeReadOnResolverDrift: true,
+  resolverDriftRecoveryMode: "native_fallback",
+  requireForceRefreshBeforeDriftEscalation: true
 };

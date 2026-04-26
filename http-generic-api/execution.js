@@ -18,7 +18,11 @@ import {
   ACTIVATION_BOOTSTRAP_CONFIG_RANGE, ACTIVATION_WORKBOOK_CACHE_TTL_SECONDS,
   ACTIVATION_BOOTSTRAP_ROW_CACHE_TTL_SECONDS, ACTIVATION_SHEETS_429_BACKOFF_SECONDS
 } from "./config.js";
-import { policyValue, policyList } from "./registryResolution.js";
+import {
+  policyValue,
+  policyList,
+  resolveEndpoint as resolveEndpointStrict
+} from "./registryResolution.js";
 import {
   getCachedValue,
   setCachedValue,
@@ -1547,58 +1551,7 @@ export function resolveAction(rows, parentActionKey) {
 }
 
 export function resolveEndpoint(rows, parentActionKey, endpointKey) {
-  const matches = rows.filter(
-    r =>
-      r.parent_action_key === parentActionKey &&
-      r.endpoint_key === endpointKey
-  );
-
-  debugLog(
-    "ENDPOINT_RESOLUTION_REQUEST:",
-    JSON.stringify({
-      parent_action_key: parentActionKey,
-      endpoint_key: endpointKey,
-      match_count: matches.length
-    })
-  );
-
-  if (!matches.length) {
-    const err = new Error(`Endpoint not found: ${endpointKey}`);
-    err.code = "endpoint_not_found";
-    err.status = 403;
-    throw err;
-  }
-
-  const activeReady = matches.find(
-    r =>
-      String(r.status || "").trim().toLowerCase() === "active" &&
-      String(r.execution_readiness || "").trim().toLowerCase() === "ready"
-  );
-
-  const endpoint = activeReady || matches[0];
-
-  debugLog(
-    "ENDPOINT_RESOLUTION_SELECTED:",
-    JSON.stringify(getEndpointExecutionSnapshot(endpoint))
-  );
-
-  if (String(endpoint.status || "").trim().toLowerCase() !== "active") {
-    const err = new Error(`Endpoint is not active: ${endpointKey}`);
-    err.code = "endpoint_inactive";
-    err.status = 403;
-    throw err;
-  }
-
-  if (
-    String(endpoint.execution_readiness || "").trim().toLowerCase() !== "ready"
-  ) {
-    const err = new Error(`Endpoint is not execution-ready: ${endpointKey}`);
-    err.code = "endpoint_not_ready";
-    err.status = 403;
-    throw err;
-  }
-
-  return endpoint;
+  return resolveEndpointStrict(rows, parentActionKey, endpointKey, {});
 }
 
 export function isDelegatedTransportTarget(endpoint = {}) {

@@ -23,6 +23,17 @@ const DEFAULT_MAX_CHUNK_READS_PER_CYCLE = 10;
 const DEFAULT_CHUNK_DELAY_MS = 150;
 const DEFAULT_CYCLE_DELAY_MS = 400;
 
+function assertExplicitRange(range) {
+  const normalized = String(range || "").trim();
+  if (!normalized) {
+    const err = new Error("Missing required Sheets range — no fallback or default allowed.");
+    err.code = "missing_required_range_param";
+    err.status = 400;
+    throw err;
+  }
+  return normalized;
+}
+
 const cache = {
   ranges: new Map(),
   sheetMaps: new Map(),
@@ -178,13 +189,14 @@ export async function getGoogleClientsForSpreadsheet(spreadsheetId) {
 }
 
 export async function fetchRange(sheets, range, readPolicy = READ_POLICIES.CACHED_NORMAL) {
-  const cacheKey = `${REGISTRY_SPREADSHEET_ID}:${range}`;
+  const explicitRange = assertExplicitRange(range);
+  const cacheKey = `${REGISTRY_SPREADSHEET_ID}:${explicitRange}`;
   const cached = getFromCache(cache.ranges, cacheKey, readPolicy);
   if (cached) return cached;
 
   const response = await executeWithRetry(() => sheets.spreadsheets.values.get({
     spreadsheetId: REGISTRY_SPREADSHEET_ID,
-    range
+    range: explicitRange
   }));
 
   const data = response.data.values || [];

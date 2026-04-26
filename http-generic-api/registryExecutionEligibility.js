@@ -34,7 +34,8 @@ const GOOGLE_WORKSPACE_ENDPOINT_GUARDS = {
   getSheetValues: {
     providerDomains: ["sheets.googleapis.com"],
     method: "GET",
-    pathIncludes: ["/v4/spreadsheets/", "/values/"]
+    pathIncludes: ["/v4/spreadsheets/", "/values/"],
+    exactPath: "/v4/spreadsheets/{spreadsheetId}/values/{range}"
   },
   appendSheetValues: {
     providerDomains: ["sheets.googleapis.com"],
@@ -206,6 +207,17 @@ export function validateEndpointRowConsistency(row = {}, expected = {}) {
         expected: `ends_with ${guard.pathEndsWith}`,
         actual: normalizeText(row.endpoint_path_or_function || row.path)
       });
+    }
+
+    if (guard.exactPath) {
+      const exactExpected = normalizeLower(guard.exactPath);
+      if (path && path !== exactExpected) {
+        mismatches.push({
+          field: "endpoint_path_or_function",
+          expected: guard.exactPath,
+          actual: normalizeText(row.endpoint_path_or_function || row.path)
+        });
+      }
     }
   }
 
