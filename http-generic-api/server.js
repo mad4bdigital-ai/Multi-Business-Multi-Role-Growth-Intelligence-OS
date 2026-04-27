@@ -206,7 +206,8 @@ import {
   getGoogleClientsForSpreadsheet as getGoogleClientsForSpreadsheetBase,
   fetchRange as fetchRangeBase,
   fetchChunkedTable as fetchChunkedTableBase,
-  assertSheetExistsInSpreadsheet as assertSheetExistsInSpreadsheetBase
+  assertSheetExistsInSpreadsheet as assertSheetExistsInSpreadsheetBase,
+  clearFetchCache
 } from "./googleSheets.js";
 import {
   loadSiteRuntimeInventoryRegistry as loadSiteRuntimeInventoryRegistryCore,
@@ -2015,6 +2016,7 @@ async function getRegistry() {
 }
 
 async function reloadRegistry() {
+  clearFetchCache();
   return await fetchFromGoogleSheets();
 }
 

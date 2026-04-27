@@ -40,6 +40,12 @@ const cache = {
   shapes: new Map()
 };
 
+export function clearFetchCache() {
+  cache.ranges.clear();
+  cache.sheetMaps.clear();
+  cache.shapes.clear();
+}
+
 function getFromCache(map, key, policy) {
   if (policy === READ_POLICIES.VALIDATION_BYPASS || policy === READ_POLICIES.FORCED_REFRESH) {
     return null; // bypass cache
