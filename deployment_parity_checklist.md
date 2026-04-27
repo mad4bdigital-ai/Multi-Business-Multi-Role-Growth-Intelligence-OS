@@ -9,7 +9,7 @@ This checklist distinguishes four verification layers that must all pass before 
 
 These pass automatically in CI on every push/PR:
 
-- [ ] `npm test` passes from `http-generic-api/` (168+ tests across utility, job runner, execution routing, connector, route-level, and WordPress suites)
+- [ ] `npm test` passes from `http-generic-api/` (336+ assertions across 17 test files: utility, job runner, execution routing, connectors, routes, activation bootstrap cache, Google Sheets chunking, sheets range drift, starter authority surfaces, transport governance, activation classification, activation response, governed activation runner, registry alignment validator, logic switching, and WordPress)
 - [ ] `npm run validate` passes from `http-generic-api/` (104+ architecture checks)
 - [ ] All `.js` modules pass `node --check`
 - [ ] No new imports from removed or renamed modules

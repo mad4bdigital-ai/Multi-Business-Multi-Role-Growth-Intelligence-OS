@@ -46,6 +46,29 @@ SSH transport logic, credential resolution internals.
 
 ---
 
+## resolveLogicPointerContext.js
+
+### Public exports
+
+#### `resolveLogicPointerContext(input, deps)`
+- **Purpose:** Resolve which logic document (canonical or governed legacy) is active for a given logic family/id, following the 6-step orchestration rule from `canonicals/system_bootstrap/01_logic_pointer_knowledge.md`.
+- **Input:** `{ logic_id, logic_family, require_knowledge }` — at least one of `logic_id` or `logic_family` must be non-empty.
+- **Deps:** `{ getPointerRow(id), isRollbackAuthorized(id)?, getKnowledgeProfile(id)? }` — all injected, none global.
+- **Returns:** `{ ok, state, blocked_reason?, knowledge? }`
+  - `state` always includes: `logic_pointer_surface_id`, `logic_pointer_resolution_status`, `resolved_logic_doc_id`, `resolved_logic_doc_mode`, `canonical_status`, `active_pointer`, `legacy_doc_retained`, `rollback_available`
+  - `knowledge` present when `require_knowledge: true` and a profile was found
+- **Resolution priority:** rollback check first (overrides `canonical_active`), then `canonical_active`, then `legacy_recovery`. No valid path → `degraded`.
+
+#### `guardDirectLegacyExecution(pointerRow, rollbackAuthorized)`
+- **Purpose:** Block direct legacy execution when the canonical pointer is active and no governed rollback is authorized.
+- **Returns:** `{ blocked: true, reason }` or `{ blocked: false }`
+- **Note:** Called before any legacy document is executed directly. Canonical-active with no rollback auth always blocks.
+
+### Internal (not exported)
+All intermediate evidence construction and status-string normalization are private.
+
+---
+
 ## Dispatch entrypoint
 
 Both connectors are invoked exclusively via `dispatchEndpointKeyExecution` in `jobRunner.js`:

@@ -17,6 +17,17 @@ Policy-enforced HTTP executor.
 - Rejects caller-supplied `Authorization`
 - Blocks `oauth_gpt_action` on this transport and requires native connector path
 
+## Key runtime modules
+
+- `server.js` — Express route surface and top-level orchestration
+- `resolveLogicPointerContext.js` — canonical logic pointer resolution (`resolveLogicPointerContext`, `guardDirectLegacyExecution`)
+- `registryResolution.js`, `registrySheets.js`, `registryMutations.js` — registry-backed routing and execution control
+- `mutationGovernance.js`, `governedChangeControl.js`, `governedSheetWrites.js` — governed writeback and mutation control
+- `normalization.js` — canonical payload normalization for all A–H domains
+- `wordpress/` — 16 phase modules (A–P) for governed site migration
+
+Test suite: 336 assertions across 17 test files (`npm test`). Architecture checks: `npm run validate`.
+
 ## Required env
 - `REGISTRY_SPREADSHEET_ID`
 - optional:

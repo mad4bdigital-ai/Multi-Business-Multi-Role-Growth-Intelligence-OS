@@ -72,7 +72,7 @@ These documents are the real architecture spine of the project.
 | `operations` | System context, monitoring, writeback rules |
 | `wordpress_api` | WordPress state, API inventory, credential resolution |
 
-The root schema enforces `additionalProperties: false` and all 92 required fields. The root is now about 41 KB after moving large domain blocks into `schemas/`. Validate schema references with `node validate-memory-schema.mjs`.
+The root schema enforces `additionalProperties: false` and all 99 required fields. The root is now about 41 KB after moving large domain blocks into `schemas/`. Validate schema references with `node validate-memory-schema.mjs`.
 
 ### Registry-centered authority layer
 
@@ -101,6 +101,7 @@ That subtree currently contains:
 - connector support modules
 - governed registry and writeback helpers
 - async job orchestration
+- `resolveLogicPointerContext.js` — canonical logic pointer resolution and governed legacy rollback guard
 - a modularized WordPress migration subsystem
 
 ### Connector and subsystem layer
@@ -131,7 +132,7 @@ Current state:
 - `http-generic-api/auth.js` - Google OAuth scope resolution, policy enforcement, and resilience helpers; fully wired
 - `http-generic-api/driveFileLoader.js` - schema and OAuth config loader with `supportsAllDrives: true` for shared-drive artifact reads
 - governed sink handling for `Execution Log Unified` and `JSON Asset Registry` is stable
-- 206 automated tests passing across 10 suites: utility, job runner, execution routing, connectors, routes, activation bootstrap cache, transport governance, activation classification, activation response, and WordPress
+- 336 assertions passing across 17 test files: utility, job runner, execution routing, connectors, routes, activation bootstrap cache, Google Sheets chunking, sheets range drift, starter authority surfaces, transport governance, activation classification, activation response, governed activation runner, registry alignment validator, logic switching smoke, and WordPress
 - `/health` reports degraded dependency truth for Redis/BullMQ instead of assuming queue connectivity
 - async job submission returns `503` when the queue backend cannot accept work (safely rejects to prevent job loss)
 - runtime instances can run in API-only mode with `QUEUE_WORKER_ENABLED=FALSE`, or connect to Memorystore/Upstash/Hostinger Redis for background workers
@@ -244,7 +245,7 @@ The validated route requires `base_branch` and a different `branch`. It creates 
 All 9 upgrade phases are complete. The project is in a production-ready, fully governed state.
 
 For ongoing operations:
-- from `http-generic-api/`, run `npm test` after every code change (206 tests across 10 suites)
+- from `http-generic-api/`, run `npm test` after every code change (336 assertions across 17 test files)
 - from `http-generic-api/`, run `npm run validate` to check architecture invariants
 - run `node validate-memory-schema.mjs` after memory schema changes
 - from `http-generic-api/`, run `npm run verify` (with `RUNTIME_BASE_URL`) after every deployment - see [`runtime_confirmation_procedure.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/runtime_confirmation_procedure.md>)

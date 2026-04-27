@@ -308,6 +308,20 @@ Owns:
 - Hosting Account Registry lookup for Hostinger runtime/SSH context
 - runtime-read endpoint support
 
+### Logic pointer resolution boundary
+
+- [`http-generic-api/resolveLogicPointerContext.js`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api/resolveLogicPointerContext.js>)
+
+Owns:
+- canonical 6-step logic pointer resolution from `surface.logic_canonical_pointer_registry`
+- rollback-first resolution ordering: governed rollback overrides `canonical_active`
+- knowledge profile chaining (read after pointer resolution, not before)
+- `guardDirectLegacyExecution` — blocks direct legacy execution when canonical pointer is active and no rollback is authorized
+
+Public exports:
+- `resolveLogicPointerContext(input, deps)` — returns `{ ok, state, blocked_reason?, knowledge? }`
+- `guardDirectLegacyExecution(pointerRow, rollbackAuthorized)` — returns `{ blocked, reason? }`
+
 ## 6. WordPress migration subsystem boundary
 
 ### Barrel and shared boundary
@@ -375,7 +389,7 @@ Current important authority surfaces:
 
 ## 8. Schema boundary
 
-`memory_schema.json` is the persistent state contract root. It is decomposed into 11 domain sub-schemas under `schemas/`, each containing the relevant `$defs`:
+`memory_schema.json` is the persistent state contract root. It is decomposed into 12 domain sub-schemas under `schemas/`, each containing the relevant `$defs`:
 
 | File | Defs | Size |
 |---|---|---|
@@ -385,13 +399,14 @@ Current important authority surfaces:
 | `schemas/execution.schema.json` | 12 | 39 KB |
 | `schemas/analytics.schema.json` | 17 | 20 KB |
 | `schemas/governance.schema.json` | 3 | 4.4 KB |
+| `schemas/logic_knowledge.schema.json` | — | — |
 | `schemas/repair_audit.schema.json` | 11 | 34 KB |
 | `schemas/routing_transport.schema.json` | 2 | 7.7 KB |
-| `schemas/graph_addition.schema.json` | 9 | 15 KB |
+| `schemas/graph_addition.schema.json` | 16 | 17 KB |
 | `schemas/operations.schema.json` | 13 | 125 KB |
 | `schemas/wordpress_api.schema.json` | 3 | 6 KB |
 
-Root retains 123 properties and 92 required fields. All 169 `$ref` values resolve.
+Root retains 130 properties and 99 required fields. All `$ref` values resolve.
 
 ## 9. Immediate decomposition opportunities
 
