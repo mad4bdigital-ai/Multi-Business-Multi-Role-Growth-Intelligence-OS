@@ -303,7 +303,9 @@ if (!VERIFY_EXECUTION_LOG_ROW) {
     "VERIFY_EXECUTION_LOG_ROW is FALSE"
   );
 } else {
-  const latestExecutionLog = await get(EXECUTION_LOG_VERIFY_PATH);
+  const latestExecutionLog = await get(EXECUTION_LOG_VERIFY_PATH, {
+    signal: AbortSignal.timeout(20000)
+  });
 
   assert(
     `GET ${EXECUTION_LOG_VERIFY_PATH} responds`,

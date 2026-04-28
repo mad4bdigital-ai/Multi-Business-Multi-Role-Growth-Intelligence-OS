@@ -14,6 +14,25 @@ export function buildGovernanceRoutes(deps) {
 
   const router = Router();
 
+  function normalizeSheetRows(value) {
+    if (Array.isArray(value)) return value;
+    if (Array.isArray(value?.values)) return value.values;
+    if (Array.isArray(value?.data?.values)) return value.data.values;
+    return [];
+  }
+
+  function buildRowObject(headers = [], values = []) {
+    const row = {};
+    for (let i = 0; i < headers.length; i += 1) {
+      row[headers[i]] = values[i] ?? "";
+    }
+    return row;
+  }
+
+  function rowHasAnyValue(values = []) {
+    return Array.isArray(values) && values.some((cell) => String(cell ?? "").trim().length > 0);
+  }
+
   router.get("/governance/execution-log-latest", requireBackendApiKey, async (_req, res) => {
     try {
       const registry = await getRegistry();
@@ -23,38 +42,51 @@ export function buildGovernanceRoutes(deps) {
         requireEnv("REGISTRY_SPREADSHEET_ID");
 
       const gid = "1200939177";
-      const headerRange = "'Execution Log Unified'!A1:AZ2";
-      const tailRange = "'Execution Log Unified'!A:AZ";
+      const headerRange = "'Execution Log Unified'!A1:AZ1";
+      const tailWindowRange = "'Execution Log Unified'!A2:AZ200";
 
-      const [headerRows, allRows] = await Promise.all([
+      const [headerRowsRaw, tailRowsRaw] = await Promise.all([
         getSheetValues(spreadsheetId, headerRange),
-        getSheetValues(spreadsheetId, tailRange)
+        getSheetValues(spreadsheetId, tailWindowRange)
       ]);
 
+      const headerRows = normalizeSheetRows(headerRowsRaw);
+      const tailRows = normalizeSheetRows(tailRowsRaw);
       const headers = Array.isArray(headerRows?.[0]) ? headerRows[0] : [];
-      const rows = Array.isArray(allRows) ? allRows : [];
 
-      if (!headers.length || rows.length < 2) {
+      if (!headers.length) {
         return res.status(404).json({
           ok: false,
           error: {
-            code: "execution_log_latest_row_not_found",
-            message: "Execution Log Unified does not yet contain a readable latest row."
+            code: "execution_log_headers_not_found",
+            message: "Execution Log Unified headers are not readable."
           }
         });
       }
 
-      const latestValues = rows[rows.length - 1] || [];
-      const row = {};
-      for (let i = 0; i < headers.length; i++) {
-        row[headers[i]] = latestValues[i] ?? "";
+      const nonEmptyTailRows = tailRows.filter((values) => rowHasAnyValue(values));
+      const latestValues = nonEmptyTailRows.length
+        ? nonEmptyTailRows[nonEmptyTailRows.length - 1]
+        : null;
+
+      if (!latestValues) {
+        return res.status(404).json({
+          ok: false,
+          error: {
+            code: "execution_log_latest_row_not_found",
+            message: "Execution Log Unified does not yet contain a readable latest row in the bounded tail window."
+          }
+        });
       }
+
+      const row = buildRowObject(headers, latestValues);
 
       return res.status(200).json({
         ok: true,
         surface: "Execution Log Unified",
         gid,
-        row_index_1_based: rows.length,
+        bounded_tail_window: "A2:AZ200",
+        row_index_1_based: null,
         row
       });
     } catch (err) {
