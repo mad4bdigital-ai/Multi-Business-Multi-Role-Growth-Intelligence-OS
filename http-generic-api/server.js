@@ -752,6 +752,77 @@ function normalizeEvidenceList(value = "") {
   return String(value || "").trim();
 }
 
+function splitPipeSemicolonOrComma(value = "") {
+  return String(value || "").trim().split(/[|;,]/).map(s => s.trim()).filter(Boolean);
+}
+
+function buildEngineEvidenceFromWorkflow({
+  selectedWorkflowRow,
+  engineRegistryRows,
+  used_engine_names,
+  used_engine_registry_refs,
+  used_engine_file_ids,
+  engine_resolution_status,
+  engine_association_status
+} = {}) {
+  if (used_engine_names || used_engine_registry_refs || used_engine_file_ids) {
+    return {
+      used_engine_names: used_engine_names ?? "",
+      used_engine_registry_refs: used_engine_registry_refs ?? "",
+      used_engine_file_ids: used_engine_file_ids ?? "",
+      engine_resolution_status: engine_resolution_status ?? "",
+      engine_association_status: engine_association_status ?? "unknown"
+    };
+  }
+
+  const rawEngines =
+    selectedWorkflowRow?.["Mapped Engine(s)"] ??
+    selectedWorkflowRow?.mapped_engines ??
+    selectedWorkflowRow?.mapped_engines_raw ??
+    "";
+
+  const engineNames = splitPipeSemicolonOrComma(rawEngines);
+  if (!engineNames.length) {
+    return {
+      used_engine_names: "",
+      used_engine_registry_refs: "",
+      used_engine_file_ids: "",
+      engine_resolution_status: engine_resolution_status ?? "",
+      engine_association_status: engine_association_status ?? "unknown"
+    };
+  }
+
+  const rows = Array.isArray(engineRegistryRows) ? engineRegistryRows : [];
+  const resolvedNames = [];
+  const resolvedRefs = [];
+  const resolvedFileIds = [];
+
+  for (const name of engineNames) {
+    const row = rows.find(
+      r => String(r.engine_name || "").trim().toLowerCase() === name.toLowerCase()
+    );
+    if (row) {
+      resolvedNames.push(String(row.engine_name || name).trim());
+      resolvedRefs.push(String(row.engine_name || "").trim());
+      resolvedFileIds.push(String(row.file_id || "").trim());
+    } else {
+      resolvedNames.push(name);
+      resolvedRefs.push("");
+      resolvedFileIds.push("");
+    }
+  }
+
+  const allResolved = resolvedRefs.every(r => r !== "");
+
+  return {
+    used_engine_names: resolvedNames.join("|"),
+    used_engine_registry_refs: resolvedRefs.filter(Boolean).join("|"),
+    used_engine_file_ids: resolvedFileIds.filter(Boolean).join("|"),
+    engine_resolution_status: allResolved ? "resolved" : "partially_resolved",
+    engine_association_status: resolvedNames.length > 0 ? "associated" : "unknown"
+  };
+}
+
 function classifyExecutionResult(args = {}) {
   if (args.oversized) return "oversized_live";
   if (args.error_code === "worker_timeout") return "timeout_live";
@@ -1308,6 +1379,15 @@ async function performUniversalServerWriteback(input = {}) {
 }
 
 async function logValidationRunWriteback(input = {}) {
+  const derivedEngineEvidence = buildEngineEvidenceFromWorkflow({
+    selectedWorkflowRow: input.selectedWorkflowRow,
+    engineRegistryRows: input.engineRegistryRows,
+    used_engine_names: input.used_engine_names,
+    used_engine_registry_refs: input.used_engine_registry_refs,
+    used_engine_file_ids: input.used_engine_file_ids,
+    engine_resolution_status: input.engine_resolution_status,
+    engine_association_status: input.engine_association_status
+  });
   return await performUniversalServerWriteback({
     mode: "validation",
     job_id: undefined,
@@ -1340,16 +1420,21 @@ async function logValidationRunWriteback(input = {}) {
     logic_rollback_status: input.logic_rollback_status,
     logic_association_status: input.logic_association_status,
 
-    // governed engine evidence
+    // governed engine evidence (auto-derived from workflow context when not explicit)
+    ...derivedEngineEvidence
+  });
+}
+
+async function logPartialHarvestWriteback(input = {}) {
+  const derivedEngineEvidence = buildEngineEvidenceFromWorkflow({
+    selectedWorkflowRow: input.selectedWorkflowRow,
+    engineRegistryRows: input.engineRegistryRows,
     used_engine_names: input.used_engine_names,
     used_engine_registry_refs: input.used_engine_registry_refs,
     used_engine_file_ids: input.used_engine_file_ids,
     engine_resolution_status: input.engine_resolution_status,
     engine_association_status: input.engine_association_status
   });
-}
-
-async function logPartialHarvestWriteback(input = {}) {
   return await performUniversalServerWriteback({
     mode: "partial_harvest",
     job_id: input.job_id,
@@ -1382,16 +1467,21 @@ async function logPartialHarvestWriteback(input = {}) {
     logic_rollback_status: input.logic_rollback_status,
     logic_association_status: input.logic_association_status,
 
-    // governed engine evidence
+    // governed engine evidence (auto-derived from workflow context when not explicit)
+    ...derivedEngineEvidence
+  });
+}
+
+async function logRetryWriteback(input = {}) {
+  const derivedEngineEvidence = buildEngineEvidenceFromWorkflow({
+    selectedWorkflowRow: input.selectedWorkflowRow,
+    engineRegistryRows: input.engineRegistryRows,
     used_engine_names: input.used_engine_names,
     used_engine_registry_refs: input.used_engine_registry_refs,
     used_engine_file_ids: input.used_engine_file_ids,
     engine_resolution_status: input.engine_resolution_status,
     engine_association_status: input.engine_association_status
   });
-}
-
-async function logRetryWriteback(input = {}) {
   return await performUniversalServerWriteback({
     mode: "async",
     job_id: input.job_id,
@@ -1424,12 +1514,8 @@ async function logRetryWriteback(input = {}) {
     logic_rollback_status: input.logic_rollback_status,
     logic_association_status: input.logic_association_status,
 
-    // governed engine evidence
-    used_engine_names: input.used_engine_names,
-    used_engine_registry_refs: input.used_engine_registry_refs,
-    used_engine_file_ids: input.used_engine_file_ids,
-    engine_resolution_status: input.engine_resolution_status,
-    engine_association_status: input.engine_association_status
+    // governed engine evidence (auto-derived from workflow context when not explicit)
+    ...derivedEngineEvidence
   });
 }
 
