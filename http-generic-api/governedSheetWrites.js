@@ -1,3 +1,5 @@
+import { cacheInvalidate } from "./registryCache.js";
+
 export function detectUnsafeColumnsFromRow2(header = [], row2 = []) {
   const unsafe = new Set();
 
@@ -341,8 +343,9 @@ export async function performGovernedSheetMutation(args = {}, deps = {}) {
   );
 
   if (mutationType === "append") {
+    let result;
     if (sheetName === deps.executionLogUnifiedSheetName) {
-      return appendExecutionLogUnifiedRowGoverned(
+      result = await appendExecutionLogUnifiedRowGoverned(
         {
           sheets,
           spreadsheetId,
@@ -353,24 +356,26 @@ export async function performGovernedSheetMutation(args = {}, deps = {}) {
         },
         deps
       );
+    } else {
+      result = await appendSheetRowGoverned(
+        {
+          sheets,
+          spreadsheetId,
+          sheetName,
+          header,
+          safeColumns,
+          rowObject,
+          preflight
+        },
+        deps
+      );
     }
-
-    return appendSheetRowGoverned(
-      {
-        sheets,
-        spreadsheetId,
-        sheetName,
-        header,
-        safeColumns,
-        rowObject,
-        preflight
-      },
-      deps
-    );
+    await cacheInvalidate(sheetName);
+    return result;
   }
 
   if (mutationType === "update" || mutationType === "repair") {
-    return updateSheetRowGoverned(
+    const result = await updateSheetRowGoverned(
       {
         sheets,
         spreadsheetId,
@@ -383,16 +388,20 @@ export async function performGovernedSheetMutation(args = {}, deps = {}) {
       },
       deps
     );
+    await cacheInvalidate(sheetName);
+    return result;
   }
 
   if (mutationType === "delete") {
-    return deleteSheetRowGoverned({
+    const result = await deleteSheetRowGoverned({
       sheets,
       spreadsheetId,
       sheetName,
       targetRowNumber: preflight.targetRowNumber,
       preflight
     });
+    await cacheInvalidate(sheetName);
+    return result;
   }
 
   const err = new Error(`Unsupported governed mutation type: ${mutationType}`);

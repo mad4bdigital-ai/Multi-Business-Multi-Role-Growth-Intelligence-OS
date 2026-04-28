@@ -1,3 +1,5 @@
+import { cacheGet, cacheSet } from "./registryCache.js";
+
 function localFetchRange(sheets, spreadsheetId, range) {
   return sheets.spreadsheets.values
     .get({
@@ -10,10 +12,17 @@ function localFetchRange(sheets, spreadsheetId, range) {
 async function readRegistryTable(
   sheets,
   deps,
-  { spreadsheetId, sheetName, columnEnd, dataEndRow = 2000, columnStart = "A" }
+  { spreadsheetId, sheetName, columnEnd, dataEndRow = 2000, columnStart = "A", skipCache = false }
 ) {
+  if (!skipCache) {
+    const cached = await cacheGet(sheetName);
+    if (cached) return cached;
+    console.warn(`REGISTRY_CACHE_MISS: ${sheetName} — reading from Sheets`);
+  }
+
+  let rows;
   if (typeof deps.fetchChunkedTable === "function") {
-    return deps.fetchChunkedTable(sheets, {
+    rows = await deps.fetchChunkedTable(sheets, {
       spreadsheetId,
       sheetName,
       columnStart,
@@ -22,11 +31,16 @@ async function readRegistryTable(
       dataStartRow: 2,
       dataEndRow
     });
+  } else {
+    const normalizedSheetName = String(sheetName || "").trim().replace(/'/g, "''");
+    const range = `'${normalizedSheetName}'!${columnStart}1:${columnEnd}${dataEndRow}`;
+    rows = await localFetchRange(sheets, spreadsheetId, range);
   }
 
-  const normalizedSheetName = String(sheetName || "").trim().replace(/'/g, "''");
-  const range = `'${normalizedSheetName}'!${columnStart}1:${columnEnd}${dataEndRow}`;
-  return localFetchRange(sheets, spreadsheetId, range);
+  if (!skipCache) {
+    await cacheSet(sheetName, rows);
+  }
+  return rows;
 }
 
 export async function getRegistrySurfaceCatalogRowBySurfaceId(surfaceId = "", deps = {}) {
@@ -354,7 +368,8 @@ export async function readExecutionPolicyRegistryLive(deps = {}) {
     spreadsheetId: REGISTRY_SPREADSHEET_ID,
     sheetName: EXECUTION_POLICY_SHEET,
     columnEnd: "H",
-    dataEndRow: 2000
+    dataEndRow: 2000,
+    skipCache: true
   });
   if (!values.length) throw registryError("Execution Policy Registry");
 
