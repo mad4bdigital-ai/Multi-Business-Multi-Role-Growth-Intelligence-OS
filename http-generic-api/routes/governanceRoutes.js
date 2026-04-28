@@ -33,35 +33,44 @@ export function buildGovernanceRoutes(deps) {
     return Array.isArray(values) && values.some((cell) => String(cell ?? "").trim().length > 0);
   }
 
-  async function getSheetValuesWithRangeFallback(spreadsheetId, preferredRange, fallbackRange) {
-    try {
-      return await getSheetValues(spreadsheetId, preferredRange);
-    } catch (err) {
-      const message = String(err?.message || "");
-      if (!message.includes("Unable to parse range") || !fallbackRange) {
-        throw err;
-      }
-      return await getSheetValues(spreadsheetId, fallbackRange);
-    }
+  function quoteSheetName(sheetName = "") {
+    const normalized = String(sheetName || "").trim();
+    const escaped = normalized.replace(/'/g, "''");
+    return `'${escaped}'`;
+  }
+
+  function resolveExecutionLogSpreadsheetId(registry = {}) {
+    return (
+      process.env.EXECUTION_LOG_UNIFIED_SPREADSHEET_ID ||
+      registry?.execution_log_unified_spreadsheet_id ||
+      registry?.registry_spreadsheet_id ||
+      process.env.REGISTRY_SPREADSHEET_ID ||
+      requireEnv("REGISTRY_SPREADSHEET_ID")
+    );
+  }
+
+  function resolveExecutionLogSheetName(registry = {}) {
+    return (
+      process.env.EXECUTION_LOG_UNIFIED_SHEET_NAME ||
+      registry?.execution_log_unified_sheet_name ||
+      "Execution Log Unified"
+    );
   }
 
   router.get("/governance/execution-log-latest", requireBackendApiKey, async (_req, res) => {
     try {
       const registry = await getRegistry();
-      const spreadsheetId =
-        registry?.registry_spreadsheet_id ||
-        process.env.REGISTRY_SPREADSHEET_ID ||
-        requireEnv("REGISTRY_SPREADSHEET_ID");
+      const spreadsheetId = resolveExecutionLogSpreadsheetId(registry);
+      const sheetName = resolveExecutionLogSheetName(registry);
+      const quotedSheetName = quoteSheetName(sheetName);
 
       const gid = "1200939177";
-      const headerRange = "Execution Log Unified!A1:AZ1";
-      const tailWindowRange = "Execution Log Unified!A2:AZ200";
-      const legacyHeaderRange = "'Execution Log Unified'!A1:AZ1";
-      const legacyTailWindowRange = "'Execution Log Unified'!A2:AZ200";
+      const headerRange = `${quotedSheetName}!A1:AZ1`;
+      const tailWindowRange = `${quotedSheetName}!A2:AZ200`;
 
       const [headerRowsRaw, tailRowsRaw] = await Promise.all([
-        getSheetValuesWithRangeFallback(spreadsheetId, headerRange, legacyHeaderRange),
-        getSheetValuesWithRangeFallback(spreadsheetId, tailWindowRange, legacyTailWindowRange)
+        getSheetValues(spreadsheetId, headerRange),
+        getSheetValues(spreadsheetId, tailWindowRange)
       ]);
 
       const headerRows = normalizeSheetRows(headerRowsRaw);
@@ -98,6 +107,8 @@ export function buildGovernanceRoutes(deps) {
       return res.status(200).json({
         ok: true,
         surface: "Execution Log Unified",
+        spreadsheet_id: spreadsheetId,
+        sheet_name: sheetName,
         gid,
         bounded_tail_window: "A2:AZ200",
         row_index_1_based: null,
@@ -108,7 +119,13 @@ export function buildGovernanceRoutes(deps) {
         ok: false,
         error: {
           code: err?.code || "execution_log_latest_read_failed",
-          message: err?.message || "Failed to read latest Execution Log Unified row."
+          message: err?.message || "Failed to read latest Execution Log Unified row.",
+          details: {
+            execution_log_unified_spreadsheet_id:
+              process.env.EXECUTION_LOG_UNIFIED_SPREADSHEET_ID || null,
+            registry_spreadsheet_id:
+              process.env.REGISTRY_SPREADSHEET_ID || null
+          }
         }
       });
     }

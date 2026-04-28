@@ -327,7 +327,11 @@ if (!VERIFY_EXECUTION_LOG_ROW) {
 
   assert(
     "execution-log latest row payload exists",
-    !!row && typeof row === "object",
+    latestExecutionLog.status === 200 &&
+      latestExecutionLog.body?.ok === true &&
+      !!row &&
+      typeof row === "object" &&
+      !row.error,
     JSON.stringify(latestExecutionLog.body).slice(0, 160)
   );
 
