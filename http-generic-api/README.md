@@ -19,14 +19,17 @@ Policy-enforced HTTP executor.
 
 ## Key runtime modules
 
-- `server.js` — Express route surface and top-level orchestration
-- `resolveLogicPointerContext.js` — canonical logic pointer resolution (`resolveLogicPointerContext`, `guardDirectLegacyExecution`)
+- `server.js` — Express route surface, top-level orchestration, and engine evidence auto-derivation
+- `execution.js` — execution-result classification, `Execution Log Unified` row shaping (56 columns), logic/engine evidence normalizers, `buildEngineEvidenceFromWorkflow`, `getWorkflowRowByKey`, `getActiveEngineRegistryRows`, and writeback wrappers
+- `resolveLogicPointerContext.js` — canonical logic pointer resolution (`resolveLogicPointerContext`, `guardDirectLegacyExecution`); emits sink-compatible evidence fields directly
+- `sinkOrchestration.js` — universal writeback orchestration accepting full logic and engine evidence payloads
+- `registryCache.js` — Redis-backed registry cache with configurable TTL; transparent to callers of `registrySheets.js`
 - `registryResolution.js`, `registrySheets.js`, `registryMutations.js` — registry-backed routing and execution control
 - `mutationGovernance.js`, `governedChangeControl.js`, `governedSheetWrites.js` — governed writeback and mutation control
 - `normalization.js` — canonical payload normalization for all A–H domains
 - `wordpress/` — 16 phase modules (A–P) for governed site migration
 
-Test suite: 336 assertions across 17 test files (`npm test`). Architecture checks: `npm run validate`.
+Test suite: 394 assertions across 21 test files (`npm test`). Architecture checks: 173 checks (`npm run validate`).
 
 ## Required env
 - `REGISTRY_SPREADSHEET_ID`
@@ -37,6 +40,7 @@ Test suite: 336 assertions across 17 test files (`npm test`). Architecture check
   - `EXECUTION_POLICY_SHEET`
   - `HOSTING_ACCOUNT_REGISTRY_SHEET`
   - `BACKEND_API_KEY`
+  - `REGISTRY_CACHE_TTL_SECONDS` (default: `600`) — Redis cache TTL for registry sheets; set to `0` to disable caching
   - `JSON_BODY_LIMIT` (default: `20mb`)
   - `JOB_MAX_ATTEMPTS` (default: `3`)
   - `JOB_QUEUE_TICK_MS` (default: `1000`)

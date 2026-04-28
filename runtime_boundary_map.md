@@ -31,6 +31,7 @@ Current role:
 - registry-backed execution orchestration
 - async job route coordination
 - WordPress migration entrypoint coordination
+- engine evidence auto-derivation for writeback wrappers: local copies of `getWorkflowRowByKey`, `getActiveEngineRegistryRows`, and `buildEngineEvidenceFromWorkflow` resolve workflow rows from the cached registry when callers pass `target_workflow` but not `selectedWorkflowRow`
 
 Current risk:
 - too many authority boundaries remain concentrated here
@@ -245,16 +246,30 @@ Owns:
 - governed mutation preflight enforcement contract
 - duplicate-candidate summary shaping
 
+### Registry cache boundary
+
+- [`http-generic-api/registryCache.js`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api/registryCache.js>)
+
+Owns:
+- Redis-backed registry cache keyed by sheet name (`registry:<sheetName>`)
+- configurable TTL via `REGISTRY_CACHE_TTL_SECONDS` (default 600 s)
+- graceful degradation when Redis is unavailable (warn and fall through to live read)
+- `cacheGet`, `cacheSet`, `cacheInvalidate` primitives consumed by `registrySheets.js` and `governedSheetWrites.js`
+
+Note: `readExecutionPolicyRegistryLive` always bypasses the cache (`skipCache: true`) — policy enforcement on the write path must see fresh data. Every successful governed sheet mutation triggers `cacheInvalidate` for the affected sheet.
+
 ### Execution result and sink-shaping boundary
 
 - [`http-generic-api/execution.js`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api/execution.js>)
 
 Owns:
-- execution-result classification
-- output summary shaping
-- oversized artifact handling
-- `Execution Log Unified` row shaping
+- execution-result classification, output summary shaping, oversized artifact handling
+- `Execution Log Unified` row shaping — 56 columns (A:BD), including logic evidence (AL:AS) and engine evidence (AT:AX)
 - `JSON Asset Registry` row shaping
+- three normalizer helpers: `normalizeAssociationStatus`, `normalizeResolvedLogicMode`, `normalizeEvidenceList`
+- engine evidence derivation: `buildEngineEvidenceFromWorkflow` — derives `used_engine_names`, `used_engine_registry_refs`, `used_engine_file_ids`, `engine_resolution_status`, and `engine_association_status` from a workflow row and engine registry rows; explicit caller-supplied values always take priority
+- workflow/engine lookup helpers: `getWorkflowRowByKey`, `getActiveEngineRegistryRows`
+- writeback wrappers (exported): `logValidationRunWriteback`, `logPartialHarvestWriteback`, `logRetryWriteback` — each self-heals by looking up `selectedWorkflowRow` from the cached registry via `target_workflow` when not explicitly provided
 
 ### Sink orchestration boundary
 

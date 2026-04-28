@@ -55,7 +55,8 @@ SSH transport logic, credential resolution internals.
 - **Input:** `{ logic_id, logic_family, require_knowledge }` — at least one of `logic_id` or `logic_family` must be non-empty.
 - **Deps:** `{ getPointerRow(id), isRollbackAuthorized(id)?, getKnowledgeProfile(id)? }` — all injected, none global.
 - **Returns:** `{ ok, state, blocked_reason?, knowledge? }`
-  - `state` always includes: `logic_pointer_surface_id`, `logic_pointer_resolution_status`, `resolved_logic_doc_id`, `resolved_logic_doc_mode`, `canonical_status`, `active_pointer`, `legacy_doc_retained`, `rollback_available`
+  - `state` always includes: `logic_pointer_surface_id`, `logic_pointer_resolution_status`, `resolved_logic_doc_id`, `resolved_logic_doc_mode`, `resolved_logic_mode`, `canonical_status`, `active_pointer`, `legacy_doc_retained`, `rollback_available`, `logic_association_status`, `used_logic_id`, `used_logic_name`, `logic_rollback_status`, `logic_knowledge_status`
+  - Sink-compatible fields (`used_logic_id`, `used_logic_name`, `resolved_logic_doc_id`, `resolved_logic_mode`, `logic_pointer_resolution_status`, `logic_knowledge_status`, `logic_rollback_status`, `logic_association_status`) are emitted directly — no call-site translation needed before forwarding to writeback
   - `knowledge` present when `require_knowledge: true` and a profile was found
 - **Resolution priority:** rollback check first (overrides `canonical_active`), then `canonical_active`, then `legacy_recovery`. No valid path → `degraded`.
 
