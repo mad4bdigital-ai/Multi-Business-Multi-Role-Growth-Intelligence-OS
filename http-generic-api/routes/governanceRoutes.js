@@ -42,23 +42,40 @@ export function buildGovernanceRoutes(deps) {
   function buildExecutionLogRangeCandidates(sheetName = "", cells = "A1:AZ1") {
     const normalized = String(sheetName || "").trim();
     const quoted = quoteSheetName(normalized);
-    return [
-      `${quoted}!${cells}`,
-      `${normalized}!${cells}`
-    ].filter(Boolean);
+    const compact = normalized.replace(/\s+/g, " ").trim();
+    return Array.from(
+      new Set(
+        [
+          `${normalized}!${cells}`,
+          `${quoted}!${cells}`,
+          `${compact}!${cells}`,
+          `${quoteSheetName(compact)}!${cells}`
+        ].filter(Boolean)
+      )
+    );
   }
 
-  async function getSheetValuesByCandidateRanges(spreadsheetId, candidateRanges = []) {
-    let lastError = null;
+  async function getSheetValuesByCandidateRanges(getSheetValuesFn, spreadsheetId, candidateRanges = []) {
+    const attempts = [];
     for (const range of candidateRanges) {
       try {
-        const result = await getSheetValues(spreadsheetId, range);
-        return { result, range };
+        const result = await getSheetValuesFn(spreadsheetId, range);
+        attempts.push({ range, ok: true });
+        return { ok: true, range, result, attempts };
       } catch (err) {
-        lastError = err;
+        attempts.push({
+          range,
+          ok: false,
+          code: err?.code || null,
+          message: err?.message || String(err)
+        });
       }
     }
-    throw lastError || new Error("All candidate ranges failed.");
+    const last = attempts[attempts.length - 1] || null;
+    const error = new Error(last?.message || "All candidate ranges failed.");
+    error.code = last?.code || "execution_log_range_candidates_failed";
+    error.details = { attempts };
+    throw error;
   }
 
   function resolveExecutionLogSpreadsheetId(registry = {}) {
@@ -90,8 +107,8 @@ export function buildGovernanceRoutes(deps) {
       const tailRangeCandidates = buildExecutionLogRangeCandidates(sheetName, "A2:AZ200");
 
       const [headerRead, tailRead] = await Promise.all([
-        getSheetValuesByCandidateRanges(spreadsheetId, headerRangeCandidates),
-        getSheetValuesByCandidateRanges(spreadsheetId, tailRangeCandidates)
+        getSheetValuesByCandidateRanges(getSheetValues, spreadsheetId, headerRangeCandidates),
+        getSheetValuesByCandidateRanges(getSheetValues, spreadsheetId, tailRangeCandidates)
       ]);
 
       const headerRowsRaw = headerRead.result;
@@ -135,6 +152,8 @@ export function buildGovernanceRoutes(deps) {
         sheet_name: sheetName,
         header_range_used: headerRead.range,
         tail_range_used: tailRead.range,
+        header_range_attempts: headerRead.attempts,
+        tail_range_attempts: tailRead.attempts,
         gid,
         bounded_tail_window: "A2:AZ200",
         row_index_1_based: null,
@@ -152,7 +171,8 @@ export function buildGovernanceRoutes(deps) {
             execution_log_unified_sheet_name:
               process.env.EXECUTION_LOG_UNIFIED_SHEET_NAME || null,
             registry_spreadsheet_id:
-              process.env.REGISTRY_SPREADSHEET_ID || null
+              process.env.REGISTRY_SPREADSHEET_ID || null,
+            attempts: err?.details?.attempts || []
           }
         }
       });
