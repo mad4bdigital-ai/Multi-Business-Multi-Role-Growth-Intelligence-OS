@@ -55,6 +55,35 @@ export function buildGovernanceRoutes(deps) {
     );
   }
 
+  async function inspectSheetValuesAttempts(getSheetValuesFn, spreadsheetId, candidateRanges = []) {
+    const attempts = [];
+    for (const range of candidateRanges) {
+      try {
+        const result = await getSheetValuesFn(spreadsheetId, range);
+        const values =
+          Array.isArray(result) ? result :
+          Array.isArray(result?.values) ? result.values :
+          Array.isArray(result?.data?.values) ? result.data.values :
+          [];
+        attempts.push({
+          range,
+          ok: true,
+          row_count: Array.isArray(values) ? values.length : 0,
+          first_row_preview: Array.isArray(values?.[0]) ? values[0].slice(0, 8) : []
+        });
+      } catch (err) {
+        attempts.push({
+          range,
+          ok: false,
+          status: err?.status || null,
+          code: err?.code || null,
+          message: err?.message || String(err)
+        });
+      }
+    }
+    return attempts;
+  }
+
   async function getSheetValuesByCandidateRanges(getSheetValuesFn, spreadsheetId, candidateRanges = []) {
     const attempts = [];
     for (const range of candidateRanges) {
@@ -174,6 +203,38 @@ export function buildGovernanceRoutes(deps) {
               process.env.REGISTRY_SPREADSHEET_ID || null,
             attempts: err?.details?.attempts || []
           }
+        }
+      });
+    }
+  });
+
+  router.get("/governance/execution-log-latest-inspect", requireBackendApiKey, async (_req, res) => {
+    try {
+      const registry = await getRegistry();
+      const spreadsheetId = resolveExecutionLogSpreadsheetId(registry);
+      const sheetName = resolveExecutionLogSheetName(registry);
+
+      const headerRangeCandidates = buildExecutionLogRangeCandidates(sheetName, "A1:AZ1");
+      const tailRangeCandidates = buildExecutionLogRangeCandidates(sheetName, "A2:AZ20");
+
+      const [headerAttempts, tailAttempts] = await Promise.all([
+        inspectSheetValuesAttempts(getSheetValues, spreadsheetId, headerRangeCandidates),
+        inspectSheetValuesAttempts(getSheetValues, spreadsheetId, tailRangeCandidates)
+      ]);
+
+      return res.status(200).json({
+        ok: true,
+        spreadsheet_id: spreadsheetId,
+        sheet_name: sheetName,
+        header_attempts: headerAttempts,
+        tail_attempts: tailAttempts
+      });
+    } catch (err) {
+      return res.status(err?.status || 500).json({
+        ok: false,
+        error: {
+          code: err?.code || "execution_log_latest_inspect_failed",
+          message: err?.message || "Failed to inspect execution-log sheet reads."
         }
       });
     }
