@@ -30,6 +30,12 @@ export function resolveLogicPointerContext(input = {}, deps = {}) {
     logic_pointer_resolution_status: "pending",
     resolved_logic_doc_id: "",
     resolved_logic_doc_mode: "",
+    resolved_logic_mode: "",
+    logic_association_status: "associated",
+    used_logic_id: effectiveId,
+    used_logic_name: effectiveId,
+    logic_rollback_status: "not_used",
+    logic_knowledge_status: require_knowledge ? "pending" : "not_required",
     canonical_status: "",
     active_pointer: "",
     legacy_doc_retained: false,
@@ -78,17 +84,23 @@ export function resolveLogicPointerContext(input = {}, deps = {}) {
     // Governed rollback explicitly authorized — legacy permitted regardless of canonical status
     evidence.resolved_logic_doc_id  = String(row.legacy_doc_id || "").trim();
     evidence.resolved_logic_doc_mode = "legacy_recovery";
+    evidence.resolved_logic_mode = "legacy";
     evidence.logic_pointer_resolution_status = "validated";
+    evidence.logic_rollback_status = "used";
   } else if (canonicalStatus === "canonical_active") {
     // Canonical pointer wins — legacy is not used
     evidence.resolved_logic_doc_id  = String(row.canonical_doc_id || "").trim();
     evidence.resolved_logic_doc_mode = "canonical";
+    evidence.resolved_logic_mode = "canonical";
     evidence.logic_pointer_resolution_status = "validated";
+    evidence.logic_rollback_status = rollbackAvailable ? "available_not_used" : "not_available";
   } else if (canonicalStatus === "legacy_recovery") {
     // Pointer explicitly returns legacy mode
     evidence.resolved_logic_doc_id  = String(row.legacy_doc_id || "").trim();
     evidence.resolved_logic_doc_mode = "legacy";
+    evidence.resolved_logic_mode = "legacy";
     evidence.logic_pointer_resolution_status = "validated";
+    evidence.logic_rollback_status = rollbackAvailable ? "available_not_used" : "legacy_path";
   } else {
     // No valid resolution path
     evidence.logic_pointer_resolution_status = "degraded";
@@ -149,16 +161,14 @@ export function resolveLogicPointerContext(input = {}, deps = {}) {
     execution_blocked_until_logic_knowledge_read: !knowledgeComplete
   };
 
-  if (!knowledgeComplete) {
-    return {
-      ...baseResult,
-      ok: false,
-      blocked_reason: "required_logic_knowledge_incomplete",
-      knowledge
-    };
-  }
+  evidence.logic_knowledge_status = knowledgeComplete ? "ready" : "blocked";
 
-  return { ...baseResult, knowledge };
+  return {
+    ...baseResult,
+    ok: knowledgeComplete,
+    blocked_reason: knowledgeComplete ? "" : "required_logic_knowledge_incomplete",
+    knowledge
+  };
 }
 
 /**

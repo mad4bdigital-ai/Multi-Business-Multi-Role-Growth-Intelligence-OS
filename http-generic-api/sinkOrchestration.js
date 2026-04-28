@@ -186,6 +186,28 @@ export async function performUniversalServerWriteback(input = {}, deps = {}) {
     }
   }
 
+  const normalizedUsedEngineNames =
+    input.used_engine_names ??
+    input.engine_chain ??
+    input.engine_names ??
+    input.mapped_engine_names ??
+    "";
+
+  const normalizedUsedEngineRegistryRefs =
+    input.used_engine_registry_refs ??
+    input.engine_registry_refs ??
+    "";
+
+  const normalizedUsedEngineFileIds =
+    input.used_engine_file_ids ??
+    input.engine_file_ids ??
+    "";
+
+  const normalizedResolvedLogicMode =
+    input.resolved_logic_mode ??
+    input.resolved_logic_doc_mode ??
+    "";
+
   const writeback = {
     execution_trace_id,
     job_id: input.job_id,
@@ -238,20 +260,16 @@ export async function performUniversalServerWriteback(input = {}, deps = {}) {
     used_logic_id: input.used_logic_id ?? input.logic_id ?? "",
     used_logic_name: input.used_logic_name ?? input.logic_name ?? "",
     resolved_logic_doc_id: input.resolved_logic_doc_id ?? "",
-    resolved_logic_mode: input.resolved_logic_mode ?? "",
+    resolved_logic_mode: normalizedResolvedLogicMode,
     logic_pointer_resolution_status: input.logic_pointer_resolution_status ?? "",
     logic_knowledge_status: input.logic_knowledge_status ?? "",
     logic_rollback_status: input.logic_rollback_status ?? "",
     logic_association_status: input.logic_association_status ?? "unknown",
 
     // governed engine evidence
-    used_engine_names:
-      input.used_engine_names ??
-      input.engine_chain ??
-      input.engine_names ??
-      "",
-    used_engine_registry_refs: input.used_engine_registry_refs ?? "",
-    used_engine_file_ids: input.used_engine_file_ids ?? "",
+    used_engine_names: normalizedUsedEngineNames,
+    used_engine_registry_refs: normalizedUsedEngineRegistryRefs,
+    used_engine_file_ids: normalizedUsedEngineFileIds,
     engine_resolution_status: input.engine_resolution_status ?? "",
     engine_association_status: input.engine_association_status ?? "unknown"
   };
