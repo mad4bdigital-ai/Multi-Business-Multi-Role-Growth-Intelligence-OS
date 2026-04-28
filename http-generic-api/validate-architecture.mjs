@@ -440,7 +440,8 @@ const EXECUTION_IMPORT_ALLOWLIST = new Set([
   "fix-extractions.mjs",
   "test-execution-log-evidence.mjs",
   "test-engine-evidence-derivation.mjs",
-  "test-engine-evidence-integration.mjs"
+  "test-engine-evidence-integration.mjs",
+  "test-execution-context-evidence.mjs"
 ]);
 
 const executionConsumers = walkFiles(ROOT_DIR)

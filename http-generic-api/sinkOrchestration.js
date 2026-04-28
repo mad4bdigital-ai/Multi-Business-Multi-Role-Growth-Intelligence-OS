@@ -271,7 +271,19 @@ export async function performUniversalServerWriteback(input = {}, deps = {}) {
     used_engine_registry_refs: normalizedUsedEngineRegistryRefs,
     used_engine_file_ids: normalizedUsedEngineFileIds,
     engine_resolution_status: input.engine_resolution_status ?? "",
-    engine_association_status: input.engine_association_status ?? "unknown"
+    engine_association_status: input.engine_association_status ?? "unknown",
+
+    // execution context evidence
+    user_input: input.user_input ?? "",
+    matched_aliases: input.matched_aliases ?? "",
+    route_keys: input.route_keys ?? "",
+    selected_workflows: input.selected_workflows ?? "",
+    engine_chain: input.engine_chain ?? "",
+    execution_mode: input.execution_mode ?? "",
+    decision_trigger: input.decision_trigger ?? "",
+    score_before: input.score_before ?? "",
+    score_after: input.score_after ?? "",
+    performance_delta: input.performance_delta ?? ""
   };
 
   let governedSinkSheetTitles = {

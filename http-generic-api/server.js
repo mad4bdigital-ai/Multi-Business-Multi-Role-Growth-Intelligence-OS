@@ -752,6 +752,70 @@ function normalizeEvidenceList(value = "") {
   return String(value || "").trim();
 }
 
+function joinIfArray(value = "", fallback = "") {
+  if (Array.isArray(value)) {
+    const joined = value.map(v => String(v || "").trim()).filter(Boolean).join("|");
+    return joined || fallback;
+  }
+  const normalized = String(value || "").trim();
+  return normalized || fallback;
+}
+
+function computePerformanceDelta(scoreBefore = "", scoreAfter = "") {
+  const before = Number(String(scoreBefore).trim());
+  const after = Number(String(scoreAfter).trim());
+  if (Number.isFinite(before) && Number.isFinite(after)) {
+    return String(after - before);
+  }
+  return "not_scored";
+}
+
+function buildExecutionContextEvidence(args = {}) {
+  const {
+    userInput = "",
+    matchedAliases = "",
+    routeKeys = "",
+    selectedWorkflows = "",
+    engineChain = "",
+    executionMode = "",
+    decisionTrigger = "",
+    scoreBefore = "",
+    scoreAfter = "",
+    isDirectValidation = false
+  } = args;
+
+  if (isDirectValidation) {
+    return {
+      user_input: String(userInput || "system_validation").trim(),
+      matched_aliases: "not_applicable",
+      route_keys: "direct_validation",
+      selected_workflows: "not_applicable",
+      engine_chain: "not_applicable",
+      execution_mode: "direct_validation",
+      decision_trigger: "system_probe",
+      score_before: "not_scored",
+      score_after: "not_scored",
+      performance_delta: "not_scored"
+    };
+  }
+
+  const normalizedScoreBefore = String(scoreBefore || "").trim();
+  const normalizedScoreAfter = String(scoreAfter || "").trim();
+
+  return {
+    user_input: String(userInput || "").trim(),
+    matched_aliases: joinIfArray(matchedAliases, "not_applicable"),
+    route_keys: joinIfArray(routeKeys, "not_applicable"),
+    selected_workflows: joinIfArray(selectedWorkflows, "not_applicable"),
+    engine_chain: joinIfArray(engineChain, "not_applicable"),
+    execution_mode: String(executionMode || "not_applicable").trim(),
+    decision_trigger: String(decisionTrigger || "not_applicable").trim(),
+    score_before: normalizedScoreBefore || "not_scored",
+    score_after: normalizedScoreAfter || "not_scored",
+    performance_delta: computePerformanceDelta(normalizedScoreBefore, normalizedScoreAfter)
+  };
+}
+
 function getWorkflowRowByKey(workflowRows = [], workflowKey = "") {
   const key = String(workflowKey || "").trim().toLowerCase();
   if (!key) return null;
@@ -906,16 +970,16 @@ function toExecutionLogUnifiedRow(w) {
     "Entry Type": w.entry_type,
     "Execution Class": w.execution_class,
     "Source Layer": w.source_layer,
-    "User Input": "",
-    "Matched Aliases": "",
-    "Route Key(s)": "",
-    "Selected Workflows": "",
-    "Engine Chain": "",
-    "Execution Mode": "",
-    "Decision Trigger": "",
-    "Score Before": "",
-    "Score After": "",
-    "Performance Delta": "",
+    "User Input": String(w.user_input || "").trim(),
+    "Matched Aliases": String(w.matched_aliases || "").trim(),
+    "Route Key(s)": String(w.route_keys || "").trim(),
+    "Selected Workflows": String(w.selected_workflows || "").trim(),
+    "Engine Chain": String(w.engine_chain || "").trim(),
+    "Execution Mode": String(w.execution_mode || "").trim(),
+    "Decision Trigger": String(w.decision_trigger || "").trim(),
+    "Score Before": String(w.score_before || "").trim(),
+    "Score After": String(w.score_after || "").trim(),
+    "Performance Delta": String(w.performance_delta || "").trim(),
     "Execution Status": w.status,
     "Output Summary": w.output_summary,
     "Recovery Status": "",
@@ -1427,6 +1491,18 @@ async function logValidationRunWriteback(input = {}) {
     engine_resolution_status: input.engine_resolution_status,
     engine_association_status: input.engine_association_status
   });
+  const executionContextEvidence = buildExecutionContextEvidence({
+    userInput: input.user_input,
+    matchedAliases: input.matched_aliases,
+    routeKeys: input.route_keys,
+    selectedWorkflows: input.selected_workflows,
+    engineChain: input.engine_chain,
+    executionMode: input.execution_mode,
+    decisionTrigger: input.decision_trigger,
+    scoreBefore: input.score_before,
+    scoreAfter: input.score_after,
+    isDirectValidation: true
+  });
   return await performUniversalServerWriteback({
     mode: "validation",
     job_id: undefined,
@@ -1460,7 +1536,10 @@ async function logValidationRunWriteback(input = {}) {
     logic_association_status: input.logic_association_status,
 
     // governed engine evidence (auto-derived from workflow context when not explicit)
-    ...derivedEngineEvidence
+    ...derivedEngineEvidence,
+
+    // execution context evidence
+    ...executionContextEvidence
   });
 }
 
@@ -1486,6 +1565,18 @@ async function logPartialHarvestWriteback(input = {}) {
     used_engine_file_ids: input.used_engine_file_ids,
     engine_resolution_status: input.engine_resolution_status,
     engine_association_status: input.engine_association_status
+  });
+  const executionContextEvidence = buildExecutionContextEvidence({
+    userInput: input.user_input,
+    matchedAliases: input.matched_aliases,
+    routeKeys: input.route_keys,
+    selectedWorkflows: input.selected_workflows,
+    engineChain: input.engine_chain,
+    executionMode: input.execution_mode,
+    decisionTrigger: input.decision_trigger,
+    scoreBefore: input.score_before,
+    scoreAfter: input.score_after,
+    isDirectValidation: false
   });
   return await performUniversalServerWriteback({
     mode: "partial_harvest",
@@ -1520,7 +1611,10 @@ async function logPartialHarvestWriteback(input = {}) {
     logic_association_status: input.logic_association_status,
 
     // governed engine evidence (auto-derived from workflow context when not explicit)
-    ...derivedEngineEvidence
+    ...derivedEngineEvidence,
+
+    // execution context evidence
+    ...executionContextEvidence
   });
 }
 
@@ -1546,6 +1640,18 @@ async function logRetryWriteback(input = {}) {
     used_engine_file_ids: input.used_engine_file_ids,
     engine_resolution_status: input.engine_resolution_status,
     engine_association_status: input.engine_association_status
+  });
+  const executionContextEvidence = buildExecutionContextEvidence({
+    userInput: input.user_input,
+    matchedAliases: input.matched_aliases,
+    routeKeys: input.route_keys,
+    selectedWorkflows: input.selected_workflows,
+    engineChain: input.engine_chain,
+    executionMode: input.execution_mode,
+    decisionTrigger: input.decision_trigger,
+    scoreBefore: input.score_before,
+    scoreAfter: input.score_after,
+    isDirectValidation: false
   });
   return await performUniversalServerWriteback({
     mode: "async",
@@ -1580,7 +1686,10 @@ async function logRetryWriteback(input = {}) {
     logic_association_status: input.logic_association_status,
 
     // governed engine evidence (auto-derived from workflow context when not explicit)
-    ...derivedEngineEvidence
+    ...derivedEngineEvidence,
+
+    // execution context evidence
+    ...executionContextEvidence
   });
 }
 
