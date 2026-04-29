@@ -14,6 +14,7 @@ Open the source file listed below for the relevant domain instead of loading thi
 | Repair and review routing | `canonicals/prompt_router/03_repair_review_routing.md` | Repair loop guards, forced repair routing, escalation, review surfaces, and review write planning. |
 | Schema-first routing | `canonicals/prompt_router/04_schema_first_routing.md` | Schema-first routing rule. |
 | WordPress publish contract | `canonicals/prompt_router/05_wordpress_publish_contract.md` | WordPress publish contract routing patch. |
+| Governed context resolution | `canonicals/prompt_router/06_governed_context_resolution.md` | Governed context resolution routing constraints and handoff behavior. |
 
 ---
 

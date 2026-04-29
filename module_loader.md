@@ -13,6 +13,7 @@ Open the source file listed below for the relevant domain instead of loading thi
 | Live canonical and API resolution | `canonicals/module_loader/02_live_canonical_api_resolution.md` | Live canonical resolution, API capability and endpoint resolution, embedded auth, and analytics sheet transformation. |
 | Schema and logging enforcement | `canonicals/module_loader/03_schema_logging_enforcement.md` | Analytics identity enforcement, schema loading, and native Google logging preparation. |
 | WordPress publish contract | `canonicals/module_loader/04_wordpress_publish_contract.md` | WordPress runtime governance loader bindings and sink contracts. |
+| Governed context dependencies | `canonicals/module_loader/05_governed_context_resolution.md` | Governed context dependencies for module loader HTTP execution. |
 
 ---
 

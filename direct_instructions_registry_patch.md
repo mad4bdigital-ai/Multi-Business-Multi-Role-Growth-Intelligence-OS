@@ -18,6 +18,7 @@ Open the source file listed below for the relevant domain instead of loading thi
 | Authority, binding, and repair | `canonicals/direct_instructions_registry_patch/07_authority_binding_repair.md` | Authority model, routes and chains, target scopes, observability, repair, and recovery. |
 | Analytics and WordPress preflight | `canonicals/direct_instructions_registry_patch/08_analytics_wordpress_preflight.md` | Brand tracking, API retirement, analytics governance, URL migration, and WordPress preflight. |
 | WordPress publish contract | `canonicals/direct_instructions_registry_patch/09_wordpress_publish_contract.md` | WordPress publish contract direct instruction patch. |
+| Governed context resolution | `canonicals/direct_instructions_registry_patch/10_governed_context_resolution.md` | Governed context resolution enforcement for direct instructions. |
 
 ---
 

@@ -22,6 +22,7 @@ Open the source file listed below for the relevant domain instead of loading thi
 | Analytics and API retirement | `canonicals/system_bootstrap/11_analytics_api_retirement.md` | Brand tracking bindings, API retirement, analytics warehouse governance, and URL authority. |
 | Runtime validation enforcer | `canonicals/system_bootstrap/12_runtime_validation_enforcer.md` | Runtime validation lifecycle, pre-write checks, readback, schema loading, and completion lock. |
 | WordPress publish contract | `canonicals/system_bootstrap/13_wordpress_publish_contract.md` | WordPress publish contract runtime governance patch. |
+| Governed context resolution | `canonicals/system_bootstrap/14_governed_context_resolution.md` | Governed context resolution order for Logic, business activity, and brand. |
 
 ---
 

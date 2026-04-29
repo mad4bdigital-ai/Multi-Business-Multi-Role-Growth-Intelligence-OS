@@ -2,7 +2,7 @@ export const CANONICALS = [
   {
     output: 'system_bootstrap.md',
     sourceDir: 'canonicals/system_bootstrap',
-    expectedFileCount: 14,
+    expectedFileCount: 15,
     index: [
       ['Header and purpose', '00_header_purpose.md', 'Canonical identity, status, and purpose.'],
       ['Logic pointers and knowledge profiles', '01_logic_pointer_knowledge.md', 'Logic pointer authority, knowledge profiles, brand onboarding, and asset-read governance.'],
@@ -18,12 +18,13 @@ export const CANONICALS = [
       ['Analytics and API retirement', '11_analytics_api_retirement.md', 'Brand tracking bindings, API retirement, analytics warehouse governance, and URL authority.'],
       ['Runtime validation enforcer', '12_runtime_validation_enforcer.md', 'Runtime validation lifecycle, pre-write checks, readback, schema loading, and completion lock.'],
       ['WordPress publish contract', '13_wordpress_publish_contract.md', 'WordPress publish contract runtime governance patch.'],
+      ['Governed context resolution', '14_governed_context_resolution.md', 'Governed context resolution order for Logic, business activity, and brand.'],
     ],
   },
   {
     output: 'direct_instructions_registry_patch.md',
     sourceDir: 'canonicals/direct_instructions_registry_patch',
-    expectedFileCount: 10,
+    expectedFileCount: 11,
     index: [
       ['Header and purpose', '00_header_purpose.md', 'Canonical identity, status, and direct patch purpose.'],
       ['Governance foundation', '01_governance_foundation.md', 'Canonical presentation, pointer authority, brand core, activation, and early logging governance.'],
@@ -35,24 +36,26 @@ export const CANONICALS = [
       ['Authority, binding, and repair', '07_authority_binding_repair.md', 'Authority model, routes and chains, target scopes, observability, repair, and recovery.'],
       ['Analytics and WordPress preflight', '08_analytics_wordpress_preflight.md', 'Brand tracking, API retirement, analytics governance, URL migration, and WordPress preflight.'],
       ['WordPress publish contract', '09_wordpress_publish_contract.md', 'WordPress publish contract direct instruction patch.'],
+      ['Governed context resolution', '10_governed_context_resolution.md', 'Governed context resolution enforcement for direct instructions.'],
     ],
   },
   {
     output: 'module_loader.md',
     sourceDir: 'canonicals/module_loader',
-    expectedFileCount: 5,
+    expectedFileCount: 6,
     index: [
       ['Header and purpose', '00_header_purpose.md', 'Canonical identity, status, purpose, and initial loader readiness.'],
       ['Dependency resolution', '01_dependency_resolution.md', 'Credential chains, variable contracts, async dependencies, and Google Workspace dependency resolution.'],
       ['Live canonical and API resolution', '02_live_canonical_api_resolution.md', 'Live canonical resolution, API capability and endpoint resolution, embedded auth, and analytics sheet transformation.'],
       ['Schema and logging enforcement', '03_schema_logging_enforcement.md', 'Analytics identity enforcement, schema loading, and native Google logging preparation.'],
       ['WordPress publish contract', '04_wordpress_publish_contract.md', 'WordPress runtime governance loader bindings and sink contracts.'],
+      ['Governed context dependencies', '05_governed_context_resolution.md', 'Governed context dependencies for module loader HTTP execution.'],
     ],
   },
   {
     output: 'prompt_router.md',
     sourceDir: 'canonicals/prompt_router',
-    expectedFileCount: 6,
+    expectedFileCount: 7,
     index: [
       ['Header and purpose', '00_header_purpose.md', 'Canonical identity, status, purpose, and initial routing posture.'],
       ['Core routing', '01_core_routing.md', 'HTTP variable-aware routing, async routing, and Native Google routing clarification.'],
@@ -60,6 +63,7 @@ export const CANONICALS = [
       ['Repair and review routing', '03_repair_review_routing.md', 'Repair loop guards, forced repair routing, escalation, review surfaces, and review write planning.'],
       ['Schema-first routing', '04_schema_first_routing.md', 'Schema-first routing rule.'],
       ['WordPress publish contract', '05_wordpress_publish_contract.md', 'WordPress publish contract routing patch.'],
+      ['Governed context resolution', '06_governed_context_resolution.md', 'Governed context resolution routing constraints and handoff behavior.'],
     ],
   },
 ];
