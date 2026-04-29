@@ -3,6 +3,10 @@ export { READ_POLICIES };
 import { policyValue, policyList } from "./registryPolicyAccess.js";
 export { policyValue, policyList };
 import {
+  describeAllowedDelegatedTransportKeys,
+  isSupportedDelegatedTransportActionKey
+} from "./transportKeys.js";
+import {
   requireRuntimeCallableAction,
   requireEndpointExecutionEligibility,
   requireExecutionModeCompatibility,
@@ -154,8 +158,13 @@ export function resolveBrand(rows, requestPayload = {}, deps = {}) {
     throw err;
   }
 
-  if (row.transport_action_key && row.transport_action_key !== allowedTransport) {
-    const err = new Error(`Unsupported transport_action_key: ${row.transport_action_key}; expected ${allowedTransport}`);
+  if (
+    row.transport_action_key &&
+    !isSupportedDelegatedTransportActionKey(row.transport_action_key, { allowedTransport })
+  ) {
+    const err = new Error(
+      `Unsupported transport_action_key: ${row.transport_action_key}; expected one of ${describeAllowedDelegatedTransportKeys(allowedTransport)}`
+    );
     err.code = "unsupported_transport";
     err.status = 403;
     throw err;

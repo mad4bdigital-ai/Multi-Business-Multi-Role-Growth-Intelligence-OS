@@ -1,4 +1,8 @@
 import { policyValue, policyList } from "./registryPolicyAccess.js";
+import {
+  describeAllowedDelegatedTransportKeys,
+  isSupportedDelegatedTransportActionKey
+} from "./transportKeys.js";
 
 function defaultBoolFromSheet(value) {
   if (value === true || value === false) return value;
@@ -88,9 +92,12 @@ export function requireTransportIfDelegated(policies, action, endpoint, deps = {
 
   if (requireTransport && executionMode === "http_delegated") {
     const transportActionKey = String(endpoint.transport_action_key || "").trim();
-    if (transportRequired && transportActionKey !== allowedTransport) {
+    if (
+      transportRequired &&
+      !isSupportedDelegatedTransportActionKey(transportActionKey, { allowedTransport })
+    ) {
       const err = new Error(
-        `Delegated endpoint requires supported transport_action_key ${allowedTransport}; received ${transportActionKey || "unset"}.`
+        `Delegated endpoint requires supported transport_action_key ${describeAllowedDelegatedTransportKeys(allowedTransport)}; received ${transportActionKey || "unset"}.`
       );
       err.code = "transport_required";
       err.status = 403;

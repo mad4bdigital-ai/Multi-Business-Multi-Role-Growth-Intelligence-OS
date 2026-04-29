@@ -1,3 +1,5 @@
+import { enforceBrandLiveMutationPreflight } from "./brandLiveMutationPreflight.js";
+
 export async function prepareExecutionRequest(input = {}, deps = {}) {
   const {
     requestPayload,
@@ -173,6 +175,15 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
 
   ensureWritePermissions(brand, resolvedMethodPath.method);
 
+  const brandMutationPreflight = enforceBrandLiveMutationPreflight({
+    parent_action_key,
+    endpoint,
+    resolvedMethodPath,
+    requestPayload,
+    brand
+  });
+  debugLog("BRAND_MUTATION_PREFLIGHT:", JSON.stringify(brandMutationPreflight));
+
   const schemaContract = await fetchSchemaContract(drive, action.openai_schema_file_id);
   const schemaOperationInfo = resolveSchemaOperation(schemaContract, resolvedMethodPath.method, resolvedMethodPath.path);
   if (!schemaOperationInfo) {
@@ -312,6 +323,7 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
     resolvedProviderDomainMode,
     placeholderResolutionSource,
     authContract,
+    brandMutationPreflight,
     schemaContract,
     schemaOperationInfo,
     route_id,

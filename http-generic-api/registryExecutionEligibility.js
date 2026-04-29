@@ -1,4 +1,8 @@
 import { policyValue } from "./registryPolicyAccess.js";
+import {
+  describeAllowedDelegatedTransportKeys,
+  isSupportedDelegatedTransportActionKey
+} from "./transportKeys.js";
 
 function defaultBoolFromSheet(value) {
   if (value === true || value === false) return value;
@@ -87,6 +91,78 @@ function stripUrlPrefix(value = "") {
 function endpointAliasesFor(endpointKey = "") {
   const key = normalizeText(endpointKey);
   return ENDPOINT_ALIASES[key] || [key];
+}
+
+function expectedWordpressMethod(endpointKey = "", path = "") {
+  const key = normalizeLower(endpointKey);
+  const normalizedPath = normalizeLower(path);
+
+  if (key.startsWith("wordpress_get_") || key.startsWith("wordpress_list_")) return "GET";
+  if (key.startsWith("wordpress_delete_")) return "DELETE";
+  if (key.startsWith("wordpress_update_") || key.startsWith("wordpress_create_")) return "POST";
+  if (key.startsWith("jet_engine_v2_edit_")) return "POST";
+  if (normalizedPath.includes("/jet-engine/v2/edit-")) return "POST";
+  return "";
+}
+
+function validateWordpressEndpointRowConsistency(row = {}, endpointKey = "", mismatches = []) {
+  if (normalizeText(row.parent_action_key) !== "wordpress_api") return;
+
+  const providerDomain = normalizeText(row.provider_domain);
+  if (providerDomain && providerDomain !== "target_resolved") {
+    mismatches.push({
+      field: "provider_domain",
+      expected: "target_resolved",
+      actual: providerDomain
+    });
+  }
+
+  const providerFamily = normalizeText(row.provider_family);
+  if (providerFamily && providerFamily !== "wordpress_cms") {
+    mismatches.push({
+      field: "provider_family",
+      expected: "wordpress_cms",
+      actual: providerFamily
+    });
+  }
+
+  const path = normalizeText(row.endpoint_path_or_function || row.path);
+  const normalizedPath = normalizeLower(path);
+  if (
+    path &&
+    !normalizedPath.startsWith("/wp/v2/") &&
+    !normalizedPath.startsWith("/jet-engine/v2/")
+  ) {
+    mismatches.push({
+      field: "endpoint_path_or_function",
+      expected: "starts_with /wp/v2/ or /jet-engine/v2/",
+      actual: path
+    });
+  }
+
+  const expectedMethod = expectedWordpressMethod(endpointKey, path);
+  const actualMethod = normalizeText(row.method).toUpperCase();
+  if (expectedMethod && actualMethod && actualMethod !== expectedMethod) {
+    mismatches.push({
+      field: "method",
+      expected: expectedMethod,
+      actual: actualMethod
+    });
+  }
+
+  const transportActionKey = normalizeText(row.transport_action_key);
+  if (
+    transportActionKey &&
+    !isSupportedDelegatedTransportActionKey(transportActionKey, {
+      allowedTransport: "http_generic_api"
+    })
+  ) {
+    mismatches.push({
+      field: "transport_action_key",
+      expected: describeAllowedDelegatedTransportKeys("http_generic_api"),
+      actual: transportActionKey
+    });
+  }
 }
 
 export function validateEndpointRowConsistency(row = {}, expected = {}) {
@@ -220,6 +296,8 @@ export function validateEndpointRowConsistency(row = {}, expected = {}) {
       }
     }
   }
+
+  validateWordpressEndpointRowConsistency(row, endpointKey, mismatches);
 
   return {
     valid: mismatches.length === 0,

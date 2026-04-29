@@ -1,3 +1,8 @@
+import {
+  describeAllowedDelegatedTransportKeys,
+  isSupportedDelegatedTransportActionKey
+} from "./transportKeys.js";
+
 function requireDep(name, value) {
   if (typeof value !== "function") {
     throw new Error(`resolveHttpExecutionContext requires deps.${name}`);
@@ -104,9 +109,13 @@ export function resolveHttpExecutionContext(input = {}, deps = {}) {
   if (
     !sameServiceNativeTarget &&
     endpointTransportActionKey &&
-    endpointTransportActionKey !== resolvedAllowedTransport
+    !isSupportedDelegatedTransportActionKey(endpointTransportActionKey, {
+      allowedTransport: resolvedAllowedTransport
+    })
   ) {
-    const err = new Error(`Endpoint transport_action_key is not supported: ${endpointTransportActionKey}`);
+    const err = new Error(
+      `Endpoint transport_action_key is not supported: ${endpointTransportActionKey}; expected one of ${describeAllowedDelegatedTransportKeys(resolvedAllowedTransport)}`
+    );
     err.code = "unsupported_transport";
     err.status = 403;
     throw err;
@@ -116,9 +125,13 @@ export function resolveHttpExecutionContext(input = {}, deps = {}) {
     !sameServiceNativeTarget &&
     boolFromSheet(endpoint.transport_required) &&
     endpointExecutionMode === "http_delegated" &&
-    endpointTransportActionKey !== resolvedAllowedTransport
+    !isSupportedDelegatedTransportActionKey(endpointTransportActionKey, {
+      allowedTransport: resolvedAllowedTransport
+    })
   ) {
-    const err = new Error(`Delegated transport endpoint is missing required allowed transport: ${endpoint.endpoint_key}`);
+    const err = new Error(
+      `Delegated transport endpoint is missing required allowed transport: ${endpoint.endpoint_key}; expected one of ${describeAllowedDelegatedTransportKeys(resolvedAllowedTransport)}`
+    );
     err.code = "missing_required_transport";
     err.status = 403;
     throw err;

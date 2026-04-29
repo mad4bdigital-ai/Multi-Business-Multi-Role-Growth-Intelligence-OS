@@ -269,3 +269,30 @@ Change Log
 - v2.3 Ã¢â‚¬â€ cross-layer routed authority enforcement clarified
 - v2.40 - Logic Knowledge Layer Authority Rule added so logic-specific, cross-logic, and shared knowledge dependencies are resolved before full-success authority
 - v2.40 - Business-Type Knowledge Profile Authority Rule added so business-aware tasks resolve profile dependencies before full-success authority
+
+---
+
+### WordPress Live Fetch / Mutation Runtime Alignment Patch
+
+WordPress live data fetch and WordPress live mutation are separate runtime classes.
+
+Read/fetch class:
+- `wordpress_api` read endpoints may use delegated HTTP transport with `transport_action_key` values such as `http_get`.
+- Fetch is read-only by default and must resolve brand target, endpoint row, provider domain, auth readiness, and trace logging.
+- Fetch must not grant publish, update, delete, WPML promotion, or taxonomy write permission.
+
+Mutation class:
+- `wordpress_api` write endpoints may use delegated HTTP transport with method-specific wrappers such as `http_post`, `http_put`, `http_patch`, or `http_delete`.
+- All write mutations require endpoint-specific preflight, exact payload contract validation, operator approval, and runtime readback.
+- Direct live publish/status change additionally requires a publish/status gate.
+- Taxonomy-related mutation requires exact taxonomy/term mapping validation.
+- WPML/multilingual mutation requires real import validation and post-import language-link validation.
+- Destructive mutation is blocked by default unless high-risk approval and rollback evidence are present.
+
+Endpoint Registry alignment:
+- WordPress endpoint rows must use `parent_action_key = wordpress_api`.
+- WordPress endpoint rows must use `provider_domain = target_resolved` when brand-resolved.
+- WordPress endpoint rows must use `provider_family = wordpress_cms`.
+- WordPress REST paths must start with `/wp/v2/` or `/jet-engine/v2/`.
+- `transport_action_key` may be `http_generic_api` or method wrappers `http_get`, `http_post`, `http_put`, `http_patch`, `http_delete` when delegated through the backend.
+- Hostinger rows must not carry WordPress operation/path authority unless explicitly classified as a delegated transport wrapper and not as canonical WordPress endpoint authority.

@@ -59,7 +59,7 @@ export const RAW_BODY_MAX_BYTES = 250_000;
 export const MAX_TIMEOUT_SECONDS = 300;
 export const PORT = String(process.env.PORT || 8080);
 export const SERVICE_VERSION =
-  process.env.SERVICE_VERSION || "2.5.0-wordpress-aware-migration";
+  process.env.SERVICE_VERSION || "2.5.1-wordpress-runtime-governance";
 
 export const GITHUB_API_BASE_URL =
   String(process.env.GITHUB_API_BASE_URL || "https://api.github.com").replace(/\/+$/, "");
