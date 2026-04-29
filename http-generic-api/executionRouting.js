@@ -2,6 +2,7 @@ import {
   describeAllowedDelegatedTransportKeys,
   isSupportedDelegatedTransportActionKey
 } from "./transportKeys.js";
+import { buildGovernedExecutionContext } from "./governedContextResolution.js";
 
 function requireDep(name, value) {
   if (typeof value !== "function") {
@@ -85,6 +86,15 @@ export function resolveHttpExecutionContext(input = {}, deps = {}) {
     "POST_GUARD_ENDPOINT_ELIGIBILITY:",
     JSON.stringify(endpointEligibility)
   );
+  const governedContext = buildGovernedExecutionContext({
+    requestPayload,
+    brand,
+    action,
+    endpoint,
+    policies
+  });
+
+  debugLog("GOVERNED_CONTEXT_RESOLUTION:", JSON.stringify(governedContext));
 
   const endpointExecutionMode = String(endpoint.execution_mode || "").trim().toLowerCase();
   const endpointTransportActionKey = String(endpoint.transport_action_key || "").trim();
@@ -148,6 +158,7 @@ export function resolveHttpExecutionContext(input = {}, deps = {}) {
     action,
     endpoint,
     brand,
+    governedContext,
     endpointEligibility,
     resolvedAllowedTransport,
     endpointExecutionMode,
