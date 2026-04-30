@@ -84,6 +84,39 @@ function normalizeLower(value = "") {
   return normalizeText(value).toLowerCase();
 }
 
+function normalizeList(value = "") {
+  return String(value || "")
+    .split(/[,|]/)
+    .map(item => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export function isGovernedControllerDelegation(row = {}, parentActionKey = "", routeTarget = "") {
+  const rowParent = normalizeLower(row.parent_action_key);
+  const normalizedParent = normalizeLower(parentActionKey);
+  const normalizedTarget = normalizeLower(routeTarget);
+
+  if (!normalizedParent.endsWith("_controller")) return false;
+  if (rowParent !== normalizedParent) return false;
+  if (!normalizedTarget || normalizedTarget === normalizedParent) return false;
+
+  const executionMode = normalizeLower(row.execution_mode);
+  const transportActionKey = normalizeLower(row.transport_action_key);
+  const status = normalizeLower(row.status);
+  const executionReadiness = normalizeLower(row.execution_readiness);
+  const endpointRole = normalizeLower(row.endpoint_role);
+
+  const isControllerDelegationMode =
+    executionMode === "http_delegated" || executionMode === "native_controller";
+  const hasTransport =
+    transportActionKey !== "" && transportActionKey !== normalizedParent;
+  const isActive = status === "active";
+  const isReady = executionReadiness === "ready";
+  const isPrimary = endpointRole === "primary" || endpointRole === "";
+
+  return isControllerDelegationMode && hasTransport && isActive && isReady && isPrimary;
+}
+
 function stripUrlPrefix(value = "") {
   return normalizeLower(value).replace(/^https?:\/\//, "").replace(/\/$/, "");
 }
@@ -220,7 +253,12 @@ export function validateEndpointRowConsistency(row = {}, expected = {}) {
   }
 
   const routeTarget = normalizeText(row.route_target);
-  if (routeTarget && parentActionKey && routeTarget !== parentActionKey) {
+  if (
+    routeTarget &&
+    parentActionKey &&
+    routeTarget !== parentActionKey &&
+    !isGovernedControllerDelegation(row, parentActionKey, routeTarget)
+  ) {
     mismatches.push({
       field: "route_target",
       expected: parentActionKey,

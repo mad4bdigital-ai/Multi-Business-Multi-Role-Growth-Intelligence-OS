@@ -1,4 +1,5 @@
 import { cacheGet, cacheSet } from "./registryCache.js";
+import { READ_POLICIES } from "./registryReadPolicies.js";
 
 function localFetchRange(sheets, spreadsheetId, range) {
   return sheets.spreadsheets.values
@@ -14,7 +15,13 @@ async function readRegistryTable(
   deps,
   { spreadsheetId, sheetName, columnEnd, dataEndRow = 2000, columnStart = "A", skipCache = false }
 ) {
-  if (!skipCache) {
+  const effectiveSkipCache =
+    skipCache ||
+    deps.skipRegistryCache === true ||
+    deps.readPolicy === READ_POLICIES.FORCED_REFRESH ||
+    deps.readPolicy === READ_POLICIES.VALIDATION_BYPASS;
+
+  if (!effectiveSkipCache) {
     const cached = await cacheGet(sheetName);
     if (cached) return cached;
     console.warn(`REGISTRY_CACHE_MISS: ${sheetName} — reading from Sheets`);
@@ -37,7 +44,7 @@ async function readRegistryTable(
     rows = await localFetchRange(sheets, spreadsheetId, range);
   }
 
-  if (!skipCache) {
+  if (!effectiveSkipCache) {
     await cacheSet(sheetName, rows);
   }
   return rows;

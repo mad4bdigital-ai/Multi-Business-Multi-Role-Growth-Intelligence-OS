@@ -216,6 +216,7 @@ import {
   loadPluginInventoryRegistry as loadPluginInventoryRegistryCore
 } from "./siteInventoryRegistry.js";
 import {
+  READ_POLICIES,
   getEndpointExecutionSnapshot as getEndpointExecutionSnapshotCore,
   getPlaceholderResolutionSources as getPlaceholderResolutionSourcesCore,
   isDelegatedTransportTarget as isDelegatedTransportTargetCore,
@@ -1794,8 +1795,11 @@ async function getSheetValues(spreadsheetId, range) {
   const results = await fetchRanges(sheets, spreadsheetId, [range]);
   return results[range] || [];
 }
-async function fetchChunkedTable(sheets, options = {}) {
-  return fetchChunkedTableBase(sheets, options);
+
+let registryReadPolicyOverride = READ_POLICIES.CACHED_NORMAL;
+
+async function fetchChunkedTable(sheets, options = {}, readPolicy = registryReadPolicyOverride) {
+  return fetchChunkedTableBase(sheets, options, { readPolicy });
 }
 
 function toSheetCellValue(value) {
@@ -2051,6 +2055,7 @@ async function loadBrandRegistry(sheets) {
     BRAND_REGISTRY_SHEET,
     REGISTRY_SPREADSHEET_ID,
     fetchChunkedTable,
+    readPolicy: registryReadPolicyOverride,
     getCell,
     headerMap,
     registryError
@@ -2063,6 +2068,7 @@ async function loadHostingAccountRegistry(sheets) {
     HOSTING_ACCOUNT_REGISTRY_SHEET,
     REGISTRY_SPREADSHEET_ID,
     fetchChunkedTable,
+    readPolicy: registryReadPolicyOverride,
     getCell,
     headerMap,
     registryError
@@ -2074,6 +2080,7 @@ async function loadActionsRegistry(sheets) {
     ACTIONS_REGISTRY_SHEET,
     REGISTRY_SPREADSHEET_ID,
     fetchChunkedTable,
+    readPolicy: registryReadPolicyOverride,
     getCell,
     headerMap,
     registryError
@@ -2086,6 +2093,7 @@ async function loadEndpointRegistry(sheets) {
     REGISTRY_SPREADSHEET_ID,
     debugLog,
     fetchChunkedTable,
+    readPolicy: registryReadPolicyOverride,
     getCell,
     headerMap,
     registryError
@@ -2098,6 +2106,7 @@ async function loadExecutionPolicies(sheets) {
     REGISTRY_SPREADSHEET_ID,
     boolFromSheet,
     fetchChunkedTable,
+    readPolicy: registryReadPolicyOverride,
     getCell,
     headerMap,
     registryError
@@ -2437,45 +2446,53 @@ async function deleteActionsRegistryRow(input = {}) {
   });
 }
 
-async function fetchFromGoogleSheets() {
-  const { sheets, drive } = await getGoogleClients();
-  const [
-    brandRows,
-    hostingAccounts,
-    actionRows,
-    endpointRows,
-    policies,
-    siteRuntimeInventoryRows,
-    siteSettingsInventoryRows,
-    pluginInventoryRows,
-    taskRouteRows,
-    workflowRows
-  ] = await Promise.all([
-    loadBrandRegistry(sheets),
-    loadHostingAccountRegistry(sheets),
-    loadActionsRegistry(sheets),
-    loadEndpointRegistry(sheets),
-    loadExecutionPolicies(sheets),
-    loadSiteRuntimeInventoryRegistry(sheets).catch(() => []),
-    loadSiteSettingsInventoryRegistry(sheets).catch(() => []),
-    loadPluginInventoryRegistry(sheets).catch(() => []),
-    loadTaskRoutesRegistry(sheets).catch(() => []),
-    loadWorkflowRegistry(sheets).catch(() => [])
-  ]);
+async function fetchFromGoogleSheets(options = {}) {
+  const prevPolicy = registryReadPolicyOverride;
+  if (options.forceRefresh) {
+    registryReadPolicyOverride = READ_POLICIES.FORCED_REFRESH;
+  }
+  try {
+    const { sheets, drive } = await getGoogleClients();
+    const [
+      brandRows,
+      hostingAccounts,
+      actionRows,
+      endpointRows,
+      policies,
+      siteRuntimeInventoryRows,
+      siteSettingsInventoryRows,
+      pluginInventoryRows,
+      taskRouteRows,
+      workflowRows
+    ] = await Promise.all([
+      loadBrandRegistry(sheets),
+      loadHostingAccountRegistry(sheets),
+      loadActionsRegistry(sheets),
+      loadEndpointRegistry(sheets),
+      loadExecutionPolicies(sheets),
+      loadSiteRuntimeInventoryRegistry(sheets).catch(() => []),
+      loadSiteSettingsInventoryRegistry(sheets).catch(() => []),
+      loadPluginInventoryRegistry(sheets).catch(() => []),
+      loadTaskRoutesRegistry(sheets).catch(() => []),
+      loadWorkflowRegistry(sheets).catch(() => [])
+    ]);
 
-  return {
-    drive,
-    brandRows,
-    hostingAccounts,
-    actionRows,
-    endpointRows,
-    policies,
-    siteRuntimeInventoryRows,
-    siteSettingsInventoryRows,
-    pluginInventoryRows,
-    taskRouteRows,
-    workflowRows
-  };
+    return {
+      drive,
+      brandRows,
+      hostingAccounts,
+      actionRows,
+      endpointRows,
+      policies,
+      siteRuntimeInventoryRows,
+      siteSettingsInventoryRows,
+      pluginInventoryRows,
+      taskRouteRows,
+      workflowRows
+    };
+  } finally {
+    registryReadPolicyOverride = prevPolicy;
+  }
 }
 
 async function getRegistry() {
@@ -2484,7 +2501,7 @@ async function getRegistry() {
 
 async function reloadRegistry() {
   clearFetchCache();
-  return await fetchFromGoogleSheets();
+  return await fetchFromGoogleSheets({ forceRefresh: true });
 }
 
 function registryError(name) {
