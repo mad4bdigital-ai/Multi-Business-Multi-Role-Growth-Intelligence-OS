@@ -3,6 +3,11 @@ import {
   isSupportedDelegatedTransportActionKey
 } from "./transportKeys.js";
 import { buildGovernedExecutionContext } from "./governedContextResolution.js";
+import {
+  isGoogleSheetsRegistryRequest,
+  resolveRegistrySurfaceTarget,
+  assertRegistrySurfaceTargetAllowed
+} from "./registrySurfaceResolution.js";
 
 function requireDep(name, value) {
   if (typeof value !== "function") {
@@ -60,9 +65,25 @@ export function resolveHttpExecutionContext(input = {}, deps = {}) {
         "http_generic_api"
       )
   ).trim();
-  const brand = resolveBrand(brandRows, requestPayload, {
-    allowedTransportKey: resolvedAllowedTransport
-  });
+
+  let brand;
+  let registrySurface = null;
+  if (isGoogleSheetsRegistryRequest({
+    parentActionKey: parent_action_key,
+    endpointKey: endpoint_key,
+    requestPayload
+  })) {
+    brand = resolveRegistrySurfaceTarget({
+      targetKey: requestPayload.target_key,
+      endpointKey: endpoint_key
+    });
+    assertRegistrySurfaceTargetAllowed(brand);
+    registrySurface = brand;
+  } else {
+    brand = resolveBrand(brandRows, requestPayload, {
+      allowedTransportKey: resolvedAllowedTransport
+    });
+  }
 
   debugLog(
     "PRE_GUARD_ACTION_RUNTIME:",
@@ -158,6 +179,7 @@ export function resolveHttpExecutionContext(input = {}, deps = {}) {
     action,
     endpoint,
     brand,
+    registrySurface,
     governedContext,
     endpointEligibility,
     resolvedAllowedTransport,
