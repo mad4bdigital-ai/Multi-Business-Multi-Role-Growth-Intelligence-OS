@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { buildGovernedExecutionContext } from "../governedContextResolution.js";
+import { loadPathResolverRowsForRequest } from "../pathResolverRowsLoader.js";
 
 export function buildGovernanceRoutes(deps) {
   const {
@@ -18,6 +20,26 @@ export function buildGovernanceRoutes(deps) {
   const router = Router();
   const EXECUTION_LOG_TAIL_WINDOW_ROWS = 200;
   const EXECUTION_LOG_GROUP_LOOKBACK_ROWS = 60;
+
+  function buildDiagnosticRequestPayload(body = {}) {
+    const requestPayload =
+      body.requestPayload && typeof body.requestPayload === "object" && !Array.isArray(body.requestPayload)
+        ? body.requestPayload
+        : body;
+
+    return {
+      ...requestPayload,
+      business_type_key:
+        requestPayload.business_type_key || body.business_type_key || body.businessActivityTypeKey || "",
+      business_activity_type_key:
+        requestPayload.business_activity_type_key || body.business_activity_type_key || body.businessActivityTypeKey || "",
+      knowledge_profile_key:
+        requestPayload.knowledge_profile_key || body.knowledge_profile_key || body.knowledgeProfileKey || "",
+      brand_key: requestPayload.brand_key || body.brand_key || body.brandKey || "",
+      target_key: requestPayload.target_key || body.target_key || body.targetKey || requestPayload.brand_key || body.brand_key || "",
+      mutation_intent: requestPayload.mutation_intent || body.mutation_intent || "resolve_context_diagnostic"
+    };
+  }
 
   function buildRowObject(headers = [], values = []) {
     const row = {};
@@ -174,6 +196,131 @@ export function buildGovernanceRoutes(deps) {
       "Execution Log Unified"
     );
   }
+
+  router.post("/governance/resolve-context-diagnostic", requireBackendApiKey, async (req, res) => {
+    try {
+      const body = req.body && typeof req.body === "object" ? req.body : {};
+      const requestPayload = buildDiagnosticRequestPayload(body);
+
+      const pathResolverLoad = await loadPathResolverRowsForRequest(requestPayload, {
+        REGISTRY_SPREADSHEET_ID:
+          body.registry_spreadsheet_id ||
+          process.env.REGISTRY_SPREADSHEET_ID ||
+          "",
+        getGoogleClientsForSpreadsheet,
+        fetchChunkedTable
+      });
+
+      const governedExecutionContext = buildGovernedExecutionContext({
+        requestPayload,
+        brand: body.brand || {},
+        endpoint: body.endpoint || {},
+        action: body.action || {},
+        pathResolverRows: pathResolverLoad.rows || {}
+      });
+
+      const pathResolution = governedExecutionContext.path_resolution || {};
+      const businessType = pathResolution.businessType || {};
+      const brand = pathResolution.brand || {};
+      const brandPath = pathResolution.brandPath || {};
+      const plannedBrandPath = pathResolution.plannedBrandPath || {};
+      const brandCore = pathResolution.brandCore || {};
+      const executionTarget = pathResolution.executionTarget || {};
+      const pathValidationState = pathResolution.validation_state || (pathResolution.ready ? "ready" : "");
+
+      const knowledgeReady =
+        pathResolution.resolution_status === "ready" &&
+        Boolean(businessType.businessTypeKey) &&
+        (!requestPayload.brand_key || Boolean(brandCore.resolutionStatus === "resolved" || brandCore.contentReady));
+
+      const executionReady = (() => {
+        const wanted = String(requestPayload.target_key || requestPayload.brand_key || "").toLowerCase();
+        if (wanted) {
+          const targetRow = (pathResolverLoad.rows?.targetRows || []).find(row => {
+            const tk = String(row.target_key || "").toLowerCase();
+            const bk = String(row.brand_key || "").toLowerCase();
+            return tk === wanted || bk === wanted;
+          });
+          if (targetRow) {
+            return targetRow.auth_status === "ready" || targetRow.validation_state === "ready";
+          }
+        }
+        return Boolean(executionTarget.executionReady);
+      })();
+
+      return res.status(200).json({
+        ok: true,
+        diagnostic: {
+          request: {
+            business_activity_type_key: requestPayload.business_activity_type_key || "",
+            business_type_key: requestPayload.business_type_key || "",
+            knowledge_profile_key: requestPayload.knowledge_profile_key || "",
+            brand_key: requestPayload.brand_key || "",
+            target_key: requestPayload.target_key || ""
+          },
+          path_resolver_load: {
+            requested: pathResolverLoad.requested,
+            loaded: pathResolverLoad.loaded,
+            reason: pathResolverLoad.reason,
+            row_counts: {
+              businessActivityRows: pathResolverLoad.rows?.businessActivityRows?.length || 0,
+              profileRows: pathResolverLoad.rows?.profileRows?.length || 0,
+              brandRows: pathResolverLoad.rows?.brandRows?.length || 0,
+              brandPathRows: pathResolverLoad.rows?.brandPathRows?.length || 0,
+              brandCoreRows: pathResolverLoad.rows?.brandCoreRows?.length || 0,
+              targetRows: pathResolverLoad.rows?.targetRows?.length || 0,
+              validationRows: pathResolverLoad.rows?.validationRows?.length || 0
+            }
+          },
+          resolution_status: pathResolution.resolution_status,
+          knowledge_ready: knowledgeReady,
+          execution_ready: executionReady,
+          business_type: {
+            business_type_key: businessType.businessTypeKey || "",
+            knowledge_profile_key: businessType.knowledgeProfileKey || "",
+            folder_path: businessType.folderPath || "",
+            authoritative_read_home: businessType.authoritativeReadHome || ""
+          },
+          brand: {
+            brand_key: brand.brandKey || brandPath.brandKey || plannedBrandPath.brandKey || "",
+            normalized_brand_name: brand.normalizedBrandName || brandPath.normalizedBrandName || "",
+            brand_folder_id: brandPath.brandFolderId || brand.brandFolderId || "",
+            brand_folder_path: brandPath.brandFolderPath || plannedBrandPath.brandFolderPath || brand.brandFolderPath || "",
+            target_key: brand.targetKey || brandPath.targetKey || executionTarget.targetKey || "",
+            base_url: brand.baseUrl || brandPath.baseUrl || executionTarget.baseUrl || ""
+          },
+          brand_core: {
+            status: brandCore.status || "",
+            required: Boolean(brandCore.required),
+            docs: brandCore.docs || {}
+          },
+          validation_state: {
+            status: pathValidationState,
+            ready: pathValidationState === "ready",
+            validation_id: "",
+            reason: pathResolution.blocked_reason || ""
+          },
+          execution_target: {
+            status: executionTarget.status || "",
+            target_key: executionTarget.targetKey || "",
+            base_url: executionTarget.baseUrl || "",
+            provider: executionTarget.provider || "",
+            auth_status: executionTarget.authStatus || "",
+            validation_state: executionTarget.validationState || "",
+            execution_ready: Boolean(executionTarget.executionReady)
+          }
+        }
+      });
+    } catch (err) {
+      return res.status(err?.status || 409).json({
+        ok: false,
+        error: {
+          code: err?.code || "resolve_context_diagnostic_failed",
+          message: err?.message || "Failed to resolve governed context diagnostic."
+        }
+      });
+    }
+  });
 
   router.get("/governance/execution-log-latest", requireBackendApiKey, async (_req, res) => {
     try {
