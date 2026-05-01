@@ -221,7 +221,7 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
   debugLog("BRAND_MUTATION_PREFLIGHT:", JSON.stringify(brandMutationPreflight));
 
   const schemaContract = await fetchSchemaContract(drive, action.openai_schema_file_id);
-  const schemaOperationInfo = resolveSchemaOperation(schemaContract, resolvedMethodPath.method, resolvedMethodPath.path);
+  const schemaOperationInfo = await resolveSchemaOperation(schemaContract, resolvedMethodPath.method, resolvedMethodPath.path);
   if (!schemaOperationInfo) {
     const err = new Error(`Method/path not found in authoritative schema for ${parent_action_key}.`);
     err.code = "schema_path_method_mismatch";
