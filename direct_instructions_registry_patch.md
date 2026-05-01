@@ -19,6 +19,8 @@ Open the source file listed below for the relevant domain instead of loading thi
 | Analytics and WordPress preflight | `canonicals/direct_instructions_registry_patch/08_analytics_wordpress_preflight.md` | Brand tracking, API retirement, analytics governance, URL migration, and WordPress preflight. |
 | WordPress publish contract | `canonicals/direct_instructions_registry_patch/09_wordpress_publish_contract.md` | WordPress publish contract direct instruction patch. |
 | Governed context resolution | `canonicals/direct_instructions_registry_patch/10_governed_context_resolution.md` | Governed context resolution enforcement for direct instructions. |
+| Business type and brand path resolution | `canonicals/direct_instructions_registry_patch/11_business_type_brand_path_resolution.md` | Direct instruction patch for business-type-first and brand-under-business-type path governance. |
+| Context resolver layer | `canonicals/direct_instructions_registry_patch/12_context_resolver_layer.md` | Resolver-first enforcement, resolver precedence rules, and blocked context handling. |
 
 ---
 

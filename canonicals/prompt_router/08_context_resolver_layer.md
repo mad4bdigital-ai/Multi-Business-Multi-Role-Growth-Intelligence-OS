@@ -1,0 +1,33 @@
+# Context Resolver Layer Routing
+
+## Pre-Route Resolution
+For any intent that targets a business type or brand, resolve context before routing:
+
+1. Call resolveContext with available keys and loaded rows
+2. Inspect validation_state
+3. Route only if validation_state is ready or validating (for read-only intents)
+4. Block and surface blocked_reason if validation_state is blocked
+
+## Intent Routing Table
+| Intent | Required validation_state | Resolver used |
+|---|---|---|
+| Generate content for brand | ready | resolveContext (full) |
+| Create SEO strategy | ready | resolveContext (full) |
+| Read business type knowledge | validating or ready | resolveKnowledgeProfile |
+| Add new business type | any | resolveRegistrySurface + resolveBusinessActivity |
+| Validate brand paths | any | resolveBrandPath + resolveBrandCore |
+| Read surface data | any | resolveRegistrySurface |
+
+## Degraded Routing States
+Route to operator escalation when:
+- `validation_state: blocked` with `blocked_reason: business_type_resolution_failed`
+- `validation_state: blocked` with `blocked_reason` containing `non-canonical path`
+- `brand_core.brandCoreStatus: missing` for a write intent
+
+Do not route to a write handler when brand core is required but missing.
+
+## Successful Route
+Route to execution only when:
+- resolveContext returns `validation_state: ready`
+- All required resolver outputs are non-null
+- paths.businessTypeFolderPath and paths.brandFolderPath (if brand-targeted) are set

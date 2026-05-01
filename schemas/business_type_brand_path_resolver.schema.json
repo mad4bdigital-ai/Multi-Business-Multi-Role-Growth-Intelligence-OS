@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "business_type_brand_path_resolver.schema.json",
+  "title": "Business Type and Brand Path Resolver Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "canonical_root", "business_type", "validation"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "v1"
+    },
+    "canonical_root": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shared_drive_id", "business_type_assets_folder_id", "path"],
+      "properties": {
+        "shared_drive_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "business_type_assets_folder_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^Growth Intelligence OS - Knowledge Assets/Business Type Assets"
+        }
+      }
+    },
+    "business_type": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "business_type_key",
+        "knowledge_profile_key",
+        "folder_id",
+        "folder_path"
+      ],
+      "properties": {
+        "business_type_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "knowledge_profile_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "folder_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "folder_path": {
+          "type": "string",
+          "pattern": "^Growth Intelligence OS - Knowledge Assets/Business Type Assets/"
+        },
+        "surface_id": {
+          "type": "string",
+          "pattern": "^surface\\."
+        },
+        "docs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "superseded_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "brand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "brand_key",
+        "brand_folder_id",
+        "brand_folder_path",
+        "business_type_key",
+        "knowledge_profile_key"
+      ],
+      "properties": {
+        "brand_key": {
+          "type": "string",
+          "pattern": "^[a-z0-9_][a-z0-9_-]*$"
+        },
+        "normalized_brand_name": {
+          "type": "string"
+        },
+        "business_type_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "knowledge_profile_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "brand_folder_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "brand_folder_path": {
+          "type": "string",
+          "pattern": "^Growth Intelligence OS - Knowledge Assets/Business Type Assets/.+/brands/.+"
+        },
+        "brand_core_docs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "target_key": {
+          "type": "string"
+        },
+        "base_url": {
+          "type": "string"
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "folder_exists",
+        "registry_rows_exist",
+        "graph_bindings_exist",
+        "json_map_exists",
+        "status"
+      ],
+      "properties": {
+        "folder_exists": {
+          "type": "boolean"
+        },
+        "registry_rows_exist": {
+          "type": "boolean"
+        },
+        "graph_bindings_exist": {
+          "type": "boolean"
+        },
+        "json_map_exists": {
+          "type": "boolean"
+        },
+        "editable_docs_exist": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ready", "validating", "blocked", "superseded"]
+        },
+        "last_validated_at": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
