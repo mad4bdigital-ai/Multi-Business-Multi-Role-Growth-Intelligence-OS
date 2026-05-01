@@ -32,7 +32,7 @@ function resolveBrandCoreStatus(coreRows, brandCoreRequired) {
 
 function buildBrandCoreDocs(coreRows) {
   return coreRows.reduce((acc, row) => {
-    const docKey = stringValue(row.doc_key || row.core_doc_key || row.asset_type || row.doc_type);
+    const docKey = stringValue(row.doc_key || row.core_doc_key || row.asset_key || row.asset_type || row.doc_type);
     const docId = stringValue(row.doc_id || row.file_id || row.google_doc_id);
     if (docKey && docId) acc[docKey] = docId;
     return acc;

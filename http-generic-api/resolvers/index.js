@@ -113,3 +113,42 @@ export function resolveContext({
 
   return context;
 }
+
+export function resolveGovernedContext({
+  businessActivityTypeKey,
+  businessTypeKey,
+  brandKey,
+  rows = {}
+} = {}) {
+  const result = resolveContext({
+    business_type_key: businessTypeKey,
+    business_activity_type_key: businessActivityTypeKey,
+    brand_key: brandKey,
+    rows: {
+      activityTypeRegistryRows: rows.businessActivityRows || [],
+      profileRows: rows.profileRows || [],
+      brandRegistryRows: rows.brandRows || [],
+      brandCoreRegistryRows: rows.brandCoreRows || [],
+      brandPathRows: rows.brandPathRows || [],
+      jsonAssetRows: []
+    }
+  });
+
+  const brandCoreRaw = result.brand_core;
+  const brandCore = brandCoreRaw
+    ? { ...brandCoreRaw, docs: brandCoreRaw.brandCoreDocs || {} }
+    : null;
+
+  return {
+    ready: result.validation_state === 'ready',
+    validation_state: result.validation_state,
+    blocked_reason: result.blocked_reason,
+    businessActivity: result.business_activity,
+    businessType: result.business_type,
+    knowledgeProfile: result.knowledge_profile,
+    brand: result.brand,
+    brandCore,
+    paths: result.paths,
+    executionTarget: null
+  };
+}
