@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "ci:execution-resolvers": "npm run typecheck && npm test -- --runInBand"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
