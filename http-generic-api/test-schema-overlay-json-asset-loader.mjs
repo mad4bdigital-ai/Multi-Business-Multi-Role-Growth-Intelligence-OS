@@ -2,14 +2,15 @@ import assert from "node:assert/strict";
 import { loadSchemaOverlayJsonAssetById } from "./schemaOverlayJsonAssetLoader.js";
 
 const sheetData = {
-  "Schema Overlay Assets": [
+  "JSON Asset Registry": [
     [
       "asset_id",
       "method",
       "path",
       "operation_id",
       "asset_json",
-      "status"
+      "status",
+      "validation_status"
     ],
     [
       "overlay-asset-001",
@@ -33,7 +34,8 @@ const sheetData = {
           properties: { id: { type: "integer" } }
         }
       }),
-      "active"
+      "active",
+      "validated"
     ],
     [
       "overlay-asset-002",
@@ -49,7 +51,8 @@ const sheetData = {
         },
         requestBody: {}
       }),
-      "active"
+      "active",
+      "validated"
     ],
     [
       "overlay-asset-retired",
@@ -57,7 +60,8 @@ const sheetData = {
       "/wp/v2/posts/{id}",
       "deletePost",
       JSON.stringify({ method: "DELETE" }),
-      "retired"
+      "retired",
+      ""
     ]
   ]
 };
@@ -94,6 +98,7 @@ function makeDeps() {
   assert.equal(result.operation_id, "createPost");
   assert.ok(result.asset_json, "asset_json is present");
   assert.equal(result.asset_json.operation.operationId, "createPost");
+  assert.equal(result.validation_status, "validated");
 }
 
 // 2 — loads a second asset
