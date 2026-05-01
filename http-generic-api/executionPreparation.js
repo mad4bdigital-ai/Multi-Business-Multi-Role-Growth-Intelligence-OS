@@ -1,4 +1,6 @@
 import { enforceBrandLiveMutationPreflight } from "./brandLiveMutationPreflight.js";
+import { buildGovernedExecutionContext } from "./governedContextResolution.js";
+import { loadPathResolverRowsForRequest } from "./pathResolverRowsLoader.js";
 
 export async function prepareExecutionRequest(input = {}, deps = {}) {
   const {
@@ -175,12 +177,46 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
 
   ensureWritePermissions(brand, resolvedMethodPath.method);
 
+  const pathResolverLoad = await loadPathResolverRowsForRequest(requestPayload, deps);
+  const governedExecutionContext = buildGovernedExecutionContext({
+    requestPayload,
+    brand,
+    endpoint,
+    action,
+    pathResolverRows: pathResolverLoad.rows || {}
+  });
+
+  debugLog(
+    "GOVERNED_EXECUTION_CONTEXT_PATH_RESOLUTION:",
+    JSON.stringify({
+      requested: governedExecutionContext.path_resolution?.requested,
+      attempted: governedExecutionContext.path_resolution?.attempted,
+      resolution_status: governedExecutionContext.path_resolution?.resolution_status,
+      loader_requested: pathResolverLoad.requested,
+      loader_loaded: pathResolverLoad.loaded,
+      loader_reason: pathResolverLoad.reason,
+      business_type_key:
+        governedExecutionContext.path_resolution?.businessType?.businessTypeKey ||
+        governedExecutionContext.path_resolution?.business_type_key ||
+        "",
+      brand_key:
+        governedExecutionContext.path_resolution?.brand?.brandKey ||
+        governedExecutionContext.path_resolution?.brand_key ||
+        "",
+      target_key:
+        governedExecutionContext.path_resolution?.executionTarget?.targetKey ||
+        governedExecutionContext.path_resolution?.target_key ||
+        ""
+    })
+  );
+
   const brandMutationPreflight = enforceBrandLiveMutationPreflight({
     parent_action_key,
     endpoint,
     resolvedMethodPath,
     requestPayload,
-    brand
+    brand,
+    governedExecutionContext
   });
   debugLog("BRAND_MUTATION_PREFLIGHT:", JSON.stringify(brandMutationPreflight));
 
@@ -324,6 +360,8 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
     placeholderResolutionSource,
     authContract,
     brandMutationPreflight,
+    governedExecutionContext,
+    pathResolverLoad,
     schemaContract,
     schemaOperationInfo,
     route_id,
