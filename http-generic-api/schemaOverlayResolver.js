@@ -1,3 +1,5 @@
+import { loadSchemaOverlayJsonAssetById } from "./schemaOverlayJsonAssetLoader.js";
+
 function normalize(value = "") {
   return String(value ?? "").trim();
 }
@@ -119,6 +121,11 @@ async function loadChildSchemaAsset(endpoint = {}, deps = {}) {
 
   if (typeof deps.getRegistryJsonAssetById === "function") {
     return deps.getRegistryJsonAssetById(assetId);
+  }
+
+  const registryAsset = await loadSchemaOverlayJsonAssetById(assetId, deps);
+  if (registryAsset) {
+    return registryAsset;
   }
 
   const inlineAsset = parseJson(endpoint.child_schema_json || endpoint.schema_overlay_json, null);

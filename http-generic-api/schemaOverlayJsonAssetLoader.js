@@ -96,19 +96,40 @@ export async function loadSchemaOverlayJsonAssetById(assetId = "", deps = {}) {
   }
 
   const entries = await readSheetRows({
-    sheetName: "Schema Overlay Assets",
-    columnEnd: "AZ",
+    sheetName: "JSON Asset Registry",
+    columnEnd: "Q",
+    dataEndRow: 3000,
     deps
   });
 
   for (const { row, cell } of entries) {
-    const rowAssetId = cell(row, "asset_id", "file_id", "schema_asset_id");
+    const rowAssetId = cell(
+      row,
+      "asset_id",
+      "json_asset_id",
+      "asset_key",
+      "schema_asset_key",
+      "file_id",
+      "schema_asset_id"
+    );
     const rowStatus = lower(cell(row, "status", "active_status"));
+    const validationStatus = lower(cell(row, "validation_status", "state"));
+    const readinessState = lower(cell(row, "readiness_state", "readiness"));
 
     if (lower(rowAssetId) !== lower(normalizedAssetId)) continue;
-    if (rowStatus && rowStatus !== "active") continue;
+    if (rowStatus && !["active", "ready", "validated"].includes(rowStatus)) continue;
+    if (validationStatus && !["validated", "ready"].includes(validationStatus)) continue;
+    if (readinessState && !["ready", "validated", "active"].includes(readinessState)) continue;
 
-    const rawJson = cell(row, "asset_json", "schema_json", "json_content", "content");
+    const rawJson = cell(
+      row,
+      "json",
+      "asset_json",
+      "schema_json",
+      "json_content",
+      "content",
+      "contract"
+    );
     const parsed = parseJson(rawJson, null);
 
     if (!parsed) continue;
@@ -119,7 +140,8 @@ export async function loadSchemaOverlayJsonAssetById(assetId = "", deps = {}) {
       method: cell(row, "method"),
       path: cell(row, "path", "endpoint_path"),
       operation_id: cell(row, "operation_id", "operationId"),
-      status: cell(row, "status", "active_status")
+      status: cell(row, "status", "active_status"),
+      validation_status: cell(row, "validation_status", "state")
     };
   }
 
