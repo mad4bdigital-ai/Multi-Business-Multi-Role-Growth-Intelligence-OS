@@ -83,44 +83,68 @@ export function isWpmlMutationEndpoint(endpoint = {}, requestPayload = {}) {
 }
 
 function hasOperatorApproval(requestPayload = {}) {
-  const approval = requestPayload.mutation_approval || requestPayload.operator_approval || {};
+  const body = getBodyObject(requestPayload);
+  const approval =
+    requestPayload.mutation_approval ||
+    requestPayload.operator_approval ||
+    body.mutation_approval ||
+    body.operator_approval ||
+    {};
   return (
     bool(requestPayload.operator_approved) ||
     bool(requestPayload.operator_approval_granted) ||
+    bool(body.operator_approved) ||
+    bool(body.operator_approval_granted) ||
     bool(approval.approved) ||
     bool(approval.operator_approved)
   );
 }
 
 function getApprovalObject(requestPayload = {}) {
-  return requestPayload.mutation_approval || requestPayload.operator_approval || {};
+  const body = getBodyObject(requestPayload);
+  return (
+    requestPayload.mutation_approval ||
+    requestPayload.operator_approval ||
+    body.mutation_approval ||
+    body.operator_approval ||
+    {}
+  );
 }
 
 export function isExplicitDryRunPreflight(requestPayload = {}) {
+  const body = getBodyObject(requestPayload);
   const approval = getApprovalObject(requestPayload);
+  const dryRun = requestPayload.dry_run || body.dry_run;
+  const preflightOnly = requestPayload.preflight_only || body.preflight_only;
   return (
-    bool(requestPayload.dry_run) &&
-    bool(requestPayload.preflight_only) &&
-    bool(approval.dry_run ?? requestPayload.dry_run) &&
-    bool(approval.preflight_only ?? requestPayload.preflight_only)
+    bool(dryRun) &&
+    bool(preflightOnly) &&
+    bool(approval.dry_run ?? dryRun) &&
+    bool(approval.preflight_only ?? preflightOnly)
   );
 }
 
 function hasCompletedDryRunPreflight(requestPayload = {}) {
+  const body = getBodyObject(requestPayload);
   const approval = getApprovalObject(requestPayload);
   return (
     bool(requestPayload.dry_run_preflight_completed) ||
     bool(requestPayload.approved_preflight_dry_run_validated) ||
+    bool(body.dry_run_preflight_completed) ||
+    bool(body.approved_preflight_dry_run_validated) ||
     bool(approval.dry_run_preflight_completed) ||
     bool(approval.approved_preflight_dry_run_validated)
   );
 }
 
 function hasLiveExecutionApproval(requestPayload = {}) {
+  const body = getBodyObject(requestPayload);
   const approval = getApprovalObject(requestPayload);
   return (
     bool(requestPayload.live_execution_approved) ||
     bool(requestPayload.execute_live) ||
+    bool(body.live_execution_approved) ||
+    bool(body.execute_live) ||
     bool(approval.live_execution_approved) ||
     bool(approval.execute_live)
   );
