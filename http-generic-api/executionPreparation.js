@@ -328,6 +328,52 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
     started_at: sync_execution_started_at
   });
 
+  if (brandMutationPreflight?.preflight_status === "dry_run_preflight_only") {
+    const responsePayload = {
+      ok: true,
+      dry_run: true,
+      preflight_only: true,
+      outbound_request_executed: false,
+      execution_blocked: true,
+      parent_action_key,
+      endpoint_key,
+      route_id,
+      target_module,
+      target_workflow,
+      brand_name,
+      mutation_class: brandMutationPreflight.mutation_class,
+      brand_mutation_preflight: brandMutationPreflight,
+      request_schema_alignment_status: "validated",
+      message:
+        "Dry-run/preflight-only request validated. No outbound WordPress mutation request was executed."
+    };
+
+    await performUniversalServerWriteback({
+      mode: "sync",
+      job_id: undefined,
+      target_key: requestPayload.target_key,
+      parent_action_key,
+      endpoint_key,
+      route_id,
+      target_module,
+      target_workflow,
+      source_layer: "http_client_backend",
+      entry_type: "sync_execution",
+      execution_class: "sync",
+      attempt_count: 1,
+      status_source: "succeeded",
+      responseBody: responsePayload,
+      error_code: undefined,
+      error_message_short: undefined,
+      http_status: 200,
+      brand_name,
+      execution_trace_id,
+      started_at: sync_execution_started_at
+    });
+
+    return { ok: false, response: { status: 200, body: responsePayload } };
+  }
+
   const finalQuery = queryWithAuth;
   let finalHeaders = {
     Accept: "application/json",

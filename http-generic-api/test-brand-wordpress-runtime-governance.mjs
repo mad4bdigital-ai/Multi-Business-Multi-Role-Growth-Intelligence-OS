@@ -115,6 +115,8 @@ assert.equal(enforceBrandLiveMutationPreflight({
   resolvedMethodPath: { method: "POST" },
   requestPayload: {
     mutation_approval: { approved: true },
+    dry_run_preflight_completed: true,
+    live_execution_approved: true,
     body: { title: "Draft" }
   },
   brand: { brand_name: "AllRoyalEgypt" }

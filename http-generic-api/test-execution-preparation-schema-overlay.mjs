@@ -133,7 +133,9 @@ const baseInput = {
   requestPayload: {
     target_key: "arab_cooling",
     operator_approved: "TRUE",
-    mutation_approval: { approved: true }
+    mutation_approval: { approved: true },
+    dry_run_preflight_completed: true,
+    live_execution_approved: true
   },
   action: {
     action_key: "wordpress_api",

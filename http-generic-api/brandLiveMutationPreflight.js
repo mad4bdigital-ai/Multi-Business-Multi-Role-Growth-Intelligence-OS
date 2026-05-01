@@ -92,6 +92,40 @@ function hasOperatorApproval(requestPayload = {}) {
   );
 }
 
+function getApprovalObject(requestPayload = {}) {
+  return requestPayload.mutation_approval || requestPayload.operator_approval || {};
+}
+
+export function isExplicitDryRunPreflight(requestPayload = {}) {
+  const approval = getApprovalObject(requestPayload);
+  return (
+    bool(requestPayload.dry_run) &&
+    bool(requestPayload.preflight_only) &&
+    bool(approval.dry_run ?? requestPayload.dry_run) &&
+    bool(approval.preflight_only ?? requestPayload.preflight_only)
+  );
+}
+
+function hasCompletedDryRunPreflight(requestPayload = {}) {
+  const approval = getApprovalObject(requestPayload);
+  return (
+    bool(requestPayload.dry_run_preflight_completed) ||
+    bool(requestPayload.approved_preflight_dry_run_validated) ||
+    bool(approval.dry_run_preflight_completed) ||
+    bool(approval.approved_preflight_dry_run_validated)
+  );
+}
+
+function hasLiveExecutionApproval(requestPayload = {}) {
+  const approval = getApprovalObject(requestPayload);
+  return (
+    bool(requestPayload.live_execution_approved) ||
+    bool(requestPayload.execute_live) ||
+    bool(approval.live_execution_approved) ||
+    bool(approval.execute_live)
+  );
+}
+
 function throwGate(code, message, details = {}) {
   const err = new Error(message);
   err.code = code;
@@ -190,6 +224,31 @@ export function enforceBrandLiveMutationPreflight(input = {}) {
       "high_risk_mutation_approval_required",
       "Destructive WordPress mutation requires high_risk_approval_granted=true.",
       details
+    );
+  }
+
+  if (isExplicitDryRunPreflight(requestPayload)) {
+    return {
+      enforced: true,
+      mutation_class: mutationClass,
+      preflight_status: "dry_run_preflight_only",
+      dry_run: true,
+      preflight_only: true,
+      execution_blocked: true,
+      no_outbound_request: true,
+      details
+    };
+  }
+
+  if (!hasCompletedDryRunPreflight(requestPayload) || !hasLiveExecutionApproval(requestPayload)) {
+    throwGate(
+      "approved_post_without_dry_run_blocked",
+      "Approved WordPress mutation requires a completed dry-run/preflight and explicit live_execution_approved=true before outbound execution.",
+      {
+        ...details,
+        dry_run_preflight_completed: hasCompletedDryRunPreflight(requestPayload),
+        live_execution_approved: hasLiveExecutionApproval(requestPayload)
+      }
     );
   }
 
