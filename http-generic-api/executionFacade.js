@@ -31,6 +31,11 @@ export function createExecutionFacade(deps) {
     // registry
     getRegistry,
     reloadRegistry,
+    getGoogleClientsForSpreadsheet,
+    fetchChunkedTable,
+    headerMap,
+    getCell,
+    REGISTRY_SPREADSHEET_ID,
     // policy
     getRequiredHttpExecutionPolicyKeys,
     requirePolicySet,
@@ -283,7 +288,12 @@ export function createExecutionFacade(deps) {
             jsonParseSafe,
             injectAuthIntoHeaders,
             buildUrl,
-            appendQuery
+            appendQuery,
+            getGoogleClientsForSpreadsheet,
+            fetchChunkedTable,
+            headerMap,
+            getCell,
+            REGISTRY_SPREADSHEET_ID
           }
         );
         if (!preparation.ok) {
