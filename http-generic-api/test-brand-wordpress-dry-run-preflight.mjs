@@ -122,4 +122,55 @@ const live = enforceBrandLiveMutationPreflight({
 });
 
 assert.equal(live.preflight_status, "passed");
+
+// body-nested approval fields (real HTTP client sends controls inside body)
+assert.equal(
+  isExplicitDryRunPreflight({
+    body: {
+      dry_run: true,
+      preflight_only: true,
+      mutation_approval: { dry_run: true, preflight_only: true }
+    }
+  }),
+  true,
+  "body-nested dry_run + preflight_only detected"
+);
+
+assertGate("brand_mutation_operator_approval_required", () =>
+  enforceBrandLiveMutationPreflight({
+    ...baseInput,
+    requestPayload: {
+      body: { package_levels: [2286, 2288] }
+    }
+  })
+);
+
+const dryRunBodyNested = enforceBrandLiveMutationPreflight({
+  ...baseInput,
+  requestPayload: {
+    body: {
+      operator_approved: true,
+      dry_run: true,
+      preflight_only: true,
+      mutation_approval: { approved: true, dry_run: true, preflight_only: true },
+      package_levels: [2286, 2288]
+    }
+  }
+});
+assert.equal(dryRunBodyNested.preflight_status, "dry_run_preflight_only");
+assert.equal(dryRunBodyNested.no_outbound_request, true);
+
+const liveBodyNested = enforceBrandLiveMutationPreflight({
+  ...baseInput,
+  requestPayload: {
+    body: {
+      operator_approved: true,
+      dry_run_preflight_completed: true,
+      live_execution_approved: true,
+      package_levels: [2286, 2288]
+    }
+  }
+});
+assert.equal(liveBodyNested.preflight_status, "passed");
+
 console.log("brand WordPress dry-run preflight tests passed");
