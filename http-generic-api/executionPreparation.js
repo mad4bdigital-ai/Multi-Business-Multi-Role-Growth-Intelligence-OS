@@ -1,4 +1,6 @@
 import { enforceBrandLiveMutationPreflight } from "./brandLiveMutationPreflight.js";
+import { buildGovernedExecutionContext } from "./governedContextResolution.js";
+import { loadPathResolverRowsForRequest } from "./pathResolverRowsLoader.js";
 
 export async function prepareExecutionRequest(input = {}, deps = {}) {
   const {
@@ -175,17 +177,51 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
 
   ensureWritePermissions(brand, resolvedMethodPath.method);
 
+  const pathResolverLoad = await loadPathResolverRowsForRequest(requestPayload, deps);
+  const governedExecutionContext = buildGovernedExecutionContext({
+    requestPayload,
+    brand,
+    endpoint,
+    action,
+    pathResolverRows: pathResolverLoad.rows || {}
+  });
+
+  debugLog(
+    "GOVERNED_EXECUTION_CONTEXT_PATH_RESOLUTION:",
+    JSON.stringify({
+      requested: governedExecutionContext.path_resolution?.requested,
+      attempted: governedExecutionContext.path_resolution?.attempted,
+      resolution_status: governedExecutionContext.path_resolution?.resolution_status,
+      loader_requested: pathResolverLoad.requested,
+      loader_loaded: pathResolverLoad.loaded,
+      loader_reason: pathResolverLoad.reason,
+      business_type_key:
+        governedExecutionContext.path_resolution?.businessType?.businessTypeKey ||
+        governedExecutionContext.path_resolution?.business_type_key ||
+        "",
+      brand_key:
+        governedExecutionContext.path_resolution?.brand?.brandKey ||
+        governedExecutionContext.path_resolution?.brand_key ||
+        "",
+      target_key:
+        governedExecutionContext.path_resolution?.executionTarget?.targetKey ||
+        governedExecutionContext.path_resolution?.target_key ||
+        ""
+    })
+  );
+
   const brandMutationPreflight = enforceBrandLiveMutationPreflight({
     parent_action_key,
     endpoint,
     resolvedMethodPath,
     requestPayload,
-    brand
+    brand,
+    governedExecutionContext
   });
   debugLog("BRAND_MUTATION_PREFLIGHT:", JSON.stringify(brandMutationPreflight));
 
   const schemaContract = await fetchSchemaContract(drive, action.openai_schema_file_id);
-  const schemaOperationInfo = resolveSchemaOperation(schemaContract, resolvedMethodPath.method, resolvedMethodPath.path);
+  const schemaOperationInfo = await resolveSchemaOperation(schemaContract, resolvedMethodPath.method, resolvedMethodPath.path);
   if (!schemaOperationInfo) {
     const err = new Error(`Method/path not found in authoritative schema for ${parent_action_key}.`);
     err.code = "schema_path_method_mismatch";
@@ -292,6 +328,52 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
     started_at: sync_execution_started_at
   });
 
+  if (brandMutationPreflight?.preflight_status === "dry_run_preflight_only") {
+    const responsePayload = {
+      ok: true,
+      dry_run: true,
+      preflight_only: true,
+      outbound_request_executed: false,
+      execution_blocked: true,
+      parent_action_key,
+      endpoint_key,
+      route_id,
+      target_module,
+      target_workflow,
+      brand_name,
+      mutation_class: brandMutationPreflight.mutation_class,
+      brand_mutation_preflight: brandMutationPreflight,
+      request_schema_alignment_status: "validated",
+      message:
+        "Dry-run/preflight-only request validated. No outbound WordPress mutation request was executed."
+    };
+
+    await performUniversalServerWriteback({
+      mode: "sync",
+      job_id: undefined,
+      target_key: requestPayload.target_key,
+      parent_action_key,
+      endpoint_key,
+      route_id,
+      target_module,
+      target_workflow,
+      source_layer: "http_client_backend",
+      entry_type: "sync_execution",
+      execution_class: "sync",
+      attempt_count: 1,
+      status_source: "succeeded",
+      responseBody: responsePayload,
+      error_code: undefined,
+      error_message_short: undefined,
+      http_status: 200,
+      brand_name,
+      execution_trace_id,
+      started_at: sync_execution_started_at
+    });
+
+    return { ok: false, response: { status: 200, body: responsePayload } };
+  }
+
   const finalQuery = queryWithAuth;
   let finalHeaders = {
     Accept: "application/json",
@@ -324,6 +406,8 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
     placeholderResolutionSource,
     authContract,
     brandMutationPreflight,
+    governedExecutionContext,
+    pathResolverLoad,
     schemaContract,
     schemaOperationInfo,
     route_id,

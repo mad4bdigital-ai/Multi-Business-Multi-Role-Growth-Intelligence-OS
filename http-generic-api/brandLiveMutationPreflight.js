@@ -83,12 +83,70 @@ export function isWpmlMutationEndpoint(endpoint = {}, requestPayload = {}) {
 }
 
 function hasOperatorApproval(requestPayload = {}) {
-  const approval = requestPayload.mutation_approval || requestPayload.operator_approval || {};
+  const body = getBodyObject(requestPayload);
+  const approval =
+    requestPayload.mutation_approval ||
+    requestPayload.operator_approval ||
+    body.mutation_approval ||
+    body.operator_approval ||
+    {};
   return (
     bool(requestPayload.operator_approved) ||
     bool(requestPayload.operator_approval_granted) ||
+    bool(body.operator_approved) ||
+    bool(body.operator_approval_granted) ||
     bool(approval.approved) ||
     bool(approval.operator_approved)
+  );
+}
+
+function getApprovalObject(requestPayload = {}) {
+  const body = getBodyObject(requestPayload);
+  return (
+    requestPayload.mutation_approval ||
+    requestPayload.operator_approval ||
+    body.mutation_approval ||
+    body.operator_approval ||
+    {}
+  );
+}
+
+export function isExplicitDryRunPreflight(requestPayload = {}) {
+  const body = getBodyObject(requestPayload);
+  const approval = getApprovalObject(requestPayload);
+  const dryRun = requestPayload.dry_run || body.dry_run;
+  const preflightOnly = requestPayload.preflight_only || body.preflight_only;
+  return (
+    bool(dryRun) &&
+    bool(preflightOnly) &&
+    bool(approval.dry_run ?? dryRun) &&
+    bool(approval.preflight_only ?? preflightOnly)
+  );
+}
+
+function hasCompletedDryRunPreflight(requestPayload = {}) {
+  const body = getBodyObject(requestPayload);
+  const approval = getApprovalObject(requestPayload);
+  return (
+    bool(requestPayload.dry_run_preflight_completed) ||
+    bool(requestPayload.approved_preflight_dry_run_validated) ||
+    bool(body.dry_run_preflight_completed) ||
+    bool(body.approved_preflight_dry_run_validated) ||
+    bool(approval.dry_run_preflight_completed) ||
+    bool(approval.approved_preflight_dry_run_validated)
+  );
+}
+
+function hasLiveExecutionApproval(requestPayload = {}) {
+  const body = getBodyObject(requestPayload);
+  const approval = getApprovalObject(requestPayload);
+  return (
+    bool(requestPayload.live_execution_approved) ||
+    bool(requestPayload.execute_live) ||
+    bool(body.live_execution_approved) ||
+    bool(body.execute_live) ||
+    bool(approval.live_execution_approved) ||
+    bool(approval.execute_live)
   );
 }
 
@@ -190,6 +248,31 @@ export function enforceBrandLiveMutationPreflight(input = {}) {
       "high_risk_mutation_approval_required",
       "Destructive WordPress mutation requires high_risk_approval_granted=true.",
       details
+    );
+  }
+
+  if (isExplicitDryRunPreflight(requestPayload)) {
+    return {
+      enforced: true,
+      mutation_class: mutationClass,
+      preflight_status: "dry_run_preflight_only",
+      dry_run: true,
+      preflight_only: true,
+      execution_blocked: true,
+      no_outbound_request: true,
+      details
+    };
+  }
+
+  if (!hasCompletedDryRunPreflight(requestPayload) || !hasLiveExecutionApproval(requestPayload)) {
+    throwGate(
+      "approved_post_without_dry_run_blocked",
+      "Approved WordPress mutation requires a completed dry-run/preflight and explicit live_execution_approved=true before outbound execution.",
+      {
+        ...details,
+        dry_run_preflight_completed: hasCompletedDryRunPreflight(requestPayload),
+        live_execution_approved: hasLiveExecutionApproval(requestPayload)
+      }
     );
   }
 

@@ -238,20 +238,24 @@ export async function resolveExecutionRequest(reqBody = {}, deps = {}) {
     };
   }
 
-  const callerHeaders = sanitizeCallerHeaders(requestPayload.headers || {});
-  const query = requestPayload.query && typeof requestPayload.query === "object"
-    ? { ...requestPayload.query }
-    : {};
-  const body = requestPayload.body;
-  const pathParams = requestPayload.path_params || {};
-
-  // Guard: getSheetValues range must come explicitly from path_params, not query or body
+  // Normalize getSheetValues range before deriving local vars:
+  // - Accept range from query.range OR path_params.range (prefer query)
+  // - Decode any existing percent-encoding so applyPathParams encodes exactly once
+  //   (prevents %20 becoming %2520 when a caller pre-encodes the range)
+  // - Inject the normalized value into path_params; strip it from query
   if (
     String(parent_action_key || "").trim() === "google_sheets_api" &&
     String(endpoint_key || "").trim() === "getSheetValues"
   ) {
-    const requestedRange = String(pathParams.range || "").trim();
-    if (!requestedRange) {
+    const rqQuery = requestPayload.query && typeof requestPayload.query === "object"
+      ? requestPayload.query
+      : {};
+    const rqPath = requestPayload.path_params || {};
+    const queryRange = String(rqQuery.range || "").trim();
+    const pathRange = String(rqPath.range || "").trim();
+    const rawRange = queryRange || pathRange;
+
+    if (!rawRange) {
       return {
         ok: false,
         response: {
@@ -260,11 +264,12 @@ export async function resolveExecutionRequest(reqBody = {}, deps = {}) {
             ok: false,
             error: {
               code: "missing_required_range_param",
-              message: "getSheetValues requires path_params.range — range must be explicit, no fallback allowed.",
+              message: "getSheetValues requires range — supply via query.range or path_params.range.",
               details: {
                 parent_action_key,
                 endpoint_key,
-                path_params_received: Object.keys(pathParams)
+                path_params_received: Object.keys(rqPath),
+                query_keys_received: Object.keys(rqQuery)
               }
             }
           }
@@ -273,14 +278,35 @@ export async function resolveExecutionRequest(reqBody = {}, deps = {}) {
         execution_trace_id
       };
     }
+
+    let normalizedRange = rawRange;
+    try {
+      normalizedRange = rawRange.includes("%") ? decodeURIComponent(rawRange) : rawRange;
+    } catch {
+      normalizedRange = rawRange;
+    }
+
+    const normalizedQuery = Object.fromEntries(
+      Object.entries(rqQuery).filter(([k]) => k !== "range")
+    );
+    requestPayload.path_params = { ...rqPath, range: normalizedRange };
+    requestPayload.query = normalizedQuery;
+
     debugLog("SHEETS_RANGE_SNAPSHOT:", JSON.stringify({
-      requested_spreadsheetId: String(pathParams.spreadsheetId || "").trim(),
-      requested_range: requestedRange,
-      range_source: "path_params",
+      requested_spreadsheetId: String(rqPath.spreadsheetId || "").trim(),
+      requested_range: normalizedRange,
+      range_source: queryRange ? "query" : "path_params",
       force_refresh: !!requestPayload.force_refresh,
       readback_mode: requestPayload.readback?.mode || ""
     }));
   }
+
+  const callerHeaders = sanitizeCallerHeaders(requestPayload.headers || {});
+  const query = requestPayload.query && typeof requestPayload.query === "object"
+    ? { ...requestPayload.query }
+    : {};
+  const body = requestPayload.body;
+  const pathParams = requestPayload.path_params || {};
 
   debugLog("NORMALIZED_TOP_LEVEL_ROUTING_FIELDS:", JSON.stringify({
     provider_domain: requestPayload.provider_domain || "",
@@ -339,7 +365,7 @@ export async function resolveExecutionRequest(reqBody = {}, deps = {}) {
       requested_range: requestedRange,
       resolved_path: resolvedPath,
       encoded_range_in_path: resolvedPath.includes(encodedRange),
-      range_source: "path_params",
+      range_source: "normalized_path_params",
       force_refresh: !!requestPayload.force_refresh,
       readback_mode: requestPayload.readback?.mode || ""
     }));

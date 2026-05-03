@@ -1,4 +1,4 @@
-﻿import express from "express";
+﻿﻿import express from "express";
 import crypto from "node:crypto";
 import { promises as fs } from "fs";
 import {
@@ -3030,6 +3030,11 @@ const executionFacade = createExecutionFacade({
   // registry
   getRegistry,
   reloadRegistry,
+  getGoogleClientsForSpreadsheet,
+  fetchChunkedTable,
+  headerMap,
+  getCell,
+  REGISTRY_SPREADSHEET_ID,
   // policy
   getRequiredHttpExecutionPolicyKeys,
   requirePolicySet,
