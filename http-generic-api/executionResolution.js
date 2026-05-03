@@ -240,9 +240,14 @@ export async function resolveExecutionRequest(reqBody = {}, deps = {}) {
 
   // Normalize getSheetValues range before deriving local vars:
   // - Accept range from query.range OR path_params.range (prefer query)
-  // - Decode any existing percent-encoding so applyPathParams encodes exactly once
-  //   (prevents %20 becoming %2520 when a caller pre-encodes the range)
-  // - Inject the normalized value into path_params; strip it from query
+  // - Decode any existing percent-encoding to prevent double-encoding
+  // - Route range through final_query (query-string routing) rather than the
+  //   {range} URL path segment. applyPathParams uses encodeURIComponent which
+  //   encodes ':' as %3A — Google Sheets path router rejects that encoding.
+  //   A sentinel value fills the required {range} slot for path validation;
+  //   the sentinel is stripped post-resolution so the outbound URL becomes
+  //   .../values?range=<range> instead of .../values/<encoded-range>.
+  const SHEETS_RANGE_SENTINEL = "__sheets_range_param__";
   if (
     String(parent_action_key || "").trim() === "google_sheets_api" &&
     String(endpoint_key || "").trim() === "getSheetValues"
@@ -286,16 +291,23 @@ export async function resolveExecutionRequest(reqBody = {}, deps = {}) {
       normalizedRange = rawRange;
     }
 
-    const normalizedQuery = Object.fromEntries(
-      Object.entries(rqQuery).filter(([k]) => k !== "range")
-    );
-    requestPayload.path_params = { ...rqPath, range: normalizedRange };
-    requestPayload.query = normalizedQuery;
+    const spreadsheetId = String(rqPath.spreadsheetId || "").trim();
+
+    // Keep range in query for final_query propagation to Google Sheets.
+    requestPayload.query = { ...rqQuery, range: normalizedRange };
+    // Sentinel in path_params satisfies the required {range} slot so
+    // ensureMethodAndPathMatchEndpoint regex validation passes cleanly;
+    // the sentinel is stripped from resolvedMethodPath.path post-resolution.
+    requestPayload.path_params = { ...rqPath, range: SHEETS_RANGE_SENTINEL };
+    if (spreadsheetId) {
+      requestPayload.path = `/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${SHEETS_RANGE_SENTINEL}`;
+    }
 
     debugLog("SHEETS_RANGE_SNAPSHOT:", JSON.stringify({
-      requested_spreadsheetId: String(rqPath.spreadsheetId || "").trim(),
+      requested_spreadsheetId: spreadsheetId,
       requested_range: normalizedRange,
       range_source: queryRange ? "query" : "path_params",
+      routing: "query_string",
       force_refresh: !!requestPayload.force_refresh,
       readback_mode: requestPayload.readback?.mode || ""
     }));
@@ -349,51 +361,28 @@ export async function resolveExecutionRequest(reqBody = {}, deps = {}) {
     }
   );
 
-  // Post-resolution drift guard for getSheetValues
+  // Strip the range sentinel from the resolved path.
+  // The sentinel was set in the pre-resolution guard so that
+  // ensureMethodAndPathMatchEndpoint could validate against the {range} template
+  // slot without applyPathParams encoding ':' as %3A. Now that validation is
+  // done, remove the sentinel so the outbound URL is .../values?range=<range>.
   if (
     String(parent_action_key || "").trim() === "google_sheets_api" &&
     String(endpoint_key || "").trim() === "getSheetValues"
   ) {
-    const requestedRange = String(pathParams.range || "").trim();
     const resolvedPath = String(executionContext.resolvedMethodPath?.path || "");
-    const encodedRange = encodeURIComponent(requestedRange);
-
-    debugLog("SHEETS_REQUEST_TRACE:", JSON.stringify({
-      parent_action_key,
-      endpoint_key,
-      requested_spreadsheetId: String(pathParams.spreadsheetId || "").trim(),
-      requested_range: requestedRange,
-      resolved_path: resolvedPath,
-      encoded_range_in_path: resolvedPath.includes(encodedRange),
-      range_source: "normalized_path_params",
-      force_refresh: !!requestPayload.force_refresh,
-      readback_mode: requestPayload.readback?.mode || ""
-    }));
-
-    if (requestedRange && !resolvedPath.includes(encodedRange)) {
-      return {
-        ok: false,
-        response: {
-          status: 400,
-          body: {
-            ok: false,
-            error: {
-              code: "sheets_range_resolution_mismatch",
-              message: `Sheets range drifted before execution. Requested range not found in resolved path.`,
-              details: {
-                requested_range: requestedRange,
-                resolved_path: resolvedPath,
-                requested_spreadsheetId: String(pathParams.spreadsheetId || "").trim(),
-                endpoint_key,
-                parent_action_key
-              }
-            }
-          }
-        },
-        requestPayload,
-        execution_trace_id
+    const sentinelSuffix = `/${SHEETS_RANGE_SENTINEL}`;
+    if (resolvedPath.endsWith(sentinelSuffix)) {
+      executionContext.resolvedMethodPath = {
+        ...executionContext.resolvedMethodPath,
+        path: resolvedPath.slice(0, -sentinelSuffix.length) || "/"
       };
     }
+    debugLog("SHEETS_RANGE_ROUTING:", JSON.stringify({
+      base_path: executionContext.resolvedMethodPath?.path || "",
+      query_range: query.range || "",
+      routing: "query_string"
+    }));
   }
 
   return {

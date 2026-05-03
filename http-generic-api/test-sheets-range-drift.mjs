@@ -171,12 +171,16 @@ for (const [label, payload] of [
   );
 }
 
+// Mock that reflects the path set by the normalization guard back as-is,
+// simulating ensureMethodAndPathMatchEndpoint accepting the sentinel path.
+const sentinelAwareMock = (input) => ({
+  resolvedMethodPath: { path: input?.requestPayload?.path || "" }
+});
+
 section("resolveExecutionRequest — query.range accepted and preferred over path_params.range");
 
 {
   const range = "Activation Bootstrap Config!A2:J2";
-  const encodedRange = encodeURIComponent(range);
-  const correctPath = `/v4/spreadsheets/abc/values/${encodedRange}`;
   const result = await resolveExecutionRequest(
     {
       parent_action_key: "google_sheets_api",
@@ -185,16 +189,16 @@ section("resolveExecutionRequest — query.range accepted and preferred over pat
       path_params: { spreadsheetId: "abc" },
       query: { range }
     },
-    makeMinimalDeps({ resolveHttpExecutionContext: () => ({ resolvedMethodPath: { path: correctPath } }) })
+    makeMinimalDeps({ resolveHttpExecutionContext: sentinelAwareMock })
   );
-  assert("query.range accepted with no path_params.range", result.ok === true, JSON.stringify(result.response?.body?.error));
+  assert("query.range accepted — ok", result.ok === true, JSON.stringify(result.response?.body?.error));
+  assert("query.range propagated to result.query", result.query?.range === range, `got: ${result.query?.range}`);
+  assert("sentinel stripped — path ends with /values", String(result.resolvedMethodPath?.path || "").endsWith("/values"), `got: ${result.resolvedMethodPath?.path}`);
 }
 
 {
   const range = "Activation Bootstrap Config!A2:J2";
   const wrongRange = "Wrong Sheet!Z99:Z99";
-  const encodedRange = encodeURIComponent(range);
-  const correctPath = `/v4/spreadsheets/abc/values/${encodedRange}`;
   const result = await resolveExecutionRequest(
     {
       parent_action_key: "google_sheets_api",
@@ -203,17 +207,17 @@ section("resolveExecutionRequest — query.range accepted and preferred over pat
       path_params: { spreadsheetId: "abc", range: wrongRange },
       query: { range }
     },
-    makeMinimalDeps({ resolveHttpExecutionContext: () => ({ resolvedMethodPath: { path: correctPath } }) })
+    makeMinimalDeps({ resolveHttpExecutionContext: sentinelAwareMock })
   );
-  assert("query.range preferred over path_params.range", result.ok === true, JSON.stringify(result.response?.body?.error));
+  assert("query.range preferred over path_params.range — ok", result.ok === true, JSON.stringify(result.response?.body?.error));
+  assert("query.range (not path_params.range) in result.query", result.query?.range === range, `got: ${result.query?.range}`);
 }
 
 section("resolveExecutionRequest — pre-encoded range decoded before path encoding (no double-encoding)");
 
 {
   const rawRange = "Activation Bootstrap Config!A2:J2";
-  const preEncoded = encodeURIComponent(rawRange);   // simulates a caller that already encoded
-  const correctPath = `/v4/spreadsheets/abc/values/${encodeURIComponent(rawRange)}`;
+  const preEncoded = encodeURIComponent(rawRange);
   const result = await resolveExecutionRequest(
     {
       parent_action_key: "google_sheets_api",
@@ -222,16 +226,17 @@ section("resolveExecutionRequest — pre-encoded range decoded before path encod
       path_params: { spreadsheetId: "abc" },
       query: { range: preEncoded }
     },
-    makeMinimalDeps({ resolveHttpExecutionContext: (input) => {
-      // Verify that after normalization, requestPayload.path_params.range is the decoded raw value
-      const normalizedRange = (input.requestPayload.path_params || {}).range || "";
-      return { resolvedMethodPath: { path: `/v4/spreadsheets/abc/values/${encodeURIComponent(normalizedRange)}` } };
-    }})
+    makeMinimalDeps({ resolveHttpExecutionContext: sentinelAwareMock })
   );
   assert("pre-encoded query.range decoded once — no %2520 double-encoding", result.ok === true, JSON.stringify(result.response?.body?.error));
+  assert("decoded range in result.query (not double-encoded)", result.query?.range === rawRange, `got: ${result.query?.range}`);
 }
 
-section("resolveExecutionRequest — post-resolution drift guard (sheets_range_resolution_mismatch)");
+section("resolveExecutionRequest — sentinel-strip and query-string range routing");
+
+// Range is routed through result.query (not URL path) so Google Sheets API
+// receives ?range=<decoded-range> rather than .../values/<encoded-range>.
+// The resolver is mocked to reflect the sentinel path set by the guard.
 
 const REGRESSION_RANGES = [
   "Review Stage Registry!A1:C3",
@@ -240,33 +245,25 @@ const REGRESSION_RANGES = [
   "Execution Policy Registry!A190:H196"
 ];
 
-const KNOWN_BAD_DRIFT_PATH = `/v4/spreadsheets/abc/values/${encodeURIComponent("Execution Policy Registry!A1852:H1901")}`;
-
 for (const range of REGRESSION_RANGES) {
   const result = await resolveExecutionRequest(
     { parent_action_key: "google_sheets_api", endpoint_key: "getSheetValues", method: "GET", path_params: { spreadsheetId: "abc", range } },
-    makeMinimalDeps({ resolveHttpExecutionContext: () => ({ resolvedMethodPath: { path: KNOWN_BAD_DRIFT_PATH } }) })
+    makeMinimalDeps({ resolveHttpExecutionContext: sentinelAwareMock })
   );
   assert(
-    `drift to Execution Policy Registry!A1852:H1901 caught for "${range}"`,
-    result.ok === false && result.response?.body?.error?.code === "sheets_range_resolution_mismatch",
-    JSON.stringify(result.response?.body?.error)
-  );
-}
-
-section("resolveExecutionRequest — regression: 4 ranges pass when resolver is faithful");
-
-for (const range of REGRESSION_RANGES) {
-  const encodedRange = encodeURIComponent(range);
-  const correctPath = `/v4/spreadsheets/abc/values/${encodedRange}`;
-  const result = await resolveExecutionRequest(
-    { parent_action_key: "google_sheets_api", endpoint_key: "getSheetValues", method: "GET", path_params: { spreadsheetId: "abc", range } },
-    makeMinimalDeps({ resolveHttpExecutionContext: () => ({ resolvedMethodPath: { path: correctPath } }) })
-  );
-  assert(
-    `"${range}" resolves without drift`,
+    `"${range}" — ok`,
     result.ok === true,
     result.ok === false ? JSON.stringify(result.response?.body?.error) : ""
+  );
+  assert(
+    `"${range}" — range in result.query (query-string routing)`,
+    result.query?.range === range,
+    `got: ${result.query?.range}`
+  );
+  assert(
+    `"${range}" — path ends with /values (sentinel stripped, no encoded range in path)`,
+    String(result.resolvedMethodPath?.path || "").endsWith("/values"),
+    `got path: ${result.resolvedMethodPath?.path}`
   );
 }
 
