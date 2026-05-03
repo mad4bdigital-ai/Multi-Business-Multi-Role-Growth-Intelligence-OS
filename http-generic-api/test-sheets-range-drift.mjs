@@ -155,20 +155,80 @@ function makeMinimalDeps(overrides = {}) {
 
 section("resolveExecutionRequest — pre-resolution guard (missing_required_range_param)");
 
-for (const [label, pathParams] of [
-  ["no path_params", undefined],
-  ["empty path_params", {}],
-  ["path_params with empty range", { spreadsheetId: "abc", range: "" }],
-  ["path_params with whitespace range", { spreadsheetId: "abc", range: "   " }]
+for (const [label, payload] of [
+  ["no path_params no query",     { parent_action_key: "google_sheets_api", endpoint_key: "getSheetValues", method: "GET" }],
+  ["empty path_params no query",  { parent_action_key: "google_sheets_api", endpoint_key: "getSheetValues", method: "GET", path_params: {} }],
+  ["empty range in path_params",  { parent_action_key: "google_sheets_api", endpoint_key: "getSheetValues", method: "GET", path_params: { spreadsheetId: "abc", range: "" } }],
+  ["whitespace range in path_params", { parent_action_key: "google_sheets_api", endpoint_key: "getSheetValues", method: "GET", path_params: { spreadsheetId: "abc", range: "   " } }],
+  ["empty range in query",        { parent_action_key: "google_sheets_api", endpoint_key: "getSheetValues", method: "GET", query: { range: "" } }],
+  ["whitespace range in query",   { parent_action_key: "google_sheets_api", endpoint_key: "getSheetValues", method: "GET", query: { range: "   " } }]
 ]) {
-  const payload = { parent_action_key: "google_sheets_api", endpoint_key: "getSheetValues", method: "GET" };
-  if (pathParams !== undefined) payload.path_params = pathParams;
   const result = await resolveExecutionRequest(payload, makeMinimalDeps());
   assert(
     `${label} → missing_required_range_param`,
     result.ok === false && result.response?.body?.error?.code === "missing_required_range_param",
     JSON.stringify(result.response?.body?.error)
   );
+}
+
+section("resolveExecutionRequest — query.range accepted and preferred over path_params.range");
+
+{
+  const range = "Activation Bootstrap Config!A2:J2";
+  const encodedRange = encodeURIComponent(range);
+  const correctPath = `/v4/spreadsheets/abc/values/${encodedRange}`;
+  const result = await resolveExecutionRequest(
+    {
+      parent_action_key: "google_sheets_api",
+      endpoint_key: "getSheetValues",
+      method: "GET",
+      path_params: { spreadsheetId: "abc" },
+      query: { range }
+    },
+    makeMinimalDeps({ resolveHttpExecutionContext: () => ({ resolvedMethodPath: { path: correctPath } }) })
+  );
+  assert("query.range accepted with no path_params.range", result.ok === true, JSON.stringify(result.response?.body?.error));
+}
+
+{
+  const range = "Activation Bootstrap Config!A2:J2";
+  const wrongRange = "Wrong Sheet!Z99:Z99";
+  const encodedRange = encodeURIComponent(range);
+  const correctPath = `/v4/spreadsheets/abc/values/${encodedRange}`;
+  const result = await resolveExecutionRequest(
+    {
+      parent_action_key: "google_sheets_api",
+      endpoint_key: "getSheetValues",
+      method: "GET",
+      path_params: { spreadsheetId: "abc", range: wrongRange },
+      query: { range }
+    },
+    makeMinimalDeps({ resolveHttpExecutionContext: () => ({ resolvedMethodPath: { path: correctPath } }) })
+  );
+  assert("query.range preferred over path_params.range", result.ok === true, JSON.stringify(result.response?.body?.error));
+}
+
+section("resolveExecutionRequest — pre-encoded range decoded before path encoding (no double-encoding)");
+
+{
+  const rawRange = "Activation Bootstrap Config!A2:J2";
+  const preEncoded = encodeURIComponent(rawRange);   // simulates a caller that already encoded
+  const correctPath = `/v4/spreadsheets/abc/values/${encodeURIComponent(rawRange)}`;
+  const result = await resolveExecutionRequest(
+    {
+      parent_action_key: "google_sheets_api",
+      endpoint_key: "getSheetValues",
+      method: "GET",
+      path_params: { spreadsheetId: "abc" },
+      query: { range: preEncoded }
+    },
+    makeMinimalDeps({ resolveHttpExecutionContext: (input) => {
+      // Verify that after normalization, requestPayload.path_params.range is the decoded raw value
+      const normalizedRange = (input.requestPayload.path_params || {}).range || "";
+      return { resolvedMethodPath: { path: `/v4/spreadsheets/abc/values/${encodeURIComponent(normalizedRange)}` } };
+    }})
+  );
+  assert("pre-encoded query.range decoded once — no %2520 double-encoding", result.ok === true, JSON.stringify(result.response?.body?.error));
 }
 
 section("resolveExecutionRequest — post-resolution drift guard (sheets_range_resolution_mismatch)");
