@@ -1,19 +1,36 @@
 /**
  * migrate-sheets-to-sql.mjs
- * One-time seed: reads all data from Google Sheets → inserts into Hostinger MySQL.
+ *
+ * Modes:
+ *   Seed (default)  — bulk insert, optionally truncating first.
+ *   Merge           — row-level diff: insert missing, update changed, skip unchanged.
+ *                     Dry-run by default; requires --apply to write.
  *
  * Usage:
- *   node migrate-sheets-to-sql.mjs                   # migrate all 15 tables
- *   node migrate-sheets-to-sql.mjs --table="Brand Registry"
- *   node migrate-sheets-to-sql.mjs --truncate         # clear tables before insert
- *   node migrate-sheets-to-sql.mjs --dry-run          # read Sheets only, no SQL writes
+ *   node migrate-sheets-to-sql.mjs                              # seed all tables (append)
+ *   node migrate-sheets-to-sql.mjs --truncate                   # truncate then insert
+ *   node migrate-sheets-to-sql.mjs --ignore                     # INSERT IGNORE (skip dupes)
+ *   node migrate-sheets-to-sql.mjs --dry-run                    # read only, no SQL writes
+ *   node migrate-sheets-to-sql.mjs --table="Brand Registry"     # single table
+ *
+ *   node migrate-sheets-to-sql.mjs --merge                      # merge dry-run (all tables)
+ *   node migrate-sheets-to-sql.mjs --merge --apply              # merge and write
+ *   node migrate-sheets-to-sql.mjs --merge --table="Task Routes" --apply
  */
 
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import { google } from "googleapis";
-import { bulkInsertRows, clearTable, TABLE_MAP, SHEET_COLUMNS } from "./sqlAdapter.js";
+import {
+  bulkInsertRows,
+  clearTable,
+  readTableRaw,
+  updateRowById,
+  appendRow,
+  TABLE_MAP,
+  SHEET_COLUMNS
+} from "./sqlAdapter.js";
 import { getPool } from "./db.js";
 
 // ── Load .env manually (dotenv not installed) ──────────────────────────────────
@@ -33,16 +50,38 @@ try {
 
 // ── CLI args ───────────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
-const DRY_RUN  = args.includes("--dry-run");
+const MERGE    = args.includes("--merge");
+const APPLY    = args.includes("--apply");
+const DRY_RUN  = MERGE ? !APPLY : args.includes("--dry-run");
 const TRUNCATE = args.includes("--truncate");
 const IGNORE   = args.includes("--ignore");
 const tableArg = (args.find((a) => a.startsWith("--table=")) || "").replace("--table=", "").trim();
 const TARGET_TABLES = tableArg ? [tableArg] : Object.keys(TABLE_MAP);
 
+// ── Natural keys per sheet (sheet column name format) ─────────────────────────
+// Null = append-only (no stable natural key, skip in merge mode).
+const NATURAL_KEYS = {
+  "Brand Registry":                  ["target_key"],
+  "Brand Core Registry":             ["brand_key"],
+  "Actions Registry":                ["action_key"],
+  "API Actions Endpoint Registry":   ["endpoint_id"],
+  "Execution Policy Registry":       ["policy_group", "policy_key"],
+  "Hosting Account Registry":        ["hosting_account_key"],
+  "Site Runtime Inventory Registry": ["target_key"],
+  "Site Settings Inventory Registry":["target_key"],
+  "Plugin Inventory Registry":       ["target_key"],
+  "Task Routes":                     ["route_id"],
+  "Workflow Registry":               ["Workflow ID"],
+  "Registry Surfaces Catalog":       ["surface_id"],
+  "Validation & Repair Registry":    ["validation_id"],
+  "JSON Asset Registry":             ["asset_id"],
+  "Execution Log Unified":           null,
+};
+
 // ── Spreadsheet ID mapping ─────────────────────────────────────────────────────
-const REGISTRY_ID  = process.env.REGISTRY_SPREADSHEET_ID  || "";
-const ACTIVITY_ID  = process.env.ACTIVITY_SPREADSHEET_ID  || REGISTRY_ID;
-const EXEC_LOG_ID  = process.env.EXECUTION_LOG_UNIFIED_SPREADSHEET_ID || ACTIVITY_ID;
+const REGISTRY_ID   = process.env.REGISTRY_SPREADSHEET_ID  || "";
+const ACTIVITY_ID   = process.env.ACTIVITY_SPREADSHEET_ID  || REGISTRY_ID;
+const EXEC_LOG_ID   = process.env.EXECUTION_LOG_UNIFIED_SPREADSHEET_ID || ACTIVITY_ID;
 const JSON_ASSET_ID = process.env.JSON_ASSET_REGISTRY_SPREADSHEET_ID  || REGISTRY_ID;
 
 const SHEET_SPREADSHEET_MAP = {
@@ -56,7 +95,6 @@ function spreadsheetIdFor(sheetName) {
 
 // ── Google Sheets auth ─────────────────────────────────────────────────────────
 async function getSheets() {
-  // Prefer saved OAuth token (from auth-setup.mjs) over ADC
   const tokenPath   = resolve(__dirname, "google-oauth-token.json");
   const secretsPath = resolve(__dirname, "../secrets/oauth-client.json");
   try {
@@ -97,8 +135,17 @@ async function readSheetRows(sheets, spreadsheetId, sheetName) {
     });
 }
 
-// ── Migrate one table ──────────────────────────────────────────────────────────
-async function migrateTable(sheets, sheetName) {
+// ── Natural key helpers ────────────────────────────────────────────────────────
+function buildNaturalKey(row, keyFields) {
+  return keyFields.map((f) => String(row[f] ?? "").trim()).join("||");
+}
+
+function rowValuesSignature(row, cols) {
+  return cols.map((col) => String(row[col] ?? "")).join("||");
+}
+
+// ── Seed mode: one table ───────────────────────────────────────────────────────
+async function seedTable(sheets, sheetName) {
   const spreadsheetId = spreadsheetIdFor(sheetName);
   if (!spreadsheetId) {
     return { sheetName, status: "skipped", reason: "no spreadsheet ID" };
@@ -135,12 +182,138 @@ async function migrateTable(sheets, sheetName) {
   }
 }
 
+// ── Merge mode: one table ──────────────────────────────────────────────────────
+async function mergeTable(sheets, sheetName) {
+  const keyFields = NATURAL_KEYS[sheetName];
+
+  if (keyFields === null) {
+    return { sheetName, status: "skipped", reason: "append-only table (no natural key)" };
+  }
+  if (!keyFields) {
+    return { sheetName, status: "skipped", reason: "no natural key defined" };
+  }
+
+  const spreadsheetId = spreadsheetIdFor(sheetName);
+  if (!spreadsheetId) {
+    return { sheetName, status: "skipped", reason: "no spreadsheet ID" };
+  }
+
+  // Load Sheets rows
+  let sheetRows;
+  try {
+    sheetRows = await readSheetRows(sheets, spreadsheetId, sheetName);
+  } catch (err) {
+    return { sheetName, status: "error", reason: `Sheets read failed: ${err.message}` };
+  }
+
+  if (sheetRows.length === 0) {
+    return { sheetName, status: "empty", inserted: 0, updated: 0, unchanged: 0, conflicted: 0 };
+  }
+
+  // Detect duplicate natural keys in Sheets
+  const sheetKeySeen = new Map();
+  const conflicts = [];
+  const dedupedSheetRows = [];
+
+  for (const row of sheetRows) {
+    const key = buildNaturalKey(row, keyFields);
+    if (!key.replace(/\|/g, "").trim()) continue; // skip rows with empty key
+    if (sheetKeySeen.has(key)) {
+      conflicts.push(key);
+    } else {
+      sheetKeySeen.set(key, row);
+      dedupedSheetRows.push(row);
+    }
+  }
+
+  // Load SQL rows (keyed by natural key, keeping id for UPDATE)
+  let sqlRows;
+  try {
+    sqlRows = await readTableRaw(sheetName);
+  } catch (err) {
+    return { sheetName, status: "error", reason: `SQL read failed: ${err.message}` };
+  }
+
+  const sqlByKey = new Map();
+  for (const row of sqlRows) {
+    const key = buildNaturalKey(row, keyFields);
+    if (key.replace(/\|/g, "").trim()) {
+      sqlByKey.set(key, row);
+    }
+  }
+
+  // Diff
+  const cols = SHEET_COLUMNS[TABLE_MAP[sheetName]] || [];
+  const toInsert = [];
+  const toUpdate = [];
+  let unchanged = 0;
+
+  for (const sheetRow of dedupedSheetRows) {
+    const key = buildNaturalKey(sheetRow, keyFields);
+    const sqlRow = sqlByKey.get(key);
+
+    if (!sqlRow) {
+      toInsert.push(sheetRow);
+    } else {
+      const sheetSig = rowValuesSignature(sheetRow, cols);
+      const sqlSig   = rowValuesSignature(sqlRow, cols);
+      if (sheetSig !== sqlSig) {
+        toUpdate.push({ sheetRow, sqlId: sqlRow.id });
+      } else {
+        unchanged++;
+      }
+    }
+  }
+
+  const summary = {
+    sheetName,
+    status: "ok",
+    inserted: toInsert.length,
+    updated: toUpdate.length,
+    unchanged,
+    conflicted: conflicts.length,
+    conflicts: conflicts.length ? conflicts.slice(0, 5) : undefined,
+    dry_run: DRY_RUN
+  };
+
+  if (DRY_RUN) return summary;
+
+  // Apply inserts
+  for (const row of toInsert) {
+    try {
+      await appendRow(sheetName, row);
+    } catch (err) {
+      return { ...summary, status: "error", reason: `INSERT failed: ${err.message}` };
+    }
+  }
+
+  // Apply updates
+  for (const { sheetRow, sqlId } of toUpdate) {
+    try {
+      await updateRowById(sheetName, sheetRow, sqlId);
+    } catch (err) {
+      return { ...summary, status: "error", reason: `UPDATE id=${sqlId} failed: ${err.message}` };
+    }
+  }
+
+  return summary;
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
+  const modeLabel = MERGE
+    ? (DRY_RUN ? "MERGE (dry-run — no writes)" : "MERGE + APPLY")
+    : DRY_RUN ? "DRY RUN (no writes)"
+    : TRUNCATE ? "TRUNCATE + INSERT"
+    : "INSERT (append)";
+
   console.log("━━━ Growth OS — Sheets → MySQL Migrator ━━━");
-  console.log(`Mode   : ${DRY_RUN ? "DRY RUN (no writes)" : TRUNCATE ? "TRUNCATE + INSERT" : "INSERT (append)"}`);
-  console.log(`Tables : ${TARGET_TABLES.length === Object.keys(TABLE_MAP).length ? "all 15" : TARGET_TABLES.join(", ")}`);
+  console.log(`Mode   : ${modeLabel}`);
+  console.log(`Tables : ${TARGET_TABLES.length === Object.keys(TABLE_MAP).length ? `all ${Object.keys(TABLE_MAP).length}` : TARGET_TABLES.join(", ")}`);
   console.log(`DB     : ${process.env.DB_NAME}@${process.env.DB_HOST}`);
+  if (MERGE && DRY_RUN) {
+    console.log(`\nℹ  Pass --apply to write changes.`);
+  }
   console.log("");
 
   if (!REGISTRY_ID) {
@@ -148,7 +321,7 @@ async function main() {
     process.exit(1);
   }
 
-  // Verify DB connection first
+  // Verify DB connection
   try {
     const conn = await getPool().getConnection();
     await conn.ping();
@@ -172,44 +345,102 @@ async function main() {
 
   console.log("");
 
-  // Migrate each table
   const results = [];
+
   for (const sheetName of TARGET_TABLES) {
     process.stdout.write(`  ${sheetName.padEnd(40)} ...`);
-    const result = await migrateTable(sheets, sheetName);
+
+    const result = MERGE
+      ? await mergeTable(sheets, sheetName)
+      : await seedTable(sheets, sheetName);
+
     results.push(result);
 
-    const icon = result.status === "ok" ? "✓" :
-                 result.status === "dry-run" ? "~" :
-                 result.status === "empty" ? "○" :
-                 result.status === "skipped" ? "–" : "✗";
+    if (MERGE) {
+      const icon = result.status === "error"   ? "✗"
+                 : result.status === "skipped"  ? "–"
+                 : result.status === "empty"    ? "○"
+                 : "~";
 
-    const detail = result.status === "error" ? result.reason
-                 : result.rows != null ? `${result.rows} rows`
-                 : result.reason || "";
+      const parts = result.status === "error"   ? [result.reason]
+                  : result.status === "skipped"  ? [result.reason]
+                  : result.status === "empty"    ? ["empty"]
+                  : [
+                      `+${result.inserted} insert`,
+                      `~${result.updated} update`,
+                      `=${result.unchanged} unchanged`,
+                      result.conflicted ? `!${result.conflicted} conflict` : null
+                    ].filter(Boolean);
 
-    console.log(` ${icon}  ${detail}`);
+      console.log(` ${icon}  ${parts.join("  ")}`);
+
+      if (result.conflicts?.length) {
+        result.conflicts.forEach((k) => console.log(`       conflict key: ${k}`));
+      }
+    } else {
+      const icon = result.status === "ok"       ? "✓"
+                 : result.status === "dry-run"   ? "~"
+                 : result.status === "empty"     ? "○"
+                 : result.status === "skipped"   ? "–" : "✗";
+
+      const detail = result.status === "error" ? result.reason
+                   : result.rows != null ? `${result.rows} rows`
+                   : result.reason || "";
+
+      console.log(` ${icon}  ${detail}`);
+    }
   }
 
   // Summary
-  const ok      = results.filter((r) => r.status === "ok").length;
-  const empty   = results.filter((r) => r.status === "empty").length;
-  const errors  = results.filter((r) => r.status === "error");
-  const dryRuns = results.filter((r) => r.status === "dry-run").length;
-  const total   = results.filter((r) => r.rows != null).reduce((s, r) => s + (r.rows || 0), 0);
-
   console.log("");
   console.log("━━━ Summary ━━━");
-  if (DRY_RUN) console.log(`  Would migrate : ${total} rows across ${dryRuns} tables`);
-  else          console.log(`  Migrated      : ${total} rows — ${ok} tables OK, ${empty} empty, ${errors.length} errors`);
 
-  if (errors.length) {
-    console.log("\n  Errors:");
-    errors.forEach((e) => console.log(`    ✗ ${e.sheetName}: ${e.reason}`));
+  if (MERGE) {
+    const done    = results.filter((r) => r.status === "ok");
+    const errors  = results.filter((r) => r.status === "error");
+    const skipped = results.filter((r) => r.status === "skipped");
+    const totalI  = done.reduce((s, r) => s + (r.inserted || 0), 0);
+    const totalU  = done.reduce((s, r) => s + (r.updated  || 0), 0);
+    const totalN  = done.reduce((s, r) => s + (r.unchanged|| 0), 0);
+    const totalC  = done.reduce((s, r) => s + (r.conflicted||0), 0);
+
+    if (DRY_RUN) {
+      console.log(`  Would insert   : ${totalI} rows`);
+      console.log(`  Would update   : ${totalU} rows`);
+      console.log(`  Unchanged      : ${totalN} rows`);
+      if (totalC) console.log(`  Conflicts      : ${totalC} duplicate keys in Sheets (would skip)`);
+    } else {
+      console.log(`  Inserted       : ${totalI} rows`);
+      console.log(`  Updated        : ${totalU} rows`);
+      console.log(`  Unchanged      : ${totalN} rows`);
+      if (totalC) console.log(`  Conflicts      : ${totalC} duplicate keys skipped`);
+    }
+    if (skipped.length) console.log(`  Skipped tables : ${skipped.length}`);
+    if (errors.length) {
+      console.log(`\n  Errors:`);
+      errors.forEach((e) => console.log(`    ✗ ${e.sheetName}: ${e.reason}`));
+    }
+  } else {
+    const ok      = results.filter((r) => r.status === "ok").length;
+    const empty   = results.filter((r) => r.status === "empty").length;
+    const errors  = results.filter((r) => r.status === "error");
+    const dryRuns = results.filter((r) => r.status === "dry-run").length;
+    const total   = results.filter((r) => r.rows != null).reduce((s, r) => s + (r.rows || 0), 0);
+
+    if (DRY_RUN) {
+      console.log(`  Would migrate  : ${total} rows across ${dryRuns} tables`);
+    } else {
+      console.log(`  Migrated       : ${total} rows — ${ok} tables OK, ${empty} empty, ${errors.length} errors`);
+    }
+
+    if (errors.length) {
+      console.log("\n  Errors:");
+      errors.forEach((e) => console.log(`    ✗ ${e.sheetName}: ${e.reason}`));
+    }
   }
 
   await getPool().end();
-  process.exit(errors.length ? 1 : 0);
+  process.exit(results.some((r) => r.status === "error") ? 1 : 0);
 }
 
 main().catch((err) => {

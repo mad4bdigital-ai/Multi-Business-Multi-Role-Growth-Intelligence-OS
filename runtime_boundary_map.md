@@ -291,6 +291,66 @@ Owns:
 - authoritative sink write helper wrappers for `Execution Log Unified` and `JSON Asset Registry`
 - sink-specific live header and write verification logic
 
+## 4b. SQL data layer boundaries
+
+The following modules add a MySQL-backed secondary read/write path alongside the Google Sheets primary. All SQL boundaries are controlled by the `DATA_SOURCE` environment variable (`sheets` / `dual` / `sql`).
+
+### MySQL connection pool boundary
+
+- [`http-generic-api/db.js`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api/db.js>)
+
+Owns:
+- singleton `mysql2/promise` pool creation from `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
+- `getPool()` — returns the shared pool (creates on first call)
+- `testConnection()` — ping-test helper for startup diagnostics
+- `pool.end()` must only be called in CLI scripts (migrate, expand-schema); never in Express request handlers
+
+### SQL adapter boundary
+
+- [`http-generic-api/sqlAdapter.js`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api/sqlAdapter.js>)
+
+Owns:
+- `TABLE_MAP` — canonical 15-entry mapping from sheet name to SQL table name
+- `SHEET_COLUMNS` — per-table canonical column lists (used for write ordering and reverse-mapping reads back to sheet-style column names)
+- `toSqlCol()` — normalisation function: lowercase, `(s)` → `s`, non-alphanum → `_`, deduplicate underscores, strip leading/trailing underscores
+- CRUD primitives: `readTable`, `appendRow`, `updateRow`, `deleteRow`, `findRows`
+- Migration helpers: `bulkInsertRows` (chunked 100-row INSERT), `clearTable`, `readTableRaw`, `updateRowById`
+
+### Data source router boundary
+
+- [`http-generic-api/dataSource.js`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api/dataSource.js>)
+
+Owns:
+- `DATA_SOURCE` mode routing (`sheets` / `dual` / `sql`): default is `sheets` (zero behavior change)
+- `init()` — called once by server.js to inject Sheets passthrough functions
+- `readTable`, `findRows`, `appendRow`, `updateRow`, `deleteRow` — unified access layer consumed by registry and governed-write modules
+- In `dual`/`sql` modes: SQL reads with Sheets fallback on empty, async Sheets mirror on writes (non-blocking)
+
+### Migration CLI boundary
+
+- [`http-generic-api/migrate-sheets-to-sql.mjs`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api/migrate-sheets-to-sql.mjs>) — CLI only, never imported by Express server
+
+Owns:
+- seed mode: bulk insert all rows from Sheets into MySQL (optionally truncating first, or INSERT IGNORE)
+- merge mode: row-level diff by natural key — insert missing, update changed, skip unchanged
+- dry-run by default; `--apply` required to write
+- calls `pool.end()` before exit
+
+- [`http-generic-api/expand-schema.mjs`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api/expand-schema.mjs>) — CLI only
+
+Owns:
+- idempotent ALTER TABLE runner — adds columns present in `SHEET_COLUMNS` that are missing from the live MySQL table
+- all columns added as `TEXT NULL`; never modifies existing columns
+- dry-run by default; `--apply` required to execute ALTER TABLE statements
+- calls `pool.end()` before exit
+
+- [`http-generic-api/reconcile-catalog.mjs`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api/reconcile-catalog.mjs>) — CLI only, Sheets-only (no DB connection)
+
+Owns:
+- reads `Registry Surfaces Catalog` and live workbook tab structure
+- reports and optionally fixes: duplicate `surface_id`, unregistered tabs, tabs referencing deleted worksheets, expected column count mismatches, GID mismatches
+- does not connect to MySQL
+
 ## 5. Auth and connector boundaries
 
 ### Auth and policy resolution boundary

@@ -44,6 +44,7 @@ const REGISTER_TABS    = args.includes("--register-tabs");
 const FIX_DUPLICATES   = args.includes("--fix-duplicates");
 const RETIRE_DELETED   = args.includes("--retire-deleted");
 const DEMOTE_REQUIRED  = args.includes("--demote-required");
+const FIX_GIDS         = args.includes("--fix-gids");
 const DRY_RUN          = !APPLY;
 
 const CATALOG_SHEET    = "Registry Surfaces Catalog";
@@ -200,6 +201,7 @@ async function main() {
       REGISTER_TABS   && "--register-tabs",
       RETIRE_DELETED  && "--retire-deleted",
       DEMOTE_REQUIRED && "--demote-required",
+      FIX_GIDS        && "--fix-gids",
     ].filter(Boolean);
     console.log(`Fixes     : ${fixes.join(", ") || "none specified — pass --refresh-columns and/or --register-tabs"}`);
   }
@@ -606,6 +608,36 @@ async function main() {
       } catch (err) {
         console.log(`  ✗ Registration failed: ${err.message}`);
       }
+    }
+    console.log("");
+  }
+
+  // Fix C2: correct worksheet_gid from live tab list
+  if (FIX_GIDS) {
+    if (COL.worksheet_gid === null) {
+      console.log("  ✗ Cannot fix GIDs — worksheet_gid column not found in catalog header.");
+    } else if (gidMismatches.length === 0) {
+      console.log("  ✓ GIDs: nothing to fix.");
+    } else {
+      console.log(`  Correcting worksheet_gid for ${gidMismatches.length} row(s)...`);
+      let fixed = 0;
+      for (const r of gidMismatches) {
+        const wn      = normalizeTabName(r.worksheet_name);
+        const liveGid = tabMapFor(r)[wn]?.gid;
+        if (!liveGid) {
+          console.log(`  ✗  row ${r._rowIndex}  ${wn}: live GID not found — skipping`);
+          continue;
+        }
+        try {
+          await updateCell(sheets, REGISTRY_ID, CATALOG_SHEET, COL.worksheet_gid, r._rowIndex, liveGid);
+          console.log(`  ✓  row ${r._rowIndex}  ${wn.padEnd(45)} ${normalizeId(r.worksheet_gid)} → ${liveGid}`);
+          fixed++;
+          totalWrites++;
+        } catch (err) {
+          console.log(`  ✗  row ${r._rowIndex}  ${wn}: ${err.message}`);
+        }
+      }
+      console.log(`  GIDs fixed: ${fixed}/${gidMismatches.length}`);
     }
     console.log("");
   }

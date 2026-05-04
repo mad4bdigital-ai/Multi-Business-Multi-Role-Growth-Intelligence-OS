@@ -14,7 +14,7 @@ These pass automatically in CI on every push/PR:
 - [ ] All `.js` modules pass `node --check`
 - [ ] No new imports from removed or renamed modules
 - [ ] `wordpress/index.js` barrel exports >= 545 symbols
-- [ ] `github.js` exports exactly 2 public symbols
+- [ ] `github.js` exports exactly 14 public symbols
 - [ ] `server.js` remains under 6,000 lines
 
 ---
@@ -27,7 +27,9 @@ Verify the live Google Sheets registry reflects intended architecture:
 - [ ] `Execution Log Unified` sheet exists and is writable
 - [ ] `JSON Asset Registry` sheet exists and is writable
 - [ ] `REGISTRY_SPREADSHEET_ID` environment variable points to correct spreadsheet
-- [ ] `EXECUTION_LOG_UNIFIED_SPREADSHEET_ID` and `JSON_ASSET_REGISTRY_SPREADSHEET_ID` are set if using separate spreadsheets
+- [ ] `ACTIVITY_SPREADSHEET_ID` is set if the activity log lives in a separate workbook from `REGISTRY_SPREADSHEET_ID` (defaults to `REGISTRY_SPREADSHEET_ID` if absent)
+- [ ] `EXECUTION_LOG_UNIFIED_SPREADSHEET_ID` resolves correctly (derived from `ACTIVITY_SPREADSHEET_ID`; set `ACTIVITY_SPREADSHEET_ID` to override)
+- [ ] `JSON_ASSET_REGISTRY_SPREADSHEET_ID` is set if using a separate workbook for JSON assets
 - [ ] Policy sheet values align with backend normalization rules (no unsupported custom literals in active policy rows)
 
 ---

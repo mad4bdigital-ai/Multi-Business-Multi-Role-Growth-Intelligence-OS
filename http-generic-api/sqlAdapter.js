@@ -157,7 +157,7 @@ const SHEET_COLUMNS = {
     "row_id", "route_id", "active", "intent_key", "brand_scope",
     "request_type", "route_mode", "target_module", "workflow_key",
     "lifecycle_mode", "memory_required", "logging_required", "review_required",
-    "priority", "allowed_states", "degraded_action", "blocked_action",
+    "allowed_states", "degraded_action", "blocked_action",
     "match_rule", "route_source", "last_validated_at",
     "required_variable_profile", "variable_contract_group",
     "supported_ingress_channels", "requires_conversational_inference",
@@ -199,7 +199,7 @@ const SHEET_COLUMNS = {
     "repair_priority", "retired_replacement_surface_id", "logical_surface_key",
     "backend_type", "backend_adapter", "authority_model", "portability_class",
   ],
-  // ── Live header: 67 cols (Validation & Repair Registry) ──────────────────
+  // ── Live header: 66 cols (Validation & Repair Registry) ──────────────────
   validation_repair: [
     "validation_id", "surface_id", "surface_name", "rule_id",
     "validation_type", "validation_method", "validation_status",

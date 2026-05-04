@@ -103,6 +103,47 @@ That subtree currently contains:
 - async job orchestration
 - `resolveLogicPointerContext.js` — canonical logic pointer resolution and governed legacy rollback guard
 - a modularized WordPress migration subsystem
+- a MySQL-backed data layer with Google Sheets as the human-readable mirror
+
+### Sheets to MySQL data layer
+
+The `http-generic-api/` subtree includes a production MySQL-backed data layer alongside Google Sheets. The runtime remains Sheets-first by default (`DATA_SOURCE=sheets`); switch to `dual` or `sql` to route reads through MySQL.
+
+**Environment variables required:**
+| Variable | Purpose | Default |
+|---|---|---|
+| `DB_HOST` | MySQL host | (required) |
+| `DB_PORT` | MySQL port | `3306` |
+| `DB_NAME` | MySQL database name | (required) |
+| `DB_USER` | MySQL username | (required) |
+| `DB_PASSWORD` | MySQL password | (required) |
+| `DATA_SOURCE` | Routing mode: `sheets` / `dual` / `sql` | `sheets` |
+| `REGISTRY_SPREADSHEET_ID` | Primary Google Sheets workbook ID | (required for CLI scripts) |
+| `ACTIVITY_SPREADSHEET_ID` | Activity log workbook ID | defaults to `REGISTRY_SPREADSHEET_ID` |
+
+**Migration scripts (run from `http-generic-api/`):**
+
+```powershell
+# 1. Verify schema is up to date (dry-run — no writes)
+node expand-schema.mjs
+
+# 2. Apply any missing columns
+node expand-schema.mjs --apply
+
+# 3. Dry-run migration: shows row counts per table, no SQL writes
+node migrate-sheets-to-sql.mjs --dry-run
+
+# 4. Merge mode dry-run: shows per-table insert/update/unchanged diff
+node migrate-sheets-to-sql.mjs --merge
+
+# 5. Merge mode apply: write inserts and updates
+node migrate-sheets-to-sql.mjs --merge --apply
+
+# 6. Reconcile the Registry Surfaces Catalog (report only)
+node reconcile-catalog.mjs
+```
+
+Migration sequence for a fresh database: run `expand-schema.mjs --apply` first, then `migrate-sheets-to-sql.mjs --merge --apply`. For subsequent incremental syncs use `--merge --apply`; the migrator skips unchanged rows. For the execution log (append-only, no natural key) use seed mode without `--merge`.
 
 ### Connector and subsystem layer
 
@@ -132,7 +173,7 @@ Current state:
 - `http-generic-api/auth.js` - Google OAuth scope resolution, policy enforcement, and resilience helpers; fully wired
 - `http-generic-api/driveFileLoader.js` - schema and OAuth config loader with `supportsAllDrives: true` for shared-drive artifact reads
 - governed sink handling for `Execution Log Unified` and `JSON Asset Registry` is stable
-- 336 assertions passing across 17 test files: utility, job runner, execution routing, connectors, routes, activation bootstrap cache, Google Sheets chunking, sheets range drift, starter authority surfaces, transport governance, activation classification, activation response, governed activation runner, registry alignment validator, logic switching smoke, and WordPress
+- 44+ test files passing with 800+ assertions: utility, job runner, execution routing, connectors, routes, activation bootstrap cache, Google Sheets chunking, sheets range drift, starter authority surfaces, transport governance, activation classification, activation response, governed activation runner, registry alignment validator, logic switching smoke, WordPress, AI resolvers, and SQL migration tooling (sqlAdapter TABLE_MAP completeness, column normalisation, duplicate detection, expand-schema dry-run guard)
 - `/health` reports degraded dependency truth for Redis/BullMQ instead of assuming queue connectivity
 - async job submission returns `503` when the queue backend cannot accept work (safely rejects to prevent job loss)
 - runtime instances can run in API-only mode with `QUEUE_WORKER_ENABLED=FALSE`, or connect to Memorystore/Upstash/Hostinger Redis for background workers
@@ -245,7 +286,7 @@ The validated route requires `base_branch` and a different `branch`. It creates 
 All 9 upgrade phases are complete. The project is in a production-ready, fully governed state.
 
 For ongoing operations:
-- from `http-generic-api/`, run `npm test` after every code change (336 assertions across 17 test files)
+- from `http-generic-api/`, run `npm test` after every code change (44+ test files, 800+ assertions)
 - from `http-generic-api/`, run `npm run validate` to check architecture invariants
 - run `node validate-memory-schema.mjs` after memory schema changes
 - from `http-generic-api/`, run `npm run verify` (with `RUNTIME_BASE_URL`) after every deployment - see [`runtime_confirmation_procedure.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/runtime_confirmation_procedure.md>)

@@ -1,6 +1,6 @@
 # Updating Registry Patch Index
 
-Last updated: 2026-05-04
+Last updated: 2026-05-04 (live registry rows confirmed)
 
 ## Current Patch Set
 
@@ -19,7 +19,8 @@ Last updated: 2026-05-04
 
 ### 2. Server Modularization
 
-- Status: in progress, uncommitted
+- Status: committed
+- Commit: `852cf05 Add AI resolvers and provider timeout diagnostics`
 - Files:
   - `http-generic-api/server.js`
   - `http-generic-api/authService.js`
@@ -35,7 +36,8 @@ Last updated: 2026-05-04
 
 ### 3. Plan And Task Generation Resolvers
 
-- Status: implemented, uncommitted
+- Status: committed
+- Commits: `852cf05`, `8cff850 Align AI resolvers with intent maturation`
 - Files:
   - `http-generic-api/services/planningResolver.js`
   - `http-generic-api/services/taskResolver.js`
@@ -56,7 +58,8 @@ Last updated: 2026-05-04
 
 ### 4. Provider Fetch Timeout And Diagnostics
 
-- Status: implemented, uncommitted
+- Status: committed
+- Commit: `852cf05 Add AI resolvers and provider timeout diagnostics`
 - Files:
   - `http-generic-api/execution.js`
   - `http-generic-api/executionDispatch.js`
@@ -111,7 +114,8 @@ Last updated: 2026-05-04
 
 ### 6. AI Resolver Registry Readiness
 
-- Status: implemented, uncommitted
+- Status: committed
+- Commit: `54d8a3b Add AI registry readiness diagnostic`
 - Files:
   - `http-generic-api/routeWorkflowGovernance.js`
   - `http-generic-api/stateManager.js`
@@ -143,11 +147,17 @@ Last updated: 2026-05-04
 - `npm.cmd test`: pass
 - `npm.cmd run validate`: pass, 173 passed / 0 failed
 
-Cloud Build:
+Cloud Build (all SUCCESS):
 
-- `d6881f8 Preserve AI intent maturation across routes`: success
+- `54d8a3b Add AI registry readiness diagnostic`: SUCCESS (build 4cfa8cd9, finished 2026-05-04 12:09 UTC)
+- `d6881f8 Preserve AI intent maturation across routes`: SUCCESS (build e1fd36a4, finished 2026-05-04 11:58 UTC)
+- `8cff850 Align AI resolvers with intent maturation`: SUCCESS (build fb4a8fe7, finished 2026-05-04 11:53 UTC)
 
 Note: `npm test` through PowerShell failed because `npm.ps1` is blocked by the local execution policy. `npm.cmd test` was used instead and passed.
+
+## Current Uncommitted Work
+
+None. Working tree is clean. All 6 patches are committed and deployed.
 
 ## Compaction Transcript Check
 
@@ -166,20 +176,120 @@ Note: `npm test` through PowerShell failed because `npm.ps1` is blocked by the l
 - Security note:
   - The raw transcript includes local paths, tool state, and `.env` content. Do not commit, paste, or share the transcript directly.
 
-## Current Uncommitted Work
+## Live Registry Row Status — VERIFIED
 
-- Modified:
-  - `Updating Registry Patch Index.md`
-  - `http-generic-api/package.json`
-  - `http-generic-api/routeWorkflowGovernance.js`
-  - `http-generic-api/routes/governanceRoutes.js`
-  - `http-generic-api/server.js`
-  - `http-generic-api/stateManager.js`
-- Untracked:
-  - `http-generic-api/test-ai-registry-readiness.mjs`
+Rows added directly to the live authoritative workbook (Growth Intelligence OS - Registry Workbook).
+No code commit was made for this step; the registry is the authority.
+
+### Task Routes — Written and readback-verified
+
+Written range: `Task Routes!A209:AU210` — 2 rows, 47 columns, 94 cells
+
+| `intent_key` | `route_id` | `endpoint_path` | `workflow_key` | `active` |
+|---|---|---|---|---|
+| `ai_implementation_plan_generation` | `route_ai_implementation_plan_generation` | `/ai/implementation-plan` | `wf_ai_implementation_plan_generation` | `TRUE` |
+| `ai_task_manifest_generation` | `route_ai_task_manifest_generation` | `/ai/task-manifest` | `wf_ai_task_manifest_generation` | `TRUE` |
+
+### Workflow Registry — Written and readback-verified
+
+Written range: `Workflow Registry!A240:BA241` — 2 rows, 53 columns, 106 cells
+
+| `workflow_id` | `workflow_key` | `active` |
+|---|---|---|
+| `wf_ai_implementation_plan_generation` | `wf_ai_implementation_plan_generation` | `TRUE` |
+| `wf_ai_task_manifest_generation` | `wf_ai_task_manifest_generation` | `TRUE` |
+
+### Local test evidence
+
+- `node test-ai-registry-readiness.mjs`: **pass**
+- `npm.cmd test`: **33 passed, 0 failed**
+
+## Next Steps
+
+1. ~~Call `GET /ai/registry-readiness` against the live deployed service.~~ Done — rows added and readback-verified.
+2. ~~Add Task Routes + Workflow Registry rows.~~ Done.
+3. Call `GET /ai/registry-readiness` against the **deployed Cloud Run service** (not local) to confirm the live endpoint resolves the new rows from Sheets.
+4. Catalog reconciliation: fix duplicate `surface_id` (`surface.hosting_account_registry_sheet`), register 8 unregistered live tabs, refresh expected column counts for tabs where live header no longer matches catalog metadata.
+5. Build Sheets → SQL merge migrator: per-table natural key diff, upsert-on-match, insert-if-missing, dry-run by default, `--apply` to write.
 
 ## Remaining Decisions
 
 - Decide whether generated plans/tasks should remain synchronous API responses or also be persisted as JSON assets.
 - Decide whether OpenAI should remain a direct `fetch` integration or be routed through the existing generic HTTP connector registry.
 - Verify or add the two live Task Routes rows and their linked Workflow Registry rows.
+
+---
+
+## Patch 7 — Production Hardening: Schema Expansion, Catalog Reconciliation, Migration Merge, CI Tests
+
+- Status: committed
+- Scope: All phases of http-generic-api production hardening
+- Files changed:
+  - `http-generic-api/sqlAdapter.js` — fixed column count comment (67 → 66 for validation_repair)
+  - `http-generic-api/test-migrate-sql-adapter.mjs` — new: 104 unit tests for toSqlCol(), TABLE_MAP completeness, SHEET_COLUMNS counts, no post-normalisation duplicates
+  - `http-generic-api/test-expand-schema-logic.mjs` — new: 623 unit tests for expand-schema toSqlCol() parity, dry-run ALTER TABLE guard, pool lifecycle
+  - `http-generic-api/package.json` — added two new test files to npm test script
+  - `http-generic-api/reconcile-catalog.mjs` — new: RSC health checker (7 flags, Sheets-only, no DB)
+  - `http-generic-api/migrate-sheets-to-sql.mjs` — new: 15-table Sheets→SQL migrator (seed + merge modes)
+  - `http-generic-api/openapi.yaml` — new: OpenAPI spec
+  - `deployment_parity_checklist.md` — fixed github.js export count (2 → 14); added ACTIVITY_SPREADSHEET_ID and EXECUTION_LOG_UNIFIED_SPREADSHEET_ID to Layer 2
+  - `runtime_boundary_map.md` — added Section 4b: SQL data layer boundaries (db.js, sqlAdapter.js, dataSource.js, migrate/expand/reconcile CLI tools)
+  - `README.md` — added Sheets→MySQL data layer section with env vars, migration script sequence, and updated test counts
+
+### Schema Expansion Results
+
+- 282 new columns added across 8 tables in a single `expand-schema.mjs --apply` run:
+  - `brands`: 25 → 122 columns
+  - `actions`: 16 → 47 columns
+  - `endpoints`: 30 → 58 columns
+  - `task_routes`: 46 columns (priority dupe removed, count confirmed at 46)
+  - `workflows`: 38 → 53 columns
+  - `brand_core`: 8 → 20 columns
+  - `registry_surfaces_catalog`: 17 → 38 columns
+  - `validation_repair`: 11 → 66 columns
+- `node expand-schema.mjs` (dry-run) now reports: New columns detected: 0
+
+### Catalog Reconciliation Results
+
+All 7 catalog health checks report 0:
+- Duplicate surface_ids: 0
+- Unregistered tabs: 0
+- Missing tabs (required): 0
+- Missing tabs (optional): 0
+- GID mismatches: 0
+- Column count mismatches: 0
+
+### Migration Merge Run Results
+
+Live merge run (`migrate-sheets-to-sql.mjs --merge --apply`) completed:
+- 138 inserts across all tables
+- 681 updates across all tables
+- 0 errors
+
+### OAuth Desktop App Auth Setup
+
+- `auth.mjs` — one-time OAuth2 Desktop flow saves token to `google-oauth-token.json`
+- `auth-setup.mjs` — pre-existing auth setup helper
+- `get-live-headers.mjs` — live sheet header dump utility
+- Token saved: `http-generic-api/google-oauth-token.json` (gitignored)
+- Secret: `secrets/oauth-client.json` (gitignored)
+
+### Audit Findings (Phase 1)
+
+- `db.js`: pool.end() is NOT called in Express server — only in CLI scripts. Correct.
+- `dataSource.js`: all three DATA_SOURCE modes (sheets/dual/sql) are correctly wired.
+- `config.js`: all env vars declared with sensible defaults. ACTIVITY_SPREADSHEET_ID and EXECUTION_LOG_UNIFIED_SPREADSHEET_ID are derived constants, not raw env vars (ACTIVITY_SPREADSHEET_ID defaults to REGISTRY_SPREADSHEET_ID).
+- `reconcile-catalog.mjs`: correctly does NOT import db.js or any MySQL module — Sheets-only tool.
+- `expand-schema.mjs` and `sqlAdapter.js` toSqlCol() functions are textually identical — verified by test suite.
+- No test files import google-oauth-token.json or secrets/ directly.
+- No circular imports detected.
+- TABLE_MAP: 15 entries, all present in SHEET_COLUMNS — verified by test suite.
+- SHEET_COLUMNS: no post-normalisation duplicates in any of the 15 tables — verified by test suite.
+
+### Verification Snapshot
+
+- `node expand-schema.mjs`: New columns detected: 0
+- `node migrate-sheets-to-sql.mjs --dry-run`: 13,025 rows across 15 tables, no errors
+- `node reconcile-catalog.mjs`: all 6 checks = 0
+- `node validate-architecture.mjs`: 173 passed, 0 failed
+- `npm test`: all test files pass (44+ files, 800+ assertions)
