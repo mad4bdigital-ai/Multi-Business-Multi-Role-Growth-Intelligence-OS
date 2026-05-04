@@ -1,0 +1,200 @@
+import { Router } from "express";
+import { randomUUID } from "node:crypto";
+import { getPool } from "../db.js";
+
+export function buildIdentityRoutes(deps) {
+  const { requireBackendApiKey } = deps;
+  const router = Router();
+
+  // ── POST /users ────────────────────────────────────────────────────────────
+  router.post("/users", requireBackendApiKey, async (req, res) => {
+    try {
+      const { email, display_name, status = "active" } = req.body || {};
+      if (!email || !display_name) {
+        return res.status(400).json({
+          ok: false,
+          error: { code: "missing_fields", message: "email and display_name are required." }
+        });
+      }
+
+      const user_id = randomUUID();
+      await getPool().query(
+        `INSERT INTO \`users\` (user_id, email, display_name, status) VALUES (?, ?, ?, ?)`,
+        [user_id, email, display_name, status]
+      );
+
+      return res.status(201).json({ ok: true, user_id, email, display_name, status });
+    } catch (err) {
+      if (err.code === "ER_DUP_ENTRY") {
+        return res.status(409).json({
+          ok: false,
+          error: { code: "user_already_exists", message: "A user with this email already exists." }
+        });
+      }
+      return res.status(500).json({
+        ok: false,
+        error: { code: "user_create_failed", message: err.message || "Failed to create user." }
+      });
+    }
+  });
+
+  // ── GET /users/:id ─────────────────────────────────────────────────────────
+  router.get("/users/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const [rows] = await getPool().query(
+        `SELECT user_id, email, display_name, status, created_at, updated_at
+         FROM \`users\` WHERE user_id = ? LIMIT 1`,
+        [req.params.id]
+      );
+      if (!rows.length) {
+        return res.status(404).json({
+          ok: false,
+          error: { code: "user_not_found", message: `User ${req.params.id} not found.` }
+        });
+      }
+      return res.status(200).json({ ok: true, user: rows[0] });
+    } catch (err) {
+      return res.status(500).json({
+        ok: false,
+        error: { code: "user_read_failed", message: err.message || "Failed to read user." }
+      });
+    }
+  });
+
+  // ── POST /users/:id/role-assignments ───────────────────────────────────────
+  router.post("/users/:id/role-assignments", requireBackendApiKey, async (req, res) => {
+    try {
+      const user_id = req.params.id;
+      const { tenant_id, role, granted_by, expires_at } = req.body || {};
+
+      if (!tenant_id || !role) {
+        return res.status(400).json({
+          ok: false,
+          error: { code: "missing_fields", message: "tenant_id and role are required." }
+        });
+      }
+
+      const assignment_id = randomUUID();
+      await getPool().query(
+        `INSERT INTO \`role_assignments\` (assignment_id, user_id, tenant_id, role, granted_by, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [assignment_id, user_id, tenant_id, role, granted_by || null, expires_at || null]
+      );
+
+      return res.status(201).json({ ok: true, assignment_id, user_id, tenant_id, role });
+    } catch (err) {
+      return res.status(500).json({
+        ok: false,
+        error: { code: "role_assignment_failed", message: err.message || "Failed to assign role." }
+      });
+    }
+  });
+
+  // ── GET /plans ─────────────────────────────────────────────────────────────
+  router.get("/plans", requireBackendApiKey, async (_req, res) => {
+    try {
+      const [rows] = await getPool().query(
+        `SELECT plan_id, plan_key, display_name, service_mode, price_monthly_usd, features_json, limits_json, active
+         FROM \`plans\` WHERE active = 1 ORDER BY price_monthly_usd ASC`
+      );
+
+      const plans = rows.map((p) => ({
+        ...p,
+        features_json: safeParseJson(p.features_json),
+        limits_json: safeParseJson(p.limits_json),
+      }));
+
+      return res.status(200).json({ ok: true, plans, count: plans.length });
+    } catch (err) {
+      return res.status(500).json({
+        ok: false,
+        error: { code: "plans_read_failed", message: err.message || "Failed to read plans." }
+      });
+    }
+  });
+
+  // ── POST /subscriptions ────────────────────────────────────────────────────
+  router.post("/subscriptions", requireBackendApiKey, async (req, res) => {
+    try {
+      const { tenant_id, plan_key, expires_at } = req.body || {};
+      if (!tenant_id || !plan_key) {
+        return res.status(400).json({
+          ok: false,
+          error: { code: "missing_fields", message: "tenant_id and plan_key are required." }
+        });
+      }
+
+      const [planRows] = await getPool().query(
+        "SELECT plan_id FROM `plans` WHERE plan_key = ? AND active = 1 LIMIT 1",
+        [plan_key]
+      );
+      if (!planRows.length) {
+        return res.status(404).json({
+          ok: false,
+          error: { code: "plan_not_found", message: `Plan '${plan_key}' not found or inactive.` }
+        });
+      }
+
+      const subscription_id = randomUUID();
+      const plan_id = planRows[0].plan_id;
+
+      await getPool().query(
+        `INSERT INTO \`subscriptions\` (subscription_id, tenant_id, plan_id, expires_at)
+         VALUES (?, ?, ?, ?)`,
+        [subscription_id, tenant_id, plan_id, expires_at || null]
+      );
+
+      return res.status(201).json({ ok: true, subscription_id, tenant_id, plan_id, plan_key });
+    } catch (err) {
+      return res.status(500).json({
+        ok: false,
+        error: { code: "subscription_create_failed", message: err.message || "Failed to create subscription." }
+      });
+    }
+  });
+
+  // ── GET /tenants/:id/subscriptions ────────────────────────────────────────
+  router.get("/tenants/:id/subscriptions", requireBackendApiKey, async (req, res) => {
+    try {
+      const [rows] = await getPool().query(
+        `SELECT s.subscription_id, s.status, s.started_at, s.expires_at,
+                p.plan_key, p.display_name, p.service_mode, p.price_monthly_usd
+         FROM \`subscriptions\` s
+         JOIN \`plans\` p ON p.plan_id = s.plan_id
+         WHERE s.tenant_id = ?
+         ORDER BY s.started_at DESC`,
+        [req.params.id]
+      );
+      return res.status(200).json({ ok: true, tenant_id: req.params.id, subscriptions: rows, count: rows.length });
+    } catch (err) {
+      return res.status(500).json({
+        ok: false,
+        error: { code: "subscriptions_read_failed", message: err.message || "Failed to read subscriptions." }
+      });
+    }
+  });
+
+  // ── GET /assistance-roles ─────────────────────────────────────────────────
+  router.get("/assistance-roles", requireBackendApiKey, async (_req, res) => {
+    try {
+      const [rows] = await getPool().query(
+        `SELECT role_id, role_key, display_name, level, capabilities_json
+         FROM \`assistance_roles\` WHERE active = 1 ORDER BY level ASC`
+      );
+      const roles = rows.map((r) => ({ ...r, capabilities_json: safeParseJson(r.capabilities_json) }));
+      return res.status(200).json({ ok: true, roles, count: roles.length });
+    } catch (err) {
+      return res.status(500).json({
+        ok: false,
+        error: { code: "assistance_roles_read_failed", message: err.message || "Failed to read assistance roles." }
+      });
+    }
+  });
+
+  return router;
+}
+
+function safeParseJson(value) {
+  if (!value) return null;
+  try { return JSON.parse(value); } catch { return value; }
+}

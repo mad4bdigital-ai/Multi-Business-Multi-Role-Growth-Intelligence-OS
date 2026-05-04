@@ -1,0 +1,73 @@
+-- Sprint 14: Workflow Orchestration (long-running, paused, approved work)
+
+CREATE TABLE IF NOT EXISTS `workflow_runs` (
+  `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `run_id`          VARCHAR(36) NOT NULL,
+  `tenant_id`       VARCHAR(36) NOT NULL,
+  `user_id`         VARCHAR(36) NULL,
+  `workflow_key`    VARCHAR(128) NOT NULL,
+  `plan_id`         VARCHAR(36) NULL,
+  `service_mode`    ENUM('self_serve','assisted','managed') NOT NULL DEFAULT 'self_serve',
+  `status`          ENUM('pending','running','awaiting_approval','awaiting_review','paused','completed','failed','cancelled') NOT NULL DEFAULT 'pending',
+  `current_step`    VARCHAR(128) NULL,
+  `input_json`      TEXT NULL,
+  `output_json`     TEXT NULL,
+  `error_json`      TEXT NULL,
+  `started_at`      DATETIME NULL,
+  `completed_at`    DATETIME NULL,
+  `created_at`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_run_id` (`run_id`),
+  KEY `idx_tenant` (`tenant_id`),
+  KEY `idx_workflow` (`workflow_key`),
+  KEY `idx_status` (`status`),
+  KEY `idx_plan` (`plan_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `step_runs` (
+  `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `step_run_id`    VARCHAR(36) NOT NULL,
+  `run_id`         VARCHAR(36) NOT NULL,
+  `tenant_id`      VARCHAR(36) NOT NULL,
+  `step_key`       VARCHAR(128) NOT NULL,
+  `step_type`      ENUM('action','review','approval','managed_op','branch','wait','end') NOT NULL DEFAULT 'action',
+  `assigned_to`    VARCHAR(36) NULL,
+  `status`         ENUM('pending','running','completed','failed','skipped','awaiting') NOT NULL DEFAULT 'pending',
+  `attempt`        TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  `input_json`     TEXT NULL,
+  `output_json`    TEXT NULL,
+  `error_message`  VARCHAR(512) NULL,
+  `started_at`     DATETIME NULL,
+  `completed_at`   DATETIME NULL,
+  `created_at`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_step_run_id` (`step_run_id`),
+  KEY `idx_run` (`run_id`),
+  KEY `idx_tenant` (`tenant_id`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `approval_holds` (
+  `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `hold_id`         VARCHAR(36) NOT NULL,
+  `run_id`          VARCHAR(36) NOT NULL,
+  `step_run_id`     VARCHAR(36) NULL,
+  `tenant_id`       VARCHAR(36) NOT NULL,
+  `hold_type`       ENUM('review','supervisor_approval','managed_handoff','legal_hold') NOT NULL DEFAULT 'review',
+  `requested_by`    VARCHAR(36) NULL,
+  `assigned_to`     VARCHAR(36) NULL,
+  `required_role`   VARCHAR(64) NULL,
+  `status`          ENUM('open','approved','rejected','escalated','expired') NOT NULL DEFAULT 'open',
+  `decision_by`     VARCHAR(36) NULL,
+  `decision_note`   VARCHAR(512) NULL,
+  `expires_at`      DATETIME NULL,
+  `decided_at`      DATETIME NULL,
+  `created_at`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_hold_id` (`hold_id`),
+  KEY `idx_run` (`run_id`),
+  KEY `idx_tenant` (`tenant_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_assigned` (`assigned_to`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

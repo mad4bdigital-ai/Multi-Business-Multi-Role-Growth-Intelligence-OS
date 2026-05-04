@@ -5,6 +5,19 @@ import { buildJobRoutes } from "./jobRoutes.js";
 import { buildExecuteRoutes } from "./executeRoutes.js";
 import { buildGithubRoutes } from "./githubRoutes.js";
 import { buildAiResolverRoutes } from "./aiResolverRoutes.js";
+import { buildTenantsRoutes } from "./tenantsRoutes.js";
+import { buildIdentityRoutes } from "./identityRoutes.js";
+import { buildAccessRoutes } from "./accessRoutes.js";
+import { buildCustomerRoutes } from "./customerRoutes.js";
+import { buildConnectedSystemsRoutes } from "./connectedSystemsRoutes.js";
+import { buildPlannerRoutes } from "./plannerRoutes.js";
+import { buildBootstrapRoutes } from "./bootstrapRoutes.js";
+import { buildLogicRoutes } from "./logicRoutes.js";
+import { buildWorkflowOrchestrationRoutes } from "./workflowOrchestrationRoutes.js";
+import { buildObservabilityRoutes } from "./observabilityRoutes.js";
+import { buildSecurityRoutes } from "./securityRoutes.js";
+import { buildDeveloperApiRoutes } from "./developerApiRoutes.js";
+import { buildReleaseRoutes } from "./releaseRoutes.js";
 
 export function registerRoutes(app, deps) {
   app.use(buildHealthRoutes(deps));
@@ -13,5 +26,18 @@ export function registerRoutes(app, deps) {
   app.use(buildGithubRoutes(deps));
   app.use(buildJobRoutes(deps));
   app.use(buildAiResolverRoutes(deps));
+  app.use(buildTenantsRoutes(deps));
+  app.use(buildIdentityRoutes(deps));
+  app.use(buildAccessRoutes(deps));
+  app.use(buildCustomerRoutes(deps));
+  app.use(buildConnectedSystemsRoutes(deps));
+  app.use(buildPlannerRoutes(deps));
+  app.use(buildBootstrapRoutes(deps));
+  app.use(buildLogicRoutes(deps));
+  app.use(buildWorkflowOrchestrationRoutes(deps));
+  app.use(buildObservabilityRoutes(deps));
+  app.use(buildSecurityRoutes(deps));
+  app.use(buildDeveloperApiRoutes(deps));
+  app.use(buildReleaseRoutes(deps));
   app.use(buildExecuteRoutes(deps));
 }

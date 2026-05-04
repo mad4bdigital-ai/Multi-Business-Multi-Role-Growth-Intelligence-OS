@@ -1,0 +1,99 @@
+-- Sprint 04: Customer Operations
+
+CREATE TABLE IF NOT EXISTS `customers` (
+  `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `customer_id`   VARCHAR(36) NOT NULL,
+  `tenant_id`     VARCHAR(36) NOT NULL,
+  `display_name`  VARCHAR(255) NOT NULL,
+  `email`         VARCHAR(255) NULL,
+  `phone`         VARCHAR(64) NULL,
+  `company`       VARCHAR(255) NULL,
+  `status`        ENUM('active','inactive','archived') NOT NULL DEFAULT 'active',
+  `metadata_json` TEXT NULL,
+  `created_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_customer_id` (`customer_id`),
+  KEY `idx_tenant` (`tenant_id`),
+  KEY `idx_email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `contacts` (
+  `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `contact_id`  VARCHAR(36) NOT NULL,
+  `customer_id` VARCHAR(36) NOT NULL,
+  `tenant_id`   VARCHAR(36) NOT NULL,
+  `name`        VARCHAR(255) NOT NULL,
+  `email`       VARCHAR(255) NULL,
+  `phone`       VARCHAR(64) NULL,
+  `role`        VARCHAR(128) NULL,
+  `primary`     TINYINT(1) NOT NULL DEFAULT 0,
+  `status`      ENUM('active','inactive') NOT NULL DEFAULT 'active',
+  `created_at`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_contact_id` (`contact_id`),
+  KEY `idx_customer` (`customer_id`),
+  KEY `idx_tenant` (`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `threads` (
+  `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `thread_id`   VARCHAR(36) NOT NULL,
+  `tenant_id`   VARCHAR(36) NOT NULL,
+  `customer_id` VARCHAR(36) NULL,
+  `subject`     VARCHAR(512) NOT NULL,
+  `channel`     ENUM('email','chat','api','internal','managed') NOT NULL DEFAULT 'internal',
+  `status`      ENUM('open','pending','resolved','closed') NOT NULL DEFAULT 'open',
+  `assigned_to` VARCHAR(36) NULL,
+  `created_at`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_thread_id` (`thread_id`),
+  KEY `idx_tenant` (`tenant_id`),
+  KEY `idx_customer` (`customer_id`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `tickets` (
+  `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `ticket_id`     VARCHAR(36) NOT NULL,
+  `tenant_id`     VARCHAR(36) NOT NULL,
+  `customer_id`   VARCHAR(36) NULL,
+  `thread_id`     VARCHAR(36) NULL,
+  `title`         VARCHAR(512) NOT NULL,
+  `category`      ENUM('support','review_request','escalation','managed_task','billing','general') NOT NULL DEFAULT 'general',
+  `priority`      ENUM('low','normal','high','urgent') NOT NULL DEFAULT 'normal',
+  `status`        ENUM('open','in_review','awaiting_approval','resolved','closed') NOT NULL DEFAULT 'open',
+  `assigned_to`   VARCHAR(36) NULL,
+  `service_mode`  ENUM('self_serve','assisted','managed') NOT NULL DEFAULT 'self_serve',
+  `metadata_json` TEXT NULL,
+  `created_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ticket_id` (`ticket_id`),
+  KEY `idx_tenant` (`tenant_id`),
+  KEY `idx_customer` (`customer_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_category` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `timeline_events` (
+  `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `event_id`      VARCHAR(36) NOT NULL,
+  `tenant_id`     VARCHAR(36) NOT NULL,
+  `customer_id`   VARCHAR(36) NULL,
+  `ticket_id`     VARCHAR(36) NULL,
+  `thread_id`     VARCHAR(36) NULL,
+  `event_type`    VARCHAR(64) NOT NULL,
+  `actor_id`      VARCHAR(36) NULL,
+  `actor_type`    VARCHAR(64) NULL,
+  `summary`       VARCHAR(512) NULL,
+  `payload_json`  TEXT NULL,
+  `occurred_at`   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_event_id` (`event_id`),
+  KEY `idx_tenant` (`tenant_id`),
+  KEY `idx_customer` (`customer_id`),
+  KEY `idx_ticket` (`ticket_id`),
+  KEY `idx_type` (`event_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
