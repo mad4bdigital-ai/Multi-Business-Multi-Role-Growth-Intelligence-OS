@@ -158,12 +158,14 @@ assert.match(routeCalls[0].input.systemContext, /route_ai_plan/);
 const taskRoute = await invokeRoute(routeRouter, "/ai/task-manifest", {
   implementationPlan: "# Route Plan",
   intent_key: "ai_task_manifest_generation",
-  route_id: "route_ai_task",
-  workflow_id: "wf_ai_task"
+  intent_maturation: planRoute.body.intent_maturation
 });
 
 assert.equal(taskRoute.statusCode, 200);
 assert.equal(taskRoute.body.intent_maturation.intent_key, "ai_task_manifest_generation");
-assert.match(routeCalls[1].input.systemContext, /wf_ai_task/);
+assert.equal(taskRoute.body.intent_maturation.upstream_intent_key, "ai_custom_plan_generation");
+assert.equal(taskRoute.body.intent_maturation.route_workflow_state.route_id, "route_ai_plan");
+assert.equal(taskRoute.body.intent_maturation.route_workflow_state.workflow_id, "wf_ai_plan");
+assert.match(routeCalls[1].input.systemContext, /route_ai_plan/);
 
 console.log("AI resolver tests passed");

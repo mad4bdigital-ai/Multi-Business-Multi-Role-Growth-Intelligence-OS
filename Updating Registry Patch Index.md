@@ -98,9 +98,12 @@ Last updated: 2026-05-04
   - Adds `intent_maturation` to AI resolver responses.
   - Injects matured intent context into plan/task prompts.
   - Adds direct route handler coverage for intent-maturation response and prompt injection.
+  - Preserves upstream plan-generation `intent_maturation` context when generating task manifests.
+  - Adds HTTP-level route coverage for plan -> task intent continuity.
   - Avoids creating a parallel JSON Asset persistence path.
 - Evidence:
   - `node test-ai-resolvers.mjs` passed from `http-generic-api`.
+  - `node test-ai-resolver-routes.mjs` passed from `http-generic-api`.
   - `npm.cmd run validate` passed from `http-generic-api`.
   - `npm.cmd test` passed from `http-generic-api`.
 
@@ -108,6 +111,7 @@ Last updated: 2026-05-04
 
 - `node --check server.js`: pass
 - `node test-ai-resolvers.mjs`: pass
+- `node test-ai-resolver-routes.mjs`: pass
 - `node test-provider-fetch-timeout.mjs`: pass
 - `node test-routes.mjs`: pass with route runtime checks skipped by default
 - `npm.cmd test`: pass
