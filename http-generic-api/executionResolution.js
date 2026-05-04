@@ -1,3 +1,8 @@
+import {
+  ACTIVATION_BOOTSTRAP_CONFIG_RANGE,
+  ACTIVATION_BOOTSTRAP_SPREADSHEET_ID
+} from "./config.js";
+
 export async function resolveExecutionRequest(reqBody = {}, deps = {}) {
   const {
     requireEnv,
@@ -288,6 +293,34 @@ export async function resolveExecutionRequest(reqBody = {}, deps = {}) {
       normalizedRange = rawRange;
     }
 
+    const requestedSpreadsheetId = String(rqPath.spreadsheetId || "").trim();
+    if (
+      normalizedRange === ACTIVATION_BOOTSTRAP_CONFIG_RANGE &&
+      requestedSpreadsheetId !== ACTIVATION_BOOTSTRAP_SPREADSHEET_ID
+    ) {
+      return {
+        ok: false,
+        response: {
+          status: 400,
+          body: {
+            ok: false,
+            error: {
+              code: "activation_bootstrap_spreadsheet_mismatch",
+              message: "Activation bootstrap range must be read from the configured activation bootstrap spreadsheet.",
+              details: {
+                requested_spreadsheetId: requestedSpreadsheetId,
+                expected_spreadsheetId: ACTIVATION_BOOTSTRAP_SPREADSHEET_ID,
+                range: normalizedRange,
+                endpoint_key
+              }
+            }
+          }
+        },
+        requestPayload,
+        execution_trace_id
+      };
+    }
+
     requestPayload.path_params = { ...rqPath, range: normalizedRange };
     requestPayload.query = Object.fromEntries(
       Object.entries(rqQuery).filter(([k]) => k !== "range")
@@ -295,7 +328,7 @@ export async function resolveExecutionRequest(reqBody = {}, deps = {}) {
     delete requestPayload.path;
 
     debugLog("SHEETS_RANGE_SNAPSHOT:", JSON.stringify({
-      requested_spreadsheetId: String(rqPath.spreadsheetId || "").trim(),
+      requested_spreadsheetId: requestedSpreadsheetId,
       requested_range: normalizedRange,
       range_source: queryRange ? "query" : "path_params",
       routing: "path",

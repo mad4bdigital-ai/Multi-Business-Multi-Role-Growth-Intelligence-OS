@@ -12,6 +12,8 @@ import { fetchRange } from "./googleSheets.js";
 import { validateEndpointRowConsistency } from "./registryExecutionEligibility.js";
 import { resolveExecutionRequest } from "./executionResolution.js";
 
+const ACTIVATION_BOOTSTRAP_SPREADSHEET_ID = "1RV185rQo58pGppg27r81eD9hPE8pXPyBY1pfHANip4o";
+
 let passed = 0;
 let failed = 0;
 
@@ -187,7 +189,7 @@ section("resolveExecutionRequest — query.range accepted and preferred over pat
       parent_action_key: "google_sheets_api",
       endpoint_key: "getSheetValues",
       method: "GET",
-      path_params: { spreadsheetId: "abc" },
+      path_params: { spreadsheetId: ACTIVATION_BOOTSTRAP_SPREADSHEET_ID },
       query: { range }
     },
     makeMinimalDeps({ resolveHttpExecutionContext: sentinelAwareMock })
@@ -206,7 +208,7 @@ section("resolveExecutionRequest — query.range accepted and preferred over pat
       parent_action_key: "google_sheets_api",
       endpoint_key: "getSheetValues",
       method: "GET",
-      path_params: { spreadsheetId: "abc", range: wrongRange },
+      path_params: { spreadsheetId: ACTIVATION_BOOTSTRAP_SPREADSHEET_ID, range: wrongRange },
       query: { range }
     },
     makeMinimalDeps({ resolveHttpExecutionContext: sentinelAwareMock })
@@ -226,7 +228,7 @@ section("resolveExecutionRequest — pre-encoded range decoded before path encod
       parent_action_key: "google_sheets_api",
       endpoint_key: "getSheetValues",
       method: "GET",
-      path_params: { spreadsheetId: "abc" },
+      path_params: { spreadsheetId: ACTIVATION_BOOTSTRAP_SPREADSHEET_ID },
       query: { range: preEncoded }
     },
     makeMinimalDeps({ resolveHttpExecutionContext: sentinelAwareMock })
@@ -234,6 +236,35 @@ section("resolveExecutionRequest — pre-encoded range decoded before path encod
   assert("pre-encoded query.range decoded once — no %2520 double-encoding", result.ok === true, JSON.stringify(result.response?.body?.error));
   assert("decoded range in path_params", result.pathParams?.range === rawRange, `got: ${result.pathParams?.range}`);
   assert("outbound path has no double encoding", String(result.resolvedMethodPath?.path || "").endsWith(`/values/${encodeURIComponent(rawRange)}`), `got: ${result.resolvedMethodPath?.path}`);
+}
+
+section("resolveExecutionRequest - activation bootstrap range rejects wrong spreadsheet");
+
+{
+  const result = await resolveExecutionRequest(
+    {
+      parent_action_key: "google_sheets_api",
+      endpoint_key: "getSheetValues",
+      method: "GET",
+      path_params: {
+        spreadsheetId: "1hX7a6RQzaJ1FP0z8xN9Krds4VluqilkSRAxYXHKR4sE"
+      },
+      query: { range: "Activation Bootstrap Config!A2:J2" }
+    },
+    makeMinimalDeps({ resolveHttpExecutionContext: sentinelAwareMock })
+  );
+
+  assert(
+    "wrong activation bootstrap workbook is rejected before Google transport",
+    result.ok === false &&
+      result.response?.body?.error?.code === "activation_bootstrap_spreadsheet_mismatch",
+    JSON.stringify(result.response?.body?.error)
+  );
+  assert(
+    "bootstrap mismatch reports expected spreadsheet id",
+    result.response?.body?.error?.details?.expected_spreadsheetId === ACTIVATION_BOOTSTRAP_SPREADSHEET_ID,
+    JSON.stringify(result.response?.body?.error?.details)
+  );
 }
 
 section("resolveExecutionRequest — path range routing");
