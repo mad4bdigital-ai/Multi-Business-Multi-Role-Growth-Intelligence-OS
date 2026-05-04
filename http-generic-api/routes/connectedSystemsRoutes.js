@@ -139,5 +139,75 @@ export function buildConnectedSystemsRoutes(deps) {
     }
   });
 
+  // ── GET /installations/:id ────────────────────────────────────────────────
+  router.get("/installations/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const [rows] = await getPool().query(
+        "SELECT * FROM `installations` WHERE installation_id = ? LIMIT 1", [req.params.id]
+      );
+      if (!rows.length) return res.status(404).json({ ok: false, error: { code: "installation_not_found", message: `Installation ${req.params.id} not found.` } });
+      const inst = rows[0];
+      if (inst.meta_json) try { inst.meta_json = JSON.parse(inst.meta_json); } catch {}
+      return res.status(200).json({ ok: true, installation: inst });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "installation_read_failed", message: err.message } });
+    }
+  });
+
+  // ── GET /tenants/:id/installations ────────────────────────────────────────
+  router.get("/tenants/:id/installations", requireBackendApiKey, async (req, res) => {
+    try {
+      const { status, system_id } = req.query;
+      const conditions = ["i.tenant_id = ?"];
+      const params = [req.params.id];
+      if (status)    { conditions.push("i.status = ?");    params.push(status); }
+      if (system_id) { conditions.push("i.system_id = ?"); params.push(system_id); }
+      const [rows] = await getPool().query(
+        `SELECT i.installation_id, i.system_id, i.scope, i.status, i.installed_at, i.expires_at,
+                cs.system_key, cs.display_name AS system_name, cs.provider_family
+         FROM \`installations\` i
+         LEFT JOIN \`connected_systems\` cs ON cs.system_id = i.system_id
+         WHERE ${conditions.join(" AND ")} ORDER BY i.installed_at DESC LIMIT 200`,
+        params
+      );
+      return res.status(200).json({ ok: true, installations: rows, count: rows.length });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "installations_list_failed", message: err.message } });
+    }
+  });
+
+  // ── POST /permission-grants ───────────────────────────────────────────────
+  router.post("/permission-grants", requireBackendApiKey, async (req, res) => {
+    try {
+      const { installation_id, tenant_id, permission_key, granted = true, granted_by } = req.body || {};
+      if (!installation_id || !tenant_id || !permission_key) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "installation_id, tenant_id, and permission_key are required." } });
+      }
+      const grant_id = randomUUID();
+      await getPool().query(
+        `INSERT INTO \`permission_grants\` (grant_id, installation_id, tenant_id, permission_key, granted, granted_at, granted_by)
+         VALUES (?, ?, ?, ?, ?, NOW(), ?)`,
+        [grant_id, installation_id, tenant_id, permission_key, granted ? 1 : 0, granted_by || null]
+      );
+      return res.status(201).json({ ok: true, grant_id, installation_id, tenant_id, permission_key, granted });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "grant_create_failed", message: err.message } });
+    }
+  });
+
+  // ── GET /installations/:id/permission-grants ──────────────────────────────
+  router.get("/installations/:id/permission-grants", requireBackendApiKey, async (req, res) => {
+    try {
+      const [rows] = await getPool().query(
+        `SELECT grant_id, permission_key, granted, granted_at, granted_by
+         FROM \`permission_grants\` WHERE installation_id = ? ORDER BY granted_at DESC`,
+        [req.params.id]
+      );
+      return res.status(200).json({ ok: true, installation_id: req.params.id, grants: rows, count: rows.length });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "grants_list_failed", message: err.message } });
+    }
+  });
+
   return router;
 }

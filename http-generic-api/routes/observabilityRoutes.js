@@ -125,6 +125,166 @@ export function buildObservabilityRoutes(deps) {
     }
   });
 
+  // ── POST /tracking/workspaces ─────────────────────────────────────────────
+  router.post("/tracking/workspaces", requireBackendApiKey, async (req, res) => {
+    try {
+      const {
+        tenant_id, workspace_key, display_name,
+        ga_property_id, gtm_container_id, gsc_property,
+        tracking_status = "active", service_mode = "self_serve",
+      } = req.body || {};
+      if (!tenant_id || !workspace_key || !display_name) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "tenant_id, workspace_key, and display_name are required." } });
+      }
+      const workspace_id = randomUUID();
+      await getPool().query(
+        `INSERT INTO \`tracking_workspaces\`
+           (workspace_id, tenant_id, workspace_key, display_name, ga_property_id, gtm_container_id, gsc_property, tracking_status, service_mode)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [workspace_id, tenant_id, workspace_key, display_name, ga_property_id || null,
+         gtm_container_id || null, gsc_property || null, tracking_status, service_mode]
+      );
+      return res.status(201).json({ ok: true, workspace_id, tenant_id, workspace_key, display_name, tracking_status });
+    } catch (err) {
+      if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ ok: false, error: { code: "workspace_exists", message: "Tracking workspace key already exists for this tenant." } });
+      return res.status(500).json({ ok: false, error: { code: "tracking_workspace_create_failed", message: err.message } });
+    }
+  });
+
+  // ── GET /tenants/:id/tracking/workspaces ──────────────────────────────────
+  router.get("/tenants/:id/tracking/workspaces", requireBackendApiKey, async (req, res) => {
+    try {
+      const [rows] = await getPool().query(
+        `SELECT workspace_id, workspace_key, display_name, ga_property_id, gtm_container_id,
+                gsc_property, tracking_status, service_mode, created_at
+         FROM \`tracking_workspaces\` WHERE tenant_id = ? ORDER BY created_at DESC`,
+        [req.params.id]
+      );
+      return res.status(200).json({ ok: true, workspaces: rows, count: rows.length });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "tracking_workspaces_list_failed", message: err.message } });
+    }
+  });
+
+  // ── GET /tracking/workspaces/:id ──────────────────────────────────────────
+  router.get("/tracking/workspaces/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const [rows] = await getPool().query(
+        "SELECT * FROM `tracking_workspaces` WHERE workspace_id = ? LIMIT 1", [req.params.id]
+      );
+      if (!rows.length) return res.status(404).json({ ok: false, error: { code: "workspace_not_found", message: `Tracking workspace ${req.params.id} not found.` } });
+      return res.status(200).json({ ok: true, workspace: rows[0] });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "tracking_workspace_read_failed", message: err.message } });
+    }
+  });
+
+  // ── POST /tracking/events ─────────────────────────────────────────────────
+  router.post("/tracking/events", requireBackendApiKey, async (req, res) => {
+    try {
+      const {
+        tenant_id, workspace_id, event_category, event_type,
+        actor_id, actor_type, subject_id, subject_type,
+        service_mode = "self_serve", dimensions_json, metrics_json, occurred_at,
+      } = req.body || {};
+      if (!tenant_id || !event_type) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "tenant_id and event_type are required." } });
+      }
+      const event_id = randomUUID();
+      await getPool().query(
+        `INSERT INTO \`tracked_events\`
+           (event_id, tenant_id, workspace_id, event_category, event_type, actor_id, actor_type,
+            subject_id, subject_type, service_mode, dimensions_json, metrics_json, occurred_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [event_id, tenant_id, workspace_id || null, event_category || null, event_type,
+         actor_id || null, actor_type || null, subject_id || null, subject_type || null,
+         service_mode,
+         dimensions_json ? JSON.stringify(dimensions_json) : null,
+         metrics_json    ? JSON.stringify(metrics_json)    : null,
+         occurred_at || new Date().toISOString().slice(0, 19).replace("T", " ")]
+      );
+      return res.status(201).json({ ok: true, event_id, tenant_id, event_type });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "tracked_event_create_failed", message: err.message } });
+    }
+  });
+
+  // ── GET /tracking/workspaces/:id/events ───────────────────────────────────
+  router.get("/tracking/workspaces/:id/events", requireBackendApiKey, async (req, res) => {
+    try {
+      const { event_type, from, to, limit: rawLimit = 200 } = req.query;
+      const limit = Math.min(Number(rawLimit) || 200, 1000);
+      const conditions = ["workspace_id = ?"];
+      const params = [req.params.id];
+      if (event_type) { conditions.push("event_type = ?"); params.push(event_type); }
+      if (from) { conditions.push("occurred_at >= ?"); params.push(from); }
+      if (to)   { conditions.push("occurred_at <= ?"); params.push(to); }
+      params.push(limit);
+      const [rows] = await getPool().query(
+        `SELECT event_id, event_category, event_type, actor_id, actor_type,
+                subject_id, subject_type, service_mode, occurred_at
+         FROM \`tracked_events\` WHERE ${conditions.join(" AND ")} ORDER BY occurred_at DESC LIMIT ?`,
+        params
+      );
+      return res.status(200).json({ ok: true, workspace_id: req.params.id, events: rows, count: rows.length });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "tracked_events_list_failed", message: err.message } });
+    }
+  });
+
+  // ── POST /reporting/views ─────────────────────────────────────────────────
+  router.post("/reporting/views", requireBackendApiKey, async (req, res) => {
+    try {
+      const { tenant_id, view_key, display_name, view_type = "table", filters_json, columns_json } = req.body || {};
+      if (!tenant_id || !view_key || !display_name) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "tenant_id, view_key, and display_name are required." } });
+      }
+      const view_id = randomUUID();
+      await getPool().query(
+        `INSERT INTO \`reporting_views\` (view_id, tenant_id, view_key, display_name, view_type, filters_json, columns_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [view_id, tenant_id, view_key, display_name, view_type,
+         filters_json ? JSON.stringify(filters_json) : null,
+         columns_json ? JSON.stringify(columns_json) : null]
+      );
+      return res.status(201).json({ ok: true, view_id, tenant_id, view_key, display_name, view_type });
+    } catch (err) {
+      if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ ok: false, error: { code: "view_exists", message: "Reporting view key already exists for this tenant." } });
+      return res.status(500).json({ ok: false, error: { code: "reporting_view_create_failed", message: err.message } });
+    }
+  });
+
+  // ── GET /tenants/:id/reporting/views ──────────────────────────────────────
+  router.get("/tenants/:id/reporting/views", requireBackendApiKey, async (req, res) => {
+    try {
+      const [rows] = await getPool().query(
+        `SELECT view_id, view_key, display_name, view_type, created_at
+         FROM \`reporting_views\` WHERE tenant_id = ? ORDER BY created_at DESC`,
+        [req.params.id]
+      );
+      return res.status(200).json({ ok: true, views: rows, count: rows.length });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "reporting_views_list_failed", message: err.message } });
+    }
+  });
+
+  // ── GET /reporting/views/:id ──────────────────────────────────────────────
+  router.get("/reporting/views/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const [rows] = await getPool().query(
+        "SELECT * FROM `reporting_views` WHERE view_id = ? LIMIT 1", [req.params.id]
+      );
+      if (!rows.length) return res.status(404).json({ ok: false, error: { code: "view_not_found", message: `Reporting view ${req.params.id} not found.` } });
+      const v = rows[0];
+      for (const f of ["filters_json", "columns_json"]) {
+        if (v[f]) try { v[f] = JSON.parse(v[f]); } catch {}
+      }
+      return res.status(200).json({ ok: true, view: v });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "reporting_view_read_failed", message: err.message } });
+    }
+  });
+
   // ── GET /quota-check/:tenant_id/:meter_key ────────────────────────────────
   // Returns whether the tenant is within quota for the given meter.
   router.get("/quota-check/:tenant_id/:meter_key", requireBackendApiKey, async (req, res) => {

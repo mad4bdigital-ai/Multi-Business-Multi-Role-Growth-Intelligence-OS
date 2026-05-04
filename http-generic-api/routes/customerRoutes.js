@@ -144,5 +144,89 @@ export function buildCustomerRoutes(deps) {
     }
   });
 
+  // ── POST /contacts ────────────────────────────────────────────────────────
+  router.post("/contacts", requireBackendApiKey, async (req, res) => {
+    try {
+      const { customer_id, tenant_id, name, email, phone, role, primary: isPrimary = false } = req.body || {};
+      if (!tenant_id || !name) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "tenant_id and name are required." } });
+      }
+      const contact_id = randomUUID();
+      await getPool().query(
+        `INSERT INTO \`contacts\` (contact_id, customer_id, tenant_id, name, email, phone, role, \`primary\`)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [contact_id, customer_id || null, tenant_id, name, email || null, phone || null, role || null, isPrimary ? 1 : 0]
+      );
+      return res.status(201).json({ ok: true, contact_id, tenant_id, name });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "contact_create_failed", message: err.message } });
+    }
+  });
+
+  // ── GET /customers/:id/contacts ───────────────────────────────────────────
+  router.get("/customers/:id/contacts", requireBackendApiKey, async (req, res) => {
+    try {
+      const [rows] = await getPool().query(
+        `SELECT contact_id, name, email, phone, role, \`primary\`, status, created_at
+         FROM \`contacts\` WHERE customer_id = ? ORDER BY \`primary\` DESC, created_at ASC`,
+        [req.params.id]
+      );
+      return res.status(200).json({ ok: true, customer_id: req.params.id, contacts: rows, count: rows.length });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "contacts_read_failed", message: err.message } });
+    }
+  });
+
+  // ── POST /threads ─────────────────────────────────────────────────────────
+  router.post("/threads", requireBackendApiKey, async (req, res) => {
+    try {
+      const { tenant_id, customer_id, subject, channel = "email", assigned_to } = req.body || {};
+      if (!tenant_id || !subject) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "tenant_id and subject are required." } });
+      }
+      const thread_id = randomUUID();
+      await getPool().query(
+        `INSERT INTO \`threads\` (thread_id, tenant_id, customer_id, subject, channel, assigned_to)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [thread_id, tenant_id, customer_id || null, subject, channel, assigned_to || null]
+      );
+      return res.status(201).json({ ok: true, thread_id, tenant_id, subject, channel, status: "open" });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "thread_create_failed", message: err.message } });
+    }
+  });
+
+  // ── GET /threads/:id ──────────────────────────────────────────────────────
+  router.get("/threads/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const [rows] = await getPool().query(
+        "SELECT * FROM `threads` WHERE thread_id = ? LIMIT 1", [req.params.id]
+      );
+      if (!rows.length) return res.status(404).json({ ok: false, error: { code: "thread_not_found", message: `Thread ${req.params.id} not found.` } });
+      return res.status(200).json({ ok: true, thread: rows[0] });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "thread_read_failed", message: err.message } });
+    }
+  });
+
+  // ── GET /tenants/:id/threads ──────────────────────────────────────────────
+  router.get("/tenants/:id/threads", requireBackendApiKey, async (req, res) => {
+    try {
+      const { status, channel } = req.query;
+      const conditions = ["tenant_id = ?"];
+      const params = [req.params.id];
+      if (status)  { conditions.push("status = ?");  params.push(status); }
+      if (channel) { conditions.push("channel = ?"); params.push(channel); }
+      const [rows] = await getPool().query(
+        `SELECT thread_id, customer_id, subject, channel, status, assigned_to, created_at
+         FROM \`threads\` WHERE ${conditions.join(" AND ")} ORDER BY created_at DESC LIMIT 200`,
+        params
+      );
+      return res.status(200).json({ ok: true, threads: rows, count: rows.length });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "threads_list_failed", message: err.message } });
+    }
+  });
+
   return router;
 }

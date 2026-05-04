@@ -18,6 +18,7 @@ import { buildIdentityRoutes }         from "./routes/identityRoutes.js";
 import { buildCustomerRoutes }         from "./routes/customerRoutes.js";
 import { buildConnectedSystemsRoutes } from "./routes/connectedSystemsRoutes.js";
 import { buildBootstrapRoutes }        from "./routes/bootstrapRoutes.js";
+import { buildObservabilityRoutes }    from "./routes/observabilityRoutes.js";
 
 let passed = 0;
 let failed = 0;
@@ -47,6 +48,7 @@ app.use(buildIdentityRoutes(DEPS));
 app.use(buildCustomerRoutes(DEPS));
 app.use(buildConnectedSystemsRoutes(DEPS));
 app.use(buildBootstrapRoutes(DEPS));
+app.use(buildObservabilityRoutes(DEPS));
 
 const server = app.listen(0);
 await new Promise(resolve => server.once("listening", resolve));
@@ -256,6 +258,129 @@ section("GET /tenants/:id/connected-systems — route registered");
 {
   const r = await get("/tenants/t1/connected-systems");
   ok("not 404", r.status !== 404, `got ${r.status}`);
+}
+
+// ── 14. contacts — input validation + registration ────────────────────────────
+
+section("POST /contacts — input validation");
+
+{
+  const r = await post("/contacts", {});
+  ok("missing tenant_id + name → 400", r.status === 400, `got ${r.status}`);
+  ok("code = missing_fields", r.body.error?.code === "missing_fields");
+}
+{
+  const r = await get("/customers/c1/contacts");
+  ok("GET /customers/:id/contacts → not 404", r.status !== 404, `got ${r.status}`);
+}
+
+// ── 15. threads — input validation + registration ─────────────────────────────
+
+section("POST /threads — input validation");
+
+{
+  const r = await post("/threads", {});
+  ok("missing tenant_id + subject → 400", r.status === 400, `got ${r.status}`);
+  ok("code = missing_fields", r.body.error?.code === "missing_fields");
+}
+{
+  const r = await get("/threads/t1");
+  ok("GET /threads/:id → not 404", r.status !== 404, `got ${r.status}`);
+}
+{
+  const r = await get("/tenants/t1/threads");
+  ok("GET /tenants/:id/threads → not 404", r.status !== 404, `got ${r.status}`);
+}
+
+// ── 16. entitlements — input validation + registration ───────────────────────
+
+section("POST /entitlements — input validation");
+
+{
+  const r = await post("/entitlements", {});
+  ok("missing tenant_id + key → 400", r.status === 400, `got ${r.status}`);
+  ok("code = missing_fields", r.body.error?.code === "missing_fields");
+}
+{
+  const r = await get("/tenants/t1/entitlements");
+  ok("GET /tenants/:id/entitlements → not 404", r.status !== 404, `got ${r.status}`);
+}
+
+// ── 17. installations GET routes ──────────────────────────────────────────────
+
+section("GET /installations/:id — route registered");
+
+{
+  const r = await get("/installations/00000000-0000-0000-0000-000000000001");
+  ok("not 404", r.status !== 404, `got ${r.status}`);
+}
+{
+  const r = await get("/tenants/t1/installations");
+  ok("GET /tenants/:id/installations → not 404", r.status !== 404, `got ${r.status}`);
+}
+
+// ── 18. permission-grants — input validation + registration ───────────────────
+
+section("POST /permission-grants — input validation");
+
+{
+  const r = await post("/permission-grants", {});
+  ok("missing required fields → 400", r.status === 400, `got ${r.status}`);
+  ok("code = missing_fields", r.body.error?.code === "missing_fields");
+}
+{
+  const r = await get("/installations/i1/permission-grants");
+  ok("GET /installations/:id/permission-grants → not 404", r.status !== 404, `got ${r.status}`);
+}
+
+// ── 19. tracking workspaces — input validation + registration ─────────────────
+
+section("POST /tracking/workspaces — input validation");
+
+{
+  const r = await post("/tracking/workspaces", {});
+  ok("missing required fields → 400", r.status === 400, `got ${r.status}`);
+  ok("code = missing_fields", r.body.error?.code === "missing_fields");
+}
+{
+  const r = await get("/tenants/t1/tracking/workspaces");
+  ok("GET /tenants/:id/tracking/workspaces → not 404", r.status !== 404, `got ${r.status}`);
+}
+{
+  const r = await get("/tracking/workspaces/w1");
+  ok("GET /tracking/workspaces/:id → not 404", r.status !== 404, `got ${r.status}`);
+}
+
+// ── 20. tracked events — input validation + registration ──────────────────────
+
+section("POST /tracking/events — input validation");
+
+{
+  const r = await post("/tracking/events", {});
+  ok("missing tenant_id + event_type → 400", r.status === 400, `got ${r.status}`);
+  ok("code = missing_fields", r.body.error?.code === "missing_fields");
+}
+{
+  const r = await get("/tracking/workspaces/w1/events");
+  ok("GET /tracking/workspaces/:id/events → not 404", r.status !== 404, `got ${r.status}`);
+}
+
+// ── 21. reporting views — input validation + registration ─────────────────────
+
+section("POST /reporting/views — input validation");
+
+{
+  const r = await post("/reporting/views", {});
+  ok("missing required fields → 400", r.status === 400, `got ${r.status}`);
+  ok("code = missing_fields", r.body.error?.code === "missing_fields");
+}
+{
+  const r = await get("/tenants/t1/reporting/views");
+  ok("GET /tenants/:id/reporting/views → not 404", r.status !== 404, `got ${r.status}`);
+}
+{
+  const r = await get("/reporting/views/v1");
+  ok("GET /reporting/views/:id → not 404", r.status !== 404, `got ${r.status}`);
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────────

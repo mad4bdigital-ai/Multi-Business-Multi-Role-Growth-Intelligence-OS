@@ -191,6 +191,57 @@ export function buildIdentityRoutes(deps) {
     }
   });
 
+  // ── POST /entitlements ────────────────────────────────────────────────────
+  router.post("/entitlements", requireBackendApiKey, async (req, res) => {
+    try {
+      const { tenant_id, entitlement_key, entitlement_value, source = "manual", granted_at, expires_at } = req.body || {};
+      if (!tenant_id || !entitlement_key) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "tenant_id and entitlement_key are required." } });
+      }
+      const entitlement_id = randomUUID();
+      await getPool().query(
+        `INSERT INTO \`entitlements\` (entitlement_id, tenant_id, entitlement_key, entitlement_value, source, granted_at, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [entitlement_id, tenant_id, entitlement_key, entitlement_value || null, source,
+         granted_at || new Date().toISOString().slice(0, 19).replace("T", " "), expires_at || null]
+      );
+      return res.status(201).json({ ok: true, entitlement_id, tenant_id, entitlement_key });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "entitlement_create_failed", message: err.message } });
+    }
+  });
+
+  // ── GET /entitlements/:id ─────────────────────────────────────────────────
+  router.get("/entitlements/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const [rows] = await getPool().query(
+        "SELECT * FROM `entitlements` WHERE entitlement_id = ? LIMIT 1", [req.params.id]
+      );
+      if (!rows.length) return res.status(404).json({ ok: false, error: { code: "entitlement_not_found", message: `Entitlement ${req.params.id} not found.` } });
+      return res.status(200).json({ ok: true, entitlement: rows[0] });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "entitlement_read_failed", message: err.message } });
+    }
+  });
+
+  // ── GET /tenants/:id/entitlements ─────────────────────────────────────────
+  router.get("/tenants/:id/entitlements", requireBackendApiKey, async (req, res) => {
+    try {
+      const { key } = req.query;
+      const conditions = ["tenant_id = ?"];
+      const params = [req.params.id];
+      if (key) { conditions.push("entitlement_key = ?"); params.push(key); }
+      const [rows] = await getPool().query(
+        `SELECT entitlement_id, entitlement_key, entitlement_value, source, granted_at, expires_at
+         FROM \`entitlements\` WHERE ${conditions.join(" AND ")} ORDER BY granted_at DESC`,
+        params
+      );
+      return res.status(200).json({ ok: true, tenant_id: req.params.id, entitlements: rows, count: rows.length });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "entitlements_list_failed", message: err.message } });
+    }
+  });
+
   return router;
 }
 
