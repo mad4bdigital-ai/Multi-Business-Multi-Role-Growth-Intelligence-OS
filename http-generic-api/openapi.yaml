@@ -1,19 +1,24 @@
 openapi: 3.1.0
 
 info:
-  title: Governed HTTP Client
-  version: 2.8.0-ai-resolvers
-  summary: Governed outbound HTTP execution with async jobs, native governance diagnostics, and AI generation resolvers
+  title: Governed HTTP Client — AI Platform
+  version: 3.0.0-platform
+  summary: >
+    Multi-tenant AI-native orchestration platform with governed execution, async jobs,
+    AI resolvers, and full platform management API (tenants, identity, access, workflows,
+    observability, security, developer API, and release readiness).
   description: >
-    OpenAI Action schema for the GPT-native governed HTTP client backend.
-    This schema exposes synchronous governed execution through /http-execute,
-    async job lifecycle endpoints through /jobs, /jobs/{jobId}, and
-    /jobs/{jobId}/result, a native governance diagnostic route through
-    /governance/resolve-context-diagnostic, and first-class AI generation
-    resolver routes through /ai/implementation-plan, /ai/task-manifest, and
-    /ai/registry-readiness. The governance diagnostic and AI resolver routes
-    are included directly in the parent schema so they do not depend on
-    endpoint child schema overlay fallback.
+    OpenAPI schema for the Governed AI + Human Managed Platform backend.
+    Covers three capability layers:
+    (1) Governed execution — /http-execute, /jobs/*, /governance/*, /ai/*
+    (2) Platform management — /tenants, /users, /plans, /subscriptions, /customers,
+        /tickets, /connected-systems, /workspaces, /planner/*, /bootstrap/*,
+        /logic-definitions, /logic-packs, /workflow-runs, /approval-holds,
+        /telemetry/*, /usage/*, /audit-log, /incidents, /developer-apps,
+        /api-credentials, /webhooks, /rate-limit-rules
+    (3) Release operations — /release/readiness, /release/readiness-history,
+        /release/entity-classification
+    All platform endpoints require Bearer authentication via BACKEND_API_KEY.
 
 servers:
   - url: https://http-generic-api-954909841518.europe-west1.run.app
@@ -30,6 +35,32 @@ tags:
     description: Runtime governance diagnostics.
   - name: ai
     description: AI generation resolvers for implementation plans and task manifests.
+  - name: tenants
+    description: Multi-tenant provisioning, relationships, and memberships.
+  - name: identity
+    description: Users, role assignments, plans, subscriptions, and assistance roles.
+  - name: access
+    description: 6-outcome access decision engine and request envelope log.
+  - name: customers
+    description: Customer records, contacts, tickets, and timeline events.
+  - name: connected-systems
+    description: Connected systems, installations, permission grants, and workspaces.
+  - name: planner
+    description: Intent resolution and execution plan management.
+  - name: bootstrap
+    description: Tenant bootstrap readiness checks and onboarding state.
+  - name: logic
+    description: Logic definitions, logic packs, and adaptation records.
+  - name: workflows
+    description: Workflow runs, step runs, and human-in-the-loop approval holds.
+  - name: observability
+    description: Telemetry spans, usage metering, and quota enforcement.
+  - name: security
+    description: Immutable audit log, secret references, incidents, and compliance.
+  - name: developer-api
+    description: Developer apps, API credentials (key generation), webhooks, and rate limits.
+  - name: release
+    description: Release readiness checks, history, and entity classification inventory.
 
 components:
   securitySchemes:
@@ -864,6 +895,216 @@ components:
         readiness:
           $ref: "#/components/schemas/AiRegistryReadinessDetail"
 
+    # ── Platform shared schemas ──────────────────────────────────────────────
+
+    OkResponse:
+      type: object
+      additionalProperties: true
+      required: [ok]
+      properties:
+        ok: { type: boolean, enum: [true] }
+
+    PlatformRecord:
+      type: object
+      additionalProperties: true
+      description: Generic platform entity record. Fields vary by resource type.
+
+    PlatformListResponse:
+      type: object
+      additionalProperties: false
+      required: [ok]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        count: { type: integer }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PlatformRecord" }
+
+    TenantCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [display_name]
+      properties:
+        display_name: { type: string }
+        tenant_type:
+          type: string
+          enum: [platform_owner, partner_organization, freelancer_operator, managed_client_account, brand]
+          default: brand
+        status:
+          type: string
+          enum: [active, suspended, cancelled]
+          default: active
+        metadata_json:
+          type: object
+          additionalProperties: true
+
+    MembershipCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [user_id, role]
+      properties:
+        user_id: { type: string }
+        role: { type: string }
+        service_mode:
+          type: string
+          enum: [self_serve, assisted, managed]
+
+    AccessResolveRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant_id]
+      properties:
+        tenant_id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        risk_level:
+          type: string
+          enum: [low, medium, high, critical]
+          default: low
+        intent_flags:
+          type: array
+          items: { type: string }
+        persist:
+          type: boolean
+          default: false
+          description: Write the resolved envelope to request_envelopes table.
+
+    AccessResolveResponse:
+      type: object
+      additionalProperties: false
+      required: [ok, decision, reason, service_mode, resolved_at]
+      properties:
+        ok: { type: boolean }
+        decision:
+          type: string
+          enum:
+            - ALLOW_SELF_SERVE
+            - ALLOW_WITH_OPTIONAL_ASSISTANCE
+            - REQUIRE_REVIEW
+            - REQUIRE_SUPERVISOR_APPROVAL
+            - ROUTE_TO_MANAGED_SERVICE
+            - DENY
+        reason: { type: string }
+        service_mode: { type: string }
+        plan_key: { type: string }
+        resolved_at: { type: string, format: date-time }
+        envelope_id: { type: string, format: uuid }
+
+    WorkflowRunCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, workflow_key]
+      properties:
+        tenant_id: { type: string, format: uuid }
+        workflow_key: { type: string }
+        trigger_source:
+          type: string
+          enum: [api, planner, schedule, webhook]
+          default: api
+        input_payload:
+          type: object
+          additionalProperties: true
+        user_id: { type: string, format: uuid }
+
+    ApprovalDecisionRequest:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approve, reject]
+        decided_by: { type: string, format: uuid }
+        notes: { type: string }
+
+    TelemetrySpanRequest:
+      type: object
+      additionalProperties: false
+      required: [trace_id, span_name]
+      properties:
+        trace_id: { type: string }
+        span_id: { type: string }
+        parent_span_id: { type: string }
+        span_name: { type: string }
+        tenant_id: { type: string, format: uuid }
+        service_name: { type: string }
+        start_time: { type: string, format: date-time }
+        end_time: { type: string, format: date-time }
+        duration_ms: { type: integer }
+        status:
+          type: string
+          enum: [ok, error, timeout]
+        attributes:
+          type: object
+          additionalProperties: true
+
+    UsageRecordRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, meter_key, quantity]
+      properties:
+        tenant_id: { type: string, format: uuid }
+        meter_key: { type: string }
+        quantity: { type: number }
+        period_date:
+          type: string
+          format: date
+          description: Defaults to today (UTC). Used for daily bucket upsert.
+
+    ReleaseReadinessResponse:
+      type: object
+      additionalProperties: false
+      required: [ok, overall, run_id, checked_at, summary]
+      properties:
+        ok: { type: boolean }
+        overall:
+          type: string
+          enum: [pass, warn, fail]
+        run_id: { type: string, format: uuid }
+        checked_at: { type: string, format: date-time }
+        summary:
+          type: object
+          additionalProperties: false
+          required: [total, pass, warn, fail, platform_tables_total, platform_tables_ok]
+          properties:
+            total: { type: integer }
+            pass: { type: integer }
+            warn: { type: integer }
+            fail: { type: integer }
+            platform_tables_total: { type: integer }
+            platform_tables_ok: { type: integer }
+        db_connectivity:
+          type: object
+          additionalProperties: true
+        platform_tables:
+          type: object
+          additionalProperties: true
+        legacy_tables:
+          type: object
+          additionalProperties: true
+        seed_data:
+          type: object
+          additionalProperties: true
+        migration_inventory:
+          type: object
+          additionalProperties: true
+
+  responses:
+    BadRequest:
+      description: Invalid request body or missing required field
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    Unauthorized:
+      description: Invalid or missing backend API key
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+
 security: []
 
 paths:
@@ -1259,3 +1500,1578 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Tenants ────────────────────────────────────────────────────────────────
+
+  /tenants:
+    post:
+      tags: [tenants]
+      security: [backendBearerAuth: []]
+      operationId: createTenant
+      summary: Create a tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TenantCreateRequest" }
+      responses:
+        "201":
+          description: Tenant created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OkResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    get:
+      tags: [tenants]
+      security: [backendBearerAuth: []]
+      operationId: listTenants
+      summary: List tenants
+      parameters:
+        - { name: type, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+      responses:
+        "200":
+          description: Tenant list
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformListResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tenants/{tenant_id}/relationships:
+    post:
+      tags: [tenants]
+      security: [backendBearerAuth: []]
+      operationId: createTenantRelationship
+      summary: Create a tenant relationship
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [related_tenant_id, relationship_type]
+              properties:
+                related_tenant_id: { type: string, format: uuid }
+                relationship_type: { type: string }
+                direction: { type: string, enum: [parent_child, peer, service_agreement] }
+      responses:
+        "201": { description: Relationship created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tenants/{tenant_id}/memberships:
+    post:
+      tags: [tenants]
+      security: [backendBearerAuth: []]
+      operationId: createMembership
+      summary: Add a member to a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MembershipCreateRequest" }
+      responses:
+        "201": { description: Membership created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    get:
+      tags: [tenants]
+      security: [backendBearerAuth: []]
+      operationId: listTenantMemberships
+      summary: List memberships for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Membership list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ── Identity ───────────────────────────────────────────────────────────────
+
+  /users:
+    post:
+      tags: [identity]
+      security: [backendBearerAuth: []]
+      operationId: createUser
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+                display_name: { type: string }
+                status: { type: string, enum: [active, suspended], default: active }
+      responses:
+        "201": { description: User created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    get:
+      tags: [identity]
+      security: [backendBearerAuth: []]
+      operationId: listUsers
+      summary: List users
+      responses:
+        "200": { description: User list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /users/{user_id}/role-assignments:
+    post:
+      tags: [identity]
+      security: [backendBearerAuth: []]
+      operationId: assignRole
+      summary: Assign a role to a user within a tenant
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, role_key]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                role_key: { type: string }
+                scope: { type: string }
+                expires_at: { type: string, format: date-time }
+      responses:
+        "201": { description: Role assigned, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /plans:
+    get:
+      tags: [identity]
+      security: [backendBearerAuth: []]
+      operationId: listPlans
+      summary: List all subscription plans
+      responses:
+        "200": { description: Plan list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /subscriptions:
+    post:
+      tags: [identity]
+      security: [backendBearerAuth: []]
+      operationId: createSubscription
+      summary: Subscribe a tenant to a plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, plan_id]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                plan_id: { type: string, format: uuid }
+                status: { type: string, enum: [active, cancelled, suspended], default: active }
+      responses:
+        "201": { description: Subscription created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tenants/{tenant_id}/subscriptions:
+    get:
+      tags: [identity]
+      security: [backendBearerAuth: []]
+      operationId: getTenantSubscriptions
+      summary: Get subscriptions for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Subscription list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /assistance-roles:
+    get:
+      tags: [identity]
+      security: [backendBearerAuth: []]
+      operationId: listAssistanceRoles
+      summary: List all assistance roles (7 levels from trainee to mentor)
+      responses:
+        "200": { description: Assistance role list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ── Access Decision Engine ─────────────────────────────────────────────────
+
+  /access/resolve:
+    post:
+      tags: [access]
+      security: [backendBearerAuth: []]
+      operationId: resolveAccess
+      summary: Run the 6-outcome access decision engine
+      description: >
+        Evaluates tenant context, membership, subscription, and policy to produce
+        one of: ALLOW_SELF_SERVE, ALLOW_WITH_OPTIONAL_ASSISTANCE, REQUIRE_REVIEW,
+        REQUIRE_SUPERVISOR_APPROVAL, ROUTE_TO_MANAGED_SERVICE, or DENY.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccessResolveRequest" }
+      responses:
+        "200":
+          description: Access decision resolved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccessResolveResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /access/envelopes:
+    get:
+      tags: [access]
+      security: [backendBearerAuth: []]
+      operationId: listAccessEnvelopes
+      summary: List persisted access decision envelopes
+      parameters:
+        - { name: tenant_id, in: query, schema: { type: string } }
+        - { name: decision, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+      responses:
+        "200": { description: Envelope list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ── Customers & Tickets ────────────────────────────────────────────────────
+
+  /customers:
+    post:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: createCustomer
+      summary: Create a customer record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, display_name]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                display_name: { type: string }
+                email: { type: string, format: email }
+                customer_type: { type: string }
+                external_id: { type: string }
+      responses:
+        "201": { description: Customer created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    get:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: listCustomers
+      summary: List customers
+      parameters:
+        - { name: tenant_id, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+      responses:
+        "200": { description: Customer list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tickets:
+    post:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: createTicket
+      summary: Create a support ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, subject]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                customer_id: { type: string, format: uuid }
+                subject: { type: string }
+                body: { type: string }
+                priority: { type: string, enum: [low, normal, high, urgent], default: normal }
+                assigned_to: { type: string, format: uuid }
+      responses:
+        "201": { description: Ticket created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    get:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: listTickets
+      summary: List tickets
+      parameters:
+        - { name: tenant_id, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: priority, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+      responses:
+        "200": { description: Ticket list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tickets/{ticket_id}:
+    patch:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: updateTicket
+      summary: Update ticket status or assignment
+      parameters:
+        - { name: ticket_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [open, in_progress, waiting, resolved, closed] }
+                assigned_to: { type: string, format: uuid }
+                priority: { type: string, enum: [low, normal, high, urgent] }
+      responses:
+        "200": { description: Ticket updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /timeline-events:
+    post:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: createTimelineEvent
+      summary: Append a timeline event to a customer or ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, event_type]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                customer_id: { type: string, format: uuid }
+                ticket_id: { type: string, format: uuid }
+                event_type: { type: string }
+                actor_id: { type: string, format: uuid }
+                summary: { type: string }
+                payload: { type: object, additionalProperties: true }
+      responses:
+        "201": { description: Event recorded, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /customers/{customer_id}/timeline:
+    get:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: getCustomerTimeline
+      summary: Get timeline events for a customer
+      parameters:
+        - { name: customer_id, in: path, required: true, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+      responses:
+        "200": { description: Timeline events, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tenants/{tenant_id}/tickets:
+    get:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: getTenantTickets
+      summary: List tickets for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Ticket list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ── Connected Systems & Workspaces ─────────────────────────────────────────
+
+  /connected-systems:
+    post:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: createConnectedSystem
+      summary: Register a connected system for a tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, system_key, display_name]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                system_key: { type: string }
+                display_name: { type: string }
+                provider_family: { type: string }
+                provider_domain: { type: string }
+                connector_family: { type: string }
+                status: { type: string, enum: [active, inactive, error], default: active }
+                self_serve_capable: { type: boolean, default: true }
+      responses:
+        "201": { description: Connected system created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /connected-systems/{system_id}:
+    get:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: getConnectedSystem
+      summary: Get a connected system by ID
+      parameters:
+        - { name: system_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Connected system, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: updateConnectedSystem
+      summary: Update connected system status or metadata
+      parameters:
+        - { name: system_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [active, inactive, error] }
+                display_name: { type: string }
+                self_serve_capable: { type: boolean }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /tenants/{tenant_id}/connected-systems:
+    get:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: getTenantConnectedSystems
+      summary: List connected systems for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Connected system list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /workspaces:
+    post:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: createWorkspace
+      summary: Create a workspace registry entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, workspace_key, display_name]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                workspace_key: { type: string }
+                display_name: { type: string }
+                workspace_type: { type: string, default: brand }
+                bootstrap_status: { type: string, enum: [pending, ready, failed], default: pending }
+                linked_brand_key: { type: string }
+      responses:
+        "201": { description: Workspace created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    get:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: listWorkspaces
+      summary: List workspaces
+      parameters:
+        - { name: tenant_id, in: query, schema: { type: string } }
+        - { name: bootstrap_status, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Workspace list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tenants/{tenant_id}/workspaces:
+    get:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: getTenantWorkspaces
+      summary: List workspaces for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Workspace list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ── Planner ────────────────────────────────────────────────────────────────
+
+  /planner/resolve-intent:
+    post:
+      tags: [planner]
+      security: [backendBearerAuth: []]
+      operationId: resolveIntent
+      summary: Resolve an intent key to a task route
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [intent_key]
+              properties:
+                intent_key: { type: string }
+                tenant_id: { type: string, format: uuid }
+                context: { type: object, additionalProperties: true }
+      responses:
+        "200": { description: Intent resolved, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /planner/create-plan:
+    post:
+      tags: [planner]
+      security: [backendBearerAuth: []]
+      operationId: createExecutionPlan
+      summary: Create an execution plan (runs access gate before planning)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, intent_key]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                user_id: { type: string, format: uuid }
+                intent_key: { type: string }
+                input_context: { type: object, additionalProperties: true }
+      responses:
+        "201": { description: Plan created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { description: Access denied by decision engine, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
+  /planner/plans/{plan_id}:
+    get:
+      tags: [planner]
+      security: [backendBearerAuth: []]
+      operationId: getExecutionPlan
+      summary: Get an execution plan by ID
+      parameters:
+        - { name: plan_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Execution plan, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [planner]
+      security: [backendBearerAuth: []]
+      operationId: updateExecutionPlan
+      summary: Update execution plan status
+      parameters:
+        - { name: plan_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plan_status: { type: string, enum: [pending, active, completed, failed, cancelled] }
+      responses:
+        "200": { description: Plan updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ── Bootstrap Readiness ────────────────────────────────────────────────────
+
+  /bootstrap/readiness/{tenant_id}:
+    get:
+      tags: [bootstrap]
+      security: [backendBearerAuth: []]
+      operationId: getBootstrapReadiness
+      summary: Run 8 first-execution readiness checks for a tenant
+      description: >
+        Checks: active_tenant_context, active_membership, commercial_eligibility,
+        connector_available, workspace_bootstrapped, policy_path_resolved,
+        review_path_resolved, managed_assignment_ready. Falls back to legacy tables
+        when new platform tables are empty.
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+        - { name: persist, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Readiness report
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, ready, overall_status, tenant_id, checks]
+                properties:
+                  ok: { type: boolean }
+                  ready: { type: boolean }
+                  overall_status: { type: string, enum: [ready, degraded, not_ready] }
+                  tenant_id: { type: string }
+                  checks: { type: object, additionalProperties: true }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /bootstrap/onboarding:
+    post:
+      tags: [bootstrap]
+      security: [backendBearerAuth: []]
+      operationId: createOnboardingState
+      summary: Create or reset onboarding state for a tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                onboarding_template: { type: string }
+                current_step: { type: string }
+      responses:
+        "201": { description: Onboarding state created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    get:
+      tags: [bootstrap]
+      security: [backendBearerAuth: []]
+      operationId: listOnboardingStates
+      summary: List onboarding states
+      parameters:
+        - { name: tenant_id, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Onboarding states, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /bootstrap/onboarding/{tenant_id}/step:
+    patch:
+      tags: [bootstrap]
+      security: [backendBearerAuth: []]
+      operationId: advanceOnboardingStep
+      summary: Advance or update the onboarding step for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_step]
+              properties:
+                current_step: { type: string }
+                completion_status: { type: string, enum: [in_progress, complete, skipped] }
+                step_data: { type: object, additionalProperties: true }
+      responses:
+        "200": { description: Step advanced, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ── Logic Graph ────────────────────────────────────────────────────────────
+
+  /logic-definitions:
+    post:
+      tags: [logic]
+      security: [backendBearerAuth: []]
+      operationId: createLogicDefinition
+      summary: Create a logic definition node
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [logic_key, logic_type]
+              properties:
+                logic_key: { type: string }
+                logic_type: { type: string, enum: [rule, decision, policy, constraint] }
+                display_name: { type: string }
+                parent_logic_id: { type: string, format: uuid }
+                definition_body: { type: object, additionalProperties: true }
+                tenant_id: { type: string, format: uuid }
+      responses:
+        "201": { description: Logic definition created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    get:
+      tags: [logic]
+      security: [backendBearerAuth: []]
+      operationId: listLogicDefinitions
+      summary: List logic definitions
+      parameters:
+        - { name: logic_type, in: query, schema: { type: string } }
+        - { name: tenant_id, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Logic definition list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /logic-definitions/{logic_id}/children:
+    get:
+      tags: [logic]
+      security: [backendBearerAuth: []]
+      operationId: getLogicChildren
+      summary: Get child logic definitions for a parent node
+      parameters:
+        - { name: logic_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Child nodes, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /logic-definitions/{logic_id}/status:
+    patch:
+      tags: [logic]
+      security: [backendBearerAuth: []]
+      operationId: updateLogicStatus
+      summary: Update status of a logic definition
+      parameters:
+        - { name: logic_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [draft, active, deprecated, archived] }
+      responses:
+        "200": { description: Status updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /logic-packs:
+    post:
+      tags: [logic]
+      security: [backendBearerAuth: []]
+      operationId: createLogicPack
+      summary: Create a logic pack (collection of logic definitions)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pack_key, display_name]
+              properties:
+                pack_key: { type: string }
+                display_name: { type: string }
+                pack_version: { type: string }
+                tenant_id: { type: string, format: uuid }
+                status: { type: string, default: draft }
+      responses:
+        "201": { description: Logic pack created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /logic-packs/{pack_id}/attach:
+    post:
+      tags: [logic]
+      security: [backendBearerAuth: []]
+      operationId: attachLogicDefinition
+      summary: Attach a logic definition to a logic pack
+      parameters:
+        - { name: pack_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [logic_id]
+              properties:
+                logic_id: { type: string, format: uuid }
+                sort_order: { type: integer }
+      responses:
+        "201": { description: Attached, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /adaptation-records:
+    post:
+      tags: [logic]
+      security: [backendBearerAuth: []]
+      operationId: createAdaptationRecord
+      summary: Create an adaptation record (proposed logic change)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [logic_id, adaptation_type, proposed_change]
+              properties:
+                logic_id: { type: string, format: uuid }
+                adaptation_type: { type: string, enum: [override, extension, replacement] }
+                proposed_change: { type: object, additionalProperties: true }
+                tenant_id: { type: string, format: uuid }
+                requested_by: { type: string, format: uuid }
+      responses:
+        "201": { description: Adaptation record created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /adaptation-records/{record_id}/approve:
+    patch:
+      tags: [logic]
+      security: [backendBearerAuth: []]
+      operationId: approveAdaptationRecord
+      summary: Approve or reject an adaptation record
+      parameters:
+        - { name: record_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [approved, rejected] }
+                approved_by: { type: string, format: uuid }
+                notes: { type: string }
+      responses:
+        "200": { description: Decision recorded, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ── Workflow Orchestration ─────────────────────────────────────────────────
+
+  /workflow-runs:
+    post:
+      tags: [workflows]
+      security: [backendBearerAuth: []]
+      operationId: createWorkflowRun
+      summary: Start a workflow run (auto-creates approval holds when access requires review)
+      description: >
+        Runs the access decision engine first. If decision is REQUIRE_REVIEW or
+        REQUIRE_SUPERVISOR_APPROVAL, the run starts in 'pending' status and an
+        approval_hold is created. Otherwise the run starts 'running'.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkflowRunCreateRequest" }
+      responses:
+        "201":
+          description: Workflow run created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, run_id, status]
+                properties:
+                  ok: { type: boolean }
+                  run_id: { type: string, format: uuid }
+                  status: { type: string, enum: [pending, running] }
+                  decision: { type: string }
+                  hold_id: { type: string, format: uuid }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /workflow-runs/{run_id}:
+    get:
+      tags: [workflows]
+      security: [backendBearerAuth: []]
+      operationId: getWorkflowRun
+      summary: Get a workflow run by ID
+      parameters:
+        - { name: run_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Workflow run, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [workflows]
+      security: [backendBearerAuth: []]
+      operationId: updateWorkflowRun
+      summary: Update workflow run status or output
+      parameters:
+        - { name: run_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [pending, running, completed, failed, cancelled] }
+                output_payload: { type: object, additionalProperties: true }
+                error_message: { type: string }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /tenants/{tenant_id}/workflow-runs:
+    get:
+      tags: [workflows]
+      security: [backendBearerAuth: []]
+      operationId: getTenantWorkflowRuns
+      summary: List workflow runs for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+      responses:
+        "200": { description: Workflow run list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /workflow-runs/{run_id}/steps:
+    post:
+      tags: [workflows]
+      security: [backendBearerAuth: []]
+      operationId: createStepRun
+      summary: Record a step execution within a workflow run
+      parameters:
+        - { name: run_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [step_key]
+              properties:
+                step_key: { type: string }
+                step_order: { type: integer }
+                status: { type: string, enum: [pending, running, completed, failed, skipped], default: pending }
+                input_payload: { type: object, additionalProperties: true }
+                output_payload: { type: object, additionalProperties: true }
+      responses:
+        "201": { description: Step run created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /approval-holds:
+    get:
+      tags: [workflows]
+      security: [backendBearerAuth: []]
+      operationId: listApprovalHolds
+      summary: List approval holds pending human decision
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [pending, approved, rejected, expired] } }
+        - { name: hold_type, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+      responses:
+        "200": { description: Approval hold list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /approval-holds/{hold_id}/decide:
+    post:
+      tags: [workflows]
+      security: [backendBearerAuth: []]
+      operationId: decideApprovalHold
+      summary: Approve or reject an approval hold (resumes or fails parent workflow run)
+      parameters:
+        - { name: hold_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ApprovalDecisionRequest" }
+      responses:
+        "200":
+          description: Decision recorded and parent workflow run updated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, hold_id, decision, run_id]
+                properties:
+                  ok: { type: boolean }
+                  hold_id: { type: string }
+                  decision: { type: string }
+                  run_id: { type: string }
+                  run_status: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ── Observability ──────────────────────────────────────────────────────────
+
+  /telemetry/spans:
+    post:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: recordTelemetrySpan
+      summary: Record a telemetry span
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TelemetrySpanRequest" }
+      responses:
+        "201": { description: Span recorded, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /telemetry/traces/{trace_id}:
+    get:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: getTrace
+      summary: Get all spans for a trace ID
+      parameters:
+        - { name: trace_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Trace spans, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /usage/record:
+    post:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: recordUsage
+      summary: Record usage for a meter key (upserts daily bucket)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UsageRecordRequest" }
+      responses:
+        "200": { description: Usage recorded, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /usage/{tenant_id}:
+    get:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: getTenantUsage
+      summary: Get usage meters for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+        - { name: meter_key, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        "200": { description: Usage records, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /quota-rules:
+    post:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: createQuotaRule
+      summary: Create or upsert a quota rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [meter_key, limit_value, period]
+              properties:
+                meter_key: { type: string }
+                limit_value: { type: number }
+                period: { type: string, enum: [daily, monthly, rolling_30d] }
+                plan_id: { type: string, format: uuid }
+                tenant_id: { type: string, format: uuid }
+                enforcement: { type: string, enum: [hard, soft], default: hard }
+      responses:
+        "201": { description: Quota rule created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /quota-check/{tenant_id}/{meter_key}:
+    get:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: checkQuota
+      summary: Check current quota usage against applicable limit
+      description: >
+        Resolves the applicable quota rule in priority order: tenant override →
+        plan-level rule → global rule. Returns current usage, limit, and whether
+        the tenant is within quota.
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+        - { name: meter_key, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Quota check result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, within_quota]
+                properties:
+                  ok: { type: boolean }
+                  within_quota: { type: boolean }
+                  meter_key: { type: string }
+                  current_usage: { type: number }
+                  limit_value: { type: number }
+                  period: { type: string }
+                  enforcement: { type: string }
+                  rule_source: { type: string, enum: [tenant_override, plan_level, global] }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ── Security & Compliance ──────────────────────────────────────────────────
+
+  /audit-log:
+    get:
+      tags: [security]
+      security: [backendBearerAuth: []]
+      operationId: getAuditLog
+      summary: Query the immutable audit log
+      description: >
+        The audit log is append-only; no UPDATE or DELETE is ever issued against it.
+        Use actor_id, resource_type, tenant_id, and date range to filter entries.
+      parameters:
+        - { name: actor_id, in: query, schema: { type: string } }
+        - { name: resource_type, in: query, schema: { type: string } }
+        - { name: tenant_id, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: limit, in: query, schema: { type: integer, default: 100 } }
+      responses:
+        "200": { description: Audit log entries, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /secret-references:
+    post:
+      tags: [security]
+      security: [backendBearerAuth: []]
+      operationId: createSecretReference
+      summary: Register a secret reference (no secret values stored)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [secret_key, storage_backend]
+              properties:
+                secret_key: { type: string }
+                storage_backend: { type: string, enum: [env_var, vault, aws_secrets_manager] }
+                env_var_name: { type: string }
+                tenant_id: { type: string, format: uuid }
+                description: { type: string }
+      responses:
+        "201": { description: Secret reference created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    get:
+      tags: [security]
+      security: [backendBearerAuth: []]
+      operationId: listSecretReferences
+      summary: List secret references (metadata only, no secret values)
+      parameters:
+        - { name: tenant_id, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Secret reference list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /incidents:
+    post:
+      tags: [security]
+      security: [backendBearerAuth: []]
+      operationId: createIncident
+      summary: Open a security or operational incident
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, severity]
+              properties:
+                title: { type: string }
+                description: { type: string }
+                severity: { type: string, enum: [low, medium, high, critical] }
+                tenant_id: { type: string, format: uuid }
+                reported_by: { type: string, format: uuid }
+                tags: { type: array, items: { type: string } }
+      responses:
+        "201": { description: Incident created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    get:
+      tags: [security]
+      security: [backendBearerAuth: []]
+      operationId: listIncidents
+      summary: List incidents
+      parameters:
+        - { name: status, in: query, schema: { type: string } }
+        - { name: severity, in: query, schema: { type: string } }
+        - { name: tenant_id, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+      responses:
+        "200": { description: Incident list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /incidents/{incident_id}/status:
+    patch:
+      tags: [security]
+      security: [backendBearerAuth: []]
+      operationId: updateIncidentStatus
+      summary: Update incident status
+      parameters:
+        - { name: incident_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [open, investigating, mitigated, resolved, closed] }
+                resolved_by: { type: string, format: uuid }
+                resolution_notes: { type: string }
+      responses:
+        "200": { description: Status updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ── Developer API ──────────────────────────────────────────────────────────
+
+  /developer-apps:
+    post:
+      tags: [developer-api]
+      security: [backendBearerAuth: []]
+      operationId: createDeveloperApp
+      summary: Register a developer application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, app_name]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                app_name: { type: string }
+                description: { type: string }
+                allowed_origins: { type: array, items: { type: string } }
+                scopes: { type: array, items: { type: string } }
+      responses:
+        "201": { description: App created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tenants/{tenant_id}/developer-apps:
+    get:
+      tags: [developer-api]
+      security: [backendBearerAuth: []]
+      operationId: getTenantDeveloperApps
+      summary: List developer apps for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Developer app list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /developer-apps/{app_id}/credentials:
+    post:
+      tags: [developer-api]
+      security: [backendBearerAuth: []]
+      operationId: createApiCredential
+      summary: Generate an API key for a developer app (full key returned once only)
+      description: >
+        Generates a key in format pk_<8-char-prefix>_<32-char-random>.
+        Only the SHA-256 hash is stored. The full key is returned once in this
+        response and cannot be retrieved again.
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label: { type: string }
+                expires_at: { type: string, format: date-time }
+                scopes: { type: array, items: { type: string } }
+      responses:
+        "201":
+          description: API key generated (store immediately — not retrievable again)
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, credential_id, api_key, key_prefix]
+                properties:
+                  ok: { type: boolean }
+                  credential_id: { type: string, format: uuid }
+                  api_key: { type: string, description: "Full key — store now, not retrievable again." }
+                  key_prefix: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api-credentials/{credential_id}:
+    delete:
+      tags: [developer-api]
+      security: [backendBearerAuth: []]
+      operationId: revokeApiCredential
+      summary: Revoke an API credential
+      parameters:
+        - { name: credential_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Credential revoked, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /webhooks:
+    post:
+      tags: [developer-api]
+      security: [backendBearerAuth: []]
+      operationId: createWebhook
+      summary: Register a webhook endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, target_url, event_types]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                target_url: { type: string, format: uri }
+                event_types: { type: array, items: { type: string }, minItems: 1 }
+                secret_header: { type: string }
+                status: { type: string, enum: [active, paused], default: active }
+      responses:
+        "201": { description: Webhook created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    get:
+      tags: [developer-api]
+      security: [backendBearerAuth: []]
+      operationId: listWebhooks
+      summary: List webhooks
+      parameters:
+        - { name: tenant_id, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Webhook list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /rate-limit-rules:
+    post:
+      tags: [developer-api]
+      security: [backendBearerAuth: []]
+      operationId: createRateLimitRule
+      summary: Create or upsert a rate limit rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rule_key, limit_count, window_seconds]
+              properties:
+                rule_key: { type: string }
+                limit_count: { type: integer, minimum: 1 }
+                window_seconds: { type: integer, minimum: 1 }
+                scope: { type: string, enum: [global, tenant, user, api_key], default: tenant }
+                plan_id: { type: string, format: uuid }
+      responses:
+        "201": { description: Rate limit rule created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ── Release Readiness ──────────────────────────────────────────────────────
+
+  /release/readiness:
+    get:
+      tags: [release]
+      security: [backendBearerAuth: []]
+      operationId: getReleaseReadiness
+      summary: Run 61-check platform release readiness report
+      description: >
+        Checks DB connectivity, all 48 platform tables, 7 legacy tables, seed data
+        integrity (plans, assistance roles, quota rules, tenants), and migration
+        inventory. Returns overall pass/warn/fail with per-check detail.
+        Use ?summary=true for a lightweight uptime-probe-friendly response.
+        Use ?persist=true to write results to release_readiness_log.
+      parameters:
+        - { name: persist, in: query, schema: { type: boolean, default: false } }
+        - { name: summary, in: query, schema: { type: boolean, default: false } }
+      responses:
+        "200":
+          description: All checks passed (or warn-level issues only)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReleaseReadinessResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503":
+          description: One or more checks failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReleaseReadinessResponse" }
+
+  /release/readiness-history:
+    get:
+      tags: [release]
+      security: [backendBearerAuth: []]
+      operationId: getReleaseReadinessHistory
+      summary: List past readiness run summaries from release_readiness_log
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 10, maximum: 50 } }
+      responses:
+        "200":
+          description: Run history
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, runs, count]
+                properties:
+                  ok: { type: boolean }
+                  count: { type: integer }
+                  runs:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        run_id: { type: string }
+                        checked_at: { type: string, format: date-time }
+                        pass_count: { type: integer }
+                        fail_count: { type: integer }
+                        warn_count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /release/readiness-history/{run_id}:
+    get:
+      tags: [release]
+      security: [backendBearerAuth: []]
+      operationId: getReleaseReadinessRun
+      summary: Get per-check detail for a specific readiness run
+      parameters:
+        - { name: run_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Run detail
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [ok, run_id, overall, checks]
+                properties:
+                  ok: { type: boolean }
+                  run_id: { type: string }
+                  overall: { type: string, enum: [pass, warn, fail] }
+                  checks:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        check_key: { type: string }
+                        status: { type: string, enum: [pass, warn, fail] }
+                        detail: { type: string }
+                        checked_at: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /release/entity-classification:
+    post:
+      tags: [release]
+      security: [backendBearerAuth: []]
+      operationId: upsertEntityClassification
+      summary: Upsert entity classification entries in data_migration_inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [entity_class, table_name]
+                  properties:
+                    entity_class: { type: string }
+                    table_name: { type: string }
+                    authority_model: { type: string, enum: [canonical, transitional, legacy] }
+                    read_priority: { type: integer }
+                    write_strategy: { type: string, enum: [platform_primary, legacy_primary, dual_write] }
+                    migration_status: { type: string, enum: [not_started, in_progress, complete] }
+                    notes: { type: string }
+                - type: array
+                  items:
+                    type: object
+                    required: [entity_class, table_name]
+                    properties:
+                      entity_class: { type: string }
+                      table_name: { type: string }
+                      authority_model: { type: string }
+                      read_priority: { type: integer }
+                      write_strategy: { type: string }
+                      migration_status: { type: string }
+                      notes: { type: string }
+      responses:
+        "200":
+          description: Entries upserted
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, written, total]
+                properties:
+                  ok: { type: boolean }
+                  written: { type: integer }
+                  total: { type: integer }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    get:
+      tags: [release]
+      security: [backendBearerAuth: []]
+      operationId: listEntityClassifications
+      summary: List all entity classification entries (authority model inventory)
+      responses:
+        "200":
+          description: Entity classification list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, classifications, count]
+                properties:
+                  ok: { type: boolean }
+                  count: { type: integer }
+                  classifications:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        entity_class: { type: string }
+                        table_name: { type: string }
+                        authority_model: { type: string }
+                        read_priority: { type: integer }
+                        write_strategy: { type: string }
+                        migration_status: { type: string }
+                        row_count: { type: integer }
+                        notes: { type: string }
+                        last_checked_at: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Unauthorized" }
