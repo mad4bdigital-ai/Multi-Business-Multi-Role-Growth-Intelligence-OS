@@ -166,6 +166,28 @@ export function buildObservabilityRoutes(deps) {
     }
   });
 
+  // ── PUT /tracking/workspaces/:id ─────────────────────────────────────────
+  router.put("/tracking/workspaces/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { display_name, ga_property_id, gtm_container_id, gsc_property, tracking_status, service_mode } = req.body || {};
+      if (!display_name) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "display_name is required." } });
+      }
+      await getPool().query(
+        `UPDATE \`tracking_workspaces\`
+         SET display_name=?, ga_property_id=COALESCE(?,ga_property_id),
+             gtm_container_id=COALESCE(?,gtm_container_id), gsc_property=COALESCE(?,gsc_property),
+             tracking_status=COALESCE(?,tracking_status), service_mode=COALESCE(?,service_mode)
+         WHERE workspace_id=?`,
+        [display_name, ga_property_id || null, gtm_container_id || null, gsc_property || null,
+         tracking_status || null, service_mode || null, req.params.id]
+      );
+      return res.status(200).json({ ok: true, workspace_id: req.params.id, display_name });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "tracking_workspace_update_failed", message: err.message } });
+    }
+  });
+
   // ── GET /tracking/workspaces/:id ──────────────────────────────────────────
   router.get("/tracking/workspaces/:id", requireBackendApiKey, async (req, res) => {
     try {
@@ -265,6 +287,29 @@ export function buildObservabilityRoutes(deps) {
       return res.status(200).json({ ok: true, views: rows, count: rows.length });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "reporting_views_list_failed", message: err.message } });
+    }
+  });
+
+  // ── PUT /reporting/views/:id ─────────────────────────────────────────────
+  router.put("/reporting/views/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { view_key, display_name, view_type, filters_json, columns_json } = req.body || {};
+      if (!view_key || !display_name) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "view_key and display_name are required." } });
+      }
+      await getPool().query(
+        `UPDATE \`reporting_views\`
+         SET view_key=?, display_name=?, view_type=COALESCE(?,view_type),
+             filters_json=COALESCE(?,filters_json), columns_json=COALESCE(?,columns_json)
+         WHERE view_id=?`,
+        [view_key, display_name, view_type || null,
+         filters_json != null ? JSON.stringify(filters_json) : null,
+         columns_json != null ? JSON.stringify(columns_json) : null,
+         req.params.id]
+      );
+      return res.status(200).json({ ok: true, view_id: req.params.id, view_key, display_name });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "reporting_view_update_failed", message: err.message } });
     }
   });
 

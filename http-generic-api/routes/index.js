@@ -19,6 +19,7 @@ import { buildSecurityRoutes } from "./securityRoutes.js";
 import { buildDeveloperApiRoutes } from "./developerApiRoutes.js";
 import { buildReleaseRoutes } from "./releaseRoutes.js";
 import { buildConnectorRoutes } from "./connectorRoutes.js";
+import { buildBatchRoutes }     from "./batchRoutes.js";
 
 export function registerRoutes(app, deps) {
   app.use(buildHealthRoutes(deps));
@@ -41,5 +42,6 @@ export function registerRoutes(app, deps) {
   app.use(buildDeveloperApiRoutes(deps));
   app.use(buildReleaseRoutes(deps));
   app.use(buildConnectorRoutes(deps));
+  app.use(buildBatchRoutes(deps));
   app.use(buildExecuteRoutes(deps));
 }

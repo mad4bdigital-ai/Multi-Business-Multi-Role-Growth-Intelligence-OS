@@ -96,6 +96,24 @@ export function buildTenantsRoutes(deps) {
     }
   });
 
+  // ── PUT /tenants/:id ──────────────────────────────────────────────────────
+  router.put("/tenants/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { display_name, status, metadata_json } = req.body || {};
+      if (!display_name) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "display_name is required." } });
+      }
+      const meta = metadata_json != null ? JSON.stringify(metadata_json) : null;
+      await getPool().query(
+        `UPDATE \`tenants\` SET display_name=?, status=COALESCE(?,status), metadata_json=COALESCE(?,metadata_json) WHERE tenant_id=?`,
+        [display_name, status || null, meta, req.params.id]
+      );
+      return res.status(200).json({ ok: true, tenant_id: req.params.id, display_name });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "tenant_update_failed", message: err.message } });
+    }
+  });
+
   // ── POST /tenants/:id/relationships ───────────────────────────────────────
   router.post("/tenants/:id/relationships", requireBackendApiKey, async (req, res) => {
     try {

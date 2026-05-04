@@ -61,6 +61,27 @@ export function buildLogicRoutes(deps) {
     }
   });
 
+  // ── PUT /logic-definitions/:id ───────────────────────────────────────────
+  router.put("/logic-definitions/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { logic_key, display_name, logic_type, body_json, version, status } = req.body || {};
+      if (!logic_key || !display_name) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "logic_key and display_name are required." } });
+      }
+      const body = body_json != null ? JSON.stringify(body_json) : null;
+      await getPool().query(
+        `UPDATE \`logic_definitions\`
+         SET logic_key=?, display_name=?, logic_type=COALESCE(?,logic_type),
+             body_json=COALESCE(?,body_json), version=COALESCE(?,version), status=COALESCE(?,status)
+         WHERE logic_id=?`,
+        [logic_key, display_name, logic_type || null, body, version || null, status || null, req.params.id]
+      );
+      return res.status(200).json({ ok: true, logic_id: req.params.id, logic_key, display_name });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "logic_update_failed", message: err.message } });
+    }
+  });
+
   // ── PATCH /logic-definitions/:id/status ──────────────────────────────────
   router.patch("/logic-definitions/:id/status", requireBackendApiKey, async (req, res) => {
     try {
@@ -93,6 +114,27 @@ export function buildLogicRoutes(deps) {
       return res.status(201).json({ ok: true, pack_id, pack_key, pack_type, service_mode, status: "draft" });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "pack_create_failed", message: err.message } });
+    }
+  });
+
+  // ── PUT /logic-packs/:id ─────────────────────────────────────────────────
+  router.put("/logic-packs/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { pack_key, display_name, pack_type, service_mode, contents_json, status } = req.body || {};
+      if (!pack_key || !display_name) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "pack_key and display_name are required." } });
+      }
+      const contents = contents_json != null ? JSON.stringify(contents_json) : null;
+      await getPool().query(
+        `UPDATE \`logic_packs\`
+         SET pack_key=?, display_name=?, pack_type=COALESCE(?,pack_type),
+             service_mode=COALESCE(?,service_mode), contents_json=COALESCE(?,contents_json), status=COALESCE(?,status)
+         WHERE pack_id=?`,
+        [pack_key, display_name, pack_type || null, service_mode || null, contents, status || null, req.params.id]
+      );
+      return res.status(200).json({ ok: true, pack_id: req.params.id, pack_key, display_name });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "pack_update_failed", message: err.message } });
     }
   });
 

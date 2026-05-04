@@ -87,6 +87,28 @@ export function buildSecurityRoutes(deps) {
     }
   });
 
+  // ── PUT /incidents/:id ────────────────────────────────────────────────────
+  router.put("/incidents/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { title, severity, category, description, assigned_to, status } = req.body || {};
+      if (!title) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "title is required." } });
+      }
+      await getPool().query(
+        `UPDATE \`incidents\`
+         SET title=?, severity=COALESCE(?,severity), category=COALESCE(?,category),
+             description=COALESCE(?,description), assigned_to=COALESCE(?,assigned_to), status=COALESCE(?,status)
+         WHERE incident_id=?`,
+        [title, severity || null, category || null, description || null, assigned_to || null, status || null, req.params.id]
+      );
+      writeAuditLogAsync({ action: "incident.updated", resource_type: "incident", resource_id: req.params.id,
+        after_json: { title, severity, category, status } });
+      return res.status(200).json({ ok: true, incident_id: req.params.id, title });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "incident_update_failed", message: err.message } });
+    }
+  });
+
   // ── PATCH /incidents/:id/status ───────────────────────────────────────────
   router.patch("/incidents/:id/status", requireBackendApiKey, async (req, res) => {
     try {

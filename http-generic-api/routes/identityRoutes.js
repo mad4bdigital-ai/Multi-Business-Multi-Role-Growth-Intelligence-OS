@@ -90,6 +90,24 @@ export function buildIdentityRoutes(deps) {
     }
   });
 
+  // ── PUT /users/:id ────────────────────────────────────────────────────────
+  router.put("/users/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { email, display_name, status } = req.body || {};
+      if (!email || !display_name) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "email and display_name are required." } });
+      }
+      await getPool().query(
+        `UPDATE \`users\` SET email=?, display_name=?, status=COALESCE(?,status) WHERE user_id=?`,
+        [email, display_name, status || null, req.params.id]
+      );
+      return res.status(200).json({ ok: true, user_id: req.params.id, email, display_name });
+    } catch (err) {
+      if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ ok: false, error: { code: "email_conflict", message: "Email already in use." } });
+      return res.status(500).json({ ok: false, error: { code: "user_update_failed", message: err.message } });
+    }
+  });
+
   // ── GET /plans ─────────────────────────────────────────────────────────────
   router.get("/plans", requireBackendApiKey, async (_req, res) => {
     try {
@@ -221,6 +239,23 @@ export function buildIdentityRoutes(deps) {
       return res.status(200).json({ ok: true, entitlement: rows[0] });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "entitlement_read_failed", message: err.message } });
+    }
+  });
+
+  // ── PUT /entitlements/:id ─────────────────────────────────────────────────
+  router.put("/entitlements/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { entitlement_key, entitlement_value, source, expires_at } = req.body || {};
+      if (!entitlement_key) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "entitlement_key is required." } });
+      }
+      await getPool().query(
+        `UPDATE \`entitlements\` SET entitlement_key=?, entitlement_value=?, source=COALESCE(?,source), expires_at=? WHERE entitlement_id=?`,
+        [entitlement_key, entitlement_value || null, source || null, expires_at || null, req.params.id]
+      );
+      return res.status(200).json({ ok: true, entitlement_id: req.params.id, entitlement_key });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "entitlement_update_failed", message: err.message } });
     }
   });
 

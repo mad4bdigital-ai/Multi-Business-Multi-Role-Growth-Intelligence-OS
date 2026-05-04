@@ -144,6 +144,42 @@ export function buildCustomerRoutes(deps) {
     }
   });
 
+  // ── GET /tenants/:id/customers ────────────────────────────────────────────
+  router.get("/tenants/:id/customers", requireBackendApiKey, async (req, res) => {
+    try {
+      const { status } = req.query;
+      const conditions = ["tenant_id = ?"];
+      const params = [req.params.id];
+      if (status) { conditions.push("status = ?"); params.push(status); }
+      const [rows] = await getPool().query(
+        `SELECT customer_id, display_name, email, phone, company, status, created_at
+         FROM \`customers\` WHERE ${conditions.join(" AND ")} ORDER BY created_at DESC LIMIT 500`,
+        params
+      );
+      return res.status(200).json({ ok: true, customers: rows, count: rows.length });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "customers_list_failed", message: err.message } });
+    }
+  });
+
+  // ── PUT /customers/:id ────────────────────────────────────────────────────
+  router.put("/customers/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { display_name, email, phone, company, status, metadata_json } = req.body || {};
+      if (!display_name) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "display_name is required." } });
+      }
+      const meta = metadata_json != null ? JSON.stringify(metadata_json) : null;
+      await getPool().query(
+        `UPDATE \`customers\` SET display_name=?, email=?, phone=?, company=?, status=COALESCE(?,status), metadata_json=? WHERE customer_id=?`,
+        [display_name, email || null, phone || null, company || null, status || null, meta, req.params.id]
+      );
+      return res.status(200).json({ ok: true, customer_id: req.params.id, display_name });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "customer_update_failed", message: err.message } });
+    }
+  });
+
   // ── POST /contacts ────────────────────────────────────────────────────────
   router.post("/contacts", requireBackendApiKey, async (req, res) => {
     try {
@@ -160,6 +196,61 @@ export function buildCustomerRoutes(deps) {
       return res.status(201).json({ ok: true, contact_id, tenant_id, name });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "contact_create_failed", message: err.message } });
+    }
+  });
+
+  // ── PUT /contacts/:id ────────────────────────────────────────────────────
+  router.put("/contacts/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { name, email, phone, role, primary: isPrimary, status } = req.body || {};
+      if (!name) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "name is required." } });
+      }
+      await getPool().query(
+        `UPDATE \`contacts\` SET name=?, email=?, phone=?, role=?, \`primary\`=COALESCE(?,\`primary\`), status=COALESCE(?,status) WHERE contact_id=?`,
+        [name, email || null, phone || null, role || null,
+         isPrimary != null ? (isPrimary ? 1 : 0) : null,
+         status || null, req.params.id]
+      );
+      return res.status(200).json({ ok: true, contact_id: req.params.id, name });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "contact_update_failed", message: err.message } });
+    }
+  });
+
+  // ── PUT /threads/:id ──────────────────────────────────────────────────────
+  router.put("/threads/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { subject, channel, status, assigned_to } = req.body || {};
+      if (!subject) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "subject is required." } });
+      }
+      await getPool().query(
+        `UPDATE \`threads\` SET subject=?, channel=COALESCE(?,channel), status=COALESCE(?,status), assigned_to=? WHERE thread_id=?`,
+        [subject, channel || null, status || null, assigned_to || null, req.params.id]
+      );
+      return res.status(200).json({ ok: true, thread_id: req.params.id, subject });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "thread_update_failed", message: err.message } });
+    }
+  });
+
+  // ── PUT /tickets/:id ──────────────────────────────────────────────────────
+  router.put("/tickets/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { title, category, priority, status, assigned_to, metadata_json } = req.body || {};
+      if (!title) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "title is required." } });
+      }
+      const meta = metadata_json != null ? JSON.stringify(metadata_json) : null;
+      await getPool().query(
+        `UPDATE \`tickets\` SET title=?, category=COALESCE(?,category), priority=COALESCE(?,priority),
+         status=COALESCE(?,status), assigned_to=?, metadata_json=COALESCE(?,metadata_json) WHERE ticket_id=?`,
+        [title, category || null, priority || null, status || null, assigned_to || null, meta, req.params.id]
+      );
+      return res.status(200).json({ ok: true, ticket_id: req.params.id, title });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "ticket_update_failed", message: err.message } });
     }
   });
 

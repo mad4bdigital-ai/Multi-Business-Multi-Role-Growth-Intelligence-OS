@@ -38,6 +38,28 @@ export function buildDeveloperApiRoutes(deps) {
     }
   });
 
+  // ── PUT /developer-apps/:id ───────────────────────────────────────────────
+  router.put("/developer-apps/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { app_name, app_type, scopes, redirect_uris, status } = req.body || {};
+      if (!app_name) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "app_name is required." } });
+      }
+      const scopeStr = Array.isArray(scopes) ? scopes.join(",") : (scopes || null);
+      const uriStr   = Array.isArray(redirect_uris) ? redirect_uris.join(",") : (redirect_uris || null);
+      await getPool().query(
+        `UPDATE \`developer_apps\`
+         SET app_name=?, app_type=COALESCE(?,app_type), scopes=COALESCE(?,scopes),
+             redirect_uris=COALESCE(?,redirect_uris), status=COALESCE(?,status)
+         WHERE app_id=?`,
+        [app_name, app_type || null, scopeStr, uriStr, status || null, req.params.id]
+      );
+      return res.status(200).json({ ok: true, app_id: req.params.id, app_name });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "app_update_failed", message: err.message } });
+    }
+  });
+
   // ── GET /tenants/:id/developer-apps ───────────────────────────────────────
   router.get("/tenants/:id/developer-apps", requireBackendApiKey, async (req, res) => {
     try {
@@ -122,6 +144,24 @@ export function buildDeveloperApiRoutes(deps) {
       return res.status(201).json({ ok: true, webhook_id, tenant_id, url, events: eventStr.split(","), status: "active" });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "webhook_create_failed", message: err.message } });
+    }
+  });
+
+  // ── PUT /webhooks/:id ─────────────────────────────────────────────────────
+  router.put("/webhooks/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { url, events, status } = req.body || {};
+      if (!url || !events) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "url and events are required." } });
+      }
+      const eventStr = Array.isArray(events) ? events.join(",") : events;
+      await getPool().query(
+        `UPDATE \`webhooks\` SET url=?, events=?, status=COALESCE(?,status) WHERE webhook_id=?`,
+        [url, eventStr, status || null, req.params.id]
+      );
+      return res.status(200).json({ ok: true, webhook_id: req.params.id, url, events: eventStr.split(",") });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "webhook_update_failed", message: err.message } });
     }
   });
 

@@ -65,6 +65,37 @@ export function buildConnectedSystemsRoutes(deps) {
     }
   });
 
+  // ── PUT /connected-systems/:id ───────────────────────────────────────────
+  router.put("/connected-systems/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { display_name, provider_domain, connector_family, auth_type, service_mode,
+              self_serve_capable, assisted_capable, managed_capable, config_json, status } = req.body || {};
+      if (!display_name) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "display_name is required." } });
+      }
+      const cfg = config_json != null ? JSON.stringify(config_json) : null;
+      await getPool().query(
+        `UPDATE \`connected_systems\`
+         SET display_name=?, provider_domain=COALESCE(?,provider_domain),
+             connector_family=COALESCE(?,connector_family), auth_type=COALESCE(?,auth_type),
+             service_mode=COALESCE(?,service_mode),
+             self_serve_capable=COALESCE(?,self_serve_capable), assisted_capable=COALESCE(?,assisted_capable),
+             managed_capable=COALESCE(?,managed_capable), config_json=COALESCE(?,config_json),
+             status=COALESCE(?,status)
+         WHERE system_id=?`,
+        [display_name, provider_domain || null, connector_family || null, auth_type || null,
+         service_mode || null,
+         self_serve_capable != null ? self_serve_capable : null,
+         assisted_capable  != null ? assisted_capable  : null,
+         managed_capable   != null ? managed_capable   : null,
+         cfg, status || null, req.params.id]
+      );
+      return res.status(200).json({ ok: true, system_id: req.params.id, display_name });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "system_update_failed", message: err.message } });
+    }
+  });
+
   // ── PATCH /connected-systems/:id/status ───────────────────────────────────
   router.patch("/connected-systems/:id/status", requireBackendApiKey, async (req, res) => {
     try {
@@ -136,6 +167,24 @@ export function buildConnectedSystemsRoutes(deps) {
       return res.status(200).json({ ok: true, workspaces: rows, count: rows.length });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "workspaces_list_failed", message: err.message } });
+    }
+  });
+
+  // ── PUT /installations/:id ────────────────────────────────────────────────
+  router.put("/installations/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const { scope, credential_ref, status, expires_at, meta_json } = req.body || {};
+      const meta = meta_json != null ? JSON.stringify(meta_json) : null;
+      await getPool().query(
+        `UPDATE \`installations\`
+         SET scope=COALESCE(?,scope), credential_ref=COALESCE(?,credential_ref),
+             status=COALESCE(?,status), expires_at=COALESCE(?,expires_at), meta_json=COALESCE(?,meta_json)
+         WHERE installation_id=?`,
+        [scope || null, credential_ref || null, status || null, expires_at || null, meta, req.params.id]
+      );
+      return res.status(200).json({ ok: true, installation_id: req.params.id });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "installation_update_failed", message: err.message } });
     }
   });
 
