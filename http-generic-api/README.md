@@ -93,6 +93,22 @@ Test suite: 394 assertions across 21 test files (`npm test`). Architecture check
 }
 ```
 
+For scheduled queue jobs that perform large reads or validation scans, use:
+```json
+{
+  "timeout_seconds": 900,
+  "max_attempts": 3
+}
+```
+
+For small reads such as bounded Sheets ranges, use:
+```json
+{
+  "timeout_seconds": 60,
+  "max_attempts": 3
+}
+```
+
 ## Async response examples
 Create job:
 ```json

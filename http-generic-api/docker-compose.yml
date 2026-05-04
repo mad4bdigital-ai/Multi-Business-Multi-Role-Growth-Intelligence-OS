@@ -23,6 +23,9 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - PORT=8080
+      - QUEUE_WORKER_ENABLED=TRUE
+      - WORKER_CONCURRENCY=1
+      - MAX_TIMEOUT_SECONDS=900
     depends_on:
       redis:
         condition: service_healthy
