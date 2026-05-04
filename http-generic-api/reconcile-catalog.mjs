@@ -43,6 +43,7 @@ const REFRESH_COLUMNS  = args.includes("--refresh-columns");
 const REGISTER_TABS    = args.includes("--register-tabs");
 const FIX_DUPLICATES   = args.includes("--fix-duplicates");
 const RETIRE_DELETED   = args.includes("--retire-deleted");
+const DEMOTE_REQUIRED  = args.includes("--demote-required");
 const DRY_RUN          = !APPLY;
 
 const CATALOG_SHEET    = "Registry Surfaces Catalog";
@@ -198,6 +199,7 @@ async function main() {
       REFRESH_COLUMNS && "--refresh-columns",
       REGISTER_TABS   && "--register-tabs",
       RETIRE_DELETED  && "--retire-deleted",
+      DEMOTE_REQUIRED && "--demote-required",
     ].filter(Boolean);
     console.log(`Fixes     : ${fixes.join(", ") || "none specified — pass --refresh-columns and/or --register-tabs"}`);
   }
@@ -608,7 +610,31 @@ async function main() {
     console.log("");
   }
 
-  // Fix D: mark optional missing tabs as retired
+  // Fix D: demote required missing tabs to required_for_execution=FALSE
+  if (DEMOTE_REQUIRED) {
+    if (COL.required_for_execution === null) {
+      console.log("  ✗ Cannot demote — required_for_execution column not found in catalog header.");
+    } else if (missingRequired.length === 0) {
+      console.log("  ✓ Demote required: nothing to update.");
+    } else {
+      console.log(`  Demoting ${missingRequired.length} required missing tab(s) to required_for_execution=FALSE...`);
+      let demoted = 0;
+      for (const r of missingRequired) {
+        try {
+          await updateCell(sheets, REGISTRY_ID, CATALOG_SHEET, COL.required_for_execution, r._rowIndex, "FALSE");
+          console.log(`  ✓  row ${r._rowIndex}  ${normalizeId(r.surface_id)}  required_for_execution → FALSE`);
+          demoted++;
+          totalWrites++;
+        } catch (err) {
+          console.log(`  ✗  row ${r._rowIndex}  ${normalizeId(r.surface_id)}: ${err.message}`);
+        }
+      }
+      console.log(`  Demoted: ${demoted}/${missingRequired.length}`);
+    }
+    console.log("");
+  }
+
+  // Fix E: mark optional missing tabs as retired
   if (RETIRE_DELETED) {
     if (COL.active_status === null) {
       console.log("  ✗ Cannot retire — active_status column not found in catalog header.");
