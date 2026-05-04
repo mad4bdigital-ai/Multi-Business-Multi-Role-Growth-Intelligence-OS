@@ -239,15 +239,12 @@ export async function resolveExecutionRequest(reqBody = {}, deps = {}) {
   }
 
   // Normalize getSheetValues range before deriving local vars:
-  // - Accept range from query.range OR path_params.range (prefer query)
-  // - Decode any existing percent-encoding to prevent double-encoding
-  // - Route range through final_query (query-string routing) rather than the
-  //   {range} URL path segment. applyPathParams uses encodeURIComponent which
-  //   encodes ':' as %3A — Google Sheets path router rejects that encoding.
-  //   A sentinel value fills the required {range} slot for path validation;
-  //   the sentinel is stripped post-resolution so the outbound URL becomes
-  //   .../values?range=<range> instead of .../values/<encoded-range>.
-  const SHEETS_RANGE_SENTINEL = "__sheets_range_param__";
+  // - Accept range from query.range OR path_params.range (prefer query as input alias)
+  // - Decode any existing percent-encoding once (caller may pre-encode; prevent %XX→%25XX)
+  // - Place normalized range in path_params.range so applyPathParams encodes it exactly
+  //   once via encodeURIComponent into the /values/{range} URL path segment
+  // - Strip range from query because it is only an input alias
+  // - Clear requestPayload.path so applyPathParams rebuilds the URL from the template
   if (
     String(parent_action_key || "").trim() === "google_sheets_api" &&
     String(endpoint_key || "").trim() === "getSheetValues"
@@ -291,23 +288,17 @@ export async function resolveExecutionRequest(reqBody = {}, deps = {}) {
       normalizedRange = rawRange;
     }
 
-    const spreadsheetId = String(rqPath.spreadsheetId || "").trim();
-
-    // Keep range in query for final_query propagation to Google Sheets.
-    requestPayload.query = { ...rqQuery, range: normalizedRange };
-    // Sentinel in path_params satisfies the required {range} slot so
-    // ensureMethodAndPathMatchEndpoint regex validation passes cleanly;
-    // the sentinel is stripped from resolvedMethodPath.path post-resolution.
-    requestPayload.path_params = { ...rqPath, range: SHEETS_RANGE_SENTINEL };
-    if (spreadsheetId) {
-      requestPayload.path = `/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${SHEETS_RANGE_SENTINEL}`;
-    }
+    requestPayload.path_params = { ...rqPath, range: normalizedRange };
+    requestPayload.query = Object.fromEntries(
+      Object.entries(rqQuery).filter(([k]) => k !== "range")
+    );
+    delete requestPayload.path;
 
     debugLog("SHEETS_RANGE_SNAPSHOT:", JSON.stringify({
-      requested_spreadsheetId: spreadsheetId,
+      requested_spreadsheetId: String(rqPath.spreadsheetId || "").trim(),
       requested_range: normalizedRange,
       range_source: queryRange ? "query" : "path_params",
-      routing: "query_string",
+      routing: "path",
       force_refresh: !!requestPayload.force_refresh,
       readback_mode: requestPayload.readback?.mode || ""
     }));
@@ -361,27 +352,15 @@ export async function resolveExecutionRequest(reqBody = {}, deps = {}) {
     }
   );
 
-  // Strip the range sentinel from the resolved path.
-  // The sentinel was set in the pre-resolution guard so that
-  // ensureMethodAndPathMatchEndpoint could validate against the {range} template
-  // slot without applyPathParams encoding ':' as %3A. Now that validation is
-  // done, remove the sentinel so the outbound URL is .../values?range=<range>.
   if (
     String(parent_action_key || "").trim() === "google_sheets_api" &&
     String(endpoint_key || "").trim() === "getSheetValues"
   ) {
-    const resolvedPath = String(executionContext.resolvedMethodPath?.path || "");
-    const sentinelSuffix = `/${SHEETS_RANGE_SENTINEL}`;
-    if (resolvedPath.endsWith(sentinelSuffix)) {
-      executionContext.resolvedMethodPath = {
-        ...executionContext.resolvedMethodPath,
-        path: resolvedPath.slice(0, -sentinelSuffix.length) || "/"
-      };
-    }
     debugLog("SHEETS_RANGE_ROUTING:", JSON.stringify({
-      base_path: executionContext.resolvedMethodPath?.path || "",
+      path: executionContext.resolvedMethodPath?.path || "",
+      path_range: pathParams.range || "",
       query_range: query.range || "",
-      routing: "query_string"
+      routing: "path"
     }));
   }
 

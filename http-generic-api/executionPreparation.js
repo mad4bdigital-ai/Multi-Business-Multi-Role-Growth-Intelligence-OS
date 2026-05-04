@@ -220,9 +220,9 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
   });
   debugLog("BRAND_MUTATION_PREFLIGHT:", JSON.stringify(brandMutationPreflight));
 
-  // For getSheetValues, range is routed through query string so resolvedMethodPath.path
-  // is .../values (no {range} segment). The schema template still has {range} in the path,
-  // so pass the endpoint template path for lookup and the outbound path for the URL.
+  // For getSheetValues, query.range is only accepted as an input alias. The
+  // outbound URL keeps range in the path, matching Google Sheets REST:
+  // /v4/spreadsheets/{spreadsheetId}/values/{range}.
   const schemaLookupPath =
     String(parent_action_key || "").trim() === "google_sheets_api" &&
     String(endpoint_key || "").trim() === "getSheetValues"
