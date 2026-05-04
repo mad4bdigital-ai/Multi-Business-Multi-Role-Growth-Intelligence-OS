@@ -220,8 +220,17 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
   });
   debugLog("BRAND_MUTATION_PREFLIGHT:", JSON.stringify(brandMutationPreflight));
 
+  // For getSheetValues, range is routed through query string so resolvedMethodPath.path
+  // is .../values (no {range} segment). The schema template still has {range} in the path,
+  // so pass the endpoint template path for lookup and the outbound path for the URL.
+  const schemaLookupPath =
+    String(parent_action_key || "").trim() === "google_sheets_api" &&
+    String(endpoint_key || "").trim() === "getSheetValues"
+      ? String(endpoint.endpoint_path_or_function || "").trim() || resolvedMethodPath.path
+      : resolvedMethodPath.path;
+
   const schemaContract = await fetchSchemaContract(drive, action.openai_schema_file_id);
-  const schemaOperationInfo = await resolveSchemaOperation(schemaContract, resolvedMethodPath.method, resolvedMethodPath.path);
+  const schemaOperationInfo = await resolveSchemaOperation(schemaContract, resolvedMethodPath.method, schemaLookupPath);
   if (!schemaOperationInfo) {
     const err = new Error(`Method/path not found in authoritative schema for ${parent_action_key}.`);
     err.code = "schema_path_method_mismatch";
