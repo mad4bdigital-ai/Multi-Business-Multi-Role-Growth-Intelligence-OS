@@ -1,4 +1,7 @@
-﻿﻿import express from "express";
+import * as authService from './authService.js';
+import { createStateManager } from "./stateManager.js";
+
+import express from "express";
 import * as sqlAdapter from "./sqlAdapter.js";
 import crypto from "node:crypto";
 import { promises as fs } from "fs";
@@ -314,7 +317,10 @@ import {
 } from "./jobRunner.js";
 import { registerRoutes } from "./routes/index.js";
 import { createExecutionFacade } from "./executionFacade.js";
+import { generateImplementationPlan } from "./services/planningResolver.js";
+import { generateTaskManifest } from "./services/taskResolver.js";
 
+const { isOAuthConfigured, inferAuthMode, normalizeAuthContract, findHostingAccountByKey, resolveAccountKeyFromBrand, resolveAccountKey, resolveSecretFromReference, isGoogleApiHost, getAdditionalStaticAuthHeaders, enforceSupportedAuthMode, pathTemplateToRegex, ensureMethodAndPathMatchEndpoint, fetchSchemaContract, resolveSchemaOperation, validateByJsonSchema, validateParameters, validateRequestBody, classifySchemaDrift, buildResolvedAuthHeaders, injectAuthIntoQuery, injectAuthIntoHeaders, injectAuthForSchemaValidation, ensureWritePermissions } = authService;
 
 // --- Runtime Guards Initialization ---
 const debugLog = createDebugLog(process.env);
@@ -953,6 +959,7 @@ function buildEngineEvidenceFromWorkflow({
 
 function classifyExecutionResult(args = {}) {
   if (args.oversized) return "oversized_live";
+  if (args.error_code === "provider_timeout") return "timeout_live";
   if (args.error_code === "worker_timeout") return "timeout_live";
   if (args.error_code === "auth_failed") return "auth_failed";
   if (args.error_code === "failed_validation") return "failed_validation";
@@ -2536,11 +2543,180 @@ const shouldRetryProviderResponse = (p, s, t) => shouldRetryProviderResponseCore
 const buildProviderRetryMutations = (p, k) => buildProviderRetryMutationsCore(p, k);
 const retryMutationEnabled = p => retryMutationEnabledCore(p);
 
+function positiveNumber(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : fallback;
+}
+
+function resolveProviderTimeoutMs({
+  requestPayload = {},
+  providerTimeoutMs,
+  maxTimeoutSeconds = MAX_TIMEOUT_SECONDS
+} = {}) {
+  const maxTimeoutMs = positiveNumber(maxTimeoutSeconds, 300) * 1000;
+  const explicitMs = positiveNumber(
+    requestPayload.provider_timeout_ms ?? providerTimeoutMs,
+    0
+  );
+  const timeoutSeconds = positiveNumber(requestPayload.timeout_seconds, 300);
+  const timeoutMs = explicitMs || timeoutSeconds * 1000;
+  return Math.max(1, Math.min(timeoutMs, maxTimeoutMs));
+}
+
+function buildProviderTimeoutBody({
+  requestPayload = {},
+  requestUrl = "",
+  resolvedProviderDomain = "",
+  providerTimeoutMs,
+  providerElapsedMs
+} = {}) {
+  return {
+    ok: false,
+    code: "provider_timeout",
+    error: {
+      code: "provider_timeout",
+      message: "Provider fetch timed out before a response was received.",
+      details: {
+        parent_action_key: requestPayload.parent_action_key,
+        endpoint_key: requestPayload.endpoint_key,
+        provider_domain: resolvedProviderDomain,
+        provider_timeout_ms: providerTimeoutMs,
+        provider_elapsed_ms: providerElapsedMs,
+        request_url: requestUrl
+      }
+    },
+    provider_timeout_ms: providerTimeoutMs,
+    provider_elapsed_ms: providerElapsedMs
+  };
+}
+
+async function fetchProviderWithTimeout({
+  requestUrl,
+  requestInit = {},
+  requestPayload = {},
+  resolvedProviderDomain = "",
+  providerTimeoutMs,
+  debugLog = console.log,
+  fetchImpl = fetch,
+  maxTimeoutSeconds = MAX_TIMEOUT_SECONDS
+} = {}) {
+  const timeoutMs = resolveProviderTimeoutMs({
+    requestPayload,
+    providerTimeoutMs,
+    maxTimeoutSeconds
+  });
+  const startedAt = Date.now();
+  const controller = new AbortController();
+  const outerSignal = requestInit.signal;
+  let timeoutFired = false;
+
+  const abortFromOuterSignal = () => {
+    if (!controller.signal.aborted) controller.abort(outerSignal?.reason);
+  };
+
+  if (outerSignal?.aborted) {
+    abortFromOuterSignal();
+  } else if (outerSignal) {
+    outerSignal.addEventListener("abort", abortFromOuterSignal, { once: true });
+  }
+
+  const timer = setTimeout(() => {
+    timeoutFired = true;
+    controller.abort(new Error("provider_timeout"));
+  }, timeoutMs);
+
+  debugLog("PROVIDER_FETCH_START:", {
+    request_url: requestUrl,
+    provider_domain: resolvedProviderDomain,
+    provider_timeout_ms: timeoutMs
+  });
+
+  try {
+    const upstream = await fetchImpl(requestUrl, {
+      ...requestInit,
+      signal: controller.signal
+    });
+    const elapsedMs = Date.now() - startedAt;
+    debugLog("PROVIDER_RESPONSE_STATUS:", upstream.status);
+    debugLog("PROVIDER_FETCH_END:", {
+      request_url: requestUrl,
+      provider_domain: resolvedProviderDomain,
+      provider_elapsed_ms: elapsedMs,
+      PROVIDER_ELAPSED_MS: elapsedMs
+    });
+    return { upstream, providerTimeoutMs: timeoutMs, providerElapsedMs: elapsedMs };
+  } catch (err) {
+    const elapsedMs = Date.now() - startedAt;
+    const isTimeout = timeoutFired || err?.message === "provider_timeout";
+    if (isTimeout) {
+      debugLog("PROVIDER_FETCH_TIMEOUT:", {
+        request_url: requestUrl,
+        provider_domain: resolvedProviderDomain,
+        provider_timeout_ms: timeoutMs,
+        provider_elapsed_ms: elapsedMs,
+        PROVIDER_ELAPSED_MS: elapsedMs
+      });
+      return {
+        shortCircuitResponse: {
+          status: 504,
+          body: buildProviderTimeoutBody({
+            requestPayload,
+            requestUrl,
+            resolvedProviderDomain,
+            providerTimeoutMs: timeoutMs,
+            providerElapsedMs: elapsedMs
+          })
+        },
+        providerTimeoutMs: timeoutMs,
+        providerElapsedMs: elapsedMs
+      };
+    }
+
+    debugLog("PROVIDER_FETCH_ERROR:", {
+      request_url: requestUrl,
+      provider_domain: resolvedProviderDomain,
+      provider_elapsed_ms: elapsedMs,
+      PROVIDER_ELAPSED_MS: elapsedMs,
+      error_name: err?.name,
+      error_message: err?.message || String(err)
+    });
+    throw err;
+  } finally {
+    clearTimeout(timer);
+    if (outerSignal) {
+      outerSignal.removeEventListener("abort", abortFromOuterSignal);
+    }
+  }
+}
+
 async function executeUpstreamAttempt({
   requestUrl,
-  requestInit
+  requestInit,
+  requestPayload = {},
+  resolvedProviderDomain = "",
+  providerTimeoutMs,
+  debugLog,
+  fetchImpl
 }) {
-  const upstream = await fetch(requestUrl, requestInit);
+  const providerFetchResult = await fetchProviderWithTimeout({
+    requestUrl,
+    requestInit,
+    requestPayload,
+    resolvedProviderDomain,
+    providerTimeoutMs,
+    debugLog,
+    fetchImpl
+  });
+
+  if (providerFetchResult.shortCircuitResponse) {
+    return {
+      shortCircuitResponse: providerFetchResult.shortCircuitResponse,
+      providerTimeoutMs: providerFetchResult.providerTimeoutMs,
+      providerElapsedMs: providerFetchResult.providerElapsedMs
+    };
+  }
+
+  const upstream = providerFetchResult.upstream;
 
   const contentType = upstream.headers.get("content-type") || "";
   let data;
@@ -2564,7 +2740,9 @@ async function executeUpstreamAttempt({
     data,
     responseText,
     responseHeaders,
-    contentType
+    contentType,
+    providerTimeoutMs: providerFetchResult.providerTimeoutMs,
+    providerElapsedMs: providerFetchResult.providerElapsedMs
   };
 }
 
@@ -2667,82 +2845,6 @@ function resolveProviderDomain({
   );
 }
 
-function isOAuthConfigured(action) {
-  return isOAuthConfiguredCore(action);
-}
-
-function inferAuthMode({ action, brand }) {
-  return inferAuthModeCore({ action, brand });
-}
-
-function normalizeAuthContract(args) { return normalizeAuthContractCore(args); }
-function findHostingAccountByKey(h, k) { return findHostingAccountByKeyCore(h, k); }
-function resolveAccountKeyFromBrand(b) { return resolveAccountKeyFromBrandCore(b); }
-function resolveAccountKey(args) { return resolveAccountKeyCore(args); }
-function resolveSecretFromReference(r) { return resolveSecretFromReferenceCore(r); }
-function isGoogleApiHost(d) { return isGoogleApiHostCore(d); }
-function getAdditionalStaticAuthHeaders(a, c) { return getAdditionalStaticAuthHeadersCore(a, c); }
-function enforceSupportedAuthMode(p, m) { return enforceSupportedAuthModeCore(p, m); }
-
-function pathTemplateToRegex(t) { return pathTemplateToRegexCore(t); }
-function ensureMethodAndPathMatchEndpoint(e, m, p, pp) { return ensureMethodAndPathMatchEndpointCore(e, m, p, pp); }
-
-async function fetchSchemaContract(drive, fileId) { return fetchSchemaContractCore(drive, fileId); }
-
-function resolveSchemaOperation(schema, method, path) {
-  return resolveSchemaOperationCore(schema, method, path, { pathTemplateToRegex });
-}
-
-function validateByJsonSchema(schema, value, scope, pathPrefix = "") {
-  return validateByJsonSchemaCore(schema, value, scope, pathPrefix);
-}
-
-function validateParameters(operation, request) {
-  return validateParametersCore(operation, request);
-}
-
-function validateRequestBody(operation, body) {
-  return validateRequestBodyCore(operation, body);
-}
-
-function classifySchemaDrift(expected, actual, scope) {
-  return classifySchemaDriftCore(expected, actual, scope);
-}
-
-function buildResolvedAuthHeaders(contract) {
-  return buildResolvedAuthHeadersCore(contract);
-}
-
-function injectAuthIntoQuery(query, contract) {
-  return injectAuthIntoQueryCore(query, contract);
-}
-
-function injectAuthIntoHeaders(headers, contract) {
-  return injectAuthIntoHeadersCore(headers, contract);
-}
-
-function injectAuthForSchemaValidation(query, headers, contract) {
-  return injectAuthForSchemaValidationCore(query, headers, contract);
-}
-
-function ensureWritePermissions(brand, method) {
-  if (brand && ["POST", "PUT", "PATCH"].includes(method) && !boolFromSheet(brand.write_allowed)) {
-    const err = new Error(`Write operations are not allowed for ${brand.brand_name || brand.base_url}.`);
-    err.code = "method_not_allowed";
-    err.status = 403;
-    throw err;
-  }
-
-  if (method === "DELETE") {
-    if (brand && boolFromSheet(brand.destructive_allowed)) return;
-    const err = new Error("DELETE is not allowed for this target.");
-    err.code = "method_not_allowed";
-    err.status = 403;
-    throw err;
-  }
-}
-
-
 const nowIso = () => nowIsoCore();
 const normalizeJobStatus = v => normalizeJobStatusCore(v);
 const normalizeWebhookUrl = v => normalizeWebhookUrlCore(v);
@@ -2827,206 +2929,28 @@ function assertNoDirectActivationWithoutGovernedReview(row = {}, surfaceName = "
   });
 }
 
-async function getSpreadsheetSheetMap(sheets, spreadsheetId) {
-  return getSpreadsheetSheetMapCore(sheets, spreadsheetId);
-}
-
-async function ensureSheetWithHeader(sheets, spreadsheetId, sheetName, columns) {
-  return ensureSheetWithHeaderCore(sheets, spreadsheetId, sheetName, columns, {
-    TASK_ROUTES_CANONICAL_COLUMNS,
-    TASK_ROUTES_SHEET,
-    WORKFLOW_REGISTRY_CANONICAL_COLUMNS,
-    WORKFLOW_REGISTRY_SHEET,
-    computeHeaderSignature,
-    toValuesApiRange
-  });
-}
-
-async function appendRowsIfMissingByKeys(
-  sheets,
-  spreadsheetId,
-  sheetName,
-  columns,
-  keyColumns,
-  rows = []
-) {
-  return appendRowsIfMissingByKeysCore(
-    sheets,
-    spreadsheetId,
-    sheetName,
-    columns,
-    keyColumns,
-    rows,
-    {
-      TASK_ROUTES_CANONICAL_COLUMNS,
-      TASK_ROUTES_SHEET,
-      WORKFLOW_REGISTRY_CANONICAL_COLUMNS,
-      WORKFLOW_REGISTRY_SHEET,
-      GOVERNED_ADDITION_STATES,
-      toA1Start,
-      toSheetCellValue,
-      toValuesApiRange
-    }
-  );
-}
-
-async function ensureSiteMigrationRegistrySurfaces() {
-  return ensureSiteMigrationRegistrySurfacesCore({
-    REGISTRY_SPREADSHEET_ID,
-    PLUGIN_INVENTORY_REGISTRY_SHEET,
-    SITE_RUNTIME_INVENTORY_REGISTRY_SHEET,
-    SITE_SETTINGS_INVENTORY_REGISTRY_SHEET,
-    TASK_ROUTES_CANONICAL_COLUMNS,
-    TASK_ROUTES_SHEET,
-    WORKFLOW_REGISTRY_CANONICAL_COLUMNS,
-    WORKFLOW_REGISTRY_SHEET,
-    assertHeaderMatchesSurfaceMetadata,
-    assertSheetExistsInSpreadsheet,
-    getCanonicalSurfaceMetadata,
-    readLiveSheetShape,
-    toValuesApiRange,
-    siteMigrationTaskRouteColumnsDefined: typeof SITE_MIGRATION_TASK_ROUTE_COLUMNS !== "undefined",
-    siteMigrationWorkflowColumnsDefined: typeof SITE_MIGRATION_WORKFLOW_COLUMNS !== "undefined",
-    siteMigrationTaskRouteRowsDefined: typeof SITE_MIGRATION_TASK_ROUTE_ROWS !== "undefined",
-    siteMigrationWorkflowRowsDefined: typeof SITE_MIGRATION_WORKFLOW_ROWS !== "undefined"
-  });
-}
-
-async function ensureSiteMigrationRouteWorkflowRows() {
-  return ensureSiteMigrationRouteWorkflowRowsCore({
-    REGISTRY_SPREADSHEET_ID,
-    REQUIRED_SITE_MIGRATION_TASK_KEYS,
-    REQUIRED_SITE_MIGRATION_WORKFLOW_IDS,
-    GOVERNED_ADDITION_OUTCOMES,
-    GOVERNED_ADDITION_STATES,
-    TASK_ROUTES_CANONICAL_COLUMNS,
-    TASK_ROUTES_SHEET,
-    WORKFLOW_REGISTRY_CANONICAL_COLUMNS,
-    WORKFLOW_REGISTRY_SHEET,
-    assertHeaderMatchesSurfaceMetadata,
-    boolFromSheet,
-    getCanonicalSurfaceMetadata,
-    getGoogleClients,
-    loadTaskRoutesRegistry,
-    loadWorkflowRegistry,
-    readLiveSheetShape,
-    toValuesApiRange,
-    siteMigrationTaskRouteColumnsDefined: typeof SITE_MIGRATION_TASK_ROUTE_COLUMNS !== "undefined",
-    siteMigrationWorkflowColumnsDefined: typeof SITE_MIGRATION_WORKFLOW_COLUMNS !== "undefined",
-    siteMigrationTaskRouteRowsDefined: typeof SITE_MIGRATION_TASK_ROUTE_ROWS !== "undefined",
-    siteMigrationWorkflowRowsDefined: typeof SITE_MIGRATION_WORKFLOW_ROWS !== "undefined"
-  });
-}
-
-async function loadSiteRuntimeInventoryRegistry(s) { return loadSiteRuntimeInventoryRegistryCore(s); }
-async function loadSiteSettingsInventoryRegistry(s) { return loadSiteSettingsInventoryRegistryCore(s); }
-async function loadPluginInventoryRegistry(s) { return loadPluginInventoryRegistryCore(s); }
-
-async function loadTaskRoutesRegistry(sheets, options = {}) {
-  return loadTaskRoutesRegistryCore(sheets, options, {
-    REGISTRY_SPREADSHEET_ID,
-    TASK_ROUTES_CANONICAL_COLUMNS,
-    TASK_ROUTES_SHEET,
-    assertHeaderMatchesSurfaceMetadata,
-    assertSingleActiveRowByKey,
-    fetchChunkedTable,
-    fetchRange,
-    getCanonicalSurfaceMetadata,
-    getCell,
-    governedAdditionStateBlocksAuthority,
-    hasDeferredGovernedActivationDependencies,
-    headerMap,
-    normalizeGovernedAdditionState,
-    readLiveSheetShape,
-    registryError,
-    toValuesApiRange
-  });
-}
-
-async function loadWorkflowRegistry(sheets, options = {}) {
-  return loadWorkflowRegistryCore(sheets, options, {
-    REGISTRY_SPREADSHEET_ID,
-    WORKFLOW_REGISTRY_CANONICAL_COLUMNS,
-    WORKFLOW_REGISTRY_SHEET,
-    assertHeaderMatchesSurfaceMetadata,
-    assertSingleActiveRowByKey,
-    fetchChunkedTable,
-    fetchRange,
-    getCanonicalSurfaceMetadata,
-    getCell,
-    governedAdditionStateBlocksAuthority,
-    hasDeferredGovernedActivationDependencies,
-    headerMap,
-    normalizeGovernedAdditionState,
-    readLiveSheetShape,
-    registryError,
-    toValuesApiRange
-  });
-}
-
-async function readGovernedSheetRecords(sheetName, spreadsheetId = REGISTRY_SPREADSHEET_ID) {
-  const dsMode = (process.env.DATA_SOURCE || "sheets").toLowerCase();
-  if (dsMode !== "sheets") {
-    try {
-      const rows = await sqlAdapter.readTable(sheetName);
-      if (rows.length > 0) {
-        const header = rows.length > 0 ? Object.keys(rows[0]) : [];
-        return { header, rows, map: headerMap(header, sheetName) };
-      }
-    } catch (err) {
-      console.warn(`[dataSource] SQL read "${sheetName}" failed, falling back to Sheets: ${err.message}`);
-    }
-  }
-  return readGovernedSheetRecordsCore(sheetName, spreadsheetId, {
-    REGISTRY_SPREADSHEET_ID,
-    assertSheetExistsInSpreadsheet,
-    createHttpError,
-    getGoogleClientsForSpreadsheet,
-    headerMap,
-    toValuesApiRange
-  });
-}
-
-function normalizeLooseHostname(value = "") {
-  return normalizeLooseHostnameCore(value);
-}
-
-function findRegistryRecordByIdentity(rows = [], identity = {}) {
-  return findRegistryRecordByIdentityCore(rows, identity);
-}
-
-async function resolveBrandRegistryBinding(identity = {}) {
-  return resolveBrandRegistryBindingCore(identity, {
-    BRAND_REGISTRY_SHEET,
-    REGISTRY_SPREADSHEET_ID,
-    createHttpError,
-    firstPopulated,
-    assertSheetExistsInSpreadsheet,
-    getGoogleClientsForSpreadsheet,
-    headerMap,
-    toValuesApiRange
-  });
-}
-
-async function hostingerSshRuntimeRead({ input = {} }) {
-  return hostingerSshRuntimeReadCore(
-    { input },
-    {
-      REGISTRY_SPREADSHEET_ID,
-      HOSTING_ACCOUNT_REGISTRY_RANGE,
-      HOSTING_ACCOUNT_REGISTRY_SHEET,
-      asBool,
-      getGoogleClientsForSpreadsheet,
-      matchesHostingerSshTarget,
-      rowToObject
-    }
-  );
-}
-
-
-
-
-
+const stateManager = createStateManager({
+  TASK_ROUTES_CANONICAL_COLUMNS,
+  TASK_ROUTES_SHEET,
+  WORKFLOW_REGISTRY_CANONICAL_COLUMNS,
+  WORKFLOW_REGISTRY_SHEET,
+  GOVERNED_ADDITION_STATES,
+  REGISTRY_SPREADSHEET_ID,
+  PLUGIN_INVENTORY_REGISTRY_SHEET,
+  SITE_RUNTIME_INVENTORY_REGISTRY_SHEET,
+  SITE_SETTINGS_INVENTORY_REGISTRY_SHEET,
+  REQUIRED_SITE_MIGRATION_TASK_KEYS,
+  REQUIRED_SITE_MIGRATION_WORKFLOW_IDS,
+  GOVERNED_ADDITION_OUTCOMES,
+  BRAND_REGISTRY_SHEET,
+  HOSTING_ACCOUNT_REGISTRY_RANGE,
+  HOSTING_ACCOUNT_REGISTRY_SHEET,
+  SITE_MIGRATION_TASK_ROUTE_COLUMNS: typeof SITE_MIGRATION_TASK_ROUTE_COLUMNS !== "undefined" ? SITE_MIGRATION_TASK_ROUTE_COLUMNS : undefined,
+  SITE_MIGRATION_WORKFLOW_COLUMNS: typeof SITE_MIGRATION_WORKFLOW_COLUMNS !== "undefined" ? SITE_MIGRATION_WORKFLOW_COLUMNS : undefined,
+  SITE_MIGRATION_TASK_ROUTE_ROWS: typeof SITE_MIGRATION_TASK_ROUTE_ROWS !== "undefined" ? SITE_MIGRATION_TASK_ROUTE_ROWS : undefined,
+  SITE_MIGRATION_WORKFLOW_ROWS: typeof SITE_MIGRATION_WORKFLOW_ROWS !== "undefined" ? SITE_MIGRATION_WORKFLOW_ROWS : undefined
+});
+const { getSpreadsheetSheetMap, ensureSheetWithHeader, appendRowsIfMissingByKeys, ensureSiteMigrationRegistrySurfaces, ensureSiteMigrationRouteWorkflowRows, loadSiteRuntimeInventoryRegistry, loadSiteSettingsInventoryRegistry, loadPluginInventoryRegistry, loadTaskRoutesRegistry, loadWorkflowRegistry, readGovernedSheetRecords, normalizeLooseHostname, findRegistryRecordByIdentity, resolveBrandRegistryBinding, hostingerSshRuntimeRead } = stateManager;
 
 const executionFacade = createExecutionFacade({
   // shared
@@ -3167,6 +3091,8 @@ registerRoutes(app, {
   getGoogleClientsForSpreadsheet,
   // --- jobs + execute (via facade) ---
   executionFacade,
+  generateImplementationPlan,
+  generateTaskManifest,
   resolveRequestedBy
 });
 

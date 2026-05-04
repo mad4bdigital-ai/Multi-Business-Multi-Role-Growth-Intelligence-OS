@@ -132,6 +132,7 @@ export function mapExecutionStatus(jobStatus) {
 
 export function classifyExecutionResult(args = {}) {
   if (args.oversized) return "oversized_live";
+  if (args.error_code === "provider_timeout") return "timeout_live";
   if (args.error_code === "worker_timeout") return "timeout_live";
   if (args.error_code === "auth_failed") return "auth_failed";
   if (args.error_code === "failed_validation") return "failed_validation";
@@ -1550,11 +1551,160 @@ function syntheticJsonAttempt(data, status = 200) {
   };
 }
 
+function positiveNumber(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : fallback;
+}
+
+export function resolveProviderTimeoutMs({
+  requestPayload = {},
+  providerTimeoutMs,
+  maxTimeoutSeconds = MAX_TIMEOUT_SECONDS
+} = {}) {
+  const maxTimeoutMs = positiveNumber(maxTimeoutSeconds, 300) * 1000;
+  const explicitMs = positiveNumber(
+    requestPayload.provider_timeout_ms ?? providerTimeoutMs,
+    0
+  );
+  const timeoutSeconds = positiveNumber(requestPayload.timeout_seconds, 300);
+  const timeoutMs = explicitMs || timeoutSeconds * 1000;
+  return Math.max(1, Math.min(timeoutMs, maxTimeoutMs));
+}
+
+function buildProviderTimeoutBody({
+  requestPayload = {},
+  requestUrl = "",
+  resolvedProviderDomain = "",
+  providerTimeoutMs,
+  providerElapsedMs
+} = {}) {
+  return {
+    ok: false,
+    code: "provider_timeout",
+    error: {
+      code: "provider_timeout",
+      message: "Provider fetch timed out before a response was received.",
+      details: {
+        parent_action_key: requestPayload.parent_action_key,
+        endpoint_key: requestPayload.endpoint_key,
+        provider_domain: resolvedProviderDomain,
+        provider_timeout_ms: providerTimeoutMs,
+        provider_elapsed_ms: providerElapsedMs,
+        request_url: requestUrl
+      }
+    },
+    provider_timeout_ms: providerTimeoutMs,
+    provider_elapsed_ms: providerElapsedMs
+  };
+}
+
+export async function fetchProviderWithTimeout({
+  requestUrl,
+  requestInit = {},
+  requestPayload = {},
+  resolvedProviderDomain = "",
+  providerTimeoutMs,
+  debugLog = console.log,
+  fetchImpl = fetch,
+  maxTimeoutSeconds = MAX_TIMEOUT_SECONDS
+} = {}) {
+  const timeoutMs = resolveProviderTimeoutMs({
+    requestPayload,
+    providerTimeoutMs,
+    maxTimeoutSeconds
+  });
+  const startedAt = Date.now();
+  const controller = new AbortController();
+  const outerSignal = requestInit.signal;
+  let timeoutFired = false;
+
+  const abortFromOuterSignal = () => {
+    if (!controller.signal.aborted) controller.abort(outerSignal?.reason);
+  };
+
+  if (outerSignal?.aborted) {
+    abortFromOuterSignal();
+  } else if (outerSignal) {
+    outerSignal.addEventListener("abort", abortFromOuterSignal, { once: true });
+  }
+
+  const timer = setTimeout(() => {
+    timeoutFired = true;
+    controller.abort(new Error("provider_timeout"));
+  }, timeoutMs);
+
+  debugLog("PROVIDER_FETCH_START:", {
+    request_url: requestUrl,
+    provider_domain: resolvedProviderDomain,
+    provider_timeout_ms: timeoutMs
+  });
+
+  try {
+    const upstream = await fetchImpl(requestUrl, {
+      ...requestInit,
+      signal: controller.signal
+    });
+    const elapsedMs = Date.now() - startedAt;
+    debugLog("PROVIDER_RESPONSE_STATUS:", upstream.status);
+    debugLog("PROVIDER_FETCH_END:", {
+      request_url: requestUrl,
+      provider_domain: resolvedProviderDomain,
+      provider_elapsed_ms: elapsedMs,
+      PROVIDER_ELAPSED_MS: elapsedMs
+    });
+    return { upstream, providerTimeoutMs: timeoutMs, providerElapsedMs: elapsedMs };
+  } catch (err) {
+    const elapsedMs = Date.now() - startedAt;
+    const isTimeout = timeoutFired || err?.message === "provider_timeout";
+    if (isTimeout) {
+      debugLog("PROVIDER_FETCH_TIMEOUT:", {
+        request_url: requestUrl,
+        provider_domain: resolvedProviderDomain,
+        provider_timeout_ms: timeoutMs,
+        provider_elapsed_ms: elapsedMs,
+        PROVIDER_ELAPSED_MS: elapsedMs
+      });
+      return {
+        shortCircuitResponse: {
+          status: 504,
+          body: buildProviderTimeoutBody({
+            requestPayload,
+            requestUrl,
+            resolvedProviderDomain,
+            providerTimeoutMs: timeoutMs,
+            providerElapsedMs: elapsedMs
+          })
+        },
+        providerTimeoutMs: timeoutMs,
+        providerElapsedMs: elapsedMs
+      };
+    }
+
+    debugLog("PROVIDER_FETCH_ERROR:", {
+      request_url: requestUrl,
+      provider_domain: resolvedProviderDomain,
+      provider_elapsed_ms: elapsedMs,
+      PROVIDER_ELAPSED_MS: elapsedMs,
+      error_name: err?.name,
+      error_message: err?.message || String(err)
+    });
+    throw err;
+  } finally {
+    clearTimeout(timer);
+    if (outerSignal) {
+      outerSignal.removeEventListener("abort", abortFromOuterSignal);
+    }
+  }
+}
+
 export async function executeUpstreamAttempt({
   requestUrl,
   requestInit,
   requestPayload = {},
-  resolvedProviderDomain = ""
+  resolvedProviderDomain = "",
+  providerTimeoutMs,
+  debugLog,
+  fetchImpl
 }) {
   if (isActivationSheetOpenRequest(requestPayload) || isActivationBootstrapRowRead(requestPayload)) {
     const backoffUntil = await getActivationBackoffUntil(makeActivationSheetsBackoffKey());
@@ -1608,7 +1758,25 @@ export async function executeUpstreamAttempt({
     }
   }
 
-  const upstream = await fetch(requestUrl, requestInit);
+  const providerFetchResult = await fetchProviderWithTimeout({
+    requestUrl,
+    requestInit,
+    requestPayload,
+    resolvedProviderDomain,
+    providerTimeoutMs,
+    debugLog,
+    fetchImpl
+  });
+
+  if (providerFetchResult.shortCircuitResponse) {
+    return {
+      shortCircuitResponse: providerFetchResult.shortCircuitResponse,
+      providerTimeoutMs: providerFetchResult.providerTimeoutMs,
+      providerElapsedMs: providerFetchResult.providerElapsedMs
+    };
+  }
+
+  const upstream = providerFetchResult.upstream;
 
   const contentType = upstream.headers.get("content-type") || "";
   let data;
@@ -1678,7 +1846,9 @@ export async function executeUpstreamAttempt({
     data,
     responseText,
     responseHeaders,
-    contentType
+    contentType,
+    providerTimeoutMs: providerFetchResult.providerTimeoutMs,
+    providerElapsedMs: providerFetchResult.providerElapsedMs
   };
 }
 

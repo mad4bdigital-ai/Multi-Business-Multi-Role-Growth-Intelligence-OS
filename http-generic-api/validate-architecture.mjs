@@ -441,6 +441,7 @@ const EXECUTION_IMPORT_ALLOWLIST = new Set([
   "test-execution-log-evidence.mjs",
   "test-engine-evidence-derivation.mjs",
   "test-engine-evidence-integration.mjs",
+  "test-provider-fetch-timeout.mjs",
   "test-execution-context-evidence.mjs",
   "test-execution-state-evidence.mjs"
 ]);

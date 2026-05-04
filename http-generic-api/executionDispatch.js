@@ -27,8 +27,7 @@ export async function dispatchPreparedExecution(input = {}, deps = {}) {
   } = deps;
 
   const timeoutSeconds = Math.min(Number(requestPayload.timeout_seconds || 300), MAX_TIMEOUT_SECONDS);
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutSeconds * 1000);
+  const providerTimeoutMs = Math.max(1, timeoutSeconds * 1000);
 
   const resilienceApplies = resilienceAppliesToParentAction(policies, parent_action_key);
   const providerRetryEnabled = retryMutationEnabled(policies);
@@ -53,7 +52,6 @@ export async function dispatchPreparedExecution(input = {}, deps = {}) {
     method: resolvedMethodPath.method,
     headers: finalHeaders,
     body: transportBody === undefined ? undefined : JSON.stringify(transportBody),
-    signal: controller.signal,
     redirect: "follow"
   };
 
@@ -70,54 +68,52 @@ export async function dispatchPreparedExecution(input = {}, deps = {}) {
     1 + Math.max(0, maxAdditionalAttempts)
   );
 
-  try {
-    for (let i = 0; i < attempts.length; i++) {
-      const mutation = attempts[i] || {};
-      const attemptQuery = { ...finalQuery, ...mutation };
-      const attemptUrl = appendQuery(baseUrl, attemptQuery);
+  for (let i = 0; i < attempts.length; i++) {
+    const mutation = attempts[i] || {};
+    const attemptQuery = { ...finalQuery, ...mutation };
+    const attemptUrl = appendQuery(baseUrl, attemptQuery);
 
-      debugLog("RESILIENCE_APPLIES:", resilienceApplies);
-      debugLog("PROVIDER_RETRY_ENABLED:", providerRetryEnabled);
-      debugLog("PROVIDER_RETRY_ATTEMPT_INDEX:", i);
-      debugLog("PROVIDER_RETRY_MUTATION:", mutation);
-      debugLog("OUTBOUND_URL_ATTEMPT:", attemptUrl);
+    debugLog("RESILIENCE_APPLIES:", resilienceApplies);
+    debugLog("PROVIDER_RETRY_ENABLED:", providerRetryEnabled);
+    debugLog("PROVIDER_RETRY_ATTEMPT_INDEX:", i);
+    debugLog("PROVIDER_RETRY_MUTATION:", mutation);
+    debugLog("OUTBOUND_URL_ATTEMPT:", attemptUrl);
 
-      const attemptResult = await executeUpstreamAttempt({
-        requestUrl: attemptUrl,
-        requestInit: upstreamRequest,
-        requestPayload,
-        resolvedProviderDomain
-      });
+    const attemptResult = await executeUpstreamAttempt({
+      requestUrl: attemptUrl,
+      requestInit: upstreamRequest,
+      requestPayload,
+      resolvedProviderDomain,
+      providerTimeoutMs,
+      debugLog
+    });
 
-      if (attemptResult.shortCircuitResponse) {
-        return {
-          shortCircuitResponse: attemptResult.shortCircuitResponse,
-          effectiveRequestUrl: attemptUrl,
-          finalAttemptQuery: attemptQuery,
-          resilienceApplies
-        };
-      }
-
-      upstream = attemptResult.upstream;
-      data = attemptResult.data;
-      responseHeaders = attemptResult.responseHeaders;
-      contentType = attemptResult.contentType;
-      responseText = attemptResult.responseText;
-      effectiveRequestUrl = attemptUrl;
-      finalAttemptQuery = attemptQuery;
-
-      const canRetry =
-        resilienceApplies &&
-        providerRetryEnabled &&
-        i < attempts.length - 1 &&
-        shouldRetryProviderResponse(policies, upstream.status, responseText);
-
-      if (!canRetry) {
-        break;
-      }
+    if (attemptResult.shortCircuitResponse) {
+      return {
+        shortCircuitResponse: attemptResult.shortCircuitResponse,
+        effectiveRequestUrl: attemptUrl,
+        finalAttemptQuery: attemptQuery,
+        resilienceApplies
+      };
     }
-  } finally {
-    clearTimeout(timer);
+
+    upstream = attemptResult.upstream;
+    data = attemptResult.data;
+    responseHeaders = attemptResult.responseHeaders;
+    contentType = attemptResult.contentType;
+    responseText = attemptResult.responseText;
+    effectiveRequestUrl = attemptUrl;
+    finalAttemptQuery = attemptQuery;
+
+    const canRetry =
+      resilienceApplies &&
+      providerRetryEnabled &&
+      i < attempts.length - 1 &&
+      shouldRetryProviderResponse(policies, upstream.status, responseText);
+
+    if (!canRetry) {
+      break;
+    }
   }
 
   return {
