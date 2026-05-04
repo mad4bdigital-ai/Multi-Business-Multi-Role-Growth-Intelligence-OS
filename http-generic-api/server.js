@@ -1993,12 +1993,6 @@ async function deleteSheetRowGoverned(
 }
 
 async function performGovernedSheetMutation(args = {}) {
-  const dsMode = (process.env.DATA_SOURCE || "sheets").toLowerCase();
-  if (dsMode !== "sheets" && args.mutationType === "append" && args.sheetName && args.rowObject) {
-    sqlAdapter.appendRow(args.sheetName, args.rowObject).catch(err =>
-      console.warn(`[dataSource] SQL mirror append "${args.sheetName}" failed: ${err.message}`)
-    );
-  }
   return performGovernedSheetMutationCore(args, {
     enforceGovernedMutationPreflight,
     executionLogUnifiedColumns: EXECUTION_LOG_UNIFIED_COLUMNS,
