@@ -1,4 +1,5 @@
 ﻿﻿import express from "express";
+import * as sqlAdapter from "./sqlAdapter.js";
 import crypto from "node:crypto";
 import { promises as fs } from "fs";
 import {
@@ -1976,6 +1977,12 @@ async function deleteSheetRowGoverned(
 }
 
 async function performGovernedSheetMutation(args = {}) {
+  const dsMode = (process.env.DATA_SOURCE || "sheets").toLowerCase();
+  if (dsMode !== "sheets" && args.mutationType === "append" && args.sheetName && args.rowObject) {
+    sqlAdapter.appendRow(args.sheetName, args.rowObject).catch(err =>
+      console.warn(`[dataSource] SQL mirror append "${args.sheetName}" failed: ${err.message}`)
+    );
+  }
   return performGovernedSheetMutationCore(args, {
     enforceGovernedMutationPreflight,
     executionLogUnifiedColumns: EXECUTION_LOG_UNIFIED_COLUMNS,
@@ -2958,6 +2965,18 @@ async function loadWorkflowRegistry(sheets, options = {}) {
 }
 
 async function readGovernedSheetRecords(sheetName, spreadsheetId = REGISTRY_SPREADSHEET_ID) {
+  const dsMode = (process.env.DATA_SOURCE || "sheets").toLowerCase();
+  if (dsMode !== "sheets") {
+    try {
+      const rows = await sqlAdapter.readTable(sheetName);
+      if (rows.length > 0) {
+        const header = rows.length > 0 ? Object.keys(rows[0]) : [];
+        return { header, rows, map: headerMap(header, sheetName) };
+      }
+    } catch (err) {
+      console.warn(`[dataSource] SQL read "${sheetName}" failed, falling back to Sheets: ${err.message}`);
+    }
+  }
   return readGovernedSheetRecordsCore(sheetName, spreadsheetId, {
     REGISTRY_SPREADSHEET_ID,
     assertSheetExistsInSpreadsheet,
