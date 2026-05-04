@@ -19,6 +19,8 @@ import { buildCustomerRoutes }         from "./routes/customerRoutes.js";
 import { buildConnectedSystemsRoutes } from "./routes/connectedSystemsRoutes.js";
 import { buildBootstrapRoutes }        from "./routes/bootstrapRoutes.js";
 import { buildObservabilityRoutes }    from "./routes/observabilityRoutes.js";
+import { buildStatusRoutes }           from "./routes/statusRoutes.js";
+import { buildBatchRoutes }            from "./routes/batchRoutes.js";
 
 let passed = 0;
 let failed = 0;
@@ -49,6 +51,8 @@ app.use(buildCustomerRoutes(DEPS));
 app.use(buildConnectedSystemsRoutes(DEPS));
 app.use(buildBootstrapRoutes(DEPS));
 app.use(buildObservabilityRoutes(DEPS));
+app.use(buildStatusRoutes(DEPS));
+app.use(buildBatchRoutes(DEPS));
 
 const server = app.listen(0);
 await new Promise(resolve => server.once("listening", resolve));
@@ -381,6 +385,78 @@ section("POST /reporting/views — input validation");
 {
   const r = await get("/reporting/views/v1");
   ok("GET /reporting/views/:id → not 404", r.status !== 404, `got ${r.status}`);
+}
+
+// ── 22. Status endpoints — public, no auth ────────────────────────────────────
+
+section("GET /status — public JSON");
+
+{
+  const r = await get("/status");
+  ok("returns 200 or 503", r.status === 200 || r.status === 503, `got ${r.status}`);
+  ok("has status field", typeof r.body.status === "string", `body: ${JSON.stringify(r.body).slice(0,80)}`);
+  ok("has components array", Array.isArray(r.body.components));
+  ok("has 8 components", r.body.components?.length === 8, `got ${r.body.components?.length}`);
+  ok("has updated_at", typeof r.body.updated_at === "string");
+}
+
+section("GET /status.html — HTML page");
+
+{
+  const res = await fetch(`${base}/status.html`);
+  ok("returns 200", res.status === 200, `got ${res.status}`);
+  ok("content-type is text/html", (res.headers.get("content-type") || "").includes("text/html"));
+  const html = await res.text();
+  ok("contains Components section", html.includes("Components"));
+  ok("contains Status in title", html.includes("System Status"));
+}
+
+section("GET /status/incidents — incident history");
+
+{
+  const r = await get("/status/incidents?days=30");
+  ok("returns 200 or 500", r.status === 200 || r.status === 500, `got ${r.status}`);
+  if (r.status === 200) ok("has incidents array", Array.isArray(r.body.incidents));
+}
+
+// ── 23. POST /batch — validation ──────────────────────────────────────────────
+
+section("POST /batch — input validation");
+
+{
+  const r = await post("/batch", {});
+  ok("missing requests → 400", r.status === 400, `got ${r.status}`);
+  ok("code = missing_requests", r.body.error?.code === "missing_requests");
+}
+{
+  const r = await post("/batch", { requests: Array(51).fill({ method: "GET", path: "/status" }) });
+  ok("51 requests → 400 batch_too_large", r.status === 400, `got ${r.status}`);
+  ok("code = batch_too_large", r.body.error?.code === "batch_too_large");
+}
+{
+  const r = await post("/batch", { requests: [{ method: "GET", path: "/batch" }] });
+  ok("/batch in sub-request → 400 batch_loop", r.status === 400, `got ${r.status}`);
+  ok("code = batch_loop", r.body.error?.code === "batch_loop");
+}
+{
+  const r = await post("/batch", { requests: [{ method: "INVALID", path: "/status" }] });
+  ok("invalid method → 400", r.status === 400, `got ${r.status}`);
+}
+
+section("POST /batch — execution");
+
+{
+  const r = await post("/batch", {
+    requests: [
+      { method: "GET", path: "/status" },
+      { method: "GET", path: "/status/incidents" },
+    ]
+  });
+  ok("2-request batch returns 200", r.status === 200, `got ${r.status}`);
+  ok("results array has 2 entries", r.body.results?.length === 2, `got ${r.body.results?.length}`);
+  ok("results[0].index === 0", r.body.results?.[0]?.index === 0);
+  ok("results[1].index === 1", r.body.results?.[1]?.index === 1);
+  ok("results have status field", typeof r.body.results?.[0]?.status === "number");
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────────
