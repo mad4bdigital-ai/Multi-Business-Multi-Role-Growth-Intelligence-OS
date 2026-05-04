@@ -3075,3 +3075,109 @@ paths:
                         notes: { type: string }
                         last_checked_at: { type: string, format: date-time }
         "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ── Connector Dispatch (Sprint 09) ────────────────────────────────────────
+
+  /connector/dispatch:
+    post:
+      tags: [planner]
+      security: [backendBearerAuth: []]
+      operationId: connectorDispatch
+      summary: Dispatch a connector execution (WordPress transport or content workflow)
+      description: >
+        Sprint 09 bridge. Accepts either an existing plan_id or creates an ad-hoc
+        execution plan from brand_key + workflow_key + tenant_id, then dispatches
+        immediately. Use apply=false (default) for dry-run preview.
+        WordPress connector resolves brand credentials and calls runWordpressConnectorMigration.
+        Content workflows queue async dispatch and return a run_id to poll.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plan_id: { type: string, format: uuid, description: "Existing validated/approved plan. If omitted an ad-hoc plan is created." }
+                tenant_id: { type: string, format: uuid }
+                user_id: { type: string, format: uuid }
+                brand_key: { type: string }
+                target_key: { type: string }
+                workflow_key: { type: string }
+                intent_key: { type: string }
+                apply: { type: boolean, default: false }
+                post_types: { type: array, items: { type: string }, default: ["post"] }
+                publish_status: { type: string, enum: [draft, publish, private], default: draft }
+      responses:
+        "200":
+          description: Dispatch completed or queued
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, run_id, trace_id, plan_id, connector_type]
+                properties:
+                  ok: { type: boolean }
+                  run_id: { type: string }
+                  trace_id: { type: string }
+                  plan_id: { type: string }
+                  connector_type: { type: string, enum: [wordpress, content_workflow] }
+                  plan_status: { type: string }
+                  apply: { type: boolean }
+                  duration_ms: { type: integer }
+                  result: { type: object, additionalProperties: true }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { description: Access denied — requires human approval, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /connector/dispatch/status/{run_id}:
+    get:
+      tags: [planner]
+      security: [backendBearerAuth: []]
+      operationId: getConnectorDispatchStatus
+      summary: Poll connector dispatch status by workflow run ID
+      parameters:
+        - { name: run_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Run status with steps, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /connector/history:
+    get:
+      tags: [planner]
+      security: [backendBearerAuth: []]
+      operationId: getConnectorHistory
+      summary: List recent connector dispatches for a tenant
+      parameters:
+        - { name: tenant_id, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 20, maximum: 100 } }
+      responses:
+        "200": { description: Dispatch history, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /planner/plans/{plan_id}/execute:
+    post:
+      tags: [planner]
+      security: [backendBearerAuth: []]
+      operationId: executePlan
+      summary: Execute a validated/approved plan via the connector dispatch engine
+      parameters:
+        - { name: plan_id, in: path, required: true, schema: { type: string } }
+        - { name: apply, in: query, schema: { type: boolean, default: false } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                apply: { type: boolean, default: false }
+                post_types: { type: array, items: { type: string } }
+                publish_status: { type: string, enum: [draft, publish, private], default: draft }
+                actor_id: { type: string, format: uuid }
+      responses:
+        "200": { description: Execution dispatched, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }

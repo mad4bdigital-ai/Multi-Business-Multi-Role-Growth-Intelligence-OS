@@ -1,0 +1,321 @@
+/**
+ * connectorExecutor.js — Sprint 09: Connector Execution Bridge
+ *
+ * Bridges execution_plans to the connector execution layer.
+ * Takes an approved/validated plan and dispatches it to:
+ *   - WordPress connector (runWordpressConnectorMigration) for brands with
+ *     auth_type = basic_auth_app_password or connector_family = wordpress
+ *   - Content workflow dispatcher (async stub) for AI/content generation workflows
+ *
+ * Records execution state in: workflow_runs, step_runs, telemetry_spans, audit_log.
+ */
+
+import { randomUUID } from "node:crypto";
+import { getPool } from "./db.js";
+import { resolveWpAppPassword } from "./authCredentialResolution.js";
+import { runWordpressConnectorMigration } from "./wordpress/phaseA.js";
+import { writeAuditLogAsync } from "./auditLogger.js";
+
+const EXECUTABLE_DECISIONS = new Set([
+  "ALLOW_SELF_SERVE",
+  "ALLOW_WITH_OPTIONAL_ASSISTANCE",
+]);
+
+const EXECUTABLE_PLAN_STATUSES = new Set(["validated", "approved"]);
+
+// ── Loaders ───────────────────────────────────────────────────────────────────
+
+async function loadPlan(plan_id) {
+  const [rows] = await getPool().query(
+    "SELECT * FROM `execution_plans` WHERE plan_id = ? LIMIT 1",
+    [plan_id]
+  );
+  if (!rows.length) return null;
+  const p = rows[0];
+  for (const f of ["steps_json", "validation_errors"]) {
+    if (p[f]) try { p[f] = JSON.parse(p[f]); } catch {}
+  }
+  return p;
+}
+
+async function loadBrand(brand_key) {
+  if (!brand_key) return null;
+  const [rows] = await getPool().query(
+    `SELECT brand_name, brand_domain, target_key, auth_type, username,
+            application_password, default_wp_api_base, write_allowed, destructive_allowed
+     FROM \`brands\` WHERE target_key = ? OR normalized_brand_name = ? LIMIT 1`,
+    [brand_key, brand_key]
+  );
+  return rows[0] || null;
+}
+
+async function loadConnectedSystem(tenant_id, brand_key) {
+  if (!tenant_id || !brand_key) return null;
+  const [rows] = await getPool().query(
+    `SELECT system_id, system_key, connector_family, provider_domain, status
+     FROM \`connected_systems\`
+     WHERE tenant_id = ? AND (system_key = ? OR system_key LIKE ?) AND status = 'active' LIMIT 1`,
+    [tenant_id, brand_key, `%${brand_key}%`]
+  );
+  return rows[0] || null;
+}
+
+async function loadWorkflowDef(workflow_key) {
+  if (!workflow_key) return null;
+  const [rows] = await getPool().query(
+    `SELECT workflow_key, execution_mode, execution_class, target_module, review_required
+     FROM \`workflows\`
+     WHERE workflow_key = ? AND (active = 1 OR active = 'TRUE' OR active = '1') LIMIT 1`,
+    [workflow_key]
+  );
+  return rows[0] || null;
+}
+
+// ── WordPress context builder ─────────────────────────────────────────────────
+
+function buildWpContext(brand) {
+  const appPassword = resolveWpAppPassword(brand);
+  const baseUrl = brand.default_wp_api_base
+    || (brand.brand_domain ? `https://${brand.brand_domain}/wp-json/wp/v2` : null);
+  if (!baseUrl) return null;
+
+  return {
+    destination: {
+      url: baseUrl,
+      brand_name: brand.brand_name,
+      auth: {
+        type: "basic_auth",
+        username: brand.username || "gpt",
+        password: appPassword,
+      },
+      settings: { permalink_structure: "/%postname%/" },
+      runtime: { supported_cpts: [] },
+      plugins: { active_plugins: [] },
+      write_allowed:
+        brand.write_allowed === 1 || brand.write_allowed === "1" || brand.write_allowed === "TRUE",
+      destructive_allowed:
+        brand.destructive_allowed === 1 || brand.destructive_allowed === "TRUE",
+    },
+  };
+}
+
+// ── DB write helpers (all non-throwing) ──────────────────────────────────────
+
+async function createWorkflowRun(run_id, plan, service_mode) {
+  await getPool().query(
+    `INSERT INTO \`workflow_runs\`
+       (run_id, tenant_id, user_id, workflow_key, plan_id, service_mode, status, input_json, started_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'running', ?, NOW())`,
+    [
+      run_id,
+      plan.tenant_id || null,
+      plan.user_id || null,
+      plan.workflow_key || "connector_dispatch",
+      plan.plan_id,
+      service_mode || "self_serve",
+      JSON.stringify({ brand_key: plan.brand_key, target_key: plan.target_key, intent_key: plan.intent_key }),
+    ]
+  );
+}
+
+async function finaliseWorkflowRun(run_id, final_status, output, error_msg) {
+  await getPool().query(
+    `UPDATE \`workflow_runs\`
+       SET status = ?, output_json = ?, error_json = ?,
+           completed_at = IF(? IN ('completed','failed','cancelled'), NOW(), NULL)
+     WHERE run_id = ?`,
+    [
+      final_status,
+      output ? JSON.stringify(output) : null,
+      error_msg ? JSON.stringify({ message: error_msg }) : null,
+      final_status,
+      run_id,
+    ]
+  );
+}
+
+async function createStepRun(run_id, tenant_id, step_key, status, input, output, error_msg) {
+  try {
+    await getPool().query(
+      `INSERT INTO \`step_runs\`
+         (step_run_id, run_id, tenant_id, step_key, step_type, status, input_json, output_json, error_message, started_at, completed_at)
+       VALUES (?, ?, ?, ?, 'action', ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        randomUUID(), run_id, tenant_id || null, step_key, status,
+        input ? JSON.stringify(input) : null,
+        output ? JSON.stringify(output) : null,
+        error_msg || null,
+      ]
+    );
+  } catch { /* non-blocking */ }
+}
+
+async function createSpan(trace_id, run_id, span_name, status, duration_ms, tenant_id, attrs) {
+  try {
+    await getPool().query(
+      `INSERT INTO \`telemetry_spans\`
+         (span_id, trace_id, run_id, tenant_id, span_name, span_type, status, duration_ms, attributes_json, started_at)
+       VALUES (?, ?, ?, ?, ?, 'internal', ?, ?, ?, NOW())`,
+      [randomUUID(), trace_id, run_id, tenant_id || null, span_name, status, duration_ms || 0, JSON.stringify(attrs || {})]
+    );
+  } catch { /* non-blocking */ }
+}
+
+// ── Dispatcher implementations ────────────────────────────────────────────────
+
+async function dispatchWordpress(plan, brand, wpContext, options) {
+  const { apply = false, post_types = ["post"], publish_status = "draft" } = options;
+  return runWordpressConnectorMigration({
+    payload: {
+      migration: {
+        apply,
+        post_types,
+        publish_status,
+        brand_key: plan.brand_key || null,
+        target_key: plan.target_key || null,
+      },
+    },
+    wpContext,
+    mutationPlan: { workflow_key: plan.workflow_key, intent_key: plan.intent_key, plan_id: plan.plan_id },
+    writebackPlan: { enabled: false },
+  });
+}
+
+async function dispatchContentWorkflow(plan, workflowDef) {
+  return {
+    ok: true,
+    dispatch_mode: "async",
+    workflow_key: plan.workflow_key,
+    target_module: workflowDef?.target_module || "unknown",
+    execution_class: workflowDef?.execution_class || "standard",
+    message: "Content workflow queued. Poll /workflow-runs/:run_id for status.",
+  };
+}
+
+// ── Public entry point ────────────────────────────────────────────────────────
+
+export async function dispatchPlan(plan_id, {
+  apply = false,
+  post_types = ["post"],
+  publish_status = "draft",
+  actor_id = null,
+} = {}) {
+  const t0 = Date.now();
+  const trace_id = randomUUID();
+  const run_id   = randomUUID();
+
+  const plan = await loadPlan(plan_id);
+  if (!plan) {
+    return { ok: false, error: { code: "plan_not_found", message: `Plan ${plan_id} not found.` } };
+  }
+
+  if (!EXECUTABLE_PLAN_STATUSES.has(plan.plan_status)) {
+    return {
+      ok: false,
+      error: {
+        code: "plan_not_executable",
+        message: `Plan '${plan.plan_status}' is not executable. Advance to validated or approved first.`,
+      },
+    };
+  }
+
+  if (plan.access_decision && !EXECUTABLE_DECISIONS.has(plan.access_decision)) {
+    return {
+      ok: false,
+      error: {
+        code: "access_denied",
+        message: `Access decision '${plan.access_decision}' requires human approval before execution.`,
+        access_decision: plan.access_decision,
+      },
+    };
+  }
+
+  const [brand, connectedSystem, workflowDef] = await Promise.all([
+    loadBrand(plan.brand_key || plan.target_key),
+    loadConnectedSystem(plan.tenant_id, plan.brand_key || plan.target_key),
+    loadWorkflowDef(plan.workflow_key),
+  ]);
+
+  const isWordpress =
+    brand?.auth_type === "basic_auth_app_password" ||
+    connectedSystem?.connector_family === "wordpress";
+
+  const connector_type = isWordpress ? "wordpress" : "content_workflow";
+  const service_mode   = plan.service_mode || "self_serve";
+
+  await createWorkflowRun(run_id, plan, service_mode);
+  await getPool().query(
+    "UPDATE `execution_plans` SET plan_status = 'executing' WHERE plan_id = ?",
+    [plan_id]
+  );
+
+  let result, dispatchError;
+  try {
+    if (isWordpress) {
+      const wpContext = buildWpContext(brand);
+      if (!wpContext) {
+        throw new Error(
+          `Cannot build WordPress context for '${plan.brand_key || plan.target_key}'. ` +
+          `Ensure brand_domain or default_wp_api_base is set and credentials are configured.`
+        );
+      }
+      result = await dispatchWordpress(plan, brand, wpContext, { apply, post_types, publish_status });
+    } else {
+      result = await dispatchContentWorkflow(plan, workflowDef);
+    }
+  } catch (err) {
+    dispatchError = err;
+    result = { ok: false };
+  }
+
+  const duration_ms  = Date.now() - t0;
+  const succeeded    = !dispatchError && result?.ok !== false;
+  const final_status = succeeded
+    ? (connector_type === "content_workflow" ? "running" : "completed")
+    : "failed";
+
+  await Promise.all([
+    finaliseWorkflowRun(run_id, final_status, succeeded ? result : null, dispatchError?.message),
+    createStepRun(
+      run_id, plan.tenant_id,
+      `connector_dispatch.${connector_type}`,
+      succeeded ? "completed" : "failed",
+      { plan_id, connector_type, apply },
+      succeeded ? result : null,
+      dispatchError?.message
+    ),
+    getPool().query(
+      "UPDATE `execution_plans` SET plan_status = ? WHERE plan_id = ?",
+      [succeeded ? "completed" : "failed", plan_id]
+    ),
+    createSpan(trace_id, run_id, `connector.${connector_type}`, succeeded ? "ok" : "error", duration_ms, plan.tenant_id, {
+      plan_id, run_id, connector_type, apply, brand_key: plan.brand_key, workflow_key: plan.workflow_key,
+    }),
+  ]);
+
+  writeAuditLogAsync({
+    actor_id: actor_id || plan.user_id || "system",
+    actor_type: "system",
+    action: "connector.dispatch",
+    resource_type: "execution_plan",
+    resource_id: plan_id,
+    tenant_id: plan.tenant_id,
+    outcome: succeeded ? "success" : "failure",
+    metadata: { run_id, trace_id, connector_type, apply, duration_ms },
+  });
+
+  return {
+    ok: succeeded,
+    run_id,
+    trace_id,
+    plan_id,
+    connector_type,
+    plan_status: succeeded ? "completed" : "failed",
+    apply,
+    duration_ms,
+    result: succeeded ? result : undefined,
+    error: dispatchError
+      ? { code: "dispatch_failed", message: dispatchError.message }
+      : undefined,
+  };
+}

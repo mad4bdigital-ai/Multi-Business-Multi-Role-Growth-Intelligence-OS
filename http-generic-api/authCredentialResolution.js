@@ -29,7 +29,7 @@ function resolveActionSecret(action) {
   return action.api_key_value || "";
 }
 
-function resolveWpAppPassword(brand = {}) {
+export function resolveWpAppPassword(brand = {}) {
   // Prefer env var keyed by target_key: <TARGET_KEY_UPPER>_APP_PASSWORD
   const targetKey = String(brand?.target_key || "").trim();
   if (targetKey) {

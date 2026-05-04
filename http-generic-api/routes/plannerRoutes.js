@@ -2,6 +2,7 @@ import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { getPool } from "../db.js";
 import { resolveAccess } from "../accessDecisionEngine.js";
+import { dispatchPlan } from "../connectorExecutor.js";
 
 export function buildPlannerRoutes(deps) {
   const { requireBackendApiKey } = deps;
@@ -159,6 +160,26 @@ export function buildPlannerRoutes(deps) {
       return res.status(200).json({ ok: true, plan_id: req.params.id, plan_status: status });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "plan_update_failed", message: err.message } });
+    }
+  });
+
+  // ── POST /planner/plans/:id/execute ──────────────────────────────────────
+  // Dispatches an approved/validated execution plan to the connector layer.
+  // Query param ?apply=true to write changes (default: dry-run).
+  // Returns run_id + trace_id for polling via GET /workflow-runs/:run_id.
+  router.post("/planner/plans/:id/execute", requireBackendApiKey, async (req, res) => {
+    try {
+      const plan_id = req.params.id;
+      const apply         = req.query.apply === "true" || req.body?.apply === true;
+      const post_types    = req.body?.post_types || ["post"];
+      const publish_status = req.body?.publish_status || "draft";
+      const actor_id      = req.body?.actor_id || null;
+
+      const result = await dispatchPlan(plan_id, { apply, post_types, publish_status, actor_id });
+      const httpStatus = result.ok ? 200 : (result.error?.code === "plan_not_found" ? 404 : 400);
+      return res.status(httpStatus).json(result);
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "execute_failed", message: err.message } });
     }
   });
 
