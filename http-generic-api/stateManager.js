@@ -4,7 +4,8 @@ import {
   ensureSheetWithHeader as ensureSheetWithHeaderCore,
   appendRowsIfMissingByKeys as appendRowsIfMissingByKeysCore,
   ensureSiteMigrationRegistrySurfaces as ensureSiteMigrationRegistrySurfacesCore,
-  ensureSiteMigrationRouteWorkflowRows as ensureSiteMigrationRouteWorkflowRowsCore
+  ensureSiteMigrationRouteWorkflowRows as ensureSiteMigrationRouteWorkflowRowsCore,
+  ensureAiResolverRouteWorkflowRows as ensureAiResolverRouteWorkflowRowsCore
 } from "./routeWorkflowGovernance.js";
 
 import {
@@ -50,6 +51,7 @@ export function createStateManager(config) {
     SITE_SETTINGS_INVENTORY_REGISTRY_SHEET,
     REQUIRED_SITE_MIGRATION_TASK_KEYS,
     REQUIRED_SITE_MIGRATION_WORKFLOW_IDS,
+    REQUIRED_AI_RESOLVER_INTENT_KEYS,
     GOVERNED_ADDITION_OUTCOMES,
     BRAND_REGISTRY_SHEET,
     HOSTING_ACCOUNT_REGISTRY_RANGE,
@@ -148,6 +150,15 @@ export function createStateManager(config) {
       siteMigrationWorkflowColumnsDefined: typeof SITE_MIGRATION_WORKFLOW_COLUMNS !== "undefined",
       siteMigrationTaskRouteRowsDefined: typeof SITE_MIGRATION_TASK_ROUTE_ROWS !== "undefined",
       siteMigrationWorkflowRowsDefined: typeof SITE_MIGRATION_WORKFLOW_ROWS !== "undefined"
+    });
+  }
+
+  async function ensureAiResolverRouteWorkflowRows() {
+    return ensureAiResolverRouteWorkflowRowsCore({
+      REQUIRED_AI_RESOLVER_INTENT_KEYS,
+      getGoogleClients,
+      loadTaskRoutesRegistry,
+      loadWorkflowRegistry
     });
   }
 
@@ -262,6 +273,7 @@ export function createStateManager(config) {
     appendRowsIfMissingByKeys,
     ensureSiteMigrationRegistrySurfaces,
     ensureSiteMigrationRouteWorkflowRows,
+    ensureAiResolverRouteWorkflowRows,
     loadSiteRuntimeInventoryRegistry,
     loadSiteSettingsInventoryRegistry,
     loadPluginInventoryRegistry,

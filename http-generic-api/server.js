@@ -609,6 +609,11 @@ const REQUIRED_SITE_MIGRATION_WORKFLOW_IDS = Object.freeze([
   "wf_wordpress_site_migration_repair"
 ]);
 
+const REQUIRED_AI_RESOLVER_INTENT_KEYS = Object.freeze([
+  "ai_implementation_plan_generation",
+  "ai_task_manifest_generation"
+]);
+
 const GOVERNED_ADDITION_OUTCOMES = new Set([
   "reuse_existing",
   "extend_existing",
@@ -2945,6 +2950,7 @@ const stateManager = createStateManager({
   SITE_SETTINGS_INVENTORY_REGISTRY_SHEET,
   REQUIRED_SITE_MIGRATION_TASK_KEYS,
   REQUIRED_SITE_MIGRATION_WORKFLOW_IDS,
+  REQUIRED_AI_RESOLVER_INTENT_KEYS,
   GOVERNED_ADDITION_OUTCOMES,
   BRAND_REGISTRY_SHEET,
   HOSTING_ACCOUNT_REGISTRY_RANGE,
@@ -2954,7 +2960,7 @@ const stateManager = createStateManager({
   SITE_MIGRATION_TASK_ROUTE_ROWS: typeof SITE_MIGRATION_TASK_ROUTE_ROWS !== "undefined" ? SITE_MIGRATION_TASK_ROUTE_ROWS : undefined,
   SITE_MIGRATION_WORKFLOW_ROWS: typeof SITE_MIGRATION_WORKFLOW_ROWS !== "undefined" ? SITE_MIGRATION_WORKFLOW_ROWS : undefined
 });
-const { getSpreadsheetSheetMap, ensureSheetWithHeader, appendRowsIfMissingByKeys, ensureSiteMigrationRegistrySurfaces, ensureSiteMigrationRouteWorkflowRows, loadSiteRuntimeInventoryRegistry, loadSiteSettingsInventoryRegistry, loadPluginInventoryRegistry, loadTaskRoutesRegistry, loadWorkflowRegistry, readGovernedSheetRecords, normalizeLooseHostname, findRegistryRecordByIdentity, resolveBrandRegistryBinding, hostingerSshRuntimeRead } = stateManager;
+const { getSpreadsheetSheetMap, ensureSheetWithHeader, appendRowsIfMissingByKeys, ensureSiteMigrationRegistrySurfaces, ensureSiteMigrationRouteWorkflowRows, ensureAiResolverRouteWorkflowRows, loadSiteRuntimeInventoryRegistry, loadSiteSettingsInventoryRegistry, loadPluginInventoryRegistry, loadTaskRoutesRegistry, loadWorkflowRegistry, readGovernedSheetRecords, normalizeLooseHostname, findRegistryRecordByIdentity, resolveBrandRegistryBinding, hostingerSshRuntimeRead } = stateManager;
 
 const executionFacade = createExecutionFacade({
   // shared
@@ -3086,6 +3092,7 @@ registerRoutes(app, {
   buildGovernedAdditionReviewResult,
   ensureSiteMigrationRegistrySurfaces,
   ensureSiteMigrationRouteWorkflowRows,
+  ensureAiResolverRouteWorkflowRows,
   requireEnv,
   getRegistry,
   getSheetValues,

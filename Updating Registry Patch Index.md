@@ -82,13 +82,15 @@ Last updated: 2026-05-04
 
 ### 5. AI Resolver Intent Maturation Bridge
 
-- Status: implemented, uncommitted
+- Status: committed
+- Commit: `d6881f8 Preserve AI intent maturation across routes`
 - Files:
   - `http-generic-api/services/intentMaturationResolver.js`
   - `http-generic-api/routes/aiResolverRoutes.js`
   - `http-generic-api/services/taskResolver.js`
   - `http-generic-api/server.js`
   - `http-generic-api/test-ai-resolvers.mjs`
+  - `http-generic-api/test-ai-resolver-routes.mjs`
 - Scope:
   - Keeps generated plans and task manifests aligned with the existing first-class intent maturation model.
   - Normalizes AI generation requests through existing contracts:
@@ -107,15 +109,43 @@ Last updated: 2026-05-04
   - `npm.cmd run validate` passed from `http-generic-api`.
   - `npm.cmd test` passed from `http-generic-api`.
 
+### 6. AI Resolver Registry Readiness
+
+- Status: implemented, uncommitted
+- Files:
+  - `http-generic-api/routeWorkflowGovernance.js`
+  - `http-generic-api/stateManager.js`
+  - `http-generic-api/routes/governanceRoutes.js`
+  - `http-generic-api/server.js`
+  - `http-generic-api/test-ai-registry-readiness.mjs`
+  - `http-generic-api/package.json`
+- Scope:
+  - Adds a validation-only AI resolver registry readiness check for:
+    - `ai_implementation_plan_generation`
+    - `ai_task_manifest_generation`
+  - Validates Task Routes rows by `intent_key` and executable authority.
+  - Validates linked Workflow Registry rows through `workflow_key`, `workflow_id`, or compatible route binding.
+  - Adds `GET /ai/registry-readiness` as a diagnostic endpoint.
+  - Does not mutate live registry rows.
+- Evidence:
+  - `node test-ai-registry-readiness.mjs` passed from `http-generic-api`.
+  - `npm.cmd run validate` passed from `http-generic-api`.
+  - `npm.cmd test` passed from `http-generic-api`.
+
 ## Verification Snapshot
 
 - `node --check server.js`: pass
 - `node test-ai-resolvers.mjs`: pass
 - `node test-ai-resolver-routes.mjs`: pass
+- `node test-ai-registry-readiness.mjs`: pass
 - `node test-provider-fetch-timeout.mjs`: pass
 - `node test-routes.mjs`: pass with route runtime checks skipped by default
 - `npm.cmd test`: pass
 - `npm.cmd run validate`: pass, 173 passed / 0 failed
+
+Cloud Build:
+
+- `d6881f8 Preserve AI intent maturation across routes`: success
 
 Note: `npm test` through PowerShell failed because `npm.ps1` is blocked by the local execution policy. `npm.cmd test` was used instead and passed.
 
@@ -139,19 +169,17 @@ Note: `npm test` through PowerShell failed because `npm.ps1` is blocked by the l
 ## Current Uncommitted Work
 
 - Modified:
-  - `http-generic-api/package.json`
-  - `http-generic-api/routes/index.js`
-  - `http-generic-api/server.js`
-- Untracked:
   - `Updating Registry Patch Index.md`
-  - `http-generic-api/authService.js`
-  - `http-generic-api/routes/aiResolverRoutes.js`
-  - `http-generic-api/services/`
+  - `http-generic-api/package.json`
+  - `http-generic-api/routeWorkflowGovernance.js`
+  - `http-generic-api/routes/governanceRoutes.js`
+  - `http-generic-api/server.js`
   - `http-generic-api/stateManager.js`
-  - `http-generic-api/test-ai-resolvers.mjs`
+- Untracked:
+  - `http-generic-api/test-ai-registry-readiness.mjs`
 
 ## Remaining Decisions
 
 - Decide whether generated plans/tasks should remain synchronous API responses or also be persisted as JSON assets.
 - Decide whether OpenAI should remain a direct `fetch` integration or be routed through the existing generic HTTP connector registry.
-- Decide whether to add live route tests for `/ai/implementation-plan` and `/ai/task-manifest` beyond the current route registration and service tests.
+- Verify or add the two live Task Routes rows and their linked Workflow Registry rows.

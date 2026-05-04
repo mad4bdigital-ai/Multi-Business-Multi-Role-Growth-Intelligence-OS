@@ -586,3 +586,121 @@ export async function ensureSiteMigrationRouteWorkflowRows(deps = {}) {
     workflow_registry_ready: deps.REQUIRED_SITE_MIGRATION_WORKFLOW_IDS.every(value => executableWorkflowIds.has(value))
   };
 }
+
+function normalizeRegistryKey(value = "") {
+  return String(value || "").trim();
+}
+
+function rowMatchesAiIntent(row = {}, intentKey = "") {
+  const wanted = normalizeRegistryKey(intentKey);
+  if (!wanted) return false;
+  return [
+    row.intent_key,
+    row.task_key,
+    row.route_key,
+    row.route_id
+  ].some(value => normalizeRegistryKey(value) === wanted);
+}
+
+function workflowMatchesRouteBinding(workflow = {}, taskRoute = {}) {
+  const workflowKey = normalizeRegistryKey(taskRoute.workflow_key);
+  const routeKeys = [
+    taskRoute.intent_key,
+    taskRoute.task_key,
+    taskRoute.route_key,
+    taskRoute.route_id
+  ]
+    .map(normalizeRegistryKey)
+    .filter(Boolean);
+
+  if (workflowKey) {
+    return [workflow.workflow_id, workflow.workflow_key].some(
+      value => normalizeRegistryKey(value) === workflowKey
+    );
+  }
+
+  return routeKeys.some(routeKey =>
+    normalizeRegistryKey(workflow.route_key) === routeKey ||
+    normalizeRegistryKey(workflow.route_compatibility).split(/[|,;]/).map(normalizeRegistryKey).includes(routeKey)
+  );
+}
+
+export function buildAiResolverRegistryReadiness(args = {}) {
+  const taskRoutes = Array.isArray(args.taskRoutes) ? args.taskRoutes : [];
+  const workflows = Array.isArray(args.workflows) ? args.workflows : [];
+  const requiredIntentKeys = (args.requiredIntentKeys || [])
+    .map(normalizeRegistryKey)
+    .filter(Boolean);
+
+  const bindings = requiredIntentKeys.map(intentKey => {
+    const candidateRoutes = taskRoutes.filter(row => rowMatchesAiIntent(row, intentKey));
+    const executableRoutes = candidateRoutes.filter(row => row.executable_authority === true);
+    const selectedRoute = executableRoutes[0] || candidateRoutes[0] || null;
+    const candidateWorkflows = selectedRoute
+      ? workflows.filter(row => workflowMatchesRouteBinding(row, selectedRoute))
+      : [];
+    const executableWorkflows = candidateWorkflows.filter(row => row.executable_authority === true);
+    const selectedWorkflow = executableWorkflows[0] || candidateWorkflows[0] || null;
+
+    return {
+      intent_key: intentKey,
+      route_found: candidateRoutes.length > 0,
+      route_executable: executableRoutes.length > 0,
+      route_id: normalizeRegistryKey(selectedRoute?.route_id),
+      route_task_key: normalizeRegistryKey(selectedRoute?.task_key),
+      route_workflow_key: normalizeRegistryKey(selectedRoute?.workflow_key),
+      workflow_found: candidateWorkflows.length > 0,
+      workflow_executable: executableWorkflows.length > 0,
+      workflow_id: normalizeRegistryKey(selectedWorkflow?.workflow_id),
+      workflow_key: normalizeRegistryKey(selectedWorkflow?.workflow_key),
+      workflow_route_key: normalizeRegistryKey(selectedWorkflow?.route_key)
+    };
+  });
+
+  const missingIntentKeys = bindings
+    .filter(binding => !binding.route_found)
+    .map(binding => binding.intent_key);
+  const unresolvedTaskAuthority = bindings
+    .filter(binding => binding.route_found && !binding.route_executable)
+    .map(binding => binding.intent_key);
+  const missingWorkflowBindings = bindings
+    .filter(binding => binding.route_executable && !binding.workflow_found)
+    .map(binding => binding.intent_key);
+  const unresolvedWorkflowAuthority = bindings
+    .filter(binding => binding.workflow_found && !binding.workflow_executable)
+    .map(binding => binding.intent_key);
+
+  return {
+    mode: "validate_only",
+    required_intent_keys: requiredIntentKeys,
+    bindings,
+    missing_intent_keys: missingIntentKeys,
+    unresolved_task_authority: unresolvedTaskAuthority,
+    missing_workflow_bindings: missingWorkflowBindings,
+    unresolved_workflow_authority: unresolvedWorkflowAuthority,
+    task_routes_ready: missingIntentKeys.length === 0 && unresolvedTaskAuthority.length === 0,
+    workflow_registry_ready:
+      missingWorkflowBindings.length === 0 && unresolvedWorkflowAuthority.length === 0,
+    ok:
+      missingIntentKeys.length === 0 &&
+      unresolvedTaskAuthority.length === 0 &&
+      missingWorkflowBindings.length === 0 &&
+      unresolvedWorkflowAuthority.length === 0
+  };
+}
+
+export async function ensureAiResolverRouteWorkflowRows(deps = {}) {
+  const { sheets } = await deps.getGoogleClients();
+  const taskRoutes = await deps.loadTaskRoutesRegistry(sheets, {
+    include_candidate_inspection: true
+  });
+  const workflows = await deps.loadWorkflowRegistry(sheets, {
+    include_candidate_inspection: true
+  });
+
+  return buildAiResolverRegistryReadiness({
+    taskRoutes,
+    workflows,
+    requiredIntentKeys: deps.REQUIRED_AI_RESOLVER_INTENT_KEYS
+  });
+}

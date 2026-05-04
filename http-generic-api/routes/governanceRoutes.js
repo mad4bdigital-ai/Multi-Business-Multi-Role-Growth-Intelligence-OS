@@ -9,6 +9,7 @@ export function buildGovernanceRoutes(deps) {
     buildGovernedAdditionReviewResult,
     ensureSiteMigrationRegistrySurfaces,
     ensureSiteMigrationRouteWorkflowRows,
+    ensureAiResolverRouteWorkflowRows,
     requireEnv,
     getRegistry,
     assertSheetExistsInSpreadsheet,
@@ -631,6 +632,36 @@ export function buildGovernanceRoutes(deps) {
         error: {
           code: err?.code || "registry_bootstrap_failed",
           message: err?.message || "Registry bootstrap failed."
+        }
+      });
+    }
+  });
+
+  router.get("/ai/registry-readiness", requireBackendApiKey, async (_req, res) => {
+    try {
+      requireEnv("REGISTRY_SPREADSHEET_ID");
+
+      const readiness = await ensureAiResolverRouteWorkflowRows();
+      if (!readiness.ok) {
+        return res.status(409).json({
+          ok: false,
+          degraded: true,
+          message: "Validation-only check complete: AI resolver intent keys are not fully route/workflow bound.",
+          readiness
+        });
+      }
+
+      return res.status(200).json({
+        ok: true,
+        message: "Validation-only check complete: AI resolver intent keys are route/workflow bound.",
+        readiness
+      });
+    } catch (err) {
+      return res.status(err?.status || 500).json({
+        ok: false,
+        error: {
+          code: err?.code || "ai_registry_readiness_failed",
+          message: err?.message || "AI resolver registry readiness check failed."
         }
       });
     }
