@@ -30,13 +30,12 @@ import { headerMap, getCell } from "./sheetHelpers.js";
 import { assertSheetExistsInSpreadsheet, fetchChunkedTable, fetchRange, getGoogleClients, getGoogleClientsForSpreadsheet } from "./googleSheets.js";
 import { asBool, boolFromSheet, rowToObject } from "./runtimeHelpers.js";
 import { createHttpError } from "./utils.js";
-import { toValuesApiRange } from "./registry.js";
+import { registryError, toValuesApiRange } from "./registry.js";
 import { assertHeaderMatchesSurfaceMetadata, getCanonicalSurfaceMetadata, readLiveSheetShape, toA1Start, toSheetCellValue } from "./surfaceMetadata.js";
 import { matchesHostingerSshTarget } from "./utils.js";
 import { firstPopulated } from "./domainAdapters/wordpressAdapter.js";
 import { governedAdditionStateBlocksAuthority, hasDeferredGovernedActivationDependencies, normalizeGovernedAdditionState, assertSingleActiveRowByKey } from "./routeWorkflowGovernance.js";
 import { computeHeaderSignature } from "./surfaceMetadata.js";
-import { registryError } from "./registrySheets.js";
 
 export function createStateManager(config) {
   const {

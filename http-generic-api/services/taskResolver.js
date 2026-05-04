@@ -1,5 +1,6 @@
 export async function generateTaskManifest({
   implementationPlan,
+  systemContext = "",
   model = "gpt-4o",
   apiKey = process.env.OPENAI_API_KEY,
   fetchImpl = fetch
@@ -26,11 +27,14 @@ Use the following format for tasks:
 - Use indented lists for sub-items
 
 Make the tasks granular, sequential, and highly actionable. Ensure there is a logical progression (e.g. setup, implementation, testing, review).`;
+  const fullSystemMessage = systemContext
+    ? `${systemMessage}\n\nContext about the system:\n${systemContext}`
+    : systemMessage;
 
   const payload = {
     model,
     messages: [
-      { role: "system", content: systemMessage },
+      { role: "system", content: fullSystemMessage },
       { role: "user", content: `Here is the Implementation Plan:\n\n${implementationPlan}` }
     ],
     temperature: 0.2

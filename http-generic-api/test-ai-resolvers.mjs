@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { generateImplementationPlan } from "./services/planningResolver.js";
 import { generateTaskManifest } from "./services/taskResolver.js";
+import { resolveAiIntentMaturation } from "./services/intentMaturationResolver.js";
 import { buildAiResolverRoutes } from "./routes/aiResolverRoutes.js";
 
 function createMockFetch() {
@@ -46,6 +47,38 @@ function createMockFetch() {
   return fetchImpl;
 }
 
+async function invokeRoute(router, path, body = {}) {
+  const layer = router.stack.find(item => item.route?.path === path);
+  assert.ok(layer, `route ${path} is registered`);
+
+  const stack = layer.route.stack.map(item => item.handle);
+  let statusCode = 200;
+  let jsonBody;
+  const req = { body };
+  const res = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(value) {
+      jsonBody = value;
+      return this;
+    }
+  };
+
+  let idx = 0;
+  const next = async (err) => {
+    if (err) throw err;
+    const handler = stack[++idx];
+    if (handler) {
+      await handler(req, res, next);
+    }
+  };
+
+  await stack[0](req, res, next);
+  return { statusCode, body: jsonBody };
+}
+
 const fetchImpl = createMockFetch();
 
 const planResult = await generateImplementationPlan({
@@ -59,6 +92,7 @@ assert.equal(planResult.usage.total_tokens, 150);
 
 const taskResult = await generateTaskManifest({
   implementationPlan: planResult.planMarkdown,
+  systemContext: "intent_key: ai_task_manifest_generation",
   apiKey: "mock-key-123",
   fetchImpl
 });
@@ -84,5 +118,52 @@ const router = buildAiResolverRoutes({
 
 assert.ok(router.stack.some(layer => layer.route?.path === "/ai/implementation-plan"));
 assert.ok(router.stack.some(layer => layer.route?.path === "/ai/task-manifest"));
+
+const intent = resolveAiIntentMaturation({
+  intent_key: "ai_custom_plan_generation",
+  route_id: "route_ai_plan",
+  workflow_id: "wf_ai_plan"
+});
+
+assert.equal(intent.maturation_status, "matured");
+assert.equal(intent.intent_key, "ai_custom_plan_generation");
+assert.equal(intent.execution_intent.route_selection_mode, "first_class_intent");
+assert.equal(intent.route_workflow_state.route_id, "route_ai_plan");
+
+const routeCalls = [];
+const routeRouter = buildAiResolverRoutes({
+  requireBackendApiKey: (_req, _res, next) => next(),
+  async generateImplementationPlan(input) {
+    routeCalls.push({ type: "plan", input });
+    return { planMarkdown: "# Route Plan", usage: { total_tokens: 12 } };
+  },
+  async generateTaskManifest(input) {
+    routeCalls.push({ type: "task", input });
+    return { taskMarkdown: "- [ ] Route task", usage: { total_tokens: 7 } };
+  }
+});
+
+const planRoute = await invokeRoute(routeRouter, "/ai/implementation-plan", {
+  userPrompt: "Build a simple notification system",
+  intent_key: "ai_custom_plan_generation",
+  route_id: "route_ai_plan",
+  workflow_id: "wf_ai_plan"
+});
+
+assert.equal(planRoute.statusCode, 200);
+assert.equal(planRoute.body.intent_maturation.intent_key, "ai_custom_plan_generation");
+assert.match(routeCalls[0].input.systemContext, /First-class intent maturation context/);
+assert.match(routeCalls[0].input.systemContext, /route_ai_plan/);
+
+const taskRoute = await invokeRoute(routeRouter, "/ai/task-manifest", {
+  implementationPlan: "# Route Plan",
+  intent_key: "ai_task_manifest_generation",
+  route_id: "route_ai_task",
+  workflow_id: "wf_ai_task"
+});
+
+assert.equal(taskRoute.statusCode, 200);
+assert.equal(taskRoute.body.intent_maturation.intent_key, "ai_task_manifest_generation");
+assert.match(routeCalls[1].input.systemContext, /wf_ai_task/);
 
 console.log("AI resolver tests passed");

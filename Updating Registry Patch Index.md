@@ -80,6 +80,30 @@ Last updated: 2026-05-04
   - `node test-provider-fetch-timeout.mjs` passed from `http-generic-api`.
   - `npm.cmd run validate` passed from `http-generic-api`.
 
+### 5. AI Resolver Intent Maturation Bridge
+
+- Status: implemented, uncommitted
+- Files:
+  - `http-generic-api/services/intentMaturationResolver.js`
+  - `http-generic-api/routes/aiResolverRoutes.js`
+  - `http-generic-api/services/taskResolver.js`
+  - `http-generic-api/server.js`
+  - `http-generic-api/test-ai-resolvers.mjs`
+- Scope:
+  - Keeps generated plans and task manifests aligned with the existing first-class intent maturation model.
+  - Normalizes AI generation requests through existing contracts:
+    - `NormalizedExecutionIntent`
+    - `NormalizedRouteWorkflowState`
+    - `NormalizedMutationIntent`
+  - Adds `intent_maturation` to AI resolver responses.
+  - Injects matured intent context into plan/task prompts.
+  - Adds direct route handler coverage for intent-maturation response and prompt injection.
+  - Avoids creating a parallel JSON Asset persistence path.
+- Evidence:
+  - `node test-ai-resolvers.mjs` passed from `http-generic-api`.
+  - `npm.cmd run validate` passed from `http-generic-api`.
+  - `npm.cmd test` passed from `http-generic-api`.
+
 ## Verification Snapshot
 
 - `node --check server.js`: pass

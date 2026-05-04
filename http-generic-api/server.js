@@ -319,6 +319,10 @@ import { registerRoutes } from "./routes/index.js";
 import { createExecutionFacade } from "./executionFacade.js";
 import { generateImplementationPlan } from "./services/planningResolver.js";
 import { generateTaskManifest } from "./services/taskResolver.js";
+import {
+  formatIntentMaturationForPrompt,
+  resolveAiIntentMaturation
+} from "./services/intentMaturationResolver.js";
 
 const { isOAuthConfigured, inferAuthMode, normalizeAuthContract, findHostingAccountByKey, resolveAccountKeyFromBrand, resolveAccountKey, resolveSecretFromReference, isGoogleApiHost, getAdditionalStaticAuthHeaders, enforceSupportedAuthMode, pathTemplateToRegex, ensureMethodAndPathMatchEndpoint, fetchSchemaContract, resolveSchemaOperation, validateByJsonSchema, validateParameters, validateRequestBody, classifySchemaDrift, buildResolvedAuthHeaders, injectAuthIntoQuery, injectAuthIntoHeaders, injectAuthForSchemaValidation, ensureWritePermissions } = authService;
 
@@ -3093,6 +3097,8 @@ registerRoutes(app, {
   executionFacade,
   generateImplementationPlan,
   generateTaskManifest,
+  resolveAiIntentMaturation,
+  formatIntentMaturationForPrompt,
   resolveRequestedBy
 });
 
