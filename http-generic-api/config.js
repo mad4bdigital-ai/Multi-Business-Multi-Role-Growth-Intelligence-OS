@@ -63,7 +63,10 @@ export const OVERSIZED_ARTIFACTS_DRIVE_FOLDER_ID =
   String(process.env.OVERSIZED_ARTIFACTS_DRIVE_FOLDER_ID || "").trim();
 
 export const RAW_BODY_MAX_BYTES = 250_000;
-export const MAX_TIMEOUT_SECONDS = 300;
+export const MAX_TIMEOUT_SECONDS = Math.min(
+  3600,
+  Math.max(1, Number(process.env.MAX_TIMEOUT_SECONDS || 300))
+);
 export const PORT = String(process.env.PORT || 8080);
 export const SERVICE_VERSION =
   process.env.SERVICE_VERSION || "2.6.0-governed-context-resolution";

@@ -3,7 +3,10 @@
  * Run: node test-job-runner.mjs
  */
 
-import { configureJobRunner } from "./jobRunner.js";
+import {
+  configureJobRunner,
+  executeJobThroughHttpEndpoint
+} from "./jobRunner.js";
 
 let passed = 0;
 let failed = 0;
@@ -304,6 +307,35 @@ section("jobRunner — solver Sheets 429 → retry with resumable context preser
 }
 
 console.log(`\n${"─".repeat(50)}`);
+section("jobRunner - worker timeout includes diagnostic details");
+
+{
+  const originalFetch = globalThis.fetch;
+  const abortErr = new Error("This operation was aborted");
+  abortErr.name = "AbortError";
+  globalThis.fetch = async () => {
+    throw abortErr;
+  };
+
+  try {
+    const result = await executeJobThroughHttpEndpoint({
+      job_id: "job_timeout_1",
+      parent_action_key: "google_sheets_api",
+      endpoint_key: "getSheetValues",
+      target_key: "activation_bootstrap",
+      request_payload: { timeout_seconds: 12 }
+    });
+
+    assert("worker timeout returns 504", result.statusCode === 504, JSON.stringify(result));
+    assert("worker timeout code preserved", result.payload?.error?.code === "worker_timeout", JSON.stringify(result.payload));
+    assert("worker timeout has job id detail", result.payload?.error?.details?.job_id === "job_timeout_1", JSON.stringify(result.payload?.error?.details));
+    assert("worker timeout has endpoint detail", result.payload?.error?.details?.endpoint_key === "getSheetValues", JSON.stringify(result.payload?.error?.details));
+    assert("worker timeout has timeout seconds", result.payload?.error?.details?.timeout_seconds === 12, JSON.stringify(result.payload?.error?.details));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
 console.log(`Results: ${passed} passed, ${failed} failed`);
 if (failed === 0) {
   console.log("ALL JOB RUNNER TESTS PASS ✓");

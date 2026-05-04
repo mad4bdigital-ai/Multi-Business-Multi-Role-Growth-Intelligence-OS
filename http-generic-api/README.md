@@ -43,6 +43,8 @@ Test suite: 394 assertions across 21 test files (`npm test`). Architecture check
   - `REGISTRY_CACHE_TTL_SECONDS` (default: `600`) — Redis cache TTL for registry sheets; set to `0` to disable caching
   - `JSON_BODY_LIMIT` (default: `20mb`)
   - `JOB_MAX_ATTEMPTS` (default: `3`)
+  - `MAX_TIMEOUT_SECONDS` (default: `300`, max: `3600`) - upper bound for sync and queued execution timeouts
+  - `WORKER_CONCURRENCY` (default: `2`) - BullMQ worker concurrency; use `1` for scheduled bursts when providers are slow or rate-limited
   - `JOB_QUEUE_TICK_MS` (default: `1000`)
   - `JOB_WEBHOOK_TIMEOUT_MS` (default: `10000`)
   - `JOB_STATE_FILE` (default: `./data/http-job-state.json`)

@@ -28,6 +28,32 @@ function debugLog(...args) {
   }
 }
 
+function buildWorkerTransportError({
+  code,
+  message,
+  job,
+  timeoutSeconds,
+  elapsedMs,
+  path
+}) {
+  return {
+    ok: false,
+    error: {
+      code,
+      message,
+      details: {
+        job_id: String(job?.job_id || "").trim(),
+        parent_action_key: String(job?.parent_action_key || "").trim(),
+        endpoint_key: String(job?.endpoint_key || "").trim(),
+        target_key: String(job?.target_key || "").trim(),
+        timeout_seconds: timeoutSeconds,
+        elapsed_ms: elapsedMs,
+        internal_path: path
+      }
+    }
+  };
+}
+
 // ─── Pure exports (no runtime deps) ─────────────────────────────────────────
 
 export function toJobSummary(job) {
@@ -226,15 +252,18 @@ export async function executeJobThroughHttpEndpoint(job) {
   const headers = { "Content-Type": "application/json" };
   if (process.env.BACKEND_API_KEY) headers.Authorization = `Bearer ${process.env.BACKEND_API_KEY}`;
 
-  const timeoutSeconds = Math.min(Number(job.request_payload?.timeout_seconds || 300), MAX_TIMEOUT_SECONDS);
+  const requestedTimeoutSeconds = Number(job.request_payload?.timeout_seconds || MAX_TIMEOUT_SECONDS);
+  const timeoutSeconds = Math.min(requestedTimeoutSeconds, MAX_TIMEOUT_SECONDS);
+  const startedAtMs = Date.now();
+  const internalPath = "/http-execute";
   const controller = new AbortController();
   const timer = setTimeout(
     () => controller.abort(),
-    (Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? timeoutSeconds : 300) * 1000 + 5000
+    (Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? timeoutSeconds : MAX_TIMEOUT_SECONDS) * 1000 + 5000
   );
 
   try {
-    const response = await fetch(`http://127.0.0.1:${port}/http-execute`, {
+    const response = await fetch(`http://127.0.0.1:${port}${internalPath}`, {
       method: "POST",
       headers,
       body: JSON.stringify(job.request_payload || {}),
@@ -249,10 +278,28 @@ export async function executeJobThroughHttpEndpoint(job) {
     return { success: response.ok && parsed?.ok === true, statusCode: response.status, payload: parsed };
   } catch (err) {
     const aborted = err?.name === "AbortError";
+    const elapsedMs = Date.now() - startedAtMs;
+    const code = aborted ? "worker_timeout" : "worker_transport_error";
+    console.error("WORKER_HTTP_EXECUTE_FAILED:", {
+      job_id: job?.job_id || "",
+      parent_action_key: job?.parent_action_key || "",
+      endpoint_key: job?.endpoint_key || "",
+      code,
+      timeout_seconds: timeoutSeconds,
+      elapsed_ms: elapsedMs,
+      message: err?.message || String(err)
+    });
     return {
       success: false,
       statusCode: aborted ? 504 : 502,
-      payload: { ok: false, error: { code: aborted ? "worker_timeout" : "worker_transport_error", message: err?.message || String(err) } }
+      payload: buildWorkerTransportError({
+        code,
+        message: err?.message || String(err),
+        job,
+        timeoutSeconds,
+        elapsedMs,
+        path: internalPath
+      })
     };
   } finally {
     clearTimeout(timer);
