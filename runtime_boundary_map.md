@@ -347,9 +347,30 @@ Owns:
 - [`http-generic-api/reconcile-catalog.mjs`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api/reconcile-catalog.mjs>) — CLI only, Sheets-only (no DB connection)
 
 Owns:
-- reads `Registry Surfaces Catalog` and live workbook tab structure
-- reports and optionally fixes: duplicate `surface_id`, unregistered tabs, tabs referencing deleted worksheets, expected column count mismatches, GID mismatches
+- reads `Registry Surfaces Catalog` and live workbook tab structure across all referenced workbooks (cross-workbook resolution via `file_id` column)
+- 7 CLI flags: `--fix-duplicates`, `--register-tabs`, `--refresh-columns`, `--fix-gids`, `--retire-deleted`, `--demote-required`, `--apply`
+- `normalizeTabName()` — strips cell-range suffixes (`Sheet!A1:Z` → `Sheet`) before tab-existence checks
+- `isRetired()` — excludes retired/deleted/inactive/archived/deprecated rows from required-missing checks
+- reports and optionally fixes: duplicate `surface_id`, unregistered tabs, tabs referencing deleted worksheets, expected column count mismatches, GID mismatches, retired tabs, required-for-execution demotions
 - does not connect to MySQL
+
+- [`http-generic-api/tighten-db.mjs`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api/tighten-db.mjs>) — CLI only
+
+Owns:
+- deduplication of natural keys (keeps MIN(id) per key, deletes duplicates) for brands, brand_core, actions, endpoints, task_routes
+- adds UNIQUE constraints: `task_routes.route_id`, `workflows.workflow_id`, `endpoints.endpoint_id`, `execution_policies.(policy_group,policy_key)`, `brand_core.(brand_key,asset_key)`
+- adds indexes: `intent_key`, `brand_scope`, `active`, `maturity`, `result_state`, `severity`, `active_status`
+- promotes TEXT columns to VARCHAR where used as lookup keys: `registry_surfaces_catalog.file_id/source_surface_id/parent_surface_id`, `actions.action_id`, `validation_repair.validation_type/result_state/severity/rule_id`
+- dry-run by default; `--apply` required to write; `tryAlter()` wrapper silently skips already-applied constraints
+- calls `pool.end()` before exit
+
+- [`http-generic-api/smoke-test-data-flow.mjs`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api/smoke-test-data-flow.mjs>) — CLI only, read-mostly
+
+Owns:
+- end-to-end data-flow smoke test across all 15 SQL tables
+- verifies: DB ping, all tables readable, route→workflow chain, execution policies, brand→SRI→SSI chain, hosting accounts, actions→endpoints linkage, RSC integrity (no duplicate surface_id), JSON assets, execution log, validation_repair, plugins, brand_core, UNIQUE constraint enforcement (ER_DUP_ENTRY), row count summary
+- exit 0 on full pass; exit 1 on any failure
+- run with: `node http-generic-api/smoke-test-data-flow.mjs`
 
 ## 5. Auth and connector boundaries
 

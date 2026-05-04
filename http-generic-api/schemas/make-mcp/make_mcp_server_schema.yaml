@@ -1,0 +1,132 @@
+﻿resolved_make_zone: eu2.make.com
+# make_mcp_server_wrapper_schema_v1
+
+
+status: internal_wrapper_candidate
+source_of_truth: not_provider_authority
+purpose: satisfy current executor schema binding while preserving MCP-native runtime semantics
+provider: Make MCP Server
+provider_docs_mode: MCP token URL or Authorization Bearer token
+
+
+openapi: 3.1.0
+info:
+  title: Make MCP Server Internal Wrapper
+  version: 1.0.0
+  description: |
+    Platform-authored wrapper schema for Make MCP Server.
+    This document is an internal executor-compatibility artifact and is not the provider's source-of-truth schema.
+servers:
+  - url: https://eu2.make.com
+paths:
+  /mcp/stateless:
+    post:
+      operationId: makeMcpInitialize
+      summary: Initialize MCP session against Make MCP Server using header auth.
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            type: string
+            description: Bearer MCP token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              properties:
+                jsonrpc:
+                  type: string
+                  example: "2.0"
+                id:
+                  oneOf:
+                    - type: string
+                    - type: integer
+                method:
+                  type: string
+                  example: initialize
+                params:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: MCP response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        default:
+          description: Any provider error or stream-negotiation response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /mcp/u/{mcp_token}/stateless:
+    post:
+      operationId: makeMcpInitializeTokenInUrl
+      summary: Initialize MCP session against Make MCP Server using MCP token in URL path.
+      parameters:
+        - in: path
+          name: mcp_token
+          required: true
+          schema:
+            type: string
+            description: MCP token embedded in URL path
+        - in: header
+          name: Accept
+          required: true
+          schema:
+            type: string
+            example: application/json, text/event-stream
+            description: Client must accept both application/json and text/event-stream
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              properties:
+                jsonrpc:
+                  type: string
+                  example: "2.0"
+                id:
+                  oneOf:
+                    - type: string
+                    - type: integer
+                method:
+                  type: string
+                  example: initialize
+                params:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: MCP response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        default:
+          description: Any provider error or stream-negotiation response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+x-governance:
+  connector_class: make_mcp_server
+  runtime_binding_profile: make_mcp_token_url_runtime_binding_candidate
+  auth_patterns_supported:
+    - authorization_bearer_header
+    - token_in_url
+  transports_supported:
+    - stateless
+    - stream
+    - sse

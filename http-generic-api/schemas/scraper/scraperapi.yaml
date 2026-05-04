@@ -1,0 +1,99 @@
+﻿openapi: 3.1.0
+info:
+  title: ScraperAPI Exact Match
+  version: 1.1.0
+  description: Matches the working ScraperAPI request shape and supports governed retry escalation.
+
+servers:
+  - url: https://api.scraperapi.com
+
+paths:
+  /i:
+    get:
+      operationId: scrapeUrl
+      summary: Scrape a single URL
+      description: Matches the successful request using api_key in query and supports premium escalation.
+      parameters:
+        - name: api_key
+          in: query
+          required: true
+          description: ScraperAPI key
+          schema:
+            type: string
+            enum: ["${SCRAPERAPI_API_KEY}"] 
+            default: "${SCRAPERAPI_API_KEY}"
+            
+
+        - name: url
+          in: query
+          required: true
+          description: Full HTTP or HTTPS URL to scrape
+          schema:
+            type: string
+            format: uri
+
+        - name: render
+          in: query
+          required: true
+          description: Whether to render JavaScript
+          schema:
+            type: boolean
+            default: true
+
+        - name: wait_for_selector
+          in: query
+          required: true
+          description: CSS selector to wait for before returning content
+          schema:
+            type: string
+            default: "h1"
+
+        - name: output_format
+          in: query
+          required: true
+          description: Output format
+          schema:
+            type: string
+            enum: ["markdown"]
+            default: "markdown"
+
+        - name: premium
+          in: query
+          required: false
+          description: Enables premium proxy routing when needed
+          schema:
+            type: boolean
+            default: false
+
+        - name: ultra_premium
+          in: query
+          required: false
+          description: Enables ultra premium proxy routing for protected domains
+          schema:
+            type: boolean
+            default: false
+
+      responses:
+        "200":
+          description: Scraped page content
+          content:
+            text/markdown:
+              schema:
+                type: string
+            text/plain:
+              schema:
+                type: string
+            text/html:
+              schema:
+                type: string
+
+        "400":
+          description: Invalid request
+        "401":
+          description: Invalid or missing API key
+        "403":
+          description: Access denied
+        "429":
+          description: Rate limited
+        "500":
+          description: Provider error

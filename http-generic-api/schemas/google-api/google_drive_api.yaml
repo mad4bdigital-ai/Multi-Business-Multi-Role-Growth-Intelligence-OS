@@ -1,0 +1,2493 @@
+﻿openapi: 3.1.0
+info:
+  title: Google Drive API - Drive Scope
+  version: 2.1.0
+  description: "OpenAPI 3.1 schema for Google Drive file operations using the Google\
+    \ Drive API. This schema is scoped to native Google Drive endpoints only.\nProduction\
+    \ notes: - Keep only native Google Drive endpoints. - Use /drive/v3/files for\
+    \ listing and metadata-only creation. - Use /upload/drive/v3/files and /upload/drive/v3/files/{fileId}\
+    \ for media uploads. - Use native query parameters like q, fields, addParents,\
+    \ removeParents, and uploadType\n  instead of helper routes.\n"
+servers:
+- url: https://www.googleapis.com
+  description: Google APIs host
+security:
+- googleOAuth:
+  - https://www.googleapis.com/auth/drive
+components:
+  securitySchemes:
+    googleOAuth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
+          tokenUrl: https://oauth2.googleapis.com/token
+          scopes:
+            https://www.googleapis.com/auth/drive: Full Google Drive access
+            https://www.googleapis.com/auth/drive.file: Access to files created/opened
+              by the app
+            https://www.googleapis.com/auth/drive.readonly: Read-only Drive access
+            https://www.googleapis.com/auth/drive.metadata: View and manage metadata
+            https://www.googleapis.com/auth/drive.metadata.readonly: Read-only metadata
+              access
+  schemas:
+    ErrorResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        error:
+          type: object
+          additionalProperties: true
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+            status:
+              type: string
+    File:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        mimeType:
+          type: string
+        description:
+          type: string
+        starred:
+          type: boolean
+        trashed:
+          type: boolean
+        explicitlyTrashed:
+          type: boolean
+        parents:
+          type: array
+          items:
+            type: string
+        createdTime:
+          type: string
+          format: date-time
+        modifiedTime:
+          type: string
+          format: date-time
+        viewedByMeTime:
+          type: string
+          format: date-time
+        shared:
+          type: boolean
+        ownedByMe:
+          type: boolean
+        webViewLink:
+          type: string
+        webContentLink:
+          type: string
+        iconLink:
+          type: string
+        thumbnailLink:
+          type: string
+        size:
+          type: string
+        version:
+          type: string
+        md5Checksum:
+          type: string
+        sha1Checksum:
+          type: string
+        sha256Checksum:
+          type: string
+        exportLinks:
+          type: object
+          additionalProperties:
+            type: string
+        appProperties:
+          type: object
+          additionalProperties:
+            type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+    FileList:
+      type: object
+      additionalProperties: true
+      properties:
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/File'
+        nextPageToken:
+          type: string
+        incompleteSearch:
+          type: boolean
+    Permission:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+          - user
+          - group
+          - domain
+          - anyone
+        role:
+          type: string
+          enum:
+          - owner
+          - organizer
+          - fileOrganizer
+          - writer
+          - commenter
+          - reader
+        emailAddress:
+          type: string
+          format: email
+        domain:
+          type: string
+        allowFileDiscovery:
+          type: boolean
+        displayName:
+          type: string
+        deleted:
+          type: boolean
+        pendingOwner:
+          type: boolean
+        photoLink:
+          type: string
+        expirationTime:
+          type: string
+          format: date-time
+        permissionDetails:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    PermissionList:
+      type: object
+      additionalProperties: true
+      properties:
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+        nextPageToken:
+          type: string
+    CreateFileMetadata:
+      type: object
+      additionalProperties: true
+      properties:
+        name:
+          type: string
+        mimeType:
+          type: string
+        parents:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        starred:
+          type: boolean
+        appProperties:
+          type: object
+          additionalProperties:
+            type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+      example:
+        name: notes.txt
+        mimeType: text/plain
+    UpdateFileMetadata:
+      type: object
+      additionalProperties: true
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        starred:
+          type: boolean
+        trashed:
+          type: boolean
+        parents:
+          type: array
+          items:
+            type: string
+        appProperties:
+          type: object
+          additionalProperties:
+            type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+      example:
+        name: Renamed file
+        trashed: false
+    GenerateIdsResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+        space:
+          type: string
+      required:
+      - ids
+    CreatePermissionRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        type:
+          type: string
+          enum:
+          - user
+          - group
+          - domain
+          - anyone
+        role:
+          type: string
+          enum:
+          - reader
+          - commenter
+          - writer
+          - fileOrganizer
+          - organizer
+          - owner
+        emailAddress:
+          type: string
+          format: email
+        domain:
+          type: string
+        allowFileDiscovery:
+          type: boolean
+      required:
+      - type
+      - role
+      example:
+        type: user
+        role: reader
+        emailAddress: user@example.com
+    About:
+      type: object
+      additionalProperties: true
+      properties:
+        user:
+          type: object
+          additionalProperties: true
+        storageQuota:
+          type: object
+          additionalProperties: true
+        importFormats:
+          type: object
+          additionalProperties: true
+        exportFormats:
+          type: object
+          additionalProperties: true
+    Change:
+      type: object
+      additionalProperties: true
+      properties:
+        fileId:
+          type: string
+        removed:
+          type: boolean
+        time:
+          type: string
+          format: date-time
+        file:
+          type: object
+          additionalProperties: true
+    ChangeList:
+      type: object
+      additionalProperties: true
+      properties:
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Change'
+        newStartPageToken:
+          type: string
+        nextPageToken:
+          type: string
+    StartPageToken:
+      type: object
+      additionalProperties: true
+      properties:
+        startPageToken:
+          type: string
+      required:
+      - startPageToken
+    Channel:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        resourceId:
+          type: string
+        resourceUri:
+          type: string
+        token:
+          type: string
+        type:
+          type: string
+        address:
+          type: string
+      required:
+      - id
+      - type
+      example:
+        id: channel-123
+        type: web_hook
+        address: https://example.com/notifications
+    Comment:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        createdTime:
+          type: string
+          format: date-time
+        modifiedTime:
+          type: string
+          format: date-time
+        author:
+          type: object
+          additionalProperties: true
+        deleted:
+          type: boolean
+        kind:
+          type: string
+        anchor:
+          type: string
+        resolved:
+          type: boolean
+        replies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reply'
+        quotedFileContent:
+          type: object
+          additionalProperties: true
+    CommentList:
+      type: object
+      additionalProperties: true
+      properties:
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        nextPageToken:
+          type: string
+    Drive:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        hidden:
+          type: boolean
+        kind:
+          type: string
+        createdTime:
+          type: string
+          format: date-time
+        capabilities:
+          type: object
+          additionalProperties: true
+        restrictions:
+          type: object
+          additionalProperties: true
+    DriveList:
+      type: object
+      additionalProperties: true
+      properties:
+        drives:
+          type: array
+          items:
+            $ref: '#/components/schemas/Drive'
+        nextPageToken:
+          type: string
+    Operation:
+      type: object
+      additionalProperties: true
+      properties:
+        name:
+          type: string
+        done:
+          type: boolean
+        error:
+          type: object
+          additionalProperties: true
+        response:
+          type: object
+          additionalProperties: true
+        metadata:
+          type: object
+          additionalProperties: true
+      required:
+      - name
+      - done
+    Reply:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        createdTime:
+          type: string
+          format: date-time
+        modifiedTime:
+          type: string
+          format: date-time
+        author:
+          type: object
+          additionalProperties: true
+        deleted:
+          type: boolean
+        kind:
+          type: string
+        verb:
+          type: string
+    ReplyList:
+      type: object
+      additionalProperties: true
+      properties:
+        replies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reply'
+    Revision:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        mimeType:
+          type: string
+        modifiedTime:
+          type: string
+          format: date-time
+        keepForever:
+          type: boolean
+        published:
+          type: boolean
+        size:
+          type: string
+    RevisionList:
+      type: object
+      additionalProperties: true
+      properties:
+        revisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Revision'
+        nextPageToken:
+          type: string
+    LabelList:
+      type: object
+      additionalProperties: true
+      properties:
+        labels:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        nextPageToken:
+          type: string
+        kind:
+          type: string
+    ModifyLabelsRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        labelModifications:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      example:
+        labelModifications:
+        - labelId: label123
+          fieldModifications: []
+      description: Request body for modifying labels on a Drive file.
+    AccessProposal:
+      type: object
+      additionalProperties: true
+      properties:
+        fileId:
+          type: string
+        requester:
+          type: object
+          additionalProperties: true
+        role:
+          type: string
+        state:
+          type: string
+        requestTime:
+          type: string
+          format: date-time
+        view:
+          type: string
+        proposalId:
+          type: string
+        recipientEmailAddress:
+          type: string
+          format: email
+        requesterEmailAddress:
+          type: string
+          format: email
+        rolesAndViews:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        requestMessage:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+      required:
+      - fileId
+      description: Minimal schema for Drive access proposal resources.
+    AccessProposalList:
+      type: object
+      additionalProperties: true
+      properties:
+        accessProposals:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessProposal'
+        nextPageToken:
+          type: string
+    ResolveAccessProposalRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        action:
+          type: string
+          enum:
+          - ACCEPT
+          - DENY
+        role:
+          type: string
+        sendNotification:
+          type: boolean
+      required:
+      - action
+      example:
+        action: ACCEPT
+        role: reader
+        sendNotification: true
+      description: Request body for resolving a Drive access proposal.
+    Approval:
+      type: object
+      additionalProperties: true
+      properties:
+        approvalId:
+          type: string
+        state:
+          type: string
+        approvers:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        createTime:
+          type: string
+          format: date-time
+        targetFileId:
+          type: string
+        creator:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+        completeTime:
+          type: string
+          format: date-time
+        dueTime:
+          type: string
+          format: date-time
+        modifyTime:
+          type: string
+          format: date-time
+      required:
+      - approvalId
+      description: Minimal schema for Drive approval resources.
+    ApprovalList:
+      type: object
+      additionalProperties: true
+      properties:
+        approvals:
+          type: array
+          items:
+            $ref: '#/components/schemas/Approval'
+    App:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        productUrl:
+          type: string
+        supportsCreate:
+          type: boolean
+        authorized:
+          type: boolean
+        shortDescription:
+          type: string
+        objectType:
+          type: string
+        supportsImport:
+          type: boolean
+        primaryFileExtensions:
+          type: array
+          items:
+            type: string
+        secondaryFileExtensions:
+          type: array
+          items:
+            type: string
+      required:
+      - id
+      - name
+      description: Minimal schema for Drive application resources.
+    AppList:
+      type: object
+      additionalProperties: true
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/App'
+    CommentCreateRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        content:
+          type: string
+        quotedFileContent:
+          type: object
+          additionalProperties: true
+      required:
+      - content
+      example:
+        content: Please review the updated draft.
+      description: Request body for creating or updating a Drive comment.
+    DriveCreateRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        name:
+          type: string
+      required:
+      - name
+      example:
+        name: New Shared Drive
+      description: Request body for creating or updating a shared drive.
+    ReplyCreateRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        content:
+          type: string
+        action:
+          type: string
+      required:
+      - content
+      example:
+        content: Approved, thanks.
+      description: Request body for creating or updating a Drive reply.
+    UpdatePermissionRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        role:
+          type: string
+          enum:
+          - reader
+          - commenter
+          - writer
+          - fileOrganizer
+          - organizer
+          - owner
+        allowFileDiscovery:
+          type: boolean
+        expirationTime:
+          type: string
+          format: date-time
+      example:
+        role: reader
+    UpdateRevisionRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        keepForever:
+          type: boolean
+        published:
+          type: boolean
+        publishAuto:
+          type: boolean
+        publishedOutsideDomain:
+          type: boolean
+      example:
+        keepForever: true
+paths:
+  /drive/v3/files:
+    get:
+      operationId: listDriveFiles
+      summary: List files in Drive
+      description: Lists the user's files. Returns trashed files unless filtered out.
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.readonly
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.metadata
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.metadata.readonly
+      parameters:
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 1000
+      - name: pageToken
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Search query, for example trashed=false
+      - name: fields
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Optional partial response field mask.
+      - name: orderBy
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: spaces
+        in: query
+        required: false
+        schema:
+          type: string
+          example: drive
+      - name: corpora
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: includeItemsFromAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: includePermissionsForView
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: includeLabels
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: List of files
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileList'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      operationId: createFileMetadataOnly
+      summary: Create a Drive file or folder (metadata only)
+      description: 'Creates a file resource. This metadata-only variant is suitable
+        for creating folders or placeholder files without media upload.
+
+
+        '
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.file
+      parameters:
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: ignoreDefaultVisibility
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: keepRevisionForever
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: ocrLanguage
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: useContentAsIndexableText
+        in: query
+        required: false
+        schema:
+          type: boolean
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFileMetadata'
+      responses:
+        '200':
+          description: File created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /upload/drive/v3/files:
+    post:
+      operationId: uploadNewFile
+      summary: Upload a new file
+      description: 'Upload endpoint for new files. Supports uploadType=media, multipart,
+        or resumable.
+
+
+        '
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.file
+      parameters:
+      - name: uploadType
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - media
+          - multipart
+          - resumable
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: ignoreDefaultVisibility
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: keepRevisionForever
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: ocrLanguage
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: useContentAsIndexableText
+        in: query
+        required: false
+        schema:
+          type: boolean
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+          multipart/related:
+            schema:
+              type: string
+              format: binary
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFileMetadata'
+      responses:
+        '200':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        '201':
+          description: Resumable upload session initiated or file created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /drive/v3/files/{fileId}:
+    get:
+      operationId: getFileMetadata
+      summary: Get file metadata or media content
+      description: Use alt=media to download file bytes for binary content.
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.readonly
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.metadata
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.metadata.readonly
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: alt
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - json
+          - media
+          default: json
+      - name: fields
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: includePermissionsForView
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: includeLabels
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: acknowledgeAbuse
+        in: query
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: File metadata or content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      operationId: updateFileMetadata
+      summary: Update file metadata
+      description: Updates metadata for an existing file.
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.file
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: addParents
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: removeParents
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: keepRevisionForever
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: ocrLanguage
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: useContentAsIndexableText
+        in: query
+        required: false
+        schema:
+          type: boolean
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFileMetadata'
+      responses:
+        '200':
+          description: File updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+    delete:
+      operationId: deleteFile
+      summary: Permanently delete a file
+      description: Permanently deletes a file owned by the user.
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '204':
+          description: File deleted successfully
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /drive/v3/files/{fileId}/copy:
+    post:
+      operationId: copyDriveFile
+      summary: Copy a file
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.file
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: keepRevisionForever
+        in: query
+        required: false
+        schema:
+          type: boolean
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFileMetadata'
+      responses:
+        '200':
+          description: File copied successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+  /upload/drive/v3/files/{fileId}:
+    patch:
+      operationId: uploadOrReplaceFileContent
+      summary: Update file media or metadata+media
+      description: 'Upload endpoint for updating an existing file. Supports uploadType=media,
+        multipart, or resumable.
+
+
+        '
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.file
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: uploadType
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - media
+          - multipart
+          - resumable
+      - name: addParents
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: removeParents
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: keepRevisionForever
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: ocrLanguage
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: useContentAsIndexableText
+        in: query
+        required: false
+        schema:
+          type: boolean
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+          multipart/related:
+            schema:
+              type: string
+              format: binary
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFileMetadata'
+      responses:
+        '200':
+          description: File content updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+  /drive/v3/files/{fileId}/export:
+    get:
+      operationId: exportGoogleWorkspaceFile
+      summary: Export a Google Workspace file
+      description: 'Exports Google Docs, Sheets, Slides, and other Google Workspace
+        files to a requested MIME type.
+
+
+        '
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.readonly
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: mimeType
+        in: query
+        required: true
+        schema:
+          type: string
+          example: application/pdf
+      responses:
+        '200':
+          description: Exported file bytes
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+  /drive/v3/files/generateIds:
+    get:
+      operationId: generateDriveFileIds
+      summary: Generate file IDs
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: count
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 1000
+      - name: space
+        in: query
+        required: false
+        schema:
+          type: string
+          default: drive
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Generated IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateIdsResponse'
+  /drive/v3/files/{fileId}/permissions:
+    get:
+      operationId: listFilePermissions
+      summary: List file permissions
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.metadata.readonly
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: pageToken
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: Permissions list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionList'
+    post:
+      operationId: createFilePermission
+      summary: Create a permission on a file
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: sendNotificationEmail
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: emailMessage
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: transferOwnership
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: moveToNewOwnersRoot
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: useDomainAdminAccess
+        in: query
+        required: false
+        schema:
+          type: boolean
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePermissionRequest'
+      responses:
+        '200':
+          description: Permission created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Permission'
+  /drive/v3/files/{fileId}/permissions/{permissionId}:
+    get:
+      operationId: getFilePermission
+      summary: Get a file permission
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.metadata.readonly
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: permissionId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: Permission retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Permission'
+    patch:
+      operationId: updateFilePermission
+      summary: Update a file permission
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: permissionId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: transferOwnership
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: useDomainAdminAccess
+        in: query
+        required: false
+        schema:
+          type: boolean
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePermissionRequest'
+            examples:
+              downgradeToReader:
+                summary: Downgrade a permission to reader
+                value:
+                  role: reader
+              grantCommenter:
+                summary: Change permission to commenter
+                value:
+                  role: commenter
+      responses:
+        '200':
+          description: Permission updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Permission'
+    delete:
+      operationId: deleteFilePermission
+      summary: Delete a file permission
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: permissionId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: useDomainAdminAccess
+        in: query
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '204':
+          description: Permission deleted successfully
+  /drive/v3/about:
+    get:
+      operationId: getDriveAbout
+      summary: Get user and system information about Drive
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.readonly
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.metadata
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.metadata.readonly
+      parameters:
+      - name: fields
+        in: query
+        required: true
+        schema:
+          type: string
+        description: Required partial response field mask.
+      responses:
+        '200':
+          description: Drive about information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/About'
+  /drive/v3/changes/startPageToken:
+    get:
+      operationId: getDriveStartPageToken
+      summary: Get the starting page token for listing future changes
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.readonly
+      parameters:
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: Start page token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartPageToken'
+  /drive/v3/changes:
+    get:
+      operationId: listDriveChanges
+      summary: List changes for a user or shared drive
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.readonly
+      parameters:
+      - name: pageToken
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: fields
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: includeItemsFromAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: List of changes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeList'
+    post:
+      operationId: watchDriveChanges
+      summary: Subscribe to changes notifications
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: pageToken
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Channel'
+            examples:
+              webhookChannel:
+                summary: Watch changes through a webhook channel
+                value:
+                  id: channel-123
+                  type: web_hook
+                  address: https://example.com/notifications
+      responses:
+        '200':
+          description: Watch channel created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Channel'
+  /drive/v3/channels/stop:
+    post:
+      operationId: stopDriveChannel
+      summary: Stop watching resources through a channel
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Channel'
+            examples:
+              stopChannel:
+                summary: Stop a webhook channel
+                value:
+                  id: channel-123
+                  resourceId: resource-abc
+      responses:
+        '204':
+          description: Channel stopped successfully
+  /drive/v3/files/{fileId}/watch:
+    post:
+      operationId: watchDriveFile
+      summary: Subscribe to file change notifications
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: supportsAllDrives
+        in: query
+        required: false
+        schema:
+          type: boolean
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Channel'
+            examples:
+              webhookChannel:
+                summary: Watch a file through a webhook channel
+                value:
+                  id: file-channel-123
+                  type: web_hook
+                  address: https://example.com/file-notifications
+      responses:
+        '200':
+          description: Watch channel created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Channel'
+  /drive/v3/files/{fileId}/comments:
+    post:
+      operationId: createDriveComment
+      summary: Create a comment on a file
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentCreateRequest'
+            examples:
+              newComment:
+                summary: Create a file comment
+                value:
+                  content: Please review this file.
+      responses:
+        '200':
+          description: Comment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+  /drive/v3/drives:
+    post:
+      operationId: createSharedDrive
+      summary: Create a shared drive
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: requestId
+        in: query
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriveCreateRequest'
+            examples:
+              createDrive:
+                summary: Create a shared drive
+                value:
+                  name: Finance Team Drive
+      responses:
+        '200':
+          description: Shared drive created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Drive'
+  /drive/v3/files/trash:
+    delete:
+      operationId: emptyDriveTrash
+      summary: Permanently delete all of the user's trashed files
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      responses:
+        '204':
+          description: Trash emptied successfully
+  /drive/v3/files/{fileId}/listLabels:
+    get:
+      operationId: listDriveFileLabels
+      summary: List labels on a file
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.readonly
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: maxResults
+        in: query
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: File labels list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelList'
+  /drive/v3/files/{fileId}/modifyLabels:
+    post:
+      operationId: modifyDriveFileLabels
+      summary: Modify labels on a file
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifyLabelsRequest'
+            examples:
+              modifyLabels:
+                summary: Add or update a label field on a file
+                value:
+                  labelModifications:
+                  - labelId: label123
+      responses:
+        '200':
+          description: File labels modified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelList'
+  /drive/v3/operations/{name}:
+    get:
+      operationId: getDriveOperation
+      summary: Get a long-running operation
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Operation retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+  /drive/v3/files/{fileId}/comments/{commentId}/replies:
+    post:
+      operationId: createCommentReply
+      summary: Create a reply to a comment
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplyCreateRequest'
+            examples:
+              newReply:
+                summary: Reply to a comment
+                value:
+                  content: Looks good to me.
+      responses:
+        '200':
+          description: Reply created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reply'
+  /drive/v3/files/{fileId}/revisions:
+    get:
+      operationId: listFileRevisions
+      summary: List revisions for a file
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.readonly
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: pageToken
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Revisions list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevisionList'
+  /drive/v3/accessproposals/{fileId}:
+    get:
+      operationId: getAccessProposal
+      summary: Get an access proposal by file
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Access proposal retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessProposal'
+  /drive/v3/accessproposals:
+    get:
+      operationId: listAccessProposals
+      summary: List access proposals
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: pageToken
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Access proposals list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessProposalList'
+  /drive/v3/accessproposals/{fileId}:resolve:
+    post:
+      operationId: resolveAccessProposal
+      summary: Resolve an access proposal
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveAccessProposalRequest'
+            examples:
+              acceptProposal:
+                summary: Accept an access proposal as reader
+                value:
+                  action: ACCEPT
+                  role: reader
+                  sendNotification: true
+      responses:
+        '200':
+          description: Access proposal resolved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessProposal'
+  /drive/v3/files/{fileId}/approvals/{approvalId}:
+    get:
+      operationId: getApproval
+      summary: Get an approval
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: approvalId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Approval retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Approval'
+  /drive/v3/files/{fileId}/approvals:
+    get:
+      operationId: listApprovals
+      summary: List approvals on a file
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Approvals list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalList'
+  /drive/v3/apps/{appId}:
+    get:
+      operationId: getDriveApp
+      summary: Get an app by ID
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.readonly
+      parameters:
+      - name: appId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: App retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/App'
+  /drive/v3/apps:
+    get:
+      operationId: listDriveApps
+      summary: List installed or available apps
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.readonly
+      responses:
+        '200':
+          description: Apps list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppList'
+  /drive/v3/files/{fileId}/comments/{commentId}:
+    get:
+      operationId: getDriveComment
+      summary: Get a comment
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.readonly
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: includeDeleted
+        in: query
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: Comment retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+    patch:
+      operationId: updateDriveComment
+      summary: Update a comment
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentCreateRequest'
+      responses:
+        '200':
+          description: Comment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+    delete:
+      operationId: deleteDriveComment
+      summary: Delete a comment
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Comment deleted successfully
+  /drive/v3/drives/{driveId}:
+    get:
+      operationId: getSharedDrive
+      summary: Get a shared drive
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.readonly
+      parameters:
+      - name: driveId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Shared drive retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Drive'
+    patch:
+      operationId: updateSharedDrive
+      summary: Update a shared drive
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: driveId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriveCreateRequest'
+      responses:
+        '200':
+          description: Shared drive updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Drive'
+    delete:
+      operationId: deleteSharedDrive
+      summary: Delete a shared drive
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: driveId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Shared drive deleted successfully
+  /drive/v3/drives/{driveId}/hide:
+    post:
+      operationId: hideSharedDrive
+      summary: Hide a shared drive
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: driveId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Shared drive hidden successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Drive'
+  /drive/v3/drives/{driveId}/unhide:
+    post:
+      operationId: unhideSharedDrive
+      summary: Unhide a shared drive
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: driveId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Shared drive unhidden successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Drive'
+  /drive/v3/files/{fileId}/comments/{commentId}/replies/{replyId}:
+    get:
+      operationId: getCommentReply
+      summary: Get a reply
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.readonly
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: replyId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: includeDeleted
+        in: query
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: Reply retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reply'
+    patch:
+      operationId: updateCommentReply
+      summary: Update a reply
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: replyId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplyCreateRequest'
+      responses:
+        '200':
+          description: Reply updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reply'
+    delete:
+      operationId: deleteCommentReply
+      summary: Delete a reply
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: replyId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Reply deleted successfully
+  /drive/v3/files/{fileId}/revisions/{revisionId}:
+    get:
+      operationId: getFileRevision
+      summary: Get a revision
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.readonly
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: revisionId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Revision retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Revision'
+    patch:
+      operationId: updateFileRevision
+      summary: Update a revision
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: revisionId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRevisionRequest'
+            examples:
+              keepForever:
+                summary: Keep a revision forever
+                value:
+                  keepForever: true
+      responses:
+        '200':
+          description: Revision updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Revision'
+    delete:
+      operationId: deleteFileRevision
+      summary: Delete a revision
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: revisionId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Revision deleted successfully

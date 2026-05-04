@@ -1,0 +1,525 @@
+openapi: 3.1.0
+info:
+  title: Google Search Console API
+  version: 1.0.3
+  description: OpenAPI schema for Google Search Console
+
+servers:
+  - url: https://searchconsole.googleapis.com
+
+security:
+  - googleOAuth:
+      - https://www.googleapis.com/auth/webmasters
+
+components:
+  securitySchemes:
+    googleOAuth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
+          tokenUrl: https://oauth2.googleapis.com/token
+          scopes:
+            https://www.googleapis.com/auth/webmasters: Read/write access to Search Console data
+            https://www.googleapis.com/auth/webmasters.readonly: Read-only access to Search Console data
+
+  schemas:
+    ErrorDetail:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        status:
+          type: string
+      additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+      additionalProperties: true
+
+    SiteEntry:
+      type: object
+      properties:
+        siteUrl:
+          type: string
+        permissionLevel:
+          type: string
+          enum:
+            - siteFullUser
+            - siteOwner
+            - siteRestrictedUser
+            - siteUnverifiedUser
+      additionalProperties: true
+
+    SitesListResponse:
+      type: object
+      properties:
+        siteEntry:
+          type: array
+          items:
+            $ref: '#/components/schemas/SiteEntry'
+      additionalProperties: true
+
+    SearchAnalyticsDimension:
+      type: string
+      enum:
+        - date
+        - query
+        - page
+        - country
+        - device
+        - searchAppearance
+        - hour
+
+    SearchType:
+      type: string
+      enum:
+        - web
+        - image
+        - video
+        - news
+        - discover
+        - googleNews
+
+    AggregationType:
+      type: string
+      enum:
+        - auto
+        - byPage
+        - byProperty
+
+    DataState:
+      type: string
+      enum:
+        - final
+        - all
+        - hourly_all
+
+    DimensionFilterOperator:
+      type: string
+      enum:
+        - equals
+        - notEquals
+        - contains
+        - notContains
+        - includingRegex
+        - excludingRegex
+
+    SearchAnalyticsDimensionFilter:
+      type: object
+      required:
+        - dimension
+        - operator
+        - expression
+      properties:
+        dimension:
+          $ref: '#/components/schemas/SearchAnalyticsDimension'
+        operator:
+          $ref: '#/components/schemas/DimensionFilterOperator'
+        expression:
+          type: string
+      additionalProperties: false
+
+    SearchAnalyticsDimensionFilterGroup:
+      type: object
+      properties:
+        groupType:
+          type: string
+          enum:
+            - and
+        filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchAnalyticsDimensionFilter'
+      additionalProperties: false
+
+    SearchAnalyticsQueryRequest:
+      type: object
+      required:
+        - startDate
+        - endDate
+      properties:
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        dimensions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchAnalyticsDimension'
+        type:
+          $ref: '#/components/schemas/SearchType'
+        dimensionFilterGroups:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchAnalyticsDimensionFilterGroup'
+        rowLimit:
+          type: integer
+          minimum: 1
+          maximum: 25000
+          default: 1000
+        startRow:
+          type: integer
+          minimum: 0
+          default: 0
+        aggregationType:
+          $ref: '#/components/schemas/AggregationType'
+        dataState:
+          $ref: '#/components/schemas/DataState'
+      additionalProperties: false
+
+    SearchAnalyticsRow:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            type: string
+        clicks:
+          type: number
+        impressions:
+          type: number
+        ctr:
+          type: number
+        position:
+          type: number
+      additionalProperties: true
+
+    SearchAnalyticsQueryResponse:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchAnalyticsRow'
+        responseAggregationType:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+    WmxSitemapContent:
+      type: object
+      properties:
+        type:
+          type: string
+        submitted:
+          type: string
+        indexed:
+          type: string
+      additionalProperties: true
+
+    WmxSitemap:
+      type: object
+      properties:
+        path:
+          type: string
+        lastSubmitted:
+          type: string
+        lastDownloaded:
+          type: string
+        isPending:
+          type: boolean
+        isSitemapsIndex:
+          type: boolean
+        type:
+          type: string
+        warnings:
+          type: string
+        errors:
+          type: string
+        contents:
+          type: array
+          items:
+            $ref: '#/components/schemas/WmxSitemapContent'
+      additionalProperties: true
+
+    SitemapsListResponse:
+      type: object
+      properties:
+        sitemap:
+          type: array
+          items:
+            $ref: '#/components/schemas/WmxSitemap'
+      additionalProperties: true
+
+    UrlInspectionRequest:
+      type: object
+      required:
+        - inspectionUrl
+        - siteUrl
+      properties:
+        inspectionUrl:
+          type: string
+          format: uri
+        siteUrl:
+          type: string
+        languageCode:
+          type: string
+          default: en-US
+      additionalProperties: false
+
+    UrlInspectionResponse:
+      type: object
+      properties:
+        inspectionResult:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+paths:
+  /webmasters/v3/sites:
+    get:
+      operationId: listSites
+      summary: List Search Console properties
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SitesListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /webmasters/v3/sites/{siteUrl}:
+    get:
+      operationId: getSite
+      summary: Get a specific Search Console property
+      parameters:
+        - name: siteUrl
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Property identifier, for example sc-domain:example.com
+      responses:
+        '200':
+          description: Property details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiteEntry'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Site not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      operationId: addSite
+      summary: Add a Search Console property
+      parameters:
+        - name: siteUrl
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Property identifier, for example sc-domain:example.com
+      responses:
+        '200':
+          description: Site added
+        '204':
+          description: Site added
+
+    delete:
+      operationId: deleteSite
+      summary: Remove a Search Console property
+      parameters:
+        - name: siteUrl
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Property identifier, for example sc-domain:example.com
+      responses:
+        '200':
+          description: Site removed
+        '204':
+          description: Site removed
+
+  /webmasters/v3/sites/{siteUrl}/searchAnalytics/query:
+    post:
+      operationId: querySearchAnalytics
+      summary: Query Search Analytics data
+      parameters:
+        - name: siteUrl
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Property identifier, for example sc-domain:example.com
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchAnalyticsQueryRequest'
+      responses:
+        '200':
+          description: Search analytics results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchAnalyticsQueryResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /webmasters/v3/sites/{siteUrl}/sitemaps:
+    get:
+      operationId: listSitemaps
+      summary: List sitemaps for a property
+      parameters:
+        - name: siteUrl
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Property identifier, for example sc-domain:example.com
+      responses:
+        '200':
+          description: Sitemap list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SitemapsListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /webmasters/v3/sites/{siteUrl}/sitemaps/{feedpath}:
+    get:
+      operationId: getSitemap
+      summary: Get a specific sitemap
+      parameters:
+        - name: siteUrl
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Property identifier, for example sc-domain:example.com
+        - name: feedpath
+          in: path
+          required: true
+          schema:
+            type: string
+          description: URL-encoded sitemap URL
+      responses:
+        '200':
+          description: Sitemap details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WmxSitemap'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      operationId: submitSitemap
+      summary: Submit a sitemap
+      parameters:
+        - name: siteUrl
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Property identifier, for example sc-domain:example.com
+        - name: feedpath
+          in: path
+          required: true
+          schema:
+            type: string
+          description: URL-encoded sitemap URL
+      responses:
+        '200':
+          description: Sitemap submitted
+        '204':
+          description: Sitemap submitted
+
+    delete:
+      operationId: deleteSitemap
+      summary: Delete a sitemap
+      parameters:
+        - name: siteUrl
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Property identifier, for example sc-domain:example.com
+        - name: feedpath
+          in: path
+          required: true
+          schema:
+            type: string
+          description: URL-encoded sitemap URL
+      responses:
+        '200':
+          description: Sitemap deleted
+        '204':
+          description: Sitemap deleted
+
+  /v1/urlInspection/index:inspect:
+    post:
+      operationId: inspectUrl
+      summary: Inspect URL index status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UrlInspectionRequest'
+      responses:
+        '200':
+          description: URL inspection result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UrlInspectionResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

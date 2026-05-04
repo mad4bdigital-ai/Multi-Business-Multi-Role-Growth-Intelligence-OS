@@ -1,6 +1,55 @@
 import { inferAuthMode } from "./authInjection.js";
 import { policyValue } from "./registryResolution.js";
 
+// ── Storage-mode-aware secret resolvers ───────────────────────────────────────
+
+function resolveActionSecret(action) {
+  const storageMode = String(action.api_key_storage_mode || "").trim().toLowerCase();
+
+  if (storageMode === "secret_reference" || storageMode === "env_var") {
+    return resolveSecretFromReference(action.secret_store_ref);
+  }
+
+  if (storageMode === "embedded_sheet") {
+    console.warn(
+      `[authCredential] SECURITY: action "${action.action_key}" has api_key_storage_mode=embedded_sheet. ` +
+      `Set api_key_storage_mode=secret_reference and add the rotated key to .env as ref:secret:<ENV_VAR>. ` +
+      `Returning empty secret.`
+    );
+    return "";
+  }
+
+  // Unrecognised storage mode — fall back to the raw field with a warning.
+  if (action.api_key_value) {
+    console.warn(
+      `[authCredential] action "${action.action_key}" uses unrecognised storage mode "${storageMode}". ` +
+      `Using api_key_value as fallback. Move to secret_reference.`
+    );
+  }
+  return action.api_key_value || "";
+}
+
+function resolveWpAppPassword(brand = {}) {
+  // Prefer env var keyed by target_key: <TARGET_KEY_UPPER>_APP_PASSWORD
+  const targetKey = String(brand?.target_key || "").trim();
+  if (targetKey) {
+    const envKey = targetKey.toUpperCase().replace(/[^A-Z0-9]/g, "_").replace(/_+/g, "_") + "_APP_PASSWORD";
+    const fromEnv = String(process.env[envKey] || "").trim();
+    if (fromEnv) return fromEnv;
+  }
+  // Warn if falling back to embedded value (should be NULL after sanitize-credentials runs)
+  const embedded = String(brand?.application_password || "").trim();
+  if (embedded) {
+    console.warn(
+      `[authCredential] SECURITY: brand "${brand?.brand_name}" has embedded application_password in registry. ` +
+      `Run sanitize-credentials.mjs --apply and set ${targetKey.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_APP_PASSWORD in .env.`
+    );
+  }
+  return embedded;
+}
+
+// ── Public auth contract builder ───────────────────────────────────────────────
+
 export function normalizeAuthContract({
   action,
   brand,
@@ -20,34 +69,27 @@ export function normalizeAuthContract({
 
   if (mode === "basic_auth") {
     contract.username = brand?.username || "";
-    contract.secret = brand?.application_password || "";
+    contract.secret = resolveWpAppPassword(brand);
     contract.header_name = "Authorization";
     return contract;
   }
 
   if (mode === "api_key_query") {
     contract.param_name = action.api_key_param_name || "api_key";
-    contract.secret = action.api_key_value || "";
+    contract.secret = resolveActionSecret(action);
     return contract;
   }
 
   if (mode === "api_key_header") {
     contract.header_name = action.api_key_header_name || "x-api-key";
-    contract.secret = action.api_key_value || "";
+    contract.secret = resolveActionSecret(action);
     return contract;
   }
 
   if (mode === "bearer_token") {
     contract.header_name = "Authorization";
 
-    const storageMode = String(action.api_key_storage_mode || "")
-      .trim()
-      .toLowerCase();
-
-    if (!storageMode || storageMode === "embedded_sheet") {
-      contract.secret = action.api_key_value || "";
-      return contract;
-    }
+    const storageMode = String(action.api_key_storage_mode || "").trim().toLowerCase();
 
     if (storageMode === "per_target_credentials") {
       const accountKey = resolveAccountKey({ brand, targetKey, hostingAccounts });
@@ -62,6 +104,11 @@ export function normalizeAuthContract({
           contract.secret = resolveSecretFromReference(hostingAccount.api_key_reference);
           return contract;
         }
+        // Warn: hosting account key not using secret_reference
+        console.warn(
+          `[authCredential] hosting account "${hostingAccount.hosting_account_key}" has ` +
+          `api_key_storage_mode="${accountStorageMode}" — move to secret_reference.`
+        );
         contract.secret = String(hostingAccount.api_key_reference || "").trim();
         return contract;
       }
@@ -70,7 +117,7 @@ export function normalizeAuthContract({
       return contract;
     }
 
-    contract.secret = action.api_key_value || "";
+    contract.secret = resolveActionSecret(action);
     return contract;
   }
 
@@ -137,10 +184,11 @@ export function isGoogleApiHost(providerDomain = "") {
 
 export function getAdditionalStaticAuthHeaders(action = {}, authContract = {}) {
   const headerName = String(action.api_key_header_name || "").trim();
-  const headerValue = String(action.api_key_value || "").trim();
+  if (!headerName || headerName.toLowerCase() === "authorization") return {};
 
-  if (!headerName || !headerValue) return {};
-  if (headerName.toLowerCase() === "authorization") return {};
+  // Resolve via storage-mode-aware helper — never read raw api_key_value directly
+  const headerValue = resolveActionSecret(action);
+  if (!headerValue) return {};
 
   return { [headerName]: headerValue };
 }

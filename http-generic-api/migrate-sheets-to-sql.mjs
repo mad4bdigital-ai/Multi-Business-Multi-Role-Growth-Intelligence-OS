@@ -58,6 +58,17 @@ const IGNORE   = args.includes("--ignore");
 const tableArg = (args.find((a) => a.startsWith("--table=")) || "").replace("--table=", "").trim();
 const TARGET_TABLES = tableArg ? [tableArg] : Object.keys(TABLE_MAP);
 
+// ── AppScript-managed sheets ───────────────────────────────────────────────────
+// These sheets have Google AppScript writing to them for system enforcement events.
+// In merge mode they are treated as append-only from the migrator's perspective:
+// the migrator reads new rows from Sheets → SQL (insert only) but does NOT update
+// existing SQL rows, because AppScript may have modified them since last sync.
+// This prevents the migrator from overwriting AppScript-computed row edits with
+// stale SQL snapshots.
+const APPSCRIPT_MANAGED_SHEETS = new Set([
+  "Execution Log Unified",
+]);
+
 // ── Natural keys per sheet (sheet column name format) ─────────────────────────
 // Null = append-only (no stable natural key, skip in merge mode).
 const NATURAL_KEYS = {
@@ -115,16 +126,52 @@ async function getSheets() {
 }
 
 // ── Read one sheet ─────────────────────────────────────────────────────────────
+// Returns { rows, formulaColumns }.
+// formulaColumns: Set of column header names that contain formula cells in ANY
+// data row. These columns are excluded from merge-mode UPDATE payloads to avoid
+// overwriting live formula-computed values with stale SQL snapshots.
 async function readSheetRows(sheets, spreadsheetId, sheetName) {
-  const response = await sheets.spreadsheets.values.get({
+  const range = `${sheetName}!A:AZ`;
+
+  // Primary fetch — formatted computed values (what users see)
+  const valueRes = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${sheetName}!A:AZ`,
+    range,
+    valueRenderOption: "FORMATTED_VALUE",
   });
-  const values = response.data.values || [];
-  if (!values.length) return [];
+  const values = valueRes.data.values || [];
+  if (!values.length) return { rows: [], formulaColumns: new Set() };
 
   const header = values[0].map((v) => String(v || "").trim());
-  return values.slice(1)
+
+  // Secondary fetch — raw formula strings so we can detect formula-driven cells
+  let formulaValues = [];
+  try {
+    const formulaRes = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range,
+      valueRenderOption: "FORMULA",
+    });
+    formulaValues = formulaRes.data.values || [];
+  } catch {
+    // Non-fatal: skip formula detection if this workbook doesn't allow it
+  }
+
+  // Build set of columns that have at least one formula cell in any data row
+  const formulaColumns = new Set();
+  if (formulaValues.length > 1) {
+    const fHeader = formulaValues[0].map((v) => String(v || "").trim());
+    for (const fRow of formulaValues.slice(1)) {
+      fRow.forEach((cell, idx) => {
+        if (String(cell || "").startsWith("=")) {
+          const colName = fHeader[idx];
+          if (colName) formulaColumns.add(colName);
+        }
+      });
+    }
+  }
+
+  const rows = values.slice(1)
     .filter((row) => row.some((cell) => String(cell || "").trim() !== ""))
     .map((row) => {
       const record = {};
@@ -133,6 +180,8 @@ async function readSheetRows(sheets, spreadsheetId, sheetName) {
       });
       return record;
     });
+
+  return { rows, formulaColumns };
 }
 
 // ── Natural key helpers ────────────────────────────────────────────────────────
@@ -151,9 +200,9 @@ async function seedTable(sheets, sheetName) {
     return { sheetName, status: "skipped", reason: "no spreadsheet ID" };
   }
 
-  let sheetRows;
+  let sheetRows, formulaColumns;
   try {
-    sheetRows = await readSheetRows(sheets, spreadsheetId, sheetName);
+    ({ rows: sheetRows, formulaColumns } = await readSheetRows(sheets, spreadsheetId, sheetName));
   } catch (err) {
     return { sheetName, status: "error", reason: `Sheets read failed: ${err.message}` };
   }
@@ -162,8 +211,9 @@ async function seedTable(sheets, sheetName) {
     return { sheetName, status: "empty", rows: 0 };
   }
 
+  const formulaInfo = formulaColumns.size ? ` (${formulaColumns.size} formula columns detected)` : "";
   if (DRY_RUN) {
-    return { sheetName, status: "dry-run", rows: sheetRows.length };
+    return { sheetName, status: "dry-run", rows: sheetRows.length, note: formulaInfo || undefined };
   }
 
   if (TRUNCATE) {
@@ -176,7 +226,7 @@ async function seedTable(sheets, sheetName) {
 
   try {
     const inserted = await bulkInsertRows(sheetName, sheetRows, { ignore: IGNORE });
-    return { sheetName, status: "ok", rows: inserted };
+    return { sheetName, status: "ok", rows: inserted, note: formulaInfo || undefined };
   } catch (err) {
     return { sheetName, status: "error", reason: `SQL insert failed: ${err.message}` };
   }
@@ -193,15 +243,19 @@ async function mergeTable(sheets, sheetName) {
     return { sheetName, status: "skipped", reason: "no natural key defined" };
   }
 
+  // AppScript-managed sheets: insert new rows only, never update existing SQL rows.
+  // AppScript may have modified them since last sync and those edits must not be overwritten.
+  const appScriptManaged = APPSCRIPT_MANAGED_SHEETS.has(sheetName);
+
   const spreadsheetId = spreadsheetIdFor(sheetName);
   if (!spreadsheetId) {
     return { sheetName, status: "skipped", reason: "no spreadsheet ID" };
   }
 
   // Load Sheets rows
-  let sheetRows;
+  let sheetRows, formulaColumns;
   try {
-    sheetRows = await readSheetRows(sheets, spreadsheetId, sheetName);
+    ({ rows: sheetRows, formulaColumns } = await readSheetRows(sheets, spreadsheetId, sheetName));
   } catch (err) {
     return { sheetName, status: "error", reason: `Sheets read failed: ${err.message}` };
   }
@@ -242,8 +296,11 @@ async function mergeTable(sheets, sheetName) {
     }
   }
 
-  // Diff
-  const cols = SHEET_COLUMNS[TABLE_MAP[sheetName]] || [];
+  // Diff — exclude formula-driven columns from signature and update payload.
+  // Formula cells are computed live in Sheets; writing stale SQL snapshots back
+  // would destroy the formula. AppScript-managed sheets skip all updates entirely.
+  const allCols = SHEET_COLUMNS[TABLE_MAP[sheetName]] || [];
+  const diffCols = allCols.filter((c) => !formulaColumns.has(c));
   const toInsert = [];
   const toUpdate = [];
   let unchanged = 0;
@@ -254,16 +311,24 @@ async function mergeTable(sheets, sheetName) {
 
     if (!sqlRow) {
       toInsert.push(sheetRow);
-    } else {
-      const sheetSig = rowValuesSignature(sheetRow, cols);
-      const sqlSig   = rowValuesSignature(sqlRow, cols);
+    } else if (!appScriptManaged) {
+      // Only diff/update non-AppScript-managed sheets
+      const sheetSig = rowValuesSignature(sheetRow, diffCols);
+      const sqlSig   = rowValuesSignature(sqlRow, diffCols);
       if (sheetSig !== sqlSig) {
         toUpdate.push({ sheetRow, sqlId: sqlRow.id });
       } else {
         unchanged++;
       }
+    } else {
+      unchanged++;
     }
   }
+
+  const formulaNote = formulaColumns.size
+    ? ` | ${formulaColumns.size} formula cols excluded from diff`
+    : "";
+  const appScriptNote = appScriptManaged ? " | AppScript-managed: updates skipped" : "";
 
   const summary = {
     sheetName,
@@ -273,7 +338,8 @@ async function mergeTable(sheets, sheetName) {
     unchanged,
     conflicted: conflicts.length,
     conflicts: conflicts.length ? conflicts.slice(0, 5) : undefined,
-    dry_run: DRY_RUN
+    dry_run: DRY_RUN,
+    note: (formulaNote + appScriptNote) || undefined,
   };
 
   if (DRY_RUN) return summary;
@@ -287,7 +353,7 @@ async function mergeTable(sheets, sheetName) {
     }
   }
 
-  // Apply updates
+  // Apply updates (skipped for AppScript-managed sheets)
   for (const { sheetRow, sqlId } of toUpdate) {
     try {
       await updateRowById(sheetName, sheetRow, sqlId);

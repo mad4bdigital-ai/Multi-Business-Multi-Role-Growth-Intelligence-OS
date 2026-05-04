@@ -1,0 +1,370 @@
+openapi: 3.1.0
+info:
+  title: Google Analytics Admin API
+  version: 1.0.0
+  description: Importer-safe master schema for Google Analytics Admin API
+
+servers:
+  - url: https://analyticsadmin.googleapis.com
+
+components:
+  securitySchemes:
+    googleOAuth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
+          tokenUrl: https://oauth2.googleapis.com/token
+          scopes:
+            https://www.googleapis.com/auth/analytics.edit: Edit Google Analytics management entities
+            https://www.googleapis.com/auth/analytics.readonly: See and download your Google Analytics data
+            https://www.googleapis.com/auth/analytics.manage.users: Manage Google Analytics Account users by email address
+            https://www.googleapis.com/auth/analytics.manage.users.readonly: View Google Analytics user permissions
+            https://www.googleapis.com/auth/analytics.provision: Create a new Google Analytics account along with its default property and view
+            https://www.googleapis.com/auth/analytics: View and manage your Google Analytics data
+            https://www.googleapis.com/auth/analytics.user.deletion: Manage Google Analytics user deletion requests
+
+  schemas:
+    EmptyObject:
+      type: object
+      properties: {}
+      additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+            status:
+              type: string
+          additionalProperties: true
+      additionalProperties: true
+
+    Account:
+      type: object
+      properties:
+        name:
+          type: string
+        displayName:
+          type: string
+        regionCode:
+          type: string
+        createTime:
+          type: string
+        updateTime:
+          type: string
+        deleted:
+          type: boolean
+      additionalProperties: true
+
+    AccountListResponse:
+      type: object
+      properties:
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Account'
+        nextPageToken:
+          type: string
+      additionalProperties: true
+
+    Property:
+      type: object
+      properties:
+        name:
+          type: string
+        parent:
+          type: string
+        displayName:
+          type: string
+        propertyType:
+          type: string
+        industryCategory:
+          type: string
+        timeZone:
+          type: string
+        currencyCode:
+          type: string
+        serviceLevel:
+          type: string
+        createTime:
+          type: string
+        updateTime:
+          type: string
+        deleted:
+          type: boolean
+      additionalProperties: true
+
+    PropertyListResponse:
+      type: object
+      properties:
+        properties:
+          type: array
+          items:
+            $ref: '#/components/schemas/Property'
+        nextPageToken:
+          type: string
+      additionalProperties: true
+
+    DataSharingSettings:
+      type: object
+      properties:
+        name:
+          type: string
+      additionalProperties: true
+
+    DataStream:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        displayName:
+          type: string
+        createTime:
+          type: string
+        updateTime:
+          type: string
+      additionalProperties: true
+
+    DataStreamListResponse:
+      type: object
+      properties:
+        dataStreams:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataStream'
+        nextPageToken:
+          type: string
+      additionalProperties: true
+
+    MeasurementProtocolSecret:
+      type: object
+      properties:
+        name:
+          type: string
+        displayName:
+          type: string
+        secretValue:
+          type: string
+      additionalProperties: true
+
+    MeasurementProtocolSecretListResponse:
+      type: object
+      properties:
+        measurementProtocolSecrets:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeasurementProtocolSecret'
+        nextPageToken:
+          type: string
+      additionalProperties: true
+
+    FirebaseLink:
+      type: object
+      properties:
+        name:
+          type: string
+        project:
+          type: string
+      additionalProperties: true
+
+    FirebaseLinkListResponse:
+      type: object
+      properties:
+        firebaseLinks:
+          type: array
+          items:
+            $ref: '#/components/schemas/FirebaseLink'
+      additionalProperties: true
+
+    GoogleAdsLink:
+      type: object
+      properties:
+        name:
+          type: string
+        customerId:
+          type: string
+        canManageClients:
+          type: boolean
+        adsPersonalizationEnabled:
+          type: boolean
+      additionalProperties: true
+
+    GoogleAdsLinkListResponse:
+      type: object
+      properties:
+        googleAdsLinks:
+          type: array
+          items:
+            $ref: '#/components/schemas/GoogleAdsLink'
+      additionalProperties: true
+
+    CustomDimension:
+      type: object
+      properties:
+        name:
+          type: string
+        parameterName:
+          type: string
+        displayName:
+          type: string
+        description:
+          type: string
+        scope:
+          type: string
+        disallowAdsPersonalization:
+          type: boolean
+      additionalProperties: true
+
+    CustomDimensionListResponse:
+      type: object
+      properties:
+        customDimensions:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomDimension'
+        nextPageToken:
+          type: string
+      additionalProperties: true
+
+    CustomMetric:
+      type: object
+      properties:
+        name:
+          type: string
+        parameterName:
+          type: string
+        displayName:
+          type: string
+        description:
+          type: string
+        measurementUnit:
+          type: string
+        scope:
+          type: string
+      additionalProperties: true
+
+    CustomMetricListResponse:
+      type: object
+      properties:
+        customMetrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomMetric'
+        nextPageToken:
+          type: string
+      additionalProperties: true
+
+    AccessBinding:
+      type: object
+      properties:
+        name:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        members:
+          type: array
+          items:
+            type: string
+      additionalProperties: true
+
+    AccessBindingListResponse:
+      type: object
+      properties:
+        accessBindings:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessBinding'
+        nextPageToken:
+          type: string
+      additionalProperties: true
+
+    SKAdNetworkConversionValueSchema:
+      type: object
+      properties:
+        name:
+          type: string
+      additionalProperties: true
+
+    SKAdNetworkConversionValueSchemaListResponse:
+      type: object
+      properties:
+        skadnetworkConversionValueSchemas:
+          type: array
+          items:
+            $ref: '#/components/schemas/SKAdNetworkConversionValueSchema'
+      additionalProperties: true
+
+    SearchAds360Link:
+      type: object
+      properties:
+        name:
+          type: string
+        advertiserId:
+          type: string
+      additionalProperties: true
+
+    SearchAds360LinkListResponse:
+      type: object
+      properties:
+        searchAds360Links:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchAds360Link'
+      additionalProperties: true
+
+security:
+  - googleOAuth: []
+
+paths:
+  /v1beta/accounts:
+    get:
+      operationId: listAccounts
+      summary: List Analytics accounts
+      parameters:
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: pageToken
+          in: query
+          schema:
+            type: string
+        - name: showDeleted
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Accounts list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountListResponse'
+
+  /v1beta/properties/{propertyId}/searchAds360Links:
+    get:
+      operationId: listSearchAds360Links
+      summary: List Search Ads 360 links
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search Ads 360 links list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchAds360LinkListResponse'

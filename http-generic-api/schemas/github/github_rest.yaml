@@ -1,0 +1,1301 @@
+﻿openapi: 3.1.0
+info:
+  title: GitHub REST API - Compiled Canonical OpenAI Schema
+  version: '2026-04-27'
+  description: Compiled from canonical GitHub REST rows in API Actions Endpoint Registry
+    after cleanup. Excludes MCP, proxy-only, inactive, and cross-family rows.
+servers:
+- url: https://api.github.com
+security:
+- bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Use Authorization: Bearer <personal-access-token>.
+        For personal access tokens (classic), required scopes vary by endpoint.
+        Recommended request headers from GitHub REST docs include:
+        - Accept: application/vnd.github+json
+        - X-GitHub-Api-Version: 2022-11-28 (or your pinned supported version)
+        Do not embed a live token, token expiration date, or a fixed global scope set in this schema.
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        documentation_url:
+          type: string
+          format: uri
+    Repository:
+      type: object
+      additionalProperties: true
+    ContentItem:
+      type: object
+      additionalProperties: true
+    Blob:
+      type: object
+      additionalProperties: true
+    Reference:
+      type: object
+      additionalProperties: true
+    Tree:
+      type: object
+      additionalProperties: true
+    Commit:
+      type: object
+      additionalProperties: true
+    Issue:
+      type: object
+      additionalProperties: true
+    PullRequest:
+      type: object
+      additionalProperties: true
+    Comment:
+      type: object
+      additionalProperties: true
+  parameters:
+    owner:
+      name: owner
+      in: path
+      required: true
+      schema:
+        type: string
+    repo:
+      name: repo
+      in: path
+      required: true
+      schema:
+        type: string
+    path:
+      name: path
+      in: path
+      required: true
+      schema:
+        type: string
+    file_sha:
+      name: file_sha
+      in: path
+      required: true
+      schema:
+        type: string
+    tree_sha:
+      name: tree_sha
+      in: path
+      required: true
+      schema:
+        type: string
+    commit_sha:
+      name: commit_sha
+      in: path
+      required: true
+      schema:
+        type: string
+    pull_number:
+      name: pull_number
+      in: path
+      required: true
+      schema:
+        type: integer
+    issue_number:
+      name: issue_number
+      in: path
+      required: true
+      schema:
+        type: integer
+    branch:
+      name: branch
+      in: path
+      required: true
+      schema:
+        type: string
+    ref:
+      name: ref
+      in: path
+      required: true
+      schema:
+        type: string
+    basehead:
+      name: basehead
+      in: path
+      required: true
+      schema:
+        type: string
+  requestBodies:
+    CreateOrUpdateFileContents:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              content:
+                type: string
+                description: Base64-encoded content
+              sha:
+                type: string
+              branch:
+                type: string
+              committer:
+                type: object
+                additionalProperties: true
+              author:
+                type: object
+                additionalProperties: true
+            required:
+            - message
+            - content
+    DeleteFile:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              sha:
+                type: string
+              branch:
+                type: string
+              committer:
+                type: object
+                additionalProperties: true
+              author:
+                type: object
+                additionalProperties: true
+            required:
+            - message
+            - sha
+    CreateBlob:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              content:
+                type: string
+              encoding:
+                type: string
+                enum:
+                - utf-8
+                - base64
+            required:
+            - content
+            - encoding
+    CreateTree:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              base_tree:
+                type: string
+              tree:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    path:
+                      type: string
+                    mode:
+                      type: string
+                    type:
+                      type: string
+                    sha:
+                      type:
+                      - string
+                      - 'null'
+                    content:
+                      type: string
+                  required:
+                  - path
+                  - mode
+                  - type
+            required:
+            - tree
+    CreateCommit:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              tree:
+                type: string
+              parents:
+                type: array
+                items:
+                  type: string
+              author:
+                type: object
+                additionalProperties: true
+              committer:
+                type: object
+                additionalProperties: true
+            required:
+            - message
+            - tree
+            - parents
+    CreateReference:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              ref:
+                type: string
+              sha:
+                type: string
+            required:
+            - ref
+            - sha
+    UpdateReference:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              sha:
+                type: string
+              force:
+                type: boolean
+            required:
+            - sha
+    CreateIssue:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              title:
+                type: string
+              body:
+                type: string
+              assignees:
+                type: array
+                items:
+                  type: string
+              labels:
+                type: array
+                items:
+                  type:
+                  - string
+                  - integer
+              milestone:
+                type:
+                - integer
+                - 'null'
+            required:
+            - title
+    CreateIssueComment:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              body:
+                type: string
+            required:
+            - body
+    CreatePullRequest:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              title:
+                type: string
+              head:
+                type: string
+              base:
+                type: string
+              body:
+                type: string
+              draft:
+                type: boolean
+              maintainer_can_modify:
+                type: boolean
+            required:
+            - title
+            - head
+            - base
+    UpdatePullRequest:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              title:
+                type: string
+              body:
+                type: string
+              state:
+                type: string
+                enum:
+                - open
+                - closed
+              base:
+                type: string
+              maintainer_can_modify:
+                type: boolean
+    MergePullRequest:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              commit_title:
+                type: string
+              commit_message:
+                type: string
+              merge_method:
+                type: string
+                enum:
+                - merge
+                - squash
+                - rebase
+  responses:
+    defaultError:
+      description: GitHub API error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+paths:
+  /repos/{owner}/{repo}:
+    get:
+      summary: Get a repository
+      description: |
+        For personal access tokens (classic), use repo to access private repositories.
+        Public repository reads may work without authentication.
+      operationId: getRepository
+      tags:
+      - Repositories
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Repository'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+    delete:
+      summary: Delete a repository
+      description: |
+        Requires authentication and admin access.
+        For personal access tokens (classic), requires delete_repo.
+      operationId: deleteRepository
+      tags:
+      - Repositories
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Requires authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+  /user/repos:
+    get:
+      summary: List repositories for the authenticated user
+      description: |
+        Requires authentication.
+        For personal access tokens (classic), use public_repo or repo for public repositories,
+        and repo for private repositories.
+      operationId: listAuthenticatedUserRepos
+      tags:
+      - Repositories
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Repository'
+        '401':
+          description: Requires authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/defaultError'
+    post:
+      summary: Create a repository for the authenticated user
+      description: |
+        Requires authentication.
+        For personal access tokens (classic), use public_repo or repo to create a public repository,
+        and repo to create a private repository.
+      operationId: createAuthenticatedUserRepo
+      tags:
+      - Repositories
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Repository'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Requires authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation failed, or the endpoint has been spammed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '451':
+          description: Validation failed, or the endpoint has been spammed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/defaultError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                homepage:
+                  type: string
+                private:
+                  type: boolean
+                has_issues:
+                  type: boolean
+                has_projects:
+                  type: boolean
+                has_wiki:
+                  type: boolean
+                auto_init:
+                  type: boolean
+                gitignore_template:
+                  type: string
+                license_template:
+                  type: string
+              required:
+              - name
+  /repos/{owner}/{repo}/contents/{path}:
+    get:
+      summary: Get repository content
+      operationId: getFileContents
+      tags:
+      - Repository Contents
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/path'
+    put:
+      summary: Create or update file contents
+      description: |
+        For personal access tokens (classic), requires repo.
+        The workflow scope is also required in order to modify files in the .github/workflows directory.
+      operationId: createOrUpdateFileContents
+      tags:
+      - Repository Contents
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation failed, or the endpoint has been spammed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/path'
+      requestBody:
+        $ref: '#/components/requestBodies/CreateOrUpdateFileContents'
+    delete:
+      summary: Delete a file
+      description: |
+        For personal access tokens (classic), requires repo.
+        The workflow scope is also required in order to modify files in the .github/workflows directory.
+      operationId: deleteFile
+      tags:
+      - Repository Contents
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/path'
+      requestBody:
+        $ref: '#/components/requestBodies/DeleteFile'
+  /repos/{owner}/{repo}/git/blobs/{file_sha}:
+    get:
+      summary: Get a blob
+      operationId: getGitBlob
+      tags:
+      - Git Blobs
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blob'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/file_sha'
+  /repos/{owner}/{repo}/git/blobs:
+    post:
+      summary: Create a blob
+      operationId: createBlob
+      tags:
+      - Git Blobs
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blob'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      requestBody:
+        $ref: '#/components/requestBodies/CreateBlob'
+  /repos/{owner}/{repo}/git/trees/{tree_sha}:
+    get:
+      summary: Get a tree
+      operationId: getGitTree
+      tags:
+      - Git Trees
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tree'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/tree_sha'
+  /repos/{owner}/{repo}/git/trees:
+    post:
+      summary: Create a tree
+      operationId: createTree
+      tags:
+      - Git Trees
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tree'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      requestBody:
+        $ref: '#/components/requestBodies/CreateTree'
+  /repos/{owner}/{repo}/git/commits:
+    post:
+      summary: Create a commit
+      operationId: createCommit
+      tags:
+      - Git Commits
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Commit'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      requestBody:
+        $ref: '#/components/requestBodies/CreateCommit'
+  /repos/{owner}/{repo}/git/commits/{commit_sha}:
+    get:
+      summary: Get a commit object
+      operationId: getCommitObject
+      tags:
+      - Git Commits
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Commit'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/commit_sha'
+  /repos/{owner}/{repo}/git/ref/{ref}:
+    get:
+      summary: Get a reference
+      operationId: getReference
+      tags:
+      - Git References
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reference'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/ref'
+  /repos/{owner}/{repo}/git/ref/heads/{branch}:
+    get:
+      summary: Get Git ref head
+      operationId: getGitRefHead
+      tags:
+      - Git References
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reference'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/branch'
+  /repos/{owner}/{repo}/git/refs:
+    post:
+      summary: Create a reference
+      operationId: createBranchReference
+      tags:
+      - Git References
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reference'
+        '401':
+          description: Requires authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation failed, or the endpoint has been spammed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      requestBody:
+        $ref: '#/components/requestBodies/CreateReference'
+  /repos/{owner}/{repo}/git/refs/{ref}:
+    patch:
+      summary: Update a reference
+      operationId: updateReference
+      tags:
+      - Git References
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reference'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/ref'
+      requestBody:
+        $ref: '#/components/requestBodies/UpdateReference'
+    delete:
+      summary: Delete a reference
+      operationId: deleteReference
+      tags:
+      - Git References
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reference'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/ref'
+  /repos/{owner}/{repo}/git/matching-refs/{ref}:
+    get:
+      summary: List matching references
+      operationId: listMatchingReferences
+      tags:
+      - Git References
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reference'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/ref'
+  /repos/{owner}/{repo}/branches:
+    get:
+      summary: List branches
+      operationId: listBranches
+      tags:
+      - Branches
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reference'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+  /repos/{owner}/{repo}/branches/{branch}:
+    get:
+      summary: Get a branch
+      operationId: getBranchReference
+      tags:
+      - Branches
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reference'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/branch'
+  /repos/{owner}/{repo}/compare/{basehead}:
+    get:
+      summary: Compare commits
+      operationId: compareCommits
+      tags:
+      - Commits
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Commit'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/basehead'
+  /repos/{owner}/{repo}/issues:
+    get:
+      summary: List repository issues
+      operationId: listRepositoryIssues
+      tags:
+      - Issues
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+    post:
+      summary: Create an issue
+      description: |
+        Requires authentication.
+        For personal access tokens (classic), use repo for private repositories.
+        Public repositories generally work with public_repo.
+      operationId: createIssue
+      tags:
+      - Issues
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Requires authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation failed, or the endpoint has been spammed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      requestBody:
+        $ref: '#/components/requestBodies/CreateIssue'
+  /repos/{owner}/{repo}/issues/{issue_number}:
+    get:
+      summary: Get an issue
+      description: |
+        For personal access tokens (classic), use repo for private repositories.
+        Public repositories generally work with public_repo.
+      operationId: getIssue
+      tags:
+      - Issues
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/issue_number'
+  /repos/{owner}/{repo}/issues/{issue_number}/comments:
+    post:
+      summary: Create an issue comment
+      description: |
+        Requires authentication.
+        For personal access tokens (classic), use repo for private repositories.
+        Public repositories generally work with public_repo.
+      operationId: createIssueComment
+      tags:
+      - Issue Comments
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '401':
+          description: Requires authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation failed, or the endpoint has been spammed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/issue_number'
+      requestBody:
+        $ref: '#/components/requestBodies/CreateIssueComment'
+  /repos/{owner}/{repo}/pulls:
+    get:
+      summary: List pull requests
+      operationId: listPullRequests
+      tags:
+      - Pull Requests
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullRequest'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+    post:
+      summary: Create a pull request
+      description: |
+        Requires authentication.
+        For personal access tokens (classic), use repo for private repositories.
+        Public repositories generally work with public_repo.
+      operationId: createPullRequest
+      tags:
+      - Pull Requests
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullRequest'
+        '401':
+          description: Requires authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation failed, or the endpoint has been spammed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      requestBody:
+        $ref: '#/components/requestBodies/CreatePullRequest'
+  /repos/{owner}/{repo}/pulls/{pull_number}:
+    get:
+      summary: Get a pull request
+      description: |
+        For personal access tokens (classic), use repo for private repositories.
+        Public repositories generally work with public_repo.
+      operationId: getPullRequest
+      tags:
+      - Pull Requests
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullRequest'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/pull_number'
+    patch:
+      summary: Update a pull request
+      description: |
+        Requires authentication.
+        For personal access tokens (classic), use repo for private repositories.
+        Public repositories generally work with public_repo.
+      operationId: updatePullRequest
+      tags:
+      - Pull Requests
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullRequest'
+        '401':
+          description: Requires authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation failed, or the endpoint has been spammed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/pull_number'
+      requestBody:
+        $ref: '#/components/requestBodies/UpdatePullRequest'
+  /repos/{owner}/{repo}/pulls/{pull_number}/merge:
+    put:
+      summary: Merge a pull request
+      description: |
+        Requires authentication.
+        For personal access tokens (classic), use repo for private repositories.
+        Public repositories generally work with public_repo.
+      operationId: mergePullRequest
+      tags:
+      - Pull Requests
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullRequest'
+        '401':
+          description: Requires authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation failed, or the endpoint has been spammed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/defaultError'
+      parameters:
+      - $ref: '#/components/parameters/owner'
+      - $ref: '#/components/parameters/repo'
+      - $ref: '#/components/parameters/pull_number'
+      requestBody:
+        $ref: '#/components/requestBodies/MergePullRequest'

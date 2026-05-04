@@ -1,0 +1,1899 @@
+﻿openapi: 3.1.0
+info:
+  title: Google Sheets Assistant API
+  version: 3.1.0
+  description: "OpenAI Actions-optimized OpenAPI schema for Google Sheets.\n\nGoals:\n- Keep direct access to the native Google Sheets API for reading and writing values.\n- Keep native Google Sheets endpoints only.\n- Use spreadsheets.batchUpdate for structural, styling, filter, validation,\n  conditional formatting, named range, tab-management, and metadata operations.\n\nNotes:\n- This schema is native-only and does not include adapter/helper endpoints.\n- Structural actions should be passed as request objects inside the native\n  spreadsheets.batchUpdate endpoint.\n- Use fields masks on spreadsheet reads when possible to reduce payload size.\n- Use values endpoints for cell data and batchUpdate for non-value operations.\n- Added support for copyTo, DataFilter-based value operations, and developer metadata search.\n"
+servers:
+- url: https://sheets.googleapis.com
+  description: Google Sheets API
+security:
+- OAuth2:
+  - https://www.googleapis.com/auth/spreadsheets
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://accounts.google.com/o/oauth2/auth
+          tokenUrl: https://oauth2.googleapis.com/token
+          scopes:
+            https://www.googleapis.com/auth/spreadsheets: Full access to Google Sheets
+            https://www.googleapis.com/auth/spreadsheets.readonly: Read-only access to Google Sheets
+            https://www.googleapis.com/auth/drive.file: Access to files created or opened by the app
+  schemas:
+    ErrorResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        error:
+          type: object
+          additionalProperties: true
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+            status:
+              type: string
+            errors:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+                properties:
+                  domain:
+                    type: string
+                  reason:
+                    type: string
+                  message:
+                    type: string
+                  location:
+                    type: string
+                  locationType:
+                    type: string
+    Spreadsheet:
+      type: object
+      additionalProperties: true
+      properties:
+        spreadsheetId:
+          type: string
+        properties:
+          type: object
+          additionalProperties: true
+          properties:
+            title:
+              type: string
+            locale:
+              type: string
+            autoRecalc:
+              type: string
+            timeZone:
+              type: string
+        sheets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Sheet'
+        namedRanges:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        spreadsheetUrl:
+          type: string
+    Sheet:
+      type: object
+      additionalProperties: true
+      properties:
+        properties:
+          type: object
+          additionalProperties: true
+          properties:
+            sheetId:
+              type: integer
+            title:
+              type: string
+            index:
+              type: integer
+            sheetType:
+              type: string
+            hidden:
+              type: boolean
+            rightToLeft:
+              type: boolean
+            tabColorStyle:
+              type: object
+              additionalProperties: true
+            gridProperties:
+              type: object
+              additionalProperties: true
+              properties:
+                rowCount:
+                  type: integer
+                columnCount:
+                  type: integer
+                frozenRowCount:
+                  type: integer
+                frozenColumnCount:
+                  type: integer
+    SpreadsheetProperties:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+        locale:
+          type: string
+        timeZone:
+          type: string
+    CreateSpreadsheetRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        properties:
+          $ref: '#/components/schemas/SpreadsheetProperties'
+        sheets:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      example:
+        properties:
+          title: Marketing Ops Workbook
+          locale: en_US
+          timeZone: Africa/Cairo
+        sheets:
+        - properties:
+            title: Sheet1
+            gridProperties:
+              rowCount: 1000
+              columnCount: 26
+    ValueRange:
+      type: object
+      additionalProperties: true
+      properties:
+        range:
+          type: string
+        majorDimension:
+          type: string
+          enum:
+          - ROWS
+          - COLUMNS
+        values:
+          type: array
+          items:
+            type: array
+            items:
+              oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+              - type: 'null'
+    BatchGetValuesResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        spreadsheetId:
+          type: string
+        valueRanges:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValueRange'
+    UpdateValuesRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - values
+      properties:
+        majorDimension:
+          type: string
+          enum:
+          - ROWS
+          - COLUMNS
+          default: ROWS
+        values:
+          type: array
+          items:
+            type: array
+            items:
+              oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+              - type: 'null'
+    UpdateValuesResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        spreadsheetId:
+          type: string
+        updatedRange:
+          type: string
+        updatedRows:
+          type: integer
+        updatedColumns:
+          type: integer
+        updatedCells:
+          type: integer
+        updatedData:
+          $ref: '#/components/schemas/ValueRange'
+    BatchUpdateValuesRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - valueInputOption
+      - data
+      properties:
+        valueInputOption:
+          type: string
+          enum:
+          - RAW
+          - USER_ENTERED
+        includeValuesInResponse:
+          type: boolean
+        responseValueRenderOption:
+          type: string
+          enum:
+          - FORMATTED_VALUE
+          - UNFORMATTED_VALUE
+          - FORMULA
+        responseDateTimeRenderOption:
+          type: string
+          enum:
+          - SERIAL_NUMBER
+          - FORMATTED_STRING
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValueRange'
+    BatchUpdateValuesResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        spreadsheetId:
+          type: string
+        totalUpdatedRows:
+          type: integer
+        totalUpdatedColumns:
+          type: integer
+        totalUpdatedCells:
+          type: integer
+        totalUpdatedSheets:
+          type: integer
+        responses:
+          type: array
+          items:
+            $ref: '#/components/schemas/UpdateValuesResponse'
+    AppendValuesResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        spreadsheetId:
+          type: string
+        tableRange:
+          type: string
+        updates:
+          $ref: '#/components/schemas/UpdateValuesResponse'
+    ClearValuesRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+    ClearValuesResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        spreadsheetId:
+          type: string
+        clearedRange:
+          type: string
+    BatchClearValuesRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - ranges
+      properties:
+        ranges:
+          type: array
+          items:
+            type: string
+    BatchClearValuesResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        spreadsheetId:
+          type: string
+        clearedRanges:
+          type: array
+          items:
+            type: string
+    GridRange:
+      type: object
+      additionalProperties: false
+      properties:
+        sheetId:
+          type: integer
+        startRowIndex:
+          type: integer
+        endRowIndex:
+          type: integer
+        startColumnIndex:
+          type: integer
+        endColumnIndex:
+          type: integer
+      required:
+      - sheetId
+    DimensionRange:
+      type: object
+      additionalProperties: false
+      properties:
+        sheetId:
+          type: integer
+        dimension:
+          type: string
+          enum:
+          - ROWS
+          - COLUMNS
+        startIndex:
+          type: integer
+        endIndex:
+          type: integer
+      required:
+      - sheetId
+      - dimension
+      - startIndex
+      - endIndex
+    AddSheetRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        properties:
+          type: object
+          additionalProperties: true
+    UpdateSheetPropertiesRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        properties:
+          type: object
+          additionalProperties: true
+        fields:
+          type: string
+      required:
+      - properties
+      - fields
+    DeleteSheetRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        sheetId:
+          type: integer
+      required:
+      - sheetId
+    DuplicateSheetRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        sourceSheetId:
+          type: integer
+        insertSheetIndex:
+          type: integer
+        newSheetName:
+          type: string
+      required:
+      - sourceSheetId
+    RepeatCellRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        range:
+          $ref: '#/components/schemas/GridRange'
+        cell:
+          type: object
+          additionalProperties: true
+        fields:
+          type: string
+      required:
+      - range
+      - cell
+      - fields
+    SetBasicFilterRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        filter:
+          type: object
+          additionalProperties: true
+      required:
+      - filter
+    ClearBasicFilterRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        sheetId:
+          type: integer
+      required:
+      - sheetId
+    AutoResizeDimensionsRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        dimensions:
+          $ref: '#/components/schemas/DimensionRange'
+      required:
+      - dimensions
+    AddNamedRangeRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        namedRange:
+          type: object
+          additionalProperties: true
+      required:
+      - namedRange
+    DeleteNamedRangeRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        namedRangeId:
+          type: string
+      required:
+      - namedRangeId
+    AddConditionalFormatRuleRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        rule:
+          type: object
+          additionalProperties: true
+        index:
+          type: integer
+      required:
+      - rule
+      - index
+    UpdateConditionalFormatRuleRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        rule:
+          type: object
+          additionalProperties: true
+        index:
+          type: integer
+        newIndex:
+          type: integer
+      required:
+      - rule
+      - index
+    DeleteConditionalFormatRuleRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        sheetId:
+          type: integer
+        index:
+          type: integer
+      required:
+      - sheetId
+      - index
+    InsertDimensionRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        range:
+          $ref: '#/components/schemas/DimensionRange'
+        inheritFromBefore:
+          type: boolean
+      required:
+      - range
+    DeleteDimensionRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        range:
+          $ref: '#/components/schemas/DimensionRange'
+      required:
+      - range
+    UpdateBordersRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        range:
+          $ref: '#/components/schemas/GridRange'
+        top:
+          type: object
+          additionalProperties: true
+        bottom:
+          type: object
+          additionalProperties: true
+        left:
+          type: object
+          additionalProperties: true
+        right:
+          type: object
+          additionalProperties: true
+        innerHorizontal:
+          type: object
+          additionalProperties: true
+        innerVertical:
+          type: object
+          additionalProperties: true
+      required:
+      - range
+    FindReplaceRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        find:
+          type: string
+        replacement:
+          type: string
+        allSheets:
+          type: boolean
+        matchCase:
+          type: boolean
+      required:
+      - find
+      - replacement
+    DataFilter:
+      type: object
+      additionalProperties: true
+      description: Native Google Sheets DataFilter object.
+      properties:
+        a1Range:
+          type: string
+        gridRange:
+          $ref: '#/components/schemas/GridRange'
+        developerMetadataLookup:
+          $ref: '#/components/schemas/DeveloperMetadataLookup'
+    MatchedValueRange:
+      type: object
+      additionalProperties: true
+      properties:
+        valueRange:
+          $ref: '#/components/schemas/ValueRange'
+        dataFilters:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataFilter'
+    BatchGetValuesByDataFilterRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - dataFilters
+      properties:
+        dataFilters:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/DataFilter'
+        majorDimension:
+          type: string
+          enum:
+          - ROWS
+          - COLUMNS
+        valueRenderOption:
+          type: string
+          enum:
+          - FORMATTED_VALUE
+          - UNFORMATTED_VALUE
+          - FORMULA
+        dateTimeRenderOption:
+          type: string
+          enum:
+          - SERIAL_NUMBER
+          - FORMATTED_STRING
+    BatchGetValuesByDataFilterResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        spreadsheetId:
+          type: string
+        valueRanges:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatchedValueRange'
+    DataFilterValueRange:
+      type: object
+      additionalProperties: true
+      properties:
+        dataFilter:
+          $ref: '#/components/schemas/DataFilter'
+        majorDimension:
+          type: string
+          enum:
+          - ROWS
+          - COLUMNS
+        values:
+          type: array
+          items:
+            type: array
+            items:
+              oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+              - type: 'null'
+    BatchUpdateValuesByDataFilterRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - valueInputOption
+      - data
+      properties:
+        valueInputOption:
+          type: string
+          enum:
+          - RAW
+          - USER_ENTERED
+        includeValuesInResponse:
+          type: boolean
+        responseValueRenderOption:
+          type: string
+          enum:
+          - FORMATTED_VALUE
+          - UNFORMATTED_VALUE
+          - FORMULA
+        responseDateTimeRenderOption:
+          type: string
+          enum:
+          - SERIAL_NUMBER
+          - FORMATTED_STRING
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataFilterValueRange'
+    BatchClearValuesByDataFilterRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - dataFilters
+      properties:
+        dataFilters:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/DataFilter'
+    DeveloperMetadata:
+      type: object
+      additionalProperties: true
+      properties:
+        metadataId:
+          type: integer
+        metadataKey:
+          type: string
+        metadataValue:
+          type: string
+        visibility:
+          type: string
+          enum:
+          - DOCUMENT
+          - PROJECT
+        location:
+          type: object
+          additionalProperties: true
+    DeveloperMetadataLookup:
+      type: object
+      additionalProperties: true
+      properties:
+        metadataId:
+          type: integer
+        metadataKey:
+          type: string
+        metadataValue:
+          type: string
+        visibility:
+          type: string
+          enum:
+          - DOCUMENT
+          - PROJECT
+        locationType:
+          type: string
+        locationMatchingStrategy:
+          type: string
+    SearchDeveloperMetadataRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - dataFilters
+      properties:
+        dataFilters:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - developerMetadataLookup
+            properties:
+              developerMetadataLookup:
+                $ref: '#/components/schemas/DeveloperMetadataLookup'
+    SearchDeveloperMetadataResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        matchedDeveloperMetadata:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            properties:
+              developerMetadata:
+                $ref: '#/components/schemas/DeveloperMetadata'
+              dataFilters:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DataFilter'
+    CopySheetToAnotherSpreadsheetRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - destinationSpreadsheetId
+      properties:
+        destinationSpreadsheetId:
+          type: string
+    SheetsBatchUpdateRequestItem:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        properties:
+          addSheet:
+            $ref: '#/components/schemas/AddSheetRequestBody'
+        required:
+        - addSheet
+      - type: object
+        additionalProperties: false
+        properties:
+          updateSheetProperties:
+            $ref: '#/components/schemas/UpdateSheetPropertiesRequestBody'
+        required:
+        - updateSheetProperties
+      - type: object
+        additionalProperties: false
+        properties:
+          deleteSheet:
+            $ref: '#/components/schemas/DeleteSheetRequestBody'
+        required:
+        - deleteSheet
+      - type: object
+        additionalProperties: false
+        properties:
+          duplicateSheet:
+            $ref: '#/components/schemas/DuplicateSheetRequestBody'
+        required:
+        - duplicateSheet
+      - type: object
+        additionalProperties: false
+        properties:
+          repeatCell:
+            $ref: '#/components/schemas/RepeatCellRequestBody'
+        required:
+        - repeatCell
+      - type: object
+        additionalProperties: false
+        properties:
+          setBasicFilter:
+            $ref: '#/components/schemas/SetBasicFilterRequestBody'
+        required:
+        - setBasicFilter
+      - type: object
+        additionalProperties: false
+        properties:
+          clearBasicFilter:
+            $ref: '#/components/schemas/ClearBasicFilterRequestBody'
+        required:
+        - clearBasicFilter
+      - type: object
+        additionalProperties: false
+        properties:
+          autoResizeDimensions:
+            $ref: '#/components/schemas/AutoResizeDimensionsRequestBody'
+        required:
+        - autoResizeDimensions
+      - type: object
+        additionalProperties: false
+        properties:
+          addNamedRange:
+            $ref: '#/components/schemas/AddNamedRangeRequestBody'
+        required:
+        - addNamedRange
+      - type: object
+        additionalProperties: false
+        properties:
+          deleteNamedRange:
+            $ref: '#/components/schemas/DeleteNamedRangeRequestBody'
+        required:
+        - deleteNamedRange
+      - type: object
+        additionalProperties: false
+        properties:
+          addConditionalFormatRule:
+            $ref: '#/components/schemas/AddConditionalFormatRuleRequestBody'
+        required:
+        - addConditionalFormatRule
+      - type: object
+        additionalProperties: false
+        properties:
+          updateConditionalFormatRule:
+            $ref: '#/components/schemas/UpdateConditionalFormatRuleRequestBody'
+        required:
+        - updateConditionalFormatRule
+      - type: object
+        additionalProperties: false
+        properties:
+          deleteConditionalFormatRule:
+            $ref: '#/components/schemas/DeleteConditionalFormatRuleRequestBody'
+        required:
+        - deleteConditionalFormatRule
+      - type: object
+        additionalProperties: false
+        properties:
+          insertDimension:
+            $ref: '#/components/schemas/InsertDimensionRequestBody'
+        required:
+        - insertDimension
+      - type: object
+        additionalProperties: false
+        properties:
+          deleteDimension:
+            $ref: '#/components/schemas/DeleteDimensionRequestBody'
+        required:
+        - deleteDimension
+      - type: object
+        additionalProperties: false
+        properties:
+          updateBorders:
+            $ref: '#/components/schemas/UpdateBordersRequestBody'
+        required:
+        - updateBorders
+      - type: object
+        additionalProperties: false
+        properties:
+          findReplace:
+            $ref: '#/components/schemas/FindReplaceRequestBody'
+        required:
+        - findReplace
+    BatchUpdateSpreadsheetRequest:
+      type: object
+      additionalProperties: true
+      required:
+      - requests
+      properties:
+        includeSpreadsheetInResponse:
+          type: boolean
+        responseIncludeGridData:
+          type: boolean
+        responseRanges:
+          type: array
+          items:
+            type: string
+        requests:
+          type: array
+          description: Native Google Sheets batchUpdate requests. Each item should be a valid Google Sheets request object such as addSheet, updateSheetProperties, deleteSheet, duplicateSheet, insertDimension, deleteDimension, repeatCell, setBasicFilter, clearBasicFilter, addNamedRange, updateNamedRange, deleteNamedRange, addConditionalFormatRule, updateConditionalFormatRule, deleteConditionalFormatRule, findReplace, trimWhitespace, updateBorders, and other native request objects supported by Google Sheets batchUpdate.
+          items:
+            $ref: '#/components/schemas/SheetsBatchUpdateRequestItem'
+      example:
+        requests:
+        - addSheet:
+            properties:
+              title: New Tab
+              gridProperties:
+                rowCount: 1000
+                columnCount: 26
+    BatchUpdateSpreadsheetResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        spreadsheetId:
+          type: string
+        replies:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        updatedSpreadsheet:
+          $ref: '#/components/schemas/Spreadsheet'
+paths:
+  /v4/spreadsheets:
+    post:
+      operationId: createSpreadsheet
+      summary: Create a new spreadsheet
+      security:
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets
+      - OAuth2:
+        - https://www.googleapis.com/auth/drive.file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSpreadsheetRequest'
+      responses:
+        '200':
+          description: Spreadsheet created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Spreadsheet'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Permission denied or access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests or quota exhausted; retry with exponential backoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Standard Google API error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v4/spreadsheets/{spreadsheetId}:
+    get:
+      operationId: getSpreadsheet
+      summary: Get spreadsheet metadata and optional grid data
+      security:
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets.readonly
+      parameters:
+      - name: spreadsheetId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: ranges
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: includeGridData
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: fields
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Optional partial response field mask.
+      responses:
+        '200':
+          description: Spreadsheet retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Spreadsheet'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Permission denied or access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Spreadsheet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests or quota exhausted; retry with exponential backoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Standard Google API error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v4/spreadsheets/{spreadsheetId}:batchUpdate:
+    post:
+      operationId: batchUpdateSpreadsheet
+      summary: Apply native spreadsheet-level batch updates
+      description: Use raw Google Sheets batchUpdate requests for advanced operations.
+      security:
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets
+      parameters:
+      - name: spreadsheetId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdateSpreadsheetRequest'
+      responses:
+        '200':
+          description: Spreadsheet updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchUpdateSpreadsheetResponse'
+        '400':
+          description: Invalid batch update request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Permission denied or access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Spreadsheet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests or quota exhausted; retry with exponential backoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Standard Google API error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v4/spreadsheets/{spreadsheetId}/values/{range}:
+    get:
+      operationId: getSheetValues
+      summary: Read a single range of values
+      security:
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets.readonly
+      parameters:
+      - name: spreadsheetId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: range
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: majorDimension
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - ROWS
+          - COLUMNS
+      - name: valueRenderOption
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - FORMATTED_VALUE
+          - UNFORMATTED_VALUE
+          - FORMULA
+      - name: dateTimeRenderOption
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - SERIAL_NUMBER
+          - FORMATTED_STRING
+      responses:
+        '200':
+          description: Values retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValueRange'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Permission denied or access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Spreadsheet or range not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests or quota exhausted; retry with exponential backoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Standard Google API error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      operationId: updateSheetValues
+      summary: Update values in a single range
+      security:
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets
+      parameters:
+      - name: spreadsheetId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: range
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: valueInputOption
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - RAW
+          - USER_ENTERED
+      - name: includeValuesInResponse
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: responseValueRenderOption
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - FORMATTED_VALUE
+          - UNFORMATTED_VALUE
+          - FORMULA
+      - name: responseDateTimeRenderOption
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - SERIAL_NUMBER
+          - FORMATTED_STRING
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateValuesRequest'
+      responses:
+        '200':
+          description: Values updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateValuesResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Permission denied or access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Spreadsheet or range not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests or quota exhausted; retry with exponential backoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Standard Google API error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v4/spreadsheets/{spreadsheetId}/values:batchGet:
+    get:
+      operationId: batchGetSheetValues
+      summary: Read multiple ranges of values
+      security:
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets.readonly
+      parameters:
+      - name: spreadsheetId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: ranges
+        in: query
+        required: true
+        description: 'One or more A1 notation ranges. Serialized as repeated query params, for example: ?ranges=Sheet1!A1:B10&ranges=Sheet2!D1:D20'
+        style: form
+        explode: true
+        schema:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        examples:
+          twoRanges:
+            summary: Two separate ranges
+            value:
+            - Sheet1!A1:B10
+            - Sheet2!A1:A5
+      - name: majorDimension
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - ROWS
+          - COLUMNS
+      - name: valueRenderOption
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - FORMATTED_VALUE
+          - UNFORMATTED_VALUE
+          - FORMULA
+      - name: dateTimeRenderOption
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - SERIAL_NUMBER
+          - FORMATTED_STRING
+      responses:
+        '200':
+          description: Multiple ranges retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchGetValuesResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Permission denied or access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Spreadsheet or one or more ranges not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests or quota exhausted; retry with exponential backoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Standard Google API error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v4/spreadsheets/{spreadsheetId}/values:batchUpdate:
+    post:
+      operationId: batchUpdateSheetValues
+      summary: Update multiple ranges of values
+      security:
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets
+      parameters:
+      - name: spreadsheetId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdateValuesRequest'
+      responses:
+        '200':
+          description: Multiple ranges updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchUpdateValuesResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Permission denied or access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Spreadsheet or one or more ranges not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests or quota exhausted; retry with exponential backoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Standard Google API error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v4/spreadsheets/{spreadsheetId}/values/{range}:append:
+    post:
+      operationId: appendSheetValues
+      summary: Append values to a table-like range
+      security:
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets
+      parameters:
+      - name: spreadsheetId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: range
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: valueInputOption
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - RAW
+          - USER_ENTERED
+      - name: insertDataOption
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - OVERWRITE
+          - INSERT_ROWS
+      - name: includeValuesInResponse
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: responseValueRenderOption
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - FORMATTED_VALUE
+          - UNFORMATTED_VALUE
+          - FORMULA
+      - name: responseDateTimeRenderOption
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - SERIAL_NUMBER
+          - FORMATTED_STRING
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateValuesRequest'
+      responses:
+        '200':
+          description: Values appended successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppendValuesResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Permission denied or access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Spreadsheet or range not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests or quota exhausted; retry with exponential backoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Standard Google API error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v4/spreadsheets/{spreadsheetId}/values/{range}:clear:
+    post:
+      operationId: clearSheetValues
+      summary: Clear values from a single range
+      security:
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets
+      parameters:
+      - name: spreadsheetId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: range
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClearValuesRequest'
+      responses:
+        '200':
+          description: Values cleared successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClearValuesResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Permission denied or access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Spreadsheet or range not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests or quota exhausted; retry with exponential backoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Standard Google API error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v4/spreadsheets/{spreadsheetId}/values:batchClear:
+    post:
+      operationId: batchClearSheetValues
+      summary: Clear values from multiple ranges
+      security:
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets
+      parameters:
+      - name: spreadsheetId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchClearValuesRequest'
+      responses:
+        '200':
+          description: Values cleared successfully from multiple ranges
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchClearValuesResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Permission denied or access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Spreadsheet or one or more ranges not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests or quota exhausted; retry with exponential backoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Standard Google API error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v4/spreadsheets/{spreadsheetId}/sheets/{sheetId}:copyTo:
+    post:
+      operationId: copySheetToSpreadsheet
+      summary: Copy a sheet to another spreadsheet
+      security:
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets
+      - OAuth2:
+        - https://www.googleapis.com/auth/drive.file
+      parameters:
+      - name: spreadsheetId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: sheetId
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CopySheetToAnotherSpreadsheetRequest'
+      responses:
+        '200':
+          description: Sheet copied successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                properties:
+                  sheetId:
+                    type: integer
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Permission denied or access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Spreadsheet or sheet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests or quota exhausted; retry with exponential backoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Standard Google API error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v4/spreadsheets/{spreadsheetId}/values:batchGetByDataFilter:
+    post:
+      operationId: batchGetSheetValuesByDataFilter
+      summary: Read multiple ranges of values using DataFilters
+      security:
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets.readonly
+      parameters:
+      - name: spreadsheetId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchGetValuesByDataFilterRequest'
+      responses:
+        '200':
+          description: Values retrieved successfully using DataFilters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchGetValuesByDataFilterResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Permission denied or access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Spreadsheet or filtered target not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests or quota exhausted; retry with exponential backoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Standard Google API error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v4/spreadsheets/{spreadsheetId}/values:batchUpdateByDataFilter:
+    post:
+      operationId: batchUpdateSheetValuesByDataFilter
+      summary: Update multiple ranges of values using DataFilters
+      security:
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets
+      parameters:
+      - name: spreadsheetId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdateValuesByDataFilterRequest'
+      responses:
+        '200':
+          description: Values updated successfully using DataFilters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchUpdateValuesResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Permission denied or access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Spreadsheet or filtered target not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests or quota exhausted; retry with exponential backoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Standard Google API error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v4/spreadsheets/{spreadsheetId}/values:batchClearByDataFilter:
+    post:
+      operationId: batchClearSheetValuesByDataFilter
+      summary: Clear values from ranges using DataFilters
+      security:
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets
+      parameters:
+      - name: spreadsheetId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchClearValuesByDataFilterRequest'
+      responses:
+        '200':
+          description: Values cleared successfully using DataFilters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchClearValuesResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Permission denied or access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Spreadsheet or filtered target not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests or quota exhausted; retry with exponential backoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Standard Google API error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v4/spreadsheets/{spreadsheetId}/developerMetadata:search:
+    post:
+      operationId: searchDeveloperMetadata
+      summary: Search developer metadata in a spreadsheet
+      security:
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets
+      - OAuth2:
+        - https://www.googleapis.com/auth/spreadsheets.readonly
+      parameters:
+      - name: spreadsheetId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchDeveloperMetadataRequest'
+      responses:
+        '200':
+          description: Developer metadata search completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchDeveloperMetadataResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Permission denied or access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Spreadsheet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests or quota exhausted; retry with exponential backoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Standard Google API error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

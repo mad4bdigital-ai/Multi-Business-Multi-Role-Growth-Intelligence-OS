@@ -1,0 +1,81 @@
+﻿{
+  "config_name": "google_oauth_gpt_actions_configuration",
+  "version": "2026-03-24",
+  "purpose": "Reference configuration for GPT Actions Google OAuth binding. Do not store raw client secrets in sheets.",
+  "provider": "google",
+  "oauth": {
+    "authorization_url": "https://accounts.google.com/o/oauth2/auth",
+    "token_url": "https://oauth2.googleapis.com/token",
+    "privacy_policy_url": "https://policies.google.com/privacy",
+    "client_id": "${GOOGLE_OAUTH_CLIENT_ID}",
+    "client_secret": "${GOOGLE_OAUTH_CLIENT_SECRET}",
+    "secret_storage_type": "env_var",
+    "callback_url_ref": "ref:runtime:gpt_action_callback",
+    "binding_status": "embedded_ready"
+  },
+  "scopes_by_action_family": {
+    "google_sheets_api": [
+      "https://www.googleapis.com/auth/spreadsheets"
+    ],
+    "googleads_api": [
+      "https://www.googleapis.com/auth/adwords"
+    ],
+    "google_drive_api": [
+      "https://www.googleapis.com/auth/drive"
+    ],
+    "google_docs_api": [
+      "https://www.googleapis.com/auth/documents"
+    ],
+    "searchads360_api": [
+      "https://www.googleapis.com/auth/doubleclicksearch"
+    ],
+    "analytics_data_api": [
+      "https://www.googleapis.com/auth/analytics",
+      "https://www.googleapis.com/auth/analytics.readonly"
+    ],
+    "analytics_admin_api": [
+      "https://www.googleapis.com/auth/analytics",
+      "https://www.googleapis.com/auth/analytics.readonly",
+      "https://www.googleapis.com/auth/analytics.edit",
+      "https://www.googleapis.com/auth/analytics.manage.users",
+      "https://www.googleapis.com/auth/analytics.manage.users.readonly",
+      "https://www.googleapis.com/auth/analytics.provision"
+    ],
+    "searchconsole_api": [
+      "https://www.googleapis.com/auth/webmasters"
+    ],
+    "tagmanager_api": [
+      "https://www.googleapis.com/auth/tagmanager",
+      "https://www.googleapis.com/auth/tagmanager.edit.containers",
+      "https://www.googleapis.com/auth/tagmanager.manage.accounts",
+      "https://www.googleapis.com/auth/tagmanager.readonly",
+      "https://www.googleapis.com/auth/tagmanager.manage.users",
+      "https://www.googleapis.com/auth/tagmanager.delete.containers",
+      "https://www.googleapis.com/auth/tagmanager.edit.containerversions",
+      "https://www.googleapis.com/auth/tagmanager.publish"
+    ]
+  },
+  "registry_fields_to_add": [
+    "oauth_client_id_ref",
+    "oauth_client_secret_ref",
+    "oauth_secret_storage_type",
+    "oauth_binding_status",
+    "oauth_last_validated_at"
+  ],
+  "registry_reference_examples": {
+    "oauth_client_id_ref": "ref:secret:google_oauth_client_id",
+    "oauth_client_secret_ref": "ref:secret:google_oauth_client_secret",
+    "oauth_secret_storage_type": "gpt_action_secret_store",
+    "oauth_binding_status": "pending_bind"
+  },
+  "execution_gate": [
+    "openai_schema_ref defined",
+    "authentication_type defined",
+    "oauth urls defined",
+    "scopes defined",
+    "callback url defined",
+    "client secret bound externally"
+  ]
+}
+
+

@@ -1,0 +1,375 @@
+openapi: 3.1.0
+info:
+  title: Search Ads 360 Reporting API (Aligned Expanded Importer-Safe)
+  version: 0.0.0
+  description: |
+    Expanded, importer-safe OpenAPI 3.1 schema aligned to the Search Ads 360 Reporting API v0 surface.
+
+    Important:
+    - Search Ads 360 Reporting API is read-only and centered on reporting/search, field discovery,
+      customer discovery, and custom column metadata.
+    - This schema follows the real REST method layout and service families, while keeping request and
+      response payloads JSON-friendly for importers, connectors, and GPT Actions-style tools.
+    - It is not a byte-for-byte protobuf mirror. For exact parity, generate from the official discovery
+      or proto definitions.
+
+servers:
+  - url: https://searchads360.googleapis.com
+
+tags:
+  - name: Discovery
+  - name: Reporting
+  - name: Custom Columns
+  - name: Field Metadata
+  - name: Resources Catalog
+
+components:
+  securitySchemes:
+    googleOAuth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
+          tokenUrl: https://oauth2.googleapis.com/token
+          scopes:
+            https://www.googleapis.com/auth/doubleclicksearch: Access Search Ads 360 reporting data
+
+  parameters:
+    customerId:
+      name: customerId
+      in: path
+      required: true
+      description: Search Ads 360 customer ID without hyphens.
+      schema:
+        type: string
+
+    customColumnResourceName:
+      name: resourceName
+      in: path
+      required: true
+      description: Full custom column resource name, for example customers/1234567890/customColumns/987654321.
+      schema:
+        type: string
+        pattern: "^customers/.+/customColumns/.+$"
+
+    fieldResourceName:
+      name: resourceName
+      in: path
+      required: true
+      description: Full Search Ads 360 field resource name, for example searchAds360Fields/campaign.id.
+      schema:
+        type: string
+        pattern: "^searchAds360Fields/.+$"
+
+    loginCustomerId:
+      name: login-customer-id
+      in: header
+      required: false
+      description: Manager account customer ID without hyphens. Often needed when querying accounts under a manager hierarchy.
+      schema:
+        type: string
+
+    linkedCustomerId:
+      name: linked-customer-id
+      in: header
+      required: false
+      description: Optional linked customer ID header when required by the account context.
+      schema:
+        type: string
+
+    pageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+
+    pageToken:
+      name: pageToken
+      in: query
+      required: false
+      schema:
+        type: string
+
+    query:
+      name: query
+      in: query
+      required: false
+      description: Search Ads 360 query/filter string.
+      schema:
+        type: string
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+            status:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+          additionalProperties: true
+      additionalProperties: true
+
+    EmptyObject:
+      type: object
+      properties: {}
+      additionalProperties: false
+
+    ListAccessibleCustomersResponse:
+      type: object
+      properties:
+        resourceNames:
+          type: array
+          items:
+            type: string
+      required:
+        - resourceNames
+      additionalProperties: true
+
+    CustomColumnHeader:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        referencesMetrics:
+          type: boolean
+      additionalProperties: true
+
+    SearchAds360Field:
+      type: object
+      properties:
+        resourceName:
+          type: string
+        category:
+          type: string
+        selectable:
+          type: boolean
+        filterable:
+          type: boolean
+        sortable:
+          type: boolean
+        selectableWith:
+          type: array
+          items:
+            type: string
+        metrics:
+          type: array
+          items:
+            type: string
+        segments:
+          type: array
+          items:
+            type: string
+        dataType:
+          type: string
+        typeUrl:
+          type: string
+      additionalProperties: true
+
+    SearchSearchAds360FieldsRequest:
+      type: object
+      properties:
+        query:
+          type: string
+        pageSize:
+          type: integer
+        pageToken:
+          type: string
+      required:
+        - query
+      additionalProperties: true
+
+    SearchSearchAds360FieldsResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchAds360Field"
+        nextPageToken:
+          type: string
+      required:
+        - results
+      additionalProperties: true
+
+    CustomColumn:
+      type: object
+      properties:
+        resourceName:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        valueType:
+          type: string
+        referencesMetrics:
+          type: boolean
+        queryable:
+          type: boolean
+        referencedSystemColumns:
+          type: array
+          items:
+            type: string
+        renderType:
+          type: string
+      additionalProperties: true
+
+    ListCustomColumnsResponse:
+      type: object
+      properties:
+        customColumns:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomColumn"
+        nextPageToken:
+          type: string
+      required:
+        - customColumns
+      additionalProperties: true
+
+    SearchSearchAds360Request:
+      type: object
+      properties:
+        query:
+          type: string
+        pageSize:
+          type: integer
+        pageToken:
+          type: string
+        validateOnly:
+          type: boolean
+        summaryRowSetting:
+          type: string
+      required:
+        - query
+      additionalProperties: true
+
+    SearchAds360Row:
+      type: object
+      description: Generic row envelope for SA360 reporting results across queryable resources.
+      properties:
+        customer:
+          type: object
+          additionalProperties: true
+        campaign:
+          type: object
+          additionalProperties: true
+        metrics:
+          type: object
+          additionalProperties: true
+        segments:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+    SearchSearchAds360Response:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchAds360Row"
+        nextPageToken:
+          type: string
+        fieldMask:
+          type: string
+        summaryRow:
+          $ref: "#/components/schemas/SearchAds360Row"
+        customColumnHeaders:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomColumnHeader"
+      required:
+        - results
+      additionalProperties: true
+
+paths:
+  /v0/customers:listAccessibleCustomers:
+    get:
+      tags: [Discovery]
+      operationId: listAccessibleCustomers
+      summary: List accessible customers
+      description: Returns resource names of customers directly accessible by the authenticated user.
+      parameters:
+        - $ref: "#/components/parameters/loginCustomerId"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListAccessibleCustomersResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v0/customers/{customerId}/searchAds360:search:
+    post:
+      tags: [Reporting]
+      operationId: searchAds360Search
+      summary: Run a Search Ads 360 query
+      description: Returns all rows that match the search query.
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+        - $ref: "#/components/parameters/loginCustomerId"
+        - $ref: "#/components/parameters/linkedCustomerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchSearchAds360Request"
+      responses:
+        "200":
+          description: Query results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchSearchAds360Response"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+security:
+  - googleOAuth:
+      - https://www.googleapis.com/auth/doubleclicksearch
+
+x-alignment-notes:
+  basedOnVersion: v0
+  serviceEndpoint: https://searchads360.googleapis.com
+  includedRealServiceFamilies:
+    - CustomerService
+    - CustomColumnService
+    - SearchAds360FieldService
+    - SearchAds360Service
+  readOnly: true
+  queryableResourcesWithMetrics:
+    - ad_group
+    - ad_group_ad
+    - campaign
+    - customer
+    - keyword_view
+    - user_list
+    - visit

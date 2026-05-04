@@ -1,0 +1,92 @@
+﻿openapi: 3.1.0
+info:
+  title: SerpApi Search Service
+  version: 1.0.0
+  description: Use SerpApi to retrieve real-time Google search results in English or Arabic, supporting localization by region and language.
+servers:
+  - url: https://serpapi.com
+paths:
+  /search:
+    get:
+      summary: Perform a search using SerpApi
+      operationId: searchGoogle
+      parameters:
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+          description: ${SERPAPI_API_KEY}
+          example: YOUR_SERPAPI_KEY
+        - name: engine
+          in: query
+          required: true
+          defult: ${SERPAPI_API_KEY}
+          schema:
+            type: string
+            enum: [google]
+          example: google
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The keyword or query to search for
+          example: Desert Safari Dubai
+        - name: location
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Geo-location to emulate the search from
+          example: دري، الإمارات العربية المتحدة
+        - name: google_domain
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Google domain to use for the search
+          example: google.ae
+        - name: gl
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Country code (e.g., ae for UAE)
+          example: ae
+        - name: hl
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Language of search results (e.g., en, ar)
+          example: ar
+      responses:
+        '200':
+          description: A successful response with search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  organic_results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        position:
+                          type: integer
+                          description: Ranking position
+                        title:
+                          type: string
+                          description: Title of the search result
+                        link:
+                          type: string
+                          description: URL of the search result
+                        snippet:
+                          type: string
+                          description: Snippet/preview text from result
+        '400':
+          description: Bad Request – Missing or invalid parameters
+        '401':
+          description: Unauthorized – Invalid API key

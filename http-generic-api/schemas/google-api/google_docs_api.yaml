@@ -1,0 +1,680 @@
+openapi: 3.1.0
+info:
+  title: Google Docs API - Docs Scope
+  version: 2.0.0
+  description: "OpenAPI 3.1 schema for Google Docs document operations using the Google\
+    \ Docs API. This schema is intentionally scoped to native Google Docs document\
+    \ operations. All editing actions should be sent as request objects inside the\
+    \ native documents.batchUpdate endpoint.\nProduction notes: - Keep only native\
+    \ Google Docs endpoints. - Use fields masks and suggestionsViewMode only when\
+    \ needed. - Use documents.batchUpdate for insertText, replaceAllText, deleteContentRange,\n\
+    \  updateTextStyle, updateParagraphStyle, createParagraphBullets, insertTable,\n\
+    \  insertPageBreak, insertInlineImage, and similar edit operations.\n"
+servers:
+- url: https://docs.googleapis.com
+  description: Google Docs API
+security:
+- googleOAuth:
+  - https://www.googleapis.com/auth/documents
+- googleOAuth:
+  - https://www.googleapis.com/auth/drive
+- googleOAuth:
+  - https://www.googleapis.com/auth/drive.file
+components:
+  securitySchemes:
+    googleOAuth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
+          tokenUrl: https://oauth2.googleapis.com/token
+          scopes:
+            https://www.googleapis.com/auth/documents: Read and write Google Docs documents
+            https://www.googleapis.com/auth/documents.readonly: Read Google Docs documents
+            https://www.googleapis.com/auth/drive: Full Google Drive access
+            https://www.googleapis.com/auth/drive.file: Access to files created or opened by the app
+  schemas:
+    ErrorResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        error:
+          type: object
+          additionalProperties: true
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+            status:
+              type: string
+    Document:
+      type: object
+      additionalProperties: true
+      properties:
+        documentId:
+          type: string
+        title:
+          type: string
+        revisionId:
+          type: string
+        body:
+          type: object
+          additionalProperties: true
+        headers:
+          type: object
+          additionalProperties: true
+        footers:
+          type: object
+          additionalProperties: true
+        footnotes:
+          type: object
+          additionalProperties: true
+        namedStyles:
+          type: object
+          additionalProperties: true
+        lists:
+          type: object
+          additionalProperties: true
+        inlineObjects:
+          type: object
+          additionalProperties: true
+        positionedObjects:
+          type: object
+          additionalProperties: true
+        documentStyle:
+          type: object
+          additionalProperties: true
+        suggestedDocumentStyleChanges:
+          type: object
+          additionalProperties: true
+        suggestedNamedStylesChanges:
+          type: object
+          additionalProperties: true
+        tabs:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    CreateDocumentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          description: Title for the new document
+      required:
+      - title
+      example:
+        title: Meeting Notes
+    BatchUpdateRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        requests:
+          type: array
+          description: 'Array of Google Docs batchUpdate request objects. The Docs
+            API supports many request types such as insertText, updateTextStyle, insertTable,
+            replaceAllText, createParagraphBullets, deleteContentRange, insertInlineImage,
+            updateParagraphStyle, and more.
+
+
+            '
+          items:
+            $ref: '#/components/schemas/DocsBatchUpdateRequestItem'
+        writeControl:
+          type: object
+          additionalProperties: true
+          properties:
+            requiredRevisionId:
+              type: string
+            targetRevisionId:
+              type: string
+      required:
+      - requests
+      example:
+        requests:
+        - insertText:
+            location:
+              index: 1
+            text: Hello from the API
+    BatchUpdateResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        documentId:
+          type: string
+        replies:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        writeControl:
+          type: object
+          additionalProperties: true
+    DocsLocation:
+      type: object
+      additionalProperties: false
+      properties:
+        index:
+          type: integer
+      required:
+      - index
+    DocsRange:
+      type: object
+      additionalProperties: false
+      properties:
+        startIndex:
+          type: integer
+        endIndex:
+          type: integer
+      required:
+      - startIndex
+      - endIndex
+    InsertTextRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        location:
+          $ref: '#/components/schemas/DocsLocation'
+        text:
+          type: string
+      required:
+      - location
+      - text
+    ReplaceAllTextRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        containsText:
+          type: object
+          additionalProperties: false
+          properties:
+            text:
+              type: string
+            matchCase:
+              type: boolean
+          required:
+          - text
+        replaceText:
+          type: string
+      required:
+      - containsText
+      - replaceText
+    UpdateTextStyleRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        range:
+          $ref: '#/components/schemas/DocsRange'
+        textStyle:
+          type: object
+          additionalProperties: true
+        fields:
+          type: string
+      required:
+      - range
+      - textStyle
+      - fields
+    UpdateParagraphStyleRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        range:
+          $ref: '#/components/schemas/DocsRange'
+        paragraphStyle:
+          type: object
+          additionalProperties: true
+        fields:
+          type: string
+      required:
+      - range
+      - paragraphStyle
+      - fields
+    CreateParagraphBulletsRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        range:
+          $ref: '#/components/schemas/DocsRange'
+        bulletPreset:
+          type: string
+      required:
+      - range
+      - bulletPreset
+    InsertTableRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        rows:
+          type: integer
+        columns:
+          type: integer
+        location:
+          $ref: '#/components/schemas/DocsLocation'
+      required:
+      - rows
+      - columns
+      - location
+    InsertPageBreakRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        location:
+          $ref: '#/components/schemas/DocsLocation'
+      required:
+      - location
+    InsertInlineImageRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        location:
+          $ref: '#/components/schemas/DocsLocation'
+        uri:
+          type: string
+        objectSize:
+          type: object
+          additionalProperties: true
+      required:
+      - location
+      - uri
+    DeleteContentRangeRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        range:
+          $ref: '#/components/schemas/DocsRange'
+      required:
+      - range
+    InsertSectionBreakRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        location:
+          $ref: '#/components/schemas/DocsLocation'
+        sectionType:
+          type: string
+      required:
+      - location
+    CreateHeaderRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+        sectionBreakLocation:
+          $ref: '#/components/schemas/DocsLocation'
+    CreateFooterRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+        sectionBreakLocation:
+          $ref: '#/components/schemas/DocsLocation'
+    InsertFootnoteRequestBody:
+      type: object
+      additionalProperties: false
+      properties:
+        location:
+          $ref: '#/components/schemas/DocsLocation'
+      required:
+      - location
+    DocsBatchUpdateRequestItem:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        properties:
+          insertText:
+            $ref: '#/components/schemas/InsertTextRequestBody'
+        required:
+        - insertText
+      - type: object
+        additionalProperties: false
+        properties:
+          replaceAllText:
+            $ref: '#/components/schemas/ReplaceAllTextRequestBody'
+        required:
+        - replaceAllText
+      - type: object
+        additionalProperties: false
+        properties:
+          updateTextStyle:
+            $ref: '#/components/schemas/UpdateTextStyleRequestBody'
+        required:
+        - updateTextStyle
+      - type: object
+        additionalProperties: false
+        properties:
+          updateParagraphStyle:
+            $ref: '#/components/schemas/UpdateParagraphStyleRequestBody'
+        required:
+        - updateParagraphStyle
+      - type: object
+        additionalProperties: false
+        properties:
+          createParagraphBullets:
+            $ref: '#/components/schemas/CreateParagraphBulletsRequestBody'
+        required:
+        - createParagraphBullets
+      - type: object
+        additionalProperties: false
+        properties:
+          insertTable:
+            $ref: '#/components/schemas/InsertTableRequestBody'
+        required:
+        - insertTable
+      - type: object
+        additionalProperties: false
+        properties:
+          insertPageBreak:
+            $ref: '#/components/schemas/InsertPageBreakRequestBody'
+        required:
+        - insertPageBreak
+      - type: object
+        additionalProperties: false
+        properties:
+          insertInlineImage:
+            $ref: '#/components/schemas/InsertInlineImageRequestBody'
+        required:
+        - insertInlineImage
+      - type: object
+        additionalProperties: false
+        properties:
+          deleteContentRange:
+            $ref: '#/components/schemas/DeleteContentRangeRequestBody'
+        required:
+        - deleteContentRange
+      - type: object
+        additionalProperties: false
+        properties:
+          insertSectionBreak:
+            $ref: '#/components/schemas/InsertSectionBreakRequestBody'
+        required:
+        - insertSectionBreak
+      - type: object
+        additionalProperties: false
+        properties:
+          createHeader:
+            $ref: '#/components/schemas/CreateHeaderRequestBody'
+        required:
+        - createHeader
+      - type: object
+        additionalProperties: false
+        properties:
+          createFooter:
+            $ref: '#/components/schemas/CreateFooterRequestBody'
+        required:
+        - createFooter
+      - type: object
+        additionalProperties: false
+        properties:
+          insertFootnote:
+            $ref: '#/components/schemas/InsertFootnoteRequestBody'
+        required:
+        - insertFootnote
+paths:
+  /v1/documents:
+    post:
+      operationId: createDocument
+      summary: Create a new Google Doc
+      description: Creates a blank Google Doc with the provided title.
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/documents
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive
+      - googleOAuth:
+        - https://www.googleapis.com/auth/drive.file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDocumentRequest'
+      responses:
+        '200':
+          description: Document created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/documents/{documentId}:
+    get:
+      operationId: getDocument
+      summary: Get a Google Doc
+      description: Retrieves the specified Google Doc.
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/documents
+      - googleOAuth:
+        - https://www.googleapis.com/auth/documents.readonly
+      parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: The document ID
+      - name: suggestionsViewMode
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - DEFAULT_FOR_CURRENT_ACCESS
+          - SUGGESTIONS_INLINE
+          - PREVIEW_SUGGESTIONS_ACCEPTED
+          - PREVIEW_WITHOUT_SUGGESTIONS
+      - name: includeTabsContent
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: fields
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Optional partial response field mask.
+      responses:
+        '200':
+          description: Document retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/documents/{documentId}:batchUpdate:
+    post:
+      operationId: updateDocument
+      summary: Batch update a Google Doc
+      description: 'Applies one or more updates atomically to a document. If any request
+        is invalid, the entire batch fails and nothing is applied.
+
+
+        '
+      security:
+      - googleOAuth:
+        - https://www.googleapis.com/auth/documents
+      parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: The document ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdateRequest'
+            examples:
+              insertText:
+                summary: Insert text
+                value:
+                  requests:
+                  - insertText:
+                      location:
+                        index: 1
+                      text: Hello from the API
+              replaceAllText:
+                summary: Replace text everywhere
+                value:
+                  requests:
+                  - replaceAllText:
+                      containsText:
+                        text: TODO
+                        matchCase: false
+                      replaceText: DONE
+              updateTextStyle:
+                summary: Make a text range bold
+                value:
+                  requests:
+                  - updateTextStyle:
+                      range:
+                        startIndex: 1
+                        endIndex: 12
+                      textStyle:
+                        bold: true
+                      fields: bold
+              createParagraphBullets:
+                summary: Turn a paragraph range into bullets
+                value:
+                  requests:
+                  - createParagraphBullets:
+                      range:
+                        startIndex: 1
+                        endIndex: 40
+                      bulletPreset: BULLET_DISC_CIRCLE_SQUARE
+              insertTable:
+                summary: Insert a table at a location
+                value:
+                  requests:
+                  - insertTable:
+                      rows: 3
+                      columns: 4
+                      location:
+                        index: 1
+              insertPageBreak:
+                summary: Insert a page break
+                value:
+                  requests:
+                  - insertPageBreak:
+                      location:
+                        index: 20
+              insertInlineImage:
+                summary: Insert an inline image from a URI
+                value:
+                  requests:
+                  - insertInlineImage:
+                      location:
+                        index: 10
+                      uri: https://example.com/image.png
+              deleteContentRange:
+                summary: Delete a content range
+                value:
+                  requests:
+                  - deleteContentRange:
+                      range:
+                        startIndex: 10
+                        endIndex: 20
+              updateParagraphStyle:
+                summary: Change paragraph alignment
+                value:
+                  requests:
+                  - updateParagraphStyle:
+                      range:
+                        startIndex: 1
+                        endIndex: 40
+                      paragraphStyle:
+                        alignment: CENTER
+                      fields: alignment
+              insertSectionBreak:
+                summary: Insert a section break
+                value:
+                  requests:
+                  - insertSectionBreak:
+                      location:
+                        index: 25
+                      sectionType: NEXT_PAGE
+              insertFootnote:
+                summary: Insert a footnote
+                value:
+                  requests:
+                  - insertFootnote:
+                      location:
+                        index: 15
+      responses:
+        '200':
+          description: Document updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchUpdateResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

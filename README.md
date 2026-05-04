@@ -141,9 +141,18 @@ node migrate-sheets-to-sql.mjs --merge --apply
 
 # 6. Reconcile the Registry Surfaces Catalog (report only)
 node reconcile-catalog.mjs
+
+# 7. Tighten the DB: dedup natural keys, add UNIQUE constraints + indexes, TEXT->VARCHAR (dry-run)
+node tighten-db.mjs
+
+# 8. Apply DB tightening
+node tighten-db.mjs --apply
+
+# 9. Smoke test data flow across all 15 tables
+node smoke-test-data-flow.mjs
 ```
 
-Migration sequence for a fresh database: run `expand-schema.mjs --apply` first, then `migrate-sheets-to-sql.mjs --merge --apply`. For subsequent incremental syncs use `--merge --apply`; the migrator skips unchanged rows. For the execution log (append-only, no natural key) use seed mode without `--merge`.
+Migration sequence for a fresh database: run `expand-schema.mjs --apply` first, then `migrate-sheets-to-sql.mjs --merge --apply`, then `tighten-db.mjs --apply`. For subsequent incremental syncs use `--merge --apply`; the migrator skips unchanged rows. For the execution log (append-only, no natural key) use seed mode without `--merge`. Run `smoke-test-data-flow.mjs` after any migration or DB change to verify all 15 tables and their linkage chains.
 
 ### Connector and subsystem layer
 
@@ -173,7 +182,7 @@ Current state:
 - `http-generic-api/auth.js` - Google OAuth scope resolution, policy enforcement, and resilience helpers; fully wired
 - `http-generic-api/driveFileLoader.js` - schema and OAuth config loader with `supportsAllDrives: true` for shared-drive artifact reads
 - governed sink handling for `Execution Log Unified` and `JSON Asset Registry` is stable
-- 44+ test files passing with 800+ assertions: utility, job runner, execution routing, connectors, routes, activation bootstrap cache, Google Sheets chunking, sheets range drift, starter authority surfaces, transport governance, activation classification, activation response, governed activation runner, registry alignment validator, logic switching smoke, WordPress, AI resolvers, and SQL migration tooling (sqlAdapter TABLE_MAP completeness, column normalisation, duplicate detection, expand-schema dry-run guard)
+- 46+ test files passing with 800+ assertions: utility, job runner, execution routing, connectors, routes, activation bootstrap cache, Google Sheets chunking, sheets range drift, starter authority surfaces, transport governance, activation classification, activation response, governed activation runner, registry alignment validator, logic switching smoke, WordPress, AI resolvers, SQL migration tooling (sqlAdapter TABLE_MAP completeness, column normalisation, duplicate detection, expand-schema dry-run guard), and data-flow smoke test (all 15 SQL tables, route→workflow chain, UNIQUE constraint enforcement)
 - `/health` reports degraded dependency truth for Redis/BullMQ instead of assuming queue connectivity
 - async job submission returns `503` when the queue backend cannot accept work (safely rejects to prevent job loss)
 - runtime instances can run in API-only mode with `QUEUE_WORKER_ENABLED=FALSE`, or connect to Memorystore/Upstash/Hostinger Redis for background workers
@@ -286,7 +295,7 @@ The validated route requires `base_branch` and a different `branch`. It creates 
 All 9 upgrade phases are complete. The project is in a production-ready, fully governed state.
 
 For ongoing operations:
-- from `http-generic-api/`, run `npm test` after every code change (44+ test files, 800+ assertions)
+- from `http-generic-api/`, run `npm test` after every code change (46+ test files, 800+ assertions)
 - from `http-generic-api/`, run `npm run validate` to check architecture invariants
 - run `node validate-memory-schema.mjs` after memory schema changes
 - from `http-generic-api/`, run `npm run verify` (with `RUNTIME_BASE_URL`) after every deployment - see [`runtime_confirmation_procedure.md`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/runtime_confirmation_procedure.md>)
