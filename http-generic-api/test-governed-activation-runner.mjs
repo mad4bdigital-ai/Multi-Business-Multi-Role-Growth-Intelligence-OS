@@ -1,4 +1,7 @@
-import { runGovernedActivation } from "./governedActivationRunner.js";
+import {
+  resolveActivationBootstrapWorkbook,
+  runGovernedActivation
+} from "./governedActivationRunner.js";
 
 let passed = 0;
 let failed = 0;
@@ -25,10 +28,25 @@ const VALID_BOOTSTRAP_ROW = {
   github_branch: "main"
 };
 
+const EXPECTED_BOOTSTRAP_SPREADSHEET_ID = "1RV185rQo58pGppg27r81eD9hPE8pXPyBY1pfHANip4o";
+const EXPECTED_BOOTSTRAP_RANGE = "Activation Bootstrap Config!A2:J2";
+
+function bootstrapSpreadsheet(sheetTitle = "Activation Bootstrap Config") {
+  return {
+    ok: true,
+    data: {
+      sheets: [
+        { properties: { title: sheetTitle } }
+      ]
+    }
+  };
+}
+
 function fullDeps(overrides = {}) {
   return {
     attemptDrive: async () => ({ ok: true }),
     attemptSheets: async () => ({ ok: true }),
+    getSpreadsheet: async () => bootstrapSpreadsheet(),
     readBootstrapRow: async () => ({ ok: true, row: VALID_BOOTSTRAP_ROW }),
     attemptGitHub: async () => ({ ok: true }),
     ...overrides
@@ -117,6 +135,114 @@ section("GitHub bindings must come from bootstrap row only");
   assert("github binding endpoint_key from row", capturedBindings?.endpoint_key === "getRepositoryContent");
   assert("github binding owner from row", capturedBindings?.owner === "mad4bdigital-ai");
   assert("github binding repo from row", capturedBindings?.repo === "multi-business-multi-role-growth-intelligence-os");
+}
+
+section("activation uses direct bootstrap spreadsheet id before Drive discovery");
+{
+  let usedSpreadsheetId = null;
+  let usedRange = null;
+  let driveDiscoveryCalled = false;
+
+  const result = await runGovernedActivation(fullDeps({
+    listDriveFiles: async () => {
+      driveDiscoveryCalled = true;
+      return { ok: true, files: [{ id: "wrong-first-id" }] };
+    },
+    readBootstrapRow: async ({ spreadsheetId, range }) => {
+      usedSpreadsheetId = spreadsheetId;
+      usedRange = range;
+      return { ok: true, row: VALID_BOOTSTRAP_ROW };
+    }
+  }));
+
+  assert("direct bootstrap workbook id used", usedSpreadsheetId === EXPECTED_BOOTSTRAP_SPREADSHEET_ID, `got: ${usedSpreadsheetId}`);
+  assert("direct bootstrap range used", usedRange === EXPECTED_BOOTSTRAP_RANGE, `got: ${usedRange}`);
+  assert("broad Drive discovery not used before direct id", driveDiscoveryCalled === false);
+  assert("activation can continue", result.evidence?.bootstrap_row_read === true);
+}
+
+section("activation workbook resolution rejects first spreadsheet fallback");
+{
+  let rowReadCalled = false;
+  let driveDiscoveryCalled = false;
+
+  const result = await runGovernedActivation(fullDeps({
+    getSpreadsheet: async ({ spreadsheetId }) => ({
+      ok: false,
+      reason: "not_found",
+      spreadsheetId
+    }),
+    listDriveFiles: async () => {
+      driveDiscoveryCalled = true;
+      return {
+        ok: true,
+        files: [{ id: "1hX7a6RQzaJ1FP0z8xN9Krds4VluqilkSRAxYXHKR4sE" }]
+      };
+    },
+    readBootstrapRow: async () => {
+      rowReadCalled = true;
+      return { ok: true, row: VALID_BOOTSTRAP_ROW };
+    }
+  }));
+
+  assert("broad Drive discovery not used as fallback by default", driveDiscoveryCalled === false);
+  assert("wrong workbook row read never attempted", rowReadCalled === false);
+  assert("bootstrap workbook failure captured", result.evidence?.bootstrap_workbook_reason === "direct_activation_bootstrap_workbook_unreadable", JSON.stringify(result.evidence));
+  assert("activation remains non-active", result.runtime_classification?.activation_status !== "active", JSON.stringify(result.runtime_classification));
+}
+
+section("activation workbook missing bootstrap sheet blocks row read");
+{
+  let rowReadCalled = false;
+
+  const result = await runGovernedActivation(fullDeps({
+    getSpreadsheet: async () => bootstrapSpreadsheet("AllRoyalEgypt Publish Preparation Store"),
+    readBootstrapRow: async () => {
+      rowReadCalled = true;
+      return { ok: true, row: VALID_BOOTSTRAP_ROW };
+    }
+  }));
+
+  assert("missing Activation Bootstrap Config sheet blocks row read", rowReadCalled === false);
+  assert("missing sheet reason captured", result.evidence?.bootstrap_workbook_reason === "activation_bootstrap_sheet_missing", JSON.stringify(result.evidence));
+  assert("activation remains non-active", result.runtime_classification?.activation_status !== "active", JSON.stringify(result.runtime_classification));
+}
+
+section("resolveActivationBootstrapWorkbook requires exact direct workbook");
+{
+  let requestedSpreadsheetId = null;
+  const result = await resolveActivationBootstrapWorkbook({
+    expectedSpreadsheetId: EXPECTED_BOOTSTRAP_SPREADSHEET_ID,
+    getSpreadsheet: async ({ spreadsheetId }) => {
+      requestedSpreadsheetId = spreadsheetId;
+      return bootstrapSpreadsheet();
+    },
+    listDriveFiles: async () => {
+      throw new Error("Drive discovery must not run during direct-id success.");
+    }
+  });
+
+  assert("resolver requests configured spreadsheet id", requestedSpreadsheetId === EXPECTED_BOOTSTRAP_SPREADSHEET_ID, `got: ${requestedSpreadsheetId}`);
+  assert("resolver succeeds by direct id", result.ok === true, JSON.stringify(result));
+  assert("resolver reports direct_id_first", result.resolution_mode === "direct_id_first", JSON.stringify(result));
+}
+
+section("resolveActivationBootstrapWorkbook rejects unconstrained discovery fallback");
+{
+  let driveDiscoveryCalled = false;
+  const result = await resolveActivationBootstrapWorkbook({
+    expectedSpreadsheetId: EXPECTED_BOOTSTRAP_SPREADSHEET_ID,
+    allowFallbackDiscovery: true,
+    getSpreadsheet: async () => ({ ok: false, reason: "not_found" }),
+    listDriveFiles: async () => {
+      driveDiscoveryCalled = true;
+      return { ok: true, files: [{ id: "wrong-first-id" }] };
+    }
+  });
+
+  assert("unconstrained discovery does not run", driveDiscoveryCalled === false);
+  assert("unconstrained discovery is rejected", result.ok === false);
+  assert("fallback requires explicit constraints", result.reason === "activation_bootstrap_discovery_requires_explicit_constraints", JSON.stringify(result));
 }
 
 section("full provider chain → active");

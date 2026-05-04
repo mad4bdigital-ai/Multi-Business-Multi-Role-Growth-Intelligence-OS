@@ -1,4 +1,10 @@
 import { buildActivationEnvelope } from "./activationResponse.js";
+import {
+  ACTIVATION_BOOTSTRAP_CONFIG_RANGE,
+  ACTIVATION_BOOTSTRAP_CONFIG_SHEET,
+  ACTIVATION_BOOTSTRAP_SPREADSHEET_ID,
+  ALLOW_ACTIVATION_BOOTSTRAP_DISCOVERY_FALLBACK
+} from "./config.js";
 
 const ALLOWED_DRIVE_BINDING = Object.freeze({
   parent_action_key: "google_drive_api",
@@ -41,11 +47,95 @@ function resolveGithubBindings(row) {
   return { parent_action_key, endpoint_key, owner, repo, branch };
 }
 
+function spreadsheetSheets(spreadsheet) {
+  const data = spreadsheet?.data || spreadsheet?.spreadsheet || spreadsheet || {};
+  return Array.isArray(data.sheets) ? data.sheets : [];
+}
+
+function hasBootstrapSheet(spreadsheet, expectedSheetTitle = ACTIVATION_BOOTSTRAP_CONFIG_SHEET) {
+  const expected = String(expectedSheetTitle || "").trim();
+  return spreadsheetSheets(spreadsheet).some(
+    sheet => String(sheet?.properties?.title || "").trim() === expected
+  );
+}
+
+export async function resolveActivationBootstrapWorkbook({
+  getSpreadsheet,
+  listDriveFiles,
+  expectedSpreadsheetId = ACTIVATION_BOOTSTRAP_SPREADSHEET_ID,
+  expectedSheetTitle = ACTIVATION_BOOTSTRAP_CONFIG_SHEET,
+  allowFallbackDiscovery = ALLOW_ACTIVATION_BOOTSTRAP_DISCOVERY_FALLBACK
+} = {}) {
+  const spreadsheetId = String(expectedSpreadsheetId || "").trim();
+  if (!spreadsheetId) {
+    return {
+      ok: false,
+      reason: "missing_activation_bootstrap_spreadsheet_id",
+      allowFallbackDiscovery: false
+    };
+  }
+
+  if (typeof getSpreadsheet !== "function") {
+    return {
+      ok: false,
+      reason: "missing_activation_bootstrap_get_spreadsheet",
+      spreadsheetId,
+      fallback_permitted: false
+    };
+  }
+
+  const direct = await getSpreadsheet({ spreadsheetId });
+  if (direct?.ok) {
+    if (!hasBootstrapSheet(direct, expectedSheetTitle)) {
+      return {
+        ok: false,
+        reason: "activation_bootstrap_sheet_missing",
+        spreadsheetId,
+        fallback_permitted: false
+      };
+    }
+
+    return {
+      ok: true,
+      spreadsheetId,
+      resolution_mode: "direct_id_first",
+      fallback_used: false
+    };
+  }
+
+  if (!allowFallbackDiscovery) {
+    return {
+      ok: false,
+      reason: "direct_activation_bootstrap_workbook_unreadable",
+      spreadsheetId,
+      fallback_permitted: false,
+      direct_reason: direct?.reason || direct?.error?.code || ""
+    };
+  }
+
+  if (typeof listDriveFiles !== "function") {
+    return {
+      ok: false,
+      reason: "activation_bootstrap_discovery_unavailable",
+      spreadsheetId,
+      fallback_permitted: true
+    };
+  }
+
+  return {
+    ok: false,
+    reason: "activation_bootstrap_discovery_requires_explicit_constraints",
+    spreadsheetId,
+    fallback_permitted: true
+  };
+}
+
 /**
  * Runs the governed three-step provider chain:
  *   1. Google Drive  (parent_action_key: google_drive_api, endpoint_key: listDriveFiles)
  *   2. Google Sheets (parent_action_key: google_sheets_api, endpoint_key: getSpreadsheet|getSheetValues)
- *   3. Read Activation Bootstrap Config!A2:J2 → resolve GitHub bindings
+ *   3. Resolve direct bootstrap workbook ID, then read Activation Bootstrap Config!A2:J2
+ *      → resolve GitHub bindings
  *   4. GitHub        (parent_action_key/endpoint_key resolved from bootstrap row only)
  *
  * Each step records boolean evidence before classifying.
@@ -54,11 +144,22 @@ function resolveGithubBindings(row) {
  * deps must supply:
  *   attemptDrive()       → { ok, auth_failed? }
  *   attemptSheets()      → { ok, rate_limited?, auth_failed? }
- *   readBootstrapRow()   → { ok, row? }  row has github_* fields
+ *   getSpreadsheet({ spreadsheetId }) → { ok, data? } with sheets[].properties.title
+ *   readBootstrapRow({ spreadsheetId, range }) → { ok, row? } row has github_* fields
  *   attemptGitHub(bindings) → { ok, auth_failed? }
  */
 export async function runGovernedActivation(deps = {}) {
-  const { attemptDrive, attemptSheets, readBootstrapRow, attemptGitHub } = deps;
+  const {
+    attemptDrive,
+    attemptSheets,
+    readBootstrapRow,
+    attemptGitHub,
+    getSpreadsheet,
+    listDriveFiles,
+    expectedBootstrapSpreadsheetId = ACTIVATION_BOOTSTRAP_SPREADSHEET_ID,
+    bootstrapRange = ACTIVATION_BOOTSTRAP_CONFIG_RANGE,
+    allowBootstrapDiscoveryFallback = ALLOW_ACTIVATION_BOOTSTRAP_DISCOVERY_FALLBACK
+  } = deps;
   const evidence = blankEvidence();
 
   // ── Step 1: Google Drive ────────────────────────────────────────────────────
@@ -87,7 +188,25 @@ export async function runGovernedActivation(deps = {}) {
   evidence.sheets_ok = true;
 
   // ── Step 3: Bootstrap row ───────────────────────────────────────────────────
-  const bootstrapResult = await readBootstrapRow();
+  const workbookResult = await resolveActivationBootstrapWorkbook({
+    getSpreadsheet,
+    listDriveFiles,
+    expectedSpreadsheetId: expectedBootstrapSpreadsheetId,
+    allowFallbackDiscovery: allowBootstrapDiscoveryFallback
+  });
+  if (!workbookResult.ok) {
+    evidence.bootstrap_workbook_resolved = false;
+    evidence.bootstrap_workbook_reason = workbookResult.reason;
+    evidence.bootstrap_spreadsheet_id = workbookResult.spreadsheetId || "";
+    return { evidence, ...buildActivationEnvelope(evidence) };
+  }
+  evidence.bootstrap_workbook_resolved = true;
+  evidence.bootstrap_spreadsheet_id = workbookResult.spreadsheetId;
+
+  const bootstrapResult = await readBootstrapRow({
+    spreadsheetId: workbookResult.spreadsheetId,
+    range: bootstrapRange
+  });
   if (!bootstrapResult.ok || !bootstrapResult.row) {
     return { evidence, ...buildActivationEnvelope(evidence) };
   }
