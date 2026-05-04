@@ -88,6 +88,11 @@ function normalizeId(v) {
   return String(v || "").trim();
 }
 
+// Strip optional cell-range suffix: "Sheet Name!A1:Z" → "Sheet Name"
+function normalizeTabName(v) {
+  return String(v || "").trim().replace(/![A-Z0-9:]+$/i, "").trim();
+}
+
 function isTruthy(v) {
   const s = String(v || "").trim().toUpperCase();
   return s === "TRUE" || s === "YES" || s === "1";
@@ -223,6 +228,7 @@ async function main() {
     surface_name:          colIndex(catalogHeader, "surface_name"),
     worksheet_name:        colIndex(catalogHeader, "worksheet_name"),
     worksheet_gid:         colIndex(catalogHeader, "worksheet_gid"),
+    file_id:               colIndex(catalogHeader, "file_id"),
     active_status:         colIndex(catalogHeader, "active_status"),
     authority_status:      colIndex(catalogHeader, "authority_status"),
     required_for_execution:colIndex(catalogHeader, "required_for_execution"),
@@ -260,38 +266,71 @@ async function main() {
     const wn = normalizeId(r.worksheet_name);
     return wn.length > 0;
   });
-  const worksheetNames = new Set(worksheetRows.map((r) => normalizeId(r.worksheet_name)));
+  // worksheet_names scoped to the main registry workbook only (for unregistered-tab check)
+  const registryWorksheetNames = new Set(
+    worksheetRows
+      .filter((r) => !normalizeId(r.file_id) || normalizeId(r.file_id) === REGISTRY_ID)
+      .map((r) => normalizeTabName(r.worksheet_name))
+  );
 
-  // ── 3. Tabs not in catalog ─────────────────────────────────────────────────
-  const unregisteredTabs = tabNames.filter((name) => !worksheetNames.has(name));
+  // ── Pre-fetch tab lists for all referenced spreadsheets ───────────────────
+  const tabMapCache = { [REGISTRY_ID]: tabMap };
+  const foreignSpreadsheetIds = [...new Set(
+    worksheetRows
+      .map((r) => normalizeId(r.file_id))
+      .filter((id) => id && id !== REGISTRY_ID)
+  )];
+  if (foreignSpreadsheetIds.length) {
+    console.log(`  Fetching tabs from ${foreignSpreadsheetIds.length} additional workbook(s)...`);
+    for (const sid of foreignSpreadsheetIds) {
+      try {
+        tabMapCache[sid] = await getWorkbookTabs(sheets, sid);
+        console.log(`    ${sid} → ${Object.keys(tabMapCache[sid]).length} tabs`);
+      } catch (err) {
+        console.warn(`    ⚠ Could not read workbook ${sid}: ${err.message}`);
+        tabMapCache[sid] = {};
+      }
+    }
+  }
+
+  // Helper: resolve the tab map for a given catalog row
+  function tabMapFor(row) {
+    const sid = normalizeId(row.file_id) || REGISTRY_ID;
+    return tabMapCache[sid] || {};
+  }
+
+  // ── 3. Tabs not in catalog (registry workbook only) ────────────────────────
+  const unregisteredTabs = tabNames.filter((name) => !registryWorksheetNames.has(name));
 
   // ── 4. Catalog worksheet rows with missing tabs ────────────────────────────
   const missingTabRows = worksheetRows.filter((r) => {
-    return !tabMap[normalizeId(r.worksheet_name)];
+    return !tabMapFor(r)[normalizeTabName(r.worksheet_name)];
   });
   const missingRequired = missingTabRows.filter((r) => isTruthy(r.required_for_execution));
   const missingOptional = missingTabRows.filter((r) => !isTruthy(r.required_for_execution));
 
   // ── 5. GID mismatches (tab exists but GID differs) ────────────────────────
   const gidMismatches = worksheetRows.filter((r) => {
-    const wn = normalizeId(r.worksheet_name);
+    const wn = normalizeTabName(r.worksheet_name);
     const catalogGid = normalizeId(r.worksheet_gid);
-    if (!tabMap[wn] || !catalogGid) return false;
-    return catalogGid !== tabMap[wn].gid;
+    const tm = tabMapFor(r);
+    if (!tm[wn] || !catalogGid) return false;
+    return catalogGid !== tm[wn].gid;
   });
 
   // ── 6. Column count mismatches (for tabs that exist) ──────────────────────
   console.log("  Reading tab headers for column count comparison...");
   const columnCountMismatches = [];
 
-  const existingWorksheetRows = worksheetRows.filter((r) => tabMap[normalizeId(r.worksheet_name)]);
+  const existingWorksheetRows = worksheetRows.filter((r) => tabMapFor(r)[normalizeTabName(r.worksheet_name)]);
 
   for (const row of existingWorksheetRows) {
-    const tabName = normalizeId(row.worksheet_name);
+    const tabName = normalizeTabName(row.worksheet_name);
     const catalogCount = parseInt(normalizeId(row.expected_column_count), 10);
     if (!Number.isFinite(catalogCount) || catalogCount === 0) continue;
 
-    const liveHeader = await readTabHeader(sheets, REGISTRY_ID, tabName);
+    const sid = normalizeId(row.file_id) || REGISTRY_ID;
+    const liveHeader = await readTabHeader(sheets, sid, tabName);
     if (!liveHeader) continue;
 
     const liveCount = liveHeader.length;
@@ -359,9 +398,12 @@ async function main() {
   if (missingRequired.length) {
     console.log("");
     console.log("   ⚠  Required missing tabs — manual decision needed:");
-    console.log("      Options: create the tab, set required_for_execution=FALSE, or change surface_type to file/doc.");
+    console.log("      Options: set file_id to the correct workbook, create the tab,");
+    console.log("      set required_for_execution=FALSE, or change surface_type to file/doc.");
     missingRequired.slice(0, 15).forEach((r) => {
-      console.log(`   row ${String(r._rowIndex).padEnd(4)}  ${normalizeId(r.surface_id).padEnd(55)} ${normalizeId(r.worksheet_name)}`);
+      const sid = normalizeId(r.file_id);
+      const wb  = sid && sid !== REGISTRY_ID ? ` [workbook: ${sid}]` : "";
+      console.log(`   row ${String(r._rowIndex).padEnd(4)}  ${normalizeId(r.surface_id).padEnd(55)} ${normalizeTabName(r.worksheet_name)}${wb}`);
     });
     if (missingRequired.length > 15) {
       console.log(`   ... and ${missingRequired.length - 15} more`);
@@ -371,7 +413,9 @@ async function main() {
     console.log("");
     console.log("   Optional missing tabs (not required for execution):");
     missingOptional.slice(0, 10).forEach((r) => {
-      console.log(`   row ${String(r._rowIndex).padEnd(4)}  ${normalizeId(r.surface_id).padEnd(55)} ${normalizeId(r.worksheet_name)}`);
+      const sid = normalizeId(r.file_id);
+      const wb  = sid && sid !== REGISTRY_ID ? ` [workbook: ${sid}]` : "";
+      console.log(`   row ${String(r._rowIndex).padEnd(4)}  ${normalizeId(r.surface_id).padEnd(55)} ${normalizeTabName(r.worksheet_name)}${wb}`);
     });
     if (missingOptional.length > 10) {
       console.log(`   ... and ${missingOptional.length - 10} more`);
@@ -385,8 +429,9 @@ async function main() {
     console.log("   None.");
   } else {
     gidMismatches.forEach((r) => {
-      const wn = normalizeId(r.worksheet_name);
-      console.log(`   ${wn.padEnd(45)} catalog GID: ${normalizeId(r.worksheet_gid).padEnd(12)} live GID: ${tabMap[wn]?.gid}`);
+      const wn     = normalizeTabName(r.worksheet_name);
+      const liveGid = tabMapFor(r)[wn]?.gid ?? "?";
+      console.log(`   ${wn.padEnd(45)} catalog GID: ${normalizeId(r.worksheet_gid).padEnd(12)} live GID: ${liveGid}`);
     });
   }
   console.log("");
