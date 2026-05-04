@@ -42,6 +42,7 @@ const APPLY            = args.includes("--apply");
 const REFRESH_COLUMNS  = args.includes("--refresh-columns");
 const REGISTER_TABS    = args.includes("--register-tabs");
 const FIX_DUPLICATES   = args.includes("--fix-duplicates");
+const RETIRE_DELETED   = args.includes("--retire-deleted");
 const DRY_RUN          = !APPLY;
 
 const CATALOG_SHEET    = "Registry Surfaces Catalog";
@@ -96,6 +97,11 @@ function normalizeTabName(v) {
 function isTruthy(v) {
   const s = String(v || "").trim().toUpperCase();
   return s === "TRUE" || s === "YES" || s === "1";
+}
+
+const RETIRED_STATUSES = new Set(["retired", "deleted", "inactive", "archived", "deprecated"]);
+function isRetired(r) {
+  return RETIRED_STATUSES.has(String(r.active_status || "").trim().toLowerCase());
 }
 
 // ── Read catalog with row positions ───────────────────────────────────────────
@@ -191,6 +197,7 @@ async function main() {
       FIX_DUPLICATES  && "--fix-duplicates",
       REFRESH_COLUMNS && "--refresh-columns",
       REGISTER_TABS   && "--register-tabs",
+      RETIRE_DELETED  && "--retire-deleted",
     ].filter(Boolean);
     console.log(`Fixes     : ${fixes.join(", ") || "none specified — pass --refresh-columns and/or --register-tabs"}`);
   }
@@ -302,8 +309,9 @@ async function main() {
   // ── 3. Tabs not in catalog (registry workbook only) ────────────────────────
   const unregisteredTabs = tabNames.filter((name) => !registryWorksheetNames.has(name));
 
-  // ── 4. Catalog worksheet rows with missing tabs ────────────────────────────
+  // ── 4. Catalog worksheet rows with missing tabs (skip already-retired rows) ─
   const missingTabRows = worksheetRows.filter((r) => {
+    if (isRetired(r)) return false;
     return !tabMapFor(r)[normalizeTabName(r.worksheet_name)];
   });
   const missingRequired = missingTabRows.filter((r) => isTruthy(r.required_for_execution));
@@ -596,6 +604,30 @@ async function main() {
       } catch (err) {
         console.log(`  ✗ Registration failed: ${err.message}`);
       }
+    }
+    console.log("");
+  }
+
+  // Fix D: mark optional missing tabs as retired
+  if (RETIRE_DELETED) {
+    if (COL.active_status === null) {
+      console.log("  ✗ Cannot retire — active_status column not found in catalog header.");
+    } else if (missingOptional.length === 0) {
+      console.log("  ✓ Retire deleted tabs: nothing to update.");
+    } else {
+      console.log(`  Marking ${missingOptional.length} deleted optional tab(s) as retired...`);
+      let retired = 0;
+      for (const r of missingOptional) {
+        try {
+          await updateCell(sheets, REGISTRY_ID, CATALOG_SHEET, COL.active_status, r._rowIndex, "retired");
+          console.log(`  ✓  row ${r._rowIndex}  ${normalizeId(r.surface_id)}  active_status → retired`);
+          retired++;
+          totalWrites++;
+        } catch (err) {
+          console.log(`  ✗  row ${r._rowIndex}  ${normalizeId(r.surface_id)}: ${err.message}`);
+        }
+      }
+      console.log(`  Retired: ${retired}/${missingOptional.length}`);
     }
     console.log("");
   }
