@@ -349,6 +349,23 @@ export async function performUniversalServerWriteback(input = {}, deps = {}) {
     }
   }
 
+  // Non-blocking growth loop trigger evaluation (GAP 24)
+  const growthLoopResult = { triggered: false, trigger_keys: [] };
+  try {
+    if (typeof deps?.evaluateGrowthLoopTriggers === "function") {
+      const loopResult = await deps.evaluateGrowthLoopTriggers({
+        parent_action_key: input.parent_action_key,
+        endpoint_key: input.endpoint_key,
+        status,
+        score_after: input.score_after,
+        policies: input.policies
+      });
+      if (loopResult?.triggered) Object.assign(growthLoopResult, loopResult);
+    }
+  } catch (loopErr) {
+    console.warn("[growthLoop] Evaluation failed (non-blocking):", loopErr.message);
+  }
+
   const governedWriteState = {
     execution_log_surface_id: authoritativeRawExecutionLogSurfaceId,
     execution_log_sheet: executionLogUnifiedSheet,
@@ -395,7 +412,8 @@ export async function performUniversalServerWriteback(input = {}, deps = {}) {
     json_asset_write_allowed: assetHome.json_asset_allowed,
     artifact_json_asset_id: jsonAssetRow?.asset_id || "",
     artifact_drive_file_id: artifactPointer?.drive_file_id || "",
-    artifact_google_drive_link: artifactPointer?.google_drive_link || ""
+    artifact_google_drive_link: artifactPointer?.google_drive_link || "",
+    growth_loop_result: growthLoopResult
   };
 
   return {

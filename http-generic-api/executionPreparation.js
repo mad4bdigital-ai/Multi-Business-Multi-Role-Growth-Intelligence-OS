@@ -2,6 +2,8 @@ import { enforceBrandLiveMutationPreflight } from "./brandLiveMutationPreflight.
 import { buildGovernedExecutionContext } from "./governedContextResolution.js";
 import { loadPathResolverRowsForRequest } from "./pathResolverRowsLoader.js";
 
+const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
 export async function prepareExecutionRequest(input = {}, deps = {}) {
   const {
     requestPayload,
@@ -178,12 +180,27 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
   ensureWritePermissions(brand, resolvedMethodPath.method);
 
   const pathResolverLoad = await loadPathResolverRowsForRequest(requestPayload, deps);
+
+  // GAP 21: load task routes from DB when a loader is available.
+  let taskRouteRows = [];
+  if (typeof deps.loadTaskRouteRows === "function") {
+    try {
+      taskRouteRows = await deps.loadTaskRouteRows({
+        parent_action_key,
+        endpoint_key
+      });
+    } catch {
+      // Non-blocking — task_route context will show resolution_status: "not_loaded"
+    }
+  }
+
   const governedExecutionContext = buildGovernedExecutionContext({
     requestPayload,
     brand,
     endpoint,
     action,
-    pathResolverRows: pathResolverLoad.rows || {}
+    pathResolverRows: pathResolverLoad.rows || {},
+    taskRouteRows
   });
 
   debugLog(
@@ -224,6 +241,23 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
     err.status = 422;
     err.details = { validation_state: "blocked", blocked_reason: blockedReason };
     throw err;
+  }
+
+  // WordPress publish contract pre-execution enforcement (GAPs 16, 17, 18)
+  let wordpressPublishContractResult = { enforced: false };
+  if (
+    String(parent_action_key || "").trim() === "wordpress_api" &&
+    WRITE_METHODS.has(String(resolvedMethodPath?.method || "").toUpperCase())
+  ) {
+    const { enforceWordpressPublishContract } = await import("./wordpressPublishContractEnforcer.js");
+    wordpressPublishContractResult = enforceWordpressPublishContract({
+      parent_action_key,
+      endpoint,
+      resolvedMethodPath,
+      requestPayload,
+      brand,
+      governedExecutionContext
+    });
   }
 
   const brandMutationPreflight = enforceBrandLiveMutationPreflight({
@@ -431,6 +465,7 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
     placeholderResolutionSource,
     authContract,
     brandMutationPreflight,
+    wordpressPublishContractResult,
     governedExecutionContext,
     pathResolverLoad,
     schemaContract,

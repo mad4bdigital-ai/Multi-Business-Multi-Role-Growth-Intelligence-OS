@@ -445,19 +445,56 @@ export function validatePathResolutionContext(pathResolution = {}, requestPayloa
   }
 }
 
+// GAP 21: Task Routes resolution — surfaces matched task route from the MySQL
+// task_routes table rows loaded by the caller before context assembly.
+function buildTaskRouteContext({ requestPayload = {}, endpoint = {}, taskRouteRows = [] }) {
+  const parentActionKey = normalize(requestPayload.parent_action_key || endpoint.parent_action_key);
+  const endpointKey = normalize(requestPayload.endpoint_key || endpoint.endpoint_key);
+
+  if (!taskRouteRows.length) {
+    return {
+      requested: !!(parentActionKey || endpointKey),
+      resolution_status: "not_loaded",
+      matched_route: null,
+      surface: "surface.task_routes"
+    };
+  }
+
+  const matched = taskRouteRows.find(row =>
+    (!normalize(row.parent_action_key) || normalize(row.parent_action_key) === parentActionKey) &&
+    (!normalize(row.endpoint_key) || normalize(row.endpoint_key) === endpointKey)
+  );
+
+  return {
+    requested: !!(parentActionKey || endpointKey),
+    resolution_status: matched ? "matched" : "no_match",
+    matched_route: matched
+      ? {
+          route_key: normalize(matched.route_key),
+          workflow_key: normalize(matched.workflow_key),
+          parent_action_key: normalize(matched.parent_action_key),
+          endpoint_key: normalize(matched.endpoint_key)
+        }
+      : null,
+    surface: "surface.task_routes"
+  };
+}
+
 export function buildGovernedExecutionContext(input = {}) {
   const {
     requestPayload = {},
     brand = null,
     endpoint = {},
     action = {},
-    pathResolverRows = {}
+    pathResolverRows = {},
+    taskRouteRows = []
   } = input;
 
   const businessActivity = extractBusinessActivityContext(requestPayload);
   const logic = extractLogicContext(requestPayload);
   const brandContext = buildBrandContext({ requestPayload, brand, endpoint });
   const pathResolution = buildPathResolutionContext({ requestPayload, pathResolverRows });
+  const taskRoute = buildTaskRouteContext({ requestPayload, endpoint, taskRouteRows });
 
   validateBrandContext(brandContext);
   validateLogicContext(logic, requestPayload);
@@ -490,6 +527,7 @@ export function buildGovernedExecutionContext(input = {}) {
     },
     brand: brandContext,
     path_resolution: pathResolution,
+    task_route: taskRoute,
     logic,
     action: {
       parent_action_key: normalize(action.action_key || endpoint.parent_action_key),

@@ -71,6 +71,15 @@ async function loadWorkflowDef(workflow_key) {
   return rows[0] || null;
 }
 
+async function loadAction(action_key) {
+  if (!action_key) return null;
+  const [rows] = await getPool().query(
+    "SELECT action_key, runtime_capability_class FROM `actions` WHERE action_key = ? LIMIT 1",
+    [action_key]
+  );
+  return rows[0] || null;
+}
+
 // ── WordPress context builder ─────────────────────────────────────────────────
 
 function buildWpContext(brand) {
@@ -297,17 +306,22 @@ export async function dispatchPlan(plan_id, {
     };
   }
 
-  const [brand, connectedSystem, workflowDef] = await Promise.all([
+  const [brand, connectedSystem, workflowDef, actionRow] = await Promise.all([
     loadBrand(plan.brand_key || plan.target_key),
     loadConnectedSystem(plan.tenant_id, plan.brand_key || plan.target_key),
     loadWorkflowDef(plan.workflow_key),
+    loadAction(plan.workflow_key || plan.intent_key),
   ]);
 
   const isWordpress =
     brand?.auth_type === "basic_auth_app_password" ||
     connectedSystem?.connector_family === "wordpress";
 
-  const isMcp = connectedSystem?.connector_family === "make_mcp";
+  // GAP 6: runtime_capability_class from actions table is authoritative when
+  // connector_family is not set on the connected_systems row.
+  const isMcp =
+    connectedSystem?.connector_family === "make_mcp" ||
+    (!connectedSystem && actionRow?.runtime_capability_class === "mcp_connector");
 
   const connector_type = isWordpress ? "wordpress" : isMcp ? "mcp_connector" : "content_workflow";
   const service_mode   = plan.service_mode || "self_serve";

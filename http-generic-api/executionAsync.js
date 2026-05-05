@@ -171,6 +171,20 @@ export async function submitGenericExecutionJob(reqBody, requestedBy, idempotenc
     if (String(body.webhook_url || "").trim() && !normalizedWebhookUrl) {
       validationErrors.push("webhook_url must be a valid http or https URL when provided.");
     }
+    // GAP 13: webhook domain governance — reject if domain is not on the allowlist.
+    if (normalizedWebhookUrl && Array.isArray(deps.webhookAllowedDomains) && deps.webhookAllowedDomains.length) {
+      try {
+        const { hostname } = new URL(normalizedWebhookUrl);
+        const allowed = deps.webhookAllowedDomains.some(
+          pattern => hostname === pattern || hostname.endsWith(`.${pattern}`)
+        );
+        if (!allowed) {
+          validationErrors.push(`webhook_url domain '${hostname}' is not on the governed webhook domain allowlist.`);
+        }
+      } catch {
+        validationErrors.push("webhook_url could not be parsed for domain governance check.");
+      }
+    }
   }
 
   if (body.callback_secret !== undefined && typeof body.callback_secret !== "string") {
@@ -277,6 +291,32 @@ export async function submitGenericExecutionJob(reqBody, requestedBy, idempotenc
     callback_secret: String(body.callback_secret || "").trim(),
     idempotency_key: idempotencyKey
   };
+
+  // GAP 14: endpoint readiness probe — block submission if the target endpoint
+  // is not in a ready state (e.g., schema not validated, blocked, inventory-only).
+  if (typeof deps.checkEndpointReadiness === "function" && job.parent_action_key && job.endpoint_key) {
+    try {
+      const readiness = await deps.checkEndpointReadiness({
+        parent_action_key: job.parent_action_key,
+        endpoint_key: job.endpoint_key
+      });
+      if (readiness && readiness.execution_readiness && readiness.execution_readiness !== "ready") {
+        return {
+          status: 422,
+          body: {
+            ok: false,
+            error: {
+              code: "endpoint_not_ready",
+              message: `Endpoint '${job.endpoint_key}' is not ready for async execution.`,
+              details: { execution_readiness: readiness.execution_readiness, parent_action_key: job.parent_action_key }
+            }
+          }
+        };
+      }
+    } catch {
+      // Readiness probe failure is non-blocking — let the job proceed.
+    }
+  }
 
   jobRepository.set(job);
   if (idempotencyLookupKey) {
