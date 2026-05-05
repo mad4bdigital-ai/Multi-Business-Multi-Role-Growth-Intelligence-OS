@@ -11,25 +11,26 @@ export function buildLegalRoutes(deps) {
 # Privacy Policy
 *Effective Date: ${new Date().toISOString().split('T')[0]}*
 
-Welcome to Growth Intelligence Platform. Your privacy is critically important to us.
+Welcome to the Growth Intelligence Platform. Your privacy and data security are governed by our system architecture and data policies.
 
 ## 1. Information We Collect
-We collect information you provide directly to us when you use our platform, including account details, connected system configurations, and operational logs generated during workflow execution.
+We collect operational execution logs, platform telemetry, brand registry configurations, and the required credentials to interface with connected endpoints. This includes data necessary for managing multi-business and multi-role environments.
 
 ## 2. How We Use Information
-We use the information we collect to:
-- Provide, maintain, and improve our services
-- Execute governed workflows and API actions on your behalf
-- Monitor system health, detect anomalies, and prevent unauthorized access
+The collected information is used exclusively to:
+- Resolve AI execution paths and generate implementation plans.
+- Execute governed task manifests and automate integrations across your connected workflows.
+- Detect infrastructure drift and perform automated validation and repair operations.
+- Enforce strict HTTP execution governance and registry eligibility.
 
 ## 3. Data Storage and Security
-We implement robust, industry-standard security measures, including credential encryption and strict governance policies, to protect your data from unauthorized access or disclosure.
+System state and configuration data are persisted across designated authoritative surfaces (e.g., MySQL databases and Google Sheets). Execution traces are retained for operational auditability. Sensitive credentials are encrypted and accessed solely for authorized endpoint resolution.
 
-## 4. Third-Party Services
-Our platform integrates with various third-party services (e.g., Google Workspace, GitHub, OpenAI). Data shared with these services is strictly governed by the boundaries and permissions you define.
+## 4. Third-Party Integrations
+The platform extensively integrates with third-party providers including Google Workspace (Drive, Sheets), GitHub, hosting platforms (e.g., Hostinger), and AI model providers. Data processed through these connectors is subject to the boundaries defined by your platform administrators and the respective third-party privacy policies.
 
 ## 5. Contact Us
-If you have any questions about this Privacy Policy, please contact our support team.
+For questions or concerns regarding data governance, please contact your platform administrator or our support team.
       `.trim()
     });
   });
@@ -42,22 +43,22 @@ If you have any questions about this Privacy Policy, please contact our support 
 # Terms of Use
 *Effective Date: ${new Date().toISOString().split('T')[0]}*
 
-By accessing or using the Growth Intelligence Platform, you agree to be bound by these Terms of Use.
+By accessing or executing workflows on the Growth Intelligence Platform, you agree to these Terms of Use.
 
-## 1. Acceptable Use
-You agree to use the platform solely for lawful purposes and in accordance with your organization's internal governance policies.
+## 1. Acceptable Use and Governance
+You agree to operate within your assigned actor roles and execution boundaries. You must strictly adhere to the HTTP Execution Governance policies, registry constraints, and endpoint execution eligibility rules defined in the system.
 
-## 2. User Responsibilities
-You are responsible for maintaining the confidentiality of your credentials and for all activities that occur under your account. You must ensure that any connected APIs or external systems comply with their respective terms of service.
+## 2. AI and Automated Execution
+The platform utilizes AI resolvers to generate implementation plans and execute automated task manifests. You are responsible for reviewing, validating, and authorizing these automated changes where mandated by your organizational execution policies.
 
-## 3. Intellectual Property
-All rights, title, and interest in and to the platform (excluding user-provided data) remain the exclusive property of Growth Intelligence Platform and its licensors.
+## 3. Connected Systems
+You represent that you hold the necessary authorization for all external APIs, repositories (e.g., GitHub), and hosting environments (e.g., Hostinger, WordPress) connected to the platform. Bypassing transport governance, schema validations, or registry routing layers is strictly prohibited.
 
-## 4. Limitation of Liability
-In no event shall we be liable for any indirect, incidental, special, consequential, or punitive damages arising out of or related to your use of the platform.
+## 4. Intellectual Property
+The Growth Intelligence Platform's architecture, AI resolvers, and operational codebase remain our exclusive intellectual property. All business assets, content, and data defined within your Brand Registry remain yours.
 
-## 5. Modifications
-We reserve the right to modify these Terms at any time. Continued use of the platform constitutes your acceptance of the revised Terms.
+## 5. Limitation of Liability
+The platform is provided to automate complex operational workflows. We make no guarantees regarding uninterrupted system availability or zero-drift operations. We are not liable for execution failures, third-party API rate limits, or consequences arising from misconfigured governance rules.
       `.trim()
     });
   });
