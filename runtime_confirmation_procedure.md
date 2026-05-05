@@ -75,6 +75,8 @@ In Google Sheets, verify:
 - [ ] `Execution Log Unified` received at least one writeback row since deployment
 - [ ] No policy rows contain unsupported custom literals that would bypass normalization
 
+For activation confirmation, do not stop at `/health`, `/status`, release readiness, tenant listing, or count routes. Those checks prove diagnostics only. Activation confirmation requires Drive validation, Sheets bootstrap row readback for `Activation Bootstrap Config!A2:J2`, and GitHub validation using bootstrap/registry-resolved keys.
+
 ---
 
 ## Step 5 — Record final parity result
@@ -103,6 +105,7 @@ If `verify-runtime.mjs` fails, classify the failure using the drift table in [`d
 |---|---|
 | `GET /health` 0 / unreachable | Check process is running and port is open |
 | `GET /health` 500 | Check startup logs for module load errors |
+| Health/status pass but Drive or Sheets bootstrap was skipped | Treat activation as degraded; run the provider bootstrap chain |
 | Dry-run 500 with ReferenceError | Revert to last passing commit, check extracted module imports |
 | Dispatch returns unexpected shape | Check `dispatchEndpointKeyExecution` wiring in `jobRunner.js` |
 | Job status not a known value | Check `normalizeJobStatus` in `jobUtils.js` |

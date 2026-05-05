@@ -40,6 +40,24 @@ Execution is expected to be:
 
 Execution without validation evidence is not considered complete.
 
+## Activation alignment rule
+
+Conversation or Custom GPT activation must follow the provider bootstrap chain, not just health diagnostics:
+
+1. health may prove transport reachability only
+2. Drive probe: `google_drive_api:listDriveFiles`
+3. Sheets probe: `google_sheets_api:getSpreadsheet` or `getSheetValues`
+4. bootstrap row: `Activation Bootstrap Config!A2:J2`
+5. GitHub validation using bootstrap/registry-resolved action and endpoint keys
+
+Health, `/status`, release-readiness, tenant listing, brand counts, and action counts are diagnostics only. They must not replace Drive, Sheets bootstrap, or GitHub probes. If Drive or Sheets is skipped while activation tooling is available, classify activation as degraded with `missing_required_provider_bootstrap_attempt`.
+
+`hard_activation_wrapper` is a routing label only. It must never be sent as a provider `parent_action_key`.
+
+Google auth ownership:
+- platform-owned registry/bootstrap Drive and Sheets files use managed service account ADC
+- user-owned Drive/Sheets files or user-connected input sources use refresh-token auth, for example `GOOGLE_AUTH_MODE=refresh_token`
+
 ## Architecture overview
 
 ### Canonical governance layer
@@ -185,8 +203,8 @@ Current state:
 - `/health` reports degraded dependency truth for Redis/BullMQ instead of assuming queue connectivity
 - async job submission returns `503` when the queue backend cannot accept work (safely rejects to prevent job loss)
 - runtime instances can run in API-only mode with `QUEUE_WORKER_ENABLED=FALSE`, or connect to Memorystore/Upstash/Hostinger Redis for background workers
-- `All 19 actions are runtime_callable with correct auth modes: api_key_query, bearer_token, google_oauth2, google_ads_oauth2, per_target_credentials, mcp_connector`
-- `googleAuthTokenResolver.js — shared Google OAuth2 token cache; pre-warmed at server start; supports service account file, inline SA JSON, or GOOGLE_REFRESH_TOKEN user OAuth fallback`
+- `All 19 actions are runtime_callable with correct auth modes: api_key_query, bearer_token, google_oauth2, google_ads_oauth2, per_target_credentials, managed_service_account_adc, mcp_connector`
+- `googleAuthTokenResolver.js` - shared Google token cache; platform bootstrap uses managed service account ADC, while user-owned Drive/Sheets input sources use refresh-token auth
 - `connectorExecutor.js — MCP connector branch added: plans with connected_system.connector_family=make_mcp dispatch to dispatchMcpConnector() via JSON-RPC 2.0 to Make MCP stateless endpoint`
 
 ## Upgrade direction
@@ -251,6 +269,8 @@ Do not edit generated root canonical files directly. The authoritative canonical
 
 - Read canonicals before proposing major runtime changes.
 - Do not treat README text as authority when canonicals disagree.
+- Keep `Top Level Instructions.md`, canonical sources, README, and structure docs aligned when activation/auth behavior changes.
+- Do not use health/status/readiness/count routes as proof of provider activation.
 - Preserve governed terminology and explicit status classification.
 - Treat logging and writeback as part of execution, not afterthoughts.
 - Prefer validation evidence over narrative certainty.

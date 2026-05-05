@@ -205,6 +205,22 @@ Owns:
 
 ## 4. Registry and governed-write boundaries
 
+### Activation evidence boundary
+
+Activation readiness spans transport, provider bootstrap, registry authority, and canonical guidance. Health and status routes are diagnostics only.
+
+Required provider bootstrap evidence:
+- Drive probe through `http_generic_api` with `parent_action_key=google_drive_api`
+- Sheets probe through `http_generic_api` with `parent_action_key=google_sheets_api`
+- readback of `Activation Bootstrap Config!A2:J2`
+- GitHub validation only after bootstrap row resolution, using bootstrap/registry-resolved action and endpoint keys
+
+Boundary rules:
+- `hard_activation_wrapper` and `system_auto_bootstrap` are routing labels, not provider action keys
+- `/health`, `/status`, release readiness, tenant listing, brand counts, and action counts must not replace provider bootstrap evidence
+- if Drive or Sheets is skipped while activation tooling is available, activation remains degraded with `missing_required_provider_bootstrap_attempt`
+- platform-owned bootstrap files use managed service account ADC; user-owned Drive/Sheets input sources use refresh-token auth
+
 ### Google client boundary
 
 - [`http-generic-api/googleSheets.js`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api/googleSheets.js>)
@@ -214,6 +230,20 @@ Owns:
 - range reads
 - sheet creation/header assurance
 - live sheet shape inspection
+
+### Google auth token boundary
+
+- [`http-generic-api/googleAuthTokenResolver.js`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api/googleAuthTokenResolver.js>)
+
+Owns:
+- managed service account ADC token resolution for platform-owned registry/bootstrap files
+- refresh-token token resolution for user-owned Drive/Sheets files and connected input sources
+- token caching and refresh behavior used by governed Google Workspace actions
+
+Must not:
+- treat refresh-token OAuth as the universal Google path
+- repair platform-owned activation by generating a user refresh token
+- accept caller-supplied Authorization headers for governed Google activation
 
 ### Registry read-model boundary
 
