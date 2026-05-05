@@ -36,12 +36,18 @@ function statusLabel(s) {
 }
 
 async function gatherStatus() {
-  const pool = getPool();
   const now = new Date().toISOString();
 
   // 1. DB ping
   let dbOk = false;
-  try { await pool.query("SELECT 1"); dbOk = true; } catch { /* db down */ }
+  let pool = null;
+  try {
+    pool = getPool();
+    await pool.query("SELECT 1");
+    dbOk = true;
+  } catch {
+    // Keep the public status surface available even when DB config/connectivity is broken.
+  }
 
   // 2. Component checks
   const componentStatuses = await Promise.all(COMPONENTS.map(async (c) => {
@@ -59,7 +65,7 @@ async function gatherStatus() {
   }));
 
   // 3. Open incidents
-  const [openIncidents] = dbOk
+  const [openIncidents] = dbOk && pool
     ? await pool.query(
         `SELECT incident_id, title, severity, category, status, description, created_at, updated_at
          FROM \`incidents\`
@@ -69,7 +75,7 @@ async function gatherStatus() {
     : [[]];
 
   // 4. Past incidents (last 30 days, resolved/closed)
-  const [pastIncidents] = dbOk
+  const [pastIncidents] = dbOk && pool
     ? await pool.query(
         `SELECT incident_id, title, severity, category, status, created_at, resolved_at
          FROM \`incidents\`

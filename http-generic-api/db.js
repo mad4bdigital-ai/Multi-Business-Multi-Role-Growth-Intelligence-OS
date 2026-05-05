@@ -3,6 +3,13 @@ import mysql from "mysql2/promise";
 let pool = null;
 
 export function getPool() {
+  const missing = ["DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD"].filter((key) => !process.env[key]);
+  if (missing.length) {
+    const err = new Error(`Missing required DB environment variables: ${missing.join(", ")}`);
+    err.code = "DB_CONFIG_MISSING";
+    throw err;
+  }
+
   if (!pool) {
     pool = mysql.createPool({
       host: process.env.DB_HOST,
@@ -13,6 +20,7 @@ export function getPool() {
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
+      connectTimeout: Number(process.env.DB_CONNECT_TIMEOUT_MS) || 5000,
       timezone: "Z",
     });
   }
