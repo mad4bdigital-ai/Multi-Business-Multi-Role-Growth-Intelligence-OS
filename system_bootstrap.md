@@ -25,6 +25,7 @@ Open the source file listed below for the relevant domain instead of loading thi
 | Governed context resolution | `canonicals/system_bootstrap/14_governed_context_resolution.md` | Governed context resolution order for Logic, business activity, and brand. |
 | Business type and brand path resolution | `canonicals/system_bootstrap/15_business_type_brand_path_resolution.md` | Canonical path resolver for Business Type folders and brand folders under resolved business types. |
 | Context resolver layer | `canonicals/system_bootstrap/16_context_resolver_layer.md` | Resolver layer architecture, resolveContext contract, resolver inventory, and validation state model. |
+| Agent execution runtime | `canonicals/system_bootstrap/17_agent_execution_runtime.md` | Agent runtime, model class routing, verify pass, engine dispatch, Drive knowledge layer, and sync script. |
 
 ---
 

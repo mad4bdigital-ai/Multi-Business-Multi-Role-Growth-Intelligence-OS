@@ -3,11 +3,11 @@ system_bootstrap
 
 Status
 Canonical Name: system_bootstrap
-Version: v5.63
+Version: v5.64
 Status: active
 Owner Layer: orchestration
 Source Type: repository_canonical
-Last Updated: 2026-04-25
+Last Updated: 2026-05-05
 
 
 ---

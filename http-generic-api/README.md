@@ -1,6 +1,6 @@
 # http-generic-api-connector
 
-Policy-enforced HTTP executor.
+Policy-enforced HTTP executor with governed agent execution runtime.
 
 ## Key behavior
 - Resolves `parent_action_key`, `endpoint_key`, and brand target from registry sheets
@@ -29,10 +29,36 @@ Policy-enforced HTTP executor.
 - `normalization.js` — canonical payload normalization for all A–H domains
 - `wordpress/` — 16 phase modules (A–P) for governed site migration
 
+**Agent execution runtime:**
+- `agentRuntime.js` — singleton composing `callModel` + `runLogicWithModel` + `engineExecutorRegistry` + `getCallModelForClass`; model tier routing via `execution_class` (standard→Haiku, complex→Sonnet, authority→Opus)
+- `agentLoopRunner.js` — `runAgentLoop(plan, deps)`: loads workflow + logic definition, runs ReAct loop, verify pass (when `review_required=1`), writes results to DB
+- `modelAdapterRouter.js` — `buildCallModel`: normalizes Anthropic / OpenAI / Gemini shapes
+- `modelAdapter.js` — `runLogicWithModel`: ReAct tool-calling loop with iteration cap
+- `engineExecutorRegistry.js` — routes tool dispatch to MCP / HTTP action / logic-as-engine
+- `connectorExecutor.js` — `dispatchContentWorkflow` injects `getAgentDeps()`; also handles WordPress and MCP connector dispatch
+- `skillInstaller.mjs` — CLI: install/list/enable/disable skills from GitHub (`skill.json` → `logic_definitions` + `skill_packages`)
+- `skillManifest.js` — manifest normalizer for skill installation
+
+**Operational scripts:**
+- `sync-drive-to-db.mjs` — syncs Drive knowledge layer to DB: adds columns to `logic_definitions`, upserts 32 engine rows with real system prompts, seeds `business_type_profiles` + `brand_paths` + `brand_core`
+- `generate-google-refresh-token.mjs` — generates `GOOGLE_REFRESH_TOKEN` via OAuth2 flow (auto browser or headless `--print-url` / `--code=`)
+- `migrate-platform-tables.mjs` — runs all DDL migrations in order
+- `migrate-sheets-to-sql.mjs` — syncs 18 registry sheets to MySQL
+
 Test suite: 394 assertions across 21 test files (`npm test`). Architecture checks: 173 checks (`npm run validate`).
 
 ## Required env
 - `REGISTRY_SPREADSHEET_ID`
+- **Agent execution:**
+  - `AGENT_MODEL_PROVIDER` — `anthropic` (default) / `openai` / `gemini`
+  - `ANTHROPIC_API_KEY` — required when provider is `anthropic`
+  - `OPENAI_API_KEY` — required when provider is `openai`
+  - `GOOGLE_AI_API_KEY` — required when provider is `gemini`
+  - `AGENT_MODEL` — override: forces a specific model string, bypasses class routing
+- **Google OAuth (for Sheets, Drive, Analytics):**
+  - `GOOGLE_CLIENT_ID`
+  - `GOOGLE_CLIENT_SECRET`
+  - `GOOGLE_REFRESH_TOKEN` — generate via `node generate-google-refresh-token.mjs`
 - optional:
   - `BRAND_REGISTRY_SHEET`
   - `ACTIONS_REGISTRY_SHEET`
