@@ -19,14 +19,32 @@ import { google } from "googleapis";
 
 // All scopes used across the platform's Google API actions.
 const GOOGLE_SCOPES = [
+  // Workspace
   "https://www.googleapis.com/auth/spreadsheets",
   "https://www.googleapis.com/auth/documents",
   "https://www.googleapis.com/auth/drive",
+  // Analytics (full read/write/admin suite)
   "https://www.googleapis.com/auth/analytics.readonly",
+  "https://www.googleapis.com/auth/analytics",
+  "https://www.googleapis.com/auth/analytics.edit",
+  "https://www.googleapis.com/auth/analytics.manage.users",
+  "https://www.googleapis.com/auth/analytics.manage.users.readonly",
+  "https://www.googleapis.com/auth/analytics.provision",
+  // Search Ads 360
   "https://www.googleapis.com/auth/doubleclicksearch",
-  "https://www.googleapis.com/auth/webmasters.readonly",
+  // Search Console (full — not readonly)
+  "https://www.googleapis.com/auth/webmasters",
+  // Tag Manager (full suite)
   "https://www.googleapis.com/auth/tagmanager.readonly",
+  "https://www.googleapis.com/auth/tagmanager.edit.containers",
   "https://www.googleapis.com/auth/tagmanager.edit.containers.readonly",
+  "https://www.googleapis.com/auth/tagmanager.manage.accounts",
+  "https://www.googleapis.com/auth/tagmanager.manage.users",
+  "https://www.googleapis.com/auth/tagmanager.delete.containers",
+  "https://www.googleapis.com/auth/tagmanager.edit.containerversions",
+  "https://www.googleapis.com/auth/tagmanager.publish",
+  // Google Ads
+  "https://www.googleapis.com/auth/adwords",
 ];
 
 let _cachedToken = "";
