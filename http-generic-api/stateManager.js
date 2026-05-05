@@ -158,11 +158,19 @@ export function createStateManager(config) {
     const dsMode = (process.env.DATA_SOURCE || "sheets").toLowerCase();
     if (dsMode !== "sheets") {
       try {
-        const [taskRoutes, workflows] = await Promise.all([
+        let [taskRoutes, workflows] = await Promise.all([
           sqlAdapter.readTable(TASK_ROUTES_SHEET),
           sqlAdapter.readTable(WORKFLOW_REGISTRY_SHEET)
         ]);
         if (taskRoutes.length || workflows.length) {
+          taskRoutes = taskRoutes.map(row => ({
+            ...row,
+            executable_authority: String(row.active || "").trim().toUpperCase() === "TRUE"
+          }));
+          workflows = workflows.map(row => ({
+            ...row,
+            executable_authority: String(row.active || "").trim().toUpperCase() === "TRUE"
+          }));
           return buildAiResolverRegistryReadiness({
             requiredIntentKeys: REQUIRED_AI_RESOLVER_INTENT_KEYS,
             taskRoutes,
