@@ -19,11 +19,10 @@ export function inferAuthMode({ action, brand }) {
   if (apiKeyMode === "bearer_token") return "bearer_token";
 
   // Header/param heuristics — fallback when api_key_mode is absent or unrecognised.
-  if (
-    headerName &&
-    String(headerName).toLowerCase() === "authorization" &&
-    apiKeyMode.includes("bearer")
-  ) {
+  // Authorization header always means bearer_token — injecting a raw secret into
+  // the Authorization header without a scheme prefix is semantically wrong and
+  // would be rejected by every governed provider (GitHub, etc.).
+  if (headerName && String(headerName).toLowerCase() === "authorization") {
     return "bearer_token";
   }
 
