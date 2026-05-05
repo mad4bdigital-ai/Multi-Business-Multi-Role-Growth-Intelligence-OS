@@ -40,6 +40,8 @@ export function inferAuthMode({ action, brand }) {
   if (paramName) return "api_key_query";
   if (headerName) return "api_key_header";
 
+  if (apiKeyMode === "google_oauth2") return "google_oauth2";
+
   if (oauthConfigured) return "oauth_gpt_action";
   return "none";
 }
@@ -63,6 +65,11 @@ export function buildResolvedAuthHeaders(contract) {
       err.status = 500;
       throw err;
     }
+    return { Authorization: `Bearer ${contract.secret}` };
+  }
+
+  if (contract.mode === "google_oauth2") {
+    if (!contract.secret) return {};
     return { Authorization: `Bearer ${contract.secret}` };
   }
 
@@ -143,6 +150,10 @@ export function injectAuthForSchemaValidation(query, headers, contract) {
     }
     const token = Buffer.from(`${contract.username}:${contract.secret}`, "utf8").toString("base64");
     nextHeaders.Authorization = `Basic ${token}`;
+  }
+
+  if (contract.mode === "google_oauth2") {
+    if (contract.secret) nextHeaders.Authorization = `Bearer ${contract.secret}`;
   }
 
   if (contract.mode === "custom_headers") {

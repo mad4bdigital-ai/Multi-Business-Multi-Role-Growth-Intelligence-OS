@@ -1,0 +1,1265 @@
+openapi: 3.1.0
+info:
+  title: Google Ads API (Aligned Expanded Importer-Safe)
+  version: 23.0.0
+  description: |
+    Expanded, importer-safe OpenAPI 3.1 schema aligned to the current Google Ads API service surface.
+    This schema is designed for API connectors, docs, and GPT Actions-style importers.
+
+    Important:
+    - This is not a byte-for-byte mirror of Google's protobuf/gRPC contract.
+    - It preserves the real service families and method intent, while using generic JSON-friendly schemas.
+    - For production-grade parity, generate from the official proto definitions and REST transcoding rules.
+
+servers:
+  - url: https://googleads.googleapis.com
+
+tags:
+  - name: Discovery
+  - name: Reporting
+  - name: Keyword Planning
+  - name: Customers
+  - name: Campaign Budgets
+  - name: Campaigns
+  - name: Ad Groups
+  - name: Ads
+  - name: Assets
+  - name: Criteria & Targeting
+  - name: Recommendations
+  - name: Conversions
+  - name: Audiences
+  - name: Billing
+  - name: Offline Jobs
+  - name: Batch Jobs
+
+components:
+  securitySchemes:
+    googleOAuth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
+          tokenUrl: https://oauth2.googleapis.com/token
+          scopes:
+            https://www.googleapis.com/auth/adwords: Manage Google Ads accounts
+
+  parameters:
+    customerId:
+      name: customerId
+      in: path
+      required: true
+      description: Google Ads customer ID without hyphens.
+      schema:
+        type: string
+    resourceName:
+      name: resourceName
+      in: path
+      required: true
+      description: Full Google Ads resource name.
+      schema:
+        type: string
+    loginCustomerId:
+      name: login-customer-id
+      in: header
+      required: false
+      description: Manager account customer ID without hyphens.
+      schema:
+        type: string
+    linkedCustomerId:
+      name: linked-customer-id
+      in: header
+      required: false
+      description: Linked customer ID without hyphens.
+      schema:
+        type: string
+    developerToken:
+      name: developer-token
+      in: header
+      required: false
+      description: Google Ads developer token.
+      schema:
+        type: string
+    pageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 10000
+    pageToken:
+      name: pageToken
+      in: query
+      required: false
+      schema:
+        type: string
+    validateOnly:
+      name: validateOnly
+      in: query
+      required: false
+      schema:
+        type: boolean
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+            status:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+          additionalProperties: true
+      additionalProperties: true
+
+    EmptyObject:
+      type: object
+      properties: {}
+      additionalProperties: true
+
+    GenericResource:
+      type: object
+      description: Generic importer-safe resource envelope.
+      properties:
+        resourceName:
+          type: string
+        id:
+          oneOf:
+            - type: string
+            - type: integer
+        name:
+          type: string
+        status:
+          type: string
+      additionalProperties: true
+
+    ListAccessibleCustomersResponse:
+      type: object
+      properties:
+        resourceNames:
+          type: array
+          items:
+            type: string
+      required: [resourceNames]
+      additionalProperties: true
+
+    SearchGoogleAdsRequest:
+      type: object
+      properties:
+        query:
+          type: string
+        pageSize:
+          type: integer
+        pageToken:
+          type: string
+        validateOnly:
+          type: boolean
+      required: [query]
+      additionalProperties: true
+
+    SearchGoogleAdsResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        nextPageToken:
+          type: string
+        fieldMask:
+          type: string
+        summaryRow:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+    SearchGoogleAdsStreamRequest:
+      type: object
+      properties:
+        query:
+          type: string
+        summaryRowSetting:
+          type: string
+      required: [query]
+      additionalProperties: true
+
+    SearchGoogleAdsStreamResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        fieldMask:
+          type: string
+        summaryRow:
+          type: object
+          additionalProperties: true
+        requestId:
+          type: string
+      additionalProperties: true
+
+    FieldMetadata:
+      type: object
+      properties:
+        resourceName:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        dataType:
+          type: string
+        selectable:
+          type: boolean
+        filterable:
+          type: boolean
+        sortable:
+          type: boolean
+        selectableWith:
+          type: array
+          items:
+            type: string
+      additionalProperties: true
+
+    ListGoogleAdsFieldsResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldMetadata"
+        nextPageToken:
+          type: string
+      additionalProperties: true
+
+    GetResourceResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/GenericResource"
+      additionalProperties: true
+
+    ListResourcesResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/GenericResource"
+        nextPageToken:
+          type: string
+      additionalProperties: true
+
+    MutateOperation:
+      type: object
+      properties:
+        operation:
+          type: string
+          enum: [create, update, remove]
+        resource:
+          type: object
+          additionalProperties: true
+        updateMask:
+          type: string
+        resourceName:
+          type: string
+      additionalProperties: true
+
+    MutateRequest:
+      type: object
+      properties:
+        operations:
+          type: array
+          items:
+            $ref: "#/components/schemas/MutateOperation"
+        partialFailure:
+          type: boolean
+        validateOnly:
+          type: boolean
+        responseContentType:
+          type: string
+      required: [operations]
+      additionalProperties: true
+
+    MutateResult:
+      type: object
+      properties:
+        resourceName:
+          type: string
+        resource:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+    MutateResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/MutateResult"
+        partialFailureError:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+    KeywordIdeasRequest:
+      type: object
+      properties:
+        language:
+          type: string
+          description: Resource name of a language constant.
+        geoTargetConstants:
+          type: array
+          items:
+            type: string
+        keywordPlanNetwork:
+          type: string
+        keywordSeed:
+          type: object
+          properties:
+            keywords:
+              type: array
+              items:
+                type: string
+          additionalProperties: true
+        urlSeed:
+          type: object
+          properties:
+            url:
+              type: string
+              format: uri
+          additionalProperties: true
+        keywordAndUrlSeed:
+          type: object
+          additionalProperties: true
+        pageSize:
+          type: integer
+        pageToken:
+          type: string
+        includeAdultKeywords:
+          type: boolean
+      additionalProperties: true
+
+    KeywordIdea:
+      type: object
+      properties:
+        text:
+          type: string
+        closeVariants:
+          type: array
+          items:
+            type: string
+        keywordIdeaMetrics:
+          type: object
+          additionalProperties: true
+        competition:
+          type: string
+      additionalProperties: true
+
+    KeywordIdeasResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/KeywordIdea"
+        nextPageToken:
+          type: string
+        totalSize:
+          type: integer
+      additionalProperties: true
+
+    KeywordHistoricalMetricsRequest:
+      type: object
+      properties:
+        keywords:
+          type: array
+          items:
+            type: string
+        language:
+          type: string
+        geoTargetConstants:
+          type: array
+          items:
+            type: string
+        keywordPlanNetwork:
+          type: string
+      additionalProperties: true
+
+    KeywordHistoricalMetricsResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      additionalProperties: true
+
+    KeywordForecastMetricsRequest:
+      type: object
+      properties:
+        campaign:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+    KeywordForecastMetricsResponse:
+      type: object
+      properties:
+        campaignForecastMetrics:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+    RecommendationResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+    ApplyRecommendationRequest:
+      type: object
+      properties:
+        operations:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        partialFailure:
+          type: boolean
+        validateOnly:
+          type: boolean
+      additionalProperties: true
+
+    BatchJobRequest:
+      type: object
+      properties:
+        metadata:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+    BatchJobResponse:
+      type: object
+      properties:
+        resourceName:
+          type: string
+        status:
+          type: string
+      additionalProperties: true
+
+    OfflineUserDataJobRequest:
+      type: object
+      properties:
+        job:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+    OfflineUserDataJobResponse:
+      type: object
+      properties:
+        resourceName:
+          type: string
+        status:
+          type: string
+      additionalProperties: true
+
+security:
+  - googleOAuth: [https://www.googleapis.com/auth/adwords]
+
+paths:
+  /v23/customers:listAccessibleCustomers:
+    get:
+      tags: [Discovery]
+      operationId: listAccessibleCustomers
+      summary: List accessible customers
+      parameters:
+        - $ref: "#/components/parameters/developerToken"
+        - $ref: "#/components/parameters/loginCustomerId"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListAccessibleCustomersResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/googleAdsFields:
+    get:
+      tags: [Discovery]
+      operationId: listGoogleAdsFields
+      summary: List Google Ads field metadata
+      parameters:
+        - $ref: "#/components/parameters/pageSize"
+        - $ref: "#/components/parameters/pageToken"
+        - name: query
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListGoogleAdsFieldsResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/googleAds:search:
+    post:
+      tags: [Reporting]
+      operationId: searchGoogleAds
+      summary: Run a paginated GAQL query
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+        - $ref: "#/components/parameters/developerToken"
+        - $ref: "#/components/parameters/loginCustomerId"
+        - $ref: "#/components/parameters/linkedCustomerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchGoogleAdsRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchGoogleAdsResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/googleAds:searchStream:
+    post:
+      tags: [Reporting]
+      operationId: searchGoogleAdsStream
+      summary: Run a streaming GAQL query
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+        - $ref: "#/components/parameters/developerToken"
+        - $ref: "#/components/parameters/loginCustomerId"
+        - $ref: "#/components/parameters/linkedCustomerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchGoogleAdsStreamRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchGoogleAdsStreamResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}:generateKeywordIdeas:
+    post:
+      tags: [Keyword Planning]
+      operationId: generateKeywordIdeas
+      summary: Generate keyword ideas
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KeywordIdeasRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KeywordIdeasResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}:generateKeywordHistoricalMetrics:
+    post:
+      tags: [Keyword Planning]
+      operationId: generateKeywordHistoricalMetrics
+      summary: Generate keyword historical metrics
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KeywordHistoricalMetricsRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KeywordHistoricalMetricsResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}:generateKeywordForecastMetrics:
+    post:
+      tags: [Keyword Planning]
+      operationId: generateKeywordForecastMetrics
+      summary: Generate keyword forecast metrics
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KeywordForecastMetricsRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KeywordForecastMetricsResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/customers/{resourceName}:
+    get:
+      tags: [Customers]
+      operationId: getCustomer
+      summary: Get customer
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+        - $ref: "#/components/parameters/resourceName"
+      responses:
+        "200":
+          description: Customer resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetResourceResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/campaignBudgets:mutate:
+    post:
+      tags: [Campaign Budgets]
+      operationId: mutateCampaignBudgets
+      summary: Create, update, or remove campaign budgets
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MutateRequest"
+      responses:
+        "200":
+          description: Mutate response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MutateResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/campaigns:mutate:
+    post:
+      tags: [Campaigns]
+      operationId: mutateCampaigns
+      summary: Create, update, or remove campaigns
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MutateRequest"
+      responses:
+        "200":
+          description: Mutate response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MutateResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/adGroups:mutate:
+    post:
+      tags: [Ad Groups]
+      operationId: mutateAdGroups
+      summary: Create, update, or remove ad groups
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MutateRequest"
+      responses:
+        "200":
+          description: Mutate response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MutateResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/adGroupAds:mutate:
+    post:
+      tags: [Ads]
+      operationId: mutateAdGroupAds
+      summary: Create, update, or remove ad group ads
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MutateRequest"
+      responses:
+        "200":
+          description: Mutate response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MutateResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/assets:mutate:
+    post:
+      tags: [Assets]
+      operationId: mutateAssets
+      summary: Create, update, or remove assets
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MutateRequest"
+      responses:
+        "200":
+          description: Mutate response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MutateResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/assetGroups:mutate:
+    post:
+      tags: [Assets]
+      operationId: mutateAssetGroups
+      summary: Create, update, or remove asset groups
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MutateRequest"
+      responses:
+        "200":
+          description: Mutate response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MutateResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/campaignCriteria:mutate:
+    post:
+      tags: [Criteria & Targeting]
+      operationId: mutateCampaignCriteria
+      summary: Create, update, or remove campaign criteria
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MutateRequest"
+      responses:
+        "200":
+          description: Mutate response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MutateResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/adGroupCriteria:mutate:
+    post:
+      tags: [Criteria & Targeting]
+      operationId: mutateAdGroupCriteria
+      summary: Create, update, or remove ad group criteria
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MutateRequest"
+      responses:
+        "200":
+          description: Mutate response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MutateResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/recommendations/{resourceName}:
+    get:
+      tags: [Recommendations]
+      operationId: getRecommendation
+      summary: Get recommendation
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+        - $ref: "#/components/parameters/resourceName"
+      responses:
+        "200":
+          description: Recommendation resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/recommendations:apply:
+    post:
+      tags: [Recommendations]
+      operationId: applyRecommendations
+      summary: Apply recommendations
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyRecommendationRequest"
+      responses:
+        "200":
+          description: Recommendations applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MutateResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/conversionActions:mutate:
+    post:
+      tags: [Conversions]
+      operationId: mutateConversionActions
+      summary: Create, update, or remove conversion actions
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MutateRequest"
+      responses:
+        "200":
+          description: Mutate response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MutateResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}:uploadClickConversions:
+    post:
+      tags: [Conversions]
+      operationId: uploadClickConversions
+      summary: Upload click conversions
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Upload response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}:uploadCallConversions:
+    post:
+      tags: [Conversions]
+      operationId: uploadCallConversions
+      summary: Upload call conversions
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Upload response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}:uploadUserData:
+    post:
+      tags: [Audiences]
+      operationId: uploadUserData
+      summary: Upload user data for customer match or audience workflows
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Upload response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/billingSetups:mutate:
+    post:
+      tags: [Billing]
+      operationId: mutateBillingSetups
+      summary: Create, update, or remove billing setups
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MutateRequest"
+      responses:
+        "200":
+          description: Mutate response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MutateResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/accountBudgets:mutate:
+    post:
+      tags: [Billing]
+      operationId: mutateAccountBudgets
+      summary: Create, update, or remove account budgets
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MutateRequest"
+      responses:
+        "200":
+          description: Mutate response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MutateResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/offlineUserDataJobs:create:
+    post:
+      tags: [Offline Jobs]
+      operationId: createOfflineUserDataJob
+      summary: Create offline user data job
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfflineUserDataJobRequest"
+      responses:
+        "200":
+          description: Job created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfflineUserDataJobResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/offlineUserDataJobs:addOperations:
+    post:
+      tags: [Offline Jobs]
+      operationId: addOfflineUserDataJobOperations
+      summary: Add operations to offline user data job
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Operations added
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/offlineUserDataJobs/{resourceName}:run:
+    post:
+      tags: [Offline Jobs]
+      operationId: runOfflineUserDataJob
+      summary: Run offline user data job
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+        - $ref: "#/components/parameters/resourceName"
+      responses:
+        "200":
+          description: Job started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfflineUserDataJobResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v23/customers/{customerId}/batchJobs:mutate:
+    post:
+      tags: [Batch Jobs]
+      operationId: mutateBatchJobs
+      summary: Create, update, or remove batch jobs
+      parameters:
+        - $ref: "#/components/parameters/customerId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchJobRequest"
+      responses:
+        "200":
+          description: Batch job mutate response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchJobResponse"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+x-alignment-notes:
+  basedOnVersion: v23
+  includedRealServiceFamilies:
+    - GoogleAdsService
+    - GoogleAdsFieldService
+    - KeywordPlanIdeaService
+    - CampaignBudgetService
+    - CampaignService
+    - AdGroupService
+    - AdGroupAdService
+    - AssetService
+    - AssetGroupService
+    - CampaignCriterionService
+    - AdGroupCriterionService
+    - RecommendationService
+    - RecommendationSubscriptionService
+    - ConversionActionService
+    - ConversionUploadService
+    - UserDataService
+    - BillingSetupService
+    - AccountBudgetProposalService
+    - OfflineUserDataJobService
+    - BatchJobService
+  intentionallySimplified:
+    - protobuf oneof structures
+    - exhaustive enums
+    - full nested message graphs
+    - every single service in the public reference
+    - binary/stream transport details

@@ -1,0 +1,102 @@
+openapi: "3.1.0"
+info:
+  title: AbstractAPI Web Scraper
+  version: "1.0"
+  description: >
+    AbstractAPI web scraping endpoint. Fetches rendered HTML or raw content
+    from any URL. Auth via api_key query parameter.
+  x-governance:
+    status: active
+    source_of_truth: provider_authority
+    connector_class: abstractapi_scraper
+    runtime_binding_profile: abstractapi_api_key_query_binding
+
+servers:
+  - url: https://scrape.abstractapi.com/v1
+    description: AbstractAPI Scraper
+
+security:
+  - apiKeyQuery: []
+
+paths:
+  /:
+    get:
+      operationId: abstractapi_scrape_url
+      summary: Scrape a URL
+      description: >
+        Fetches the HTML content of a URL. Set render_js=true to execute
+        JavaScript before returning the page content.
+      parameters:
+        - name: url
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+          description: The URL to scrape.
+        - name: render_js
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Whether to render JavaScript before returning content.
+        - name: block_ads
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Block ads and tracking scripts.
+        - name: screenshot
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Return a screenshot URL alongside HTML.
+        - name: resolution
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [desktop, mobile]
+            default: desktop
+          description: Viewport resolution for screenshot or JS rendering.
+        - name: proxy_country
+          in: query
+          required: false
+          schema:
+            type: string
+          description: ISO 3166-1 alpha-2 country code to route via country-specific proxy.
+      responses:
+        "200":
+          description: Scraped content returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                  status:
+                    type: integer
+                  body:
+                    type: string
+                    description: Raw HTML content of the page.
+                  screenshot_url:
+                    type: string
+                    nullable: true
+        "400":
+          description: Bad request — missing or invalid parameters.
+        "401":
+          description: Invalid or missing api_key.
+        "429":
+          description: Rate limit exceeded.
+
+components:
+  securitySchemes:
+    apiKeyQuery:
+      type: apiKey
+      in: query
+      name: api_key

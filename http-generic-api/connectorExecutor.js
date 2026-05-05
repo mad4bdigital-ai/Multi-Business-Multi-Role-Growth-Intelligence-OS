@@ -12,7 +12,7 @@
 
 import { randomUUID } from "node:crypto";
 import { getPool } from "./db.js";
-import { resolveWpAppPassword } from "./authCredentialResolution.js";
+import { resolveWpAppPassword, resolveSecretFromReference } from "./authCredentialResolution.js";
 import { runWordpressConnectorMigration } from "./wordpress/phaseA.js";
 import { writeAuditLogAsync } from "./auditLogger.js";
 
@@ -192,6 +192,73 @@ async function dispatchContentWorkflow(plan, workflowDef) {
   };
 }
 
+async function dispatchMcpConnector(plan) {
+  // Resolve the bearer token from the make_mcp_server action's secret reference.
+  // Falls back to MAKE_MCP_TOKEN env var directly if the action row isn't found.
+  let token = process.env.MAKE_MCP_TOKEN || "";
+  if (!token) {
+    const [rows] = await getPool().query(
+      "SELECT secret_store_ref FROM `actions` WHERE action_key = 'make_mcp_server' LIMIT 1"
+    );
+    if (rows[0]?.secret_store_ref) token = resolveSecretFromReference(rows[0].secret_store_ref);
+  }
+  if (!token) {
+    throw new Error("MAKE_MCP_TOKEN not configured — set in .env and run patch-make-mcp-connector.mjs --apply");
+  }
+
+  // Build a JSON-RPC 2.0 tools/call envelope from the plan's first step.
+  const steps = plan.steps_json || [];
+  const step = Array.isArray(steps) ? steps[0] : null;
+  const toolName = step?.tool || step?.action || plan.intent_key || "tools/list";
+  const toolArgs = step?.arguments || step?.params || {};
+
+  const rpcBody = {
+    jsonrpc: "2.0",
+    id: randomUUID(),
+    method: "tools/call",
+    params: { name: toolName, arguments: toolArgs },
+  };
+
+  const resp = await fetch("https://eu2.make.com/mcp/stateless", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "Accept": "application/json, text/event-stream",
+    },
+    body: JSON.stringify(rpcBody),
+  });
+
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => "");
+    throw new Error(`Make MCP returned HTTP ${resp.status}: ${errText.slice(0, 300)}`);
+  }
+
+  let data;
+  const ct = resp.headers.get("content-type") || "";
+  if (ct.includes("event-stream")) {
+    // SSE transport: collect all data: lines and parse the last one.
+    const text = await resp.text();
+    const dataLines = text.split("\n").filter(l => l.startsWith("data:"));
+    if (!dataLines.length) throw new Error("Make MCP SSE: no data lines in response");
+    data = JSON.parse(dataLines[dataLines.length - 1].slice(5).trim());
+  } else {
+    data = await resp.json();
+  }
+
+  if (data.error) {
+    throw new Error(`MCP error [${data.error.code}]: ${data.error.message}`);
+  }
+
+  return {
+    ok: true,
+    dispatch_mode: "sync",
+    rpc_id: rpcBody.id,
+    tool: toolName,
+    mcp_response: data.result ?? data,
+  };
+}
+
 // ── Public entry point ────────────────────────────────────────────────────────
 
 export async function dispatchPlan(plan_id, {
@@ -240,7 +307,9 @@ export async function dispatchPlan(plan_id, {
     brand?.auth_type === "basic_auth_app_password" ||
     connectedSystem?.connector_family === "wordpress";
 
-  const connector_type = isWordpress ? "wordpress" : "content_workflow";
+  const isMcp = connectedSystem?.connector_family === "make_mcp";
+
+  const connector_type = isWordpress ? "wordpress" : isMcp ? "mcp_connector" : "content_workflow";
   const service_mode   = plan.service_mode || "self_serve";
 
   await createWorkflowRun(run_id, plan, service_mode);
@@ -260,6 +329,8 @@ export async function dispatchPlan(plan_id, {
         );
       }
       result = await dispatchWordpress(plan, brand, wpContext, { apply, post_types, publish_status });
+    } else if (isMcp) {
+      result = await dispatchMcpConnector(plan);
     } else {
       result = await dispatchContentWorkflow(plan, workflowDef);
     }
@@ -273,6 +344,7 @@ export async function dispatchPlan(plan_id, {
   const final_status = succeeded
     ? (connector_type === "content_workflow" ? "running" : "completed")
     : "failed";
+  // content_workflow is async (stays "running"); wordpress and mcp_connector are sync (→ "completed")
 
   await Promise.all([
     finaliseWorkflowRun(run_id, final_status, succeeded ? result : null, dispatchError?.message),

@@ -1,0 +1,265 @@
+openapi: 3.1.0
+info:
+  title: ScraperAPI Async Fallback
+  version: 1.0.0
+  description: Submit and poll ScraperAPI async jobs for hard or oversized pages.
+
+servers:
+  - url: https://async.scraperapi.com
+
+paths:
+  /jobs:
+    post:
+      operationId: submitAsyncScrape
+      summary: Submit async scrape job
+      description: Submit a background scrape job. Use this when sync scraping times out, gets blocked, or returns too much content.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AsyncJobRequest"
+      responses:
+        "200":
+          description: Async job accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncJobAccepted"
+
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+        "403":
+          description: Access denied or max cost exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+        "500":
+          description: Provider error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /jobs/{jobId}:
+    get:
+      operationId: getAsyncScrapeJob
+      summary: Get async scrape job status
+      description: Poll job status and retrieve the final result when complete.
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Async job ID returned by submitAsyncScrape
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job status or completed result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncJobStatus"
+
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+        "500":
+          description: Provider error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    AsyncJobRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - apiKey
+        - url
+      properties:
+        apiKey:
+          type: string
+          description: ScraperAPI key
+        url:
+          type: string
+          format: uri
+          description: Target URL to scrape
+        apiParams:
+          $ref: "#/components/schemas/AsyncApiParams"
+        callback:
+          $ref: "#/components/schemas/Callback"
+        expectsUnsuccessReport:
+          type: boolean
+          default: true
+          description: Ask for failed-job reports as well
+        timeoutSec:
+          type: integer
+          minimum: 1
+          description: Optional async timeout in seconds
+        meta:
+          type: object
+          additionalProperties: true
+          description: Optional correlation metadata
+
+    AsyncApiParams:
+      type: object
+      additionalProperties: false
+      properties:
+        render:
+          type: boolean
+          default: true
+        wait_for_selector:
+          type: string
+          default: h1
+        output_format:
+          type: string
+          enum: [text, markdown]
+          default: markdown
+        premium:
+          type: boolean
+          default: false
+        ultra_premium:
+          type: boolean
+          default: false
+        country_code:
+          type: string
+        device_type:
+          type: string
+          enum: [desktop, mobile]
+        autoparse:
+          type: boolean
+          default: true
+        keep_headers:
+          type: boolean
+          default: true
+        follow_redirect:
+          type: boolean
+          default: true
+        retry_404:
+          type: boolean
+          default: false
+        screenshot:
+          type: boolean
+          default: false
+        max_cost:
+          type: integer
+          minimum: 1
+
+    Callback:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - url
+      properties:
+        type:
+          type: string
+          enum: [webhook]
+        url:
+          type: string
+          format: uri
+
+    AsyncJobAccepted:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        attempts:
+          type: integer
+        status:
+          type: string
+        statusUrl:
+          type: string
+          format: uri
+        url:
+          type: string
+          format: uri
+        failReason:
+          type: string
+          nullable: true
+
+    AsyncJobStatus:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        attempts:
+          type: integer
+        status:
+          type: string
+        statusUrl:
+          type: string
+          format: uri
+        url:
+          type: string
+          format: uri
+        failReason:
+          type: string
+          nullable: true
+        response:
+          oneOf:
+            - type: string
+            - type: object
+              additionalProperties: true
+            - type: array
+              items:
+                type: object
+                additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        error:
+          type: boolean
+        message:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+          additionalProperties: true

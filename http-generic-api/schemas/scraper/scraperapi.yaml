@@ -8,7 +8,7 @@ servers:
   - url: https://api.scraperapi.com
 
 paths:
-  /i:
+  /:
     get:
       operationId: scrapeUrl
       summary: Scrape a single URL
@@ -20,8 +20,8 @@ paths:
           description: ScraperAPI key
           schema:
             type: string
-            enum: ["${SCRAPERAPI_API_KEY}"] 
-            default: "${SCRAPERAPI_API_KEY}"
+            enum: ["fe8cd266cca20486869685e90e6218db"] 
+            default: "fe8cd266cca20486869685e90e6218db"
             
 
         - name: url

@@ -1,0 +1,645 @@
+openapi: 3.1.0
+info:
+  title: Google Tag Manager API
+  version: 1.0.1
+  description: Minimal importer-safe schema for Google Tag Manager API v2
+
+servers:
+  - url: https://tagmanager.googleapis.com
+
+components:
+  securitySchemes:
+    googleOAuth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
+          tokenUrl: https://oauth2.googleapis.com/token
+          scopes:
+            https://www.googleapis.com/auth/tagmanager.edit.containers: Manage your Google Tag Manager container and its subcomponents, excluding versioning and publishing
+            https://www.googleapis.com/auth/tagmanager.manage.accounts: View and manage your Google Tag Manager accounts
+            https://www.googleapis.com/auth/tagmanager.readonly: View your Google Tag Manager container and its subcomponents
+            https://www.googleapis.com/auth/tagmanager.manage.users: Manage user permissions of your Google Tag Manager account and container
+            https://www.googleapis.com/auth/tagmanager.delete.containers: Delete your Google Tag Manager containers
+            https://www.googleapis.com/auth/tagmanager.edit.containerversions: Manage your Google Tag Manager container versions
+            https://www.googleapis.com/auth/tagmanager.publish: Publish your Google Tag Manager container versions
+
+  schemas:
+    Account:
+      type: object
+      properties:
+        path:
+          type: string
+        accountId:
+          type: string
+        name:
+          type: string
+        shareData:
+          type: boolean
+        fingerprint:
+          type: string
+        tagManagerUrl:
+          type: string
+      additionalProperties: true
+
+    AccountListResponse:
+      type: object
+      properties:
+        account:
+          type: array
+          items:
+            $ref: '#/components/schemas/Account'
+      additionalProperties: true
+
+    Container:
+      type: object
+      properties:
+        path:
+          type: string
+        accountId:
+          type: string
+        containerId:
+          type: string
+        name:
+          type: string
+        publicId:
+          type: string
+        usageContext:
+          type: array
+          items:
+            type: string
+        fingerprint:
+          type: string
+        tagManagerUrl:
+          type: string
+      additionalProperties: true
+
+    ContainerListResponse:
+      type: object
+      properties:
+        container:
+          type: array
+          items:
+            $ref: '#/components/schemas/Container'
+      additionalProperties: true
+
+    Workspace:
+      type: object
+      properties:
+        path:
+          type: string
+        accountId:
+          type: string
+        containerId:
+          type: string
+        workspaceId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        fingerprint:
+          type: string
+        tagManagerUrl:
+          type: string
+      additionalProperties: true
+
+    WorkspaceListResponse:
+      type: object
+      properties:
+        workspace:
+          type: array
+          items:
+            $ref: '#/components/schemas/Workspace'
+      additionalProperties: true
+
+    CreateWorkspaceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+      required:
+        - name
+      additionalProperties: true
+
+    Parameter:
+      type: object
+      properties:
+        type:
+          type: string
+        key:
+          type: string
+        value:
+          type: string
+      additionalProperties: true
+
+    Condition:
+      type: object
+      properties:
+        type:
+          type: string
+        parameter:
+          type: array
+          items:
+            $ref: '#/components/schemas/Parameter'
+      additionalProperties: true
+
+    Tag:
+      type: object
+      properties:
+        path:
+          type: string
+        accountId:
+          type: string
+        containerId:
+          type: string
+        workspaceId:
+          type: string
+        tagId:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        parameter:
+          type: array
+          items:
+            $ref: '#/components/schemas/Parameter'
+        firingTriggerId:
+          type: array
+          items:
+            type: string
+        blockingTriggerId:
+          type: array
+          items:
+            type: string
+        fingerprint:
+          type: string
+        tagManagerUrl:
+          type: string
+      additionalProperties: true
+
+    TagListResponse:
+      type: object
+      properties:
+        tag:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+      additionalProperties: true
+
+    Trigger:
+      type: object
+      properties:
+        path:
+          type: string
+        accountId:
+          type: string
+        containerId:
+          type: string
+        workspaceId:
+          type: string
+        triggerId:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        filter:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+        autoEventFilter:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+        customEventFilter:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+        fingerprint:
+          type: string
+        tagManagerUrl:
+          type: string
+      additionalProperties: true
+
+    TriggerListResponse:
+      type: object
+      properties:
+        trigger:
+          type: array
+          items:
+            $ref: '#/components/schemas/Trigger'
+      additionalProperties: true
+
+    Variable:
+      type: object
+      properties:
+        path:
+          type: string
+        accountId:
+          type: string
+        containerId:
+          type: string
+        workspaceId:
+          type: string
+        variableId:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        parameter:
+          type: array
+          items:
+            $ref: '#/components/schemas/Parameter'
+        fingerprint:
+          type: string
+        tagManagerUrl:
+          type: string
+      additionalProperties: true
+
+    VariableListResponse:
+      type: object
+      properties:
+        variable:
+          type: array
+          items:
+            $ref: '#/components/schemas/Variable'
+      additionalProperties: true
+
+    CreateTagRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        parameter:
+          type: array
+          items:
+            $ref: '#/components/schemas/Parameter'
+        firingTriggerId:
+          type: array
+          items:
+            type: string
+      required:
+        - name
+        - type
+      additionalProperties: true
+
+    CreateTriggerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        filter:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+      required:
+        - name
+        - type
+      additionalProperties: true
+
+    CreateVariableRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        parameter:
+          type: array
+          items:
+            $ref: '#/components/schemas/Parameter'
+      required:
+        - name
+        - type
+      additionalProperties: true
+
+    CreateVersionResponse:
+      type: object
+      properties:
+        compilerError:
+          type: boolean
+        containerVersion:
+          type: object
+          properties: {}
+          additionalProperties: true
+      additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+            status:
+              type: string
+          additionalProperties: true
+      additionalProperties: true
+
+security:
+  - googleOAuth: []
+
+paths:
+  /tagmanager/v2/accounts:
+    get:
+      operationId: listTagManagerAccounts
+      summary: List Tag Manager accounts
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountListResponse'
+
+  /tagmanager/v2/accounts/{accountId}/containers:
+    get:
+      operationId: listContainers
+      summary: List containers in an account
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContainerListResponse'
+
+  /tagmanager/v2/accounts/{accountId}/containers/{containerId}/workspaces:
+    get:
+      operationId: listWorkspaces
+      summary: List workspaces in a container
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: containerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceListResponse'
+
+    post:
+      operationId: createWorkspace
+      summary: Create a workspace
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: containerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkspaceRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+
+  /tagmanager/v2/accounts/{accountId}/containers/{containerId}/workspaces/{workspaceId}/tags:
+    get:
+      operationId: listTags
+      summary: List tags in a workspace
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: containerId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagListResponse'
+
+    post:
+      operationId: createTag
+      summary: Create a tag
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: containerId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTagRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+
+  /tagmanager/v2/accounts/{accountId}/containers/{containerId}/workspaces/{workspaceId}/triggers:
+    get:
+      operationId: listTriggers
+      summary: List triggers in a workspace
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: containerId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TriggerListResponse'
+
+    post:
+      operationId: createTrigger
+      summary: Create a trigger
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: containerId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTriggerRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trigger'
+
+  /tagmanager/v2/accounts/{accountId}/containers/{containerId}/workspaces/{workspaceId}/variables:
+    get:
+      operationId: listVariables
+      summary: List variables in a workspace
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: containerId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VariableListResponse'
+
+    post:
+      operationId: createVariable
+      summary: Create a variable
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: containerId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVariableRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Variable'
+
+  /tagmanager/v2/accounts/{accountId}/containers/{containerId}/workspaces/{workspaceId}/create_version:
+    post:
+      operationId: createContainerVersion
+      summary: Create a container version from a workspace
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: containerId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateVersionResponse'

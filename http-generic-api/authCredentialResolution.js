@@ -1,5 +1,6 @@
 import { inferAuthMode } from "./authInjection.js";
 import { policyValue } from "./registryResolution.js";
+import { getGoogleAccessTokenSync } from "./googleAuthTokenResolver.js";
 
 // ── Storage-mode-aware secret resolvers ───────────────────────────────────────
 
@@ -83,6 +84,12 @@ export function normalizeAuthContract({
   if (mode === "api_key_header") {
     contract.header_name = action.api_key_header_name || "x-api-key";
     contract.secret = resolveActionSecret(action);
+    return contract;
+  }
+
+  if (mode === "google_oauth2") {
+    contract.header_name = "Authorization";
+    contract.secret = getGoogleAccessTokenSync();
     return contract;
   }
 

@@ -351,6 +351,1012 @@ paths:
               schema:
                 $ref: '#/components/schemas/AccountListResponse'
 
+  /v1beta/accounts/{accountId}:
+    get:
+      operationId: getAccount
+      summary: Get Analytics account
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+    patch:
+      operationId: updateAccount
+      summary: Update Analytics account
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: updateMask
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Account'
+      responses:
+        '200':
+          description: Updated account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+    delete:
+      operationId: deleteAccount
+      summary: Delete Analytics account
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+
+  /v1beta/accounts/{accountId}/dataSharingSettings:
+    get:
+      operationId: getAccountDataSharingSettings
+      summary: Get account data sharing settings
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Data sharing settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataSharingSettings'
+
+  /v1beta/properties:
+    get:
+      operationId: listProperties
+      summary: List properties
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: pageToken
+          in: query
+          schema:
+            type: string
+        - name: showDeleted
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Properties list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertyListResponse'
+    post:
+      operationId: createProperty
+      summary: Create property
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Property'
+      responses:
+        '200':
+          description: Created property
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+
+  /v1beta/properties/{propertyId}:
+    get:
+      operationId: getProperty
+      summary: Get property
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Property
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+    patch:
+      operationId: updateProperty
+      summary: Update property
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: updateMask
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Property'
+      responses:
+        '200':
+          description: Updated property
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+    delete:
+      operationId: deleteProperty
+      summary: Delete property
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted property
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+
+  /v1beta/properties/{propertyId}/dataStreams:
+    get:
+      operationId: listDataStreams
+      summary: List data streams
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: pageToken
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Data streams list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataStreamListResponse'
+    post:
+      operationId: createDataStream
+      summary: Create data stream
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataStream'
+      responses:
+        '200':
+          description: Created data stream
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataStream'
+
+  /v1beta/properties/{propertyId}/dataStreams/{dataStreamId}:
+    get:
+      operationId: getDataStream
+      summary: Get data stream
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: dataStreamId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Data stream
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataStream'
+    patch:
+      operationId: updateDataStream
+      summary: Update data stream
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: dataStreamId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: updateMask
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataStream'
+      responses:
+        '200':
+          description: Updated data stream
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataStream'
+    delete:
+      operationId: deleteDataStream
+      summary: Delete data stream
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: dataStreamId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted data stream
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyObject'
+
+  /v1beta/properties/{propertyId}/dataStreams/{dataStreamId}/measurementProtocolSecrets:
+    get:
+      operationId: listMeasurementProtocolSecrets
+      summary: List measurement protocol secrets
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: dataStreamId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Secrets list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementProtocolSecretListResponse'
+    post:
+      operationId: createMeasurementProtocolSecret
+      summary: Create measurement protocol secret
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: dataStreamId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeasurementProtocolSecret'
+      responses:
+        '200':
+          description: Created secret
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementProtocolSecret'
+
+  /v1beta/properties/{propertyId}/dataStreams/{dataStreamId}/measurementProtocolSecrets/{secretId}:
+    get:
+      operationId: getMeasurementProtocolSecret
+      summary: Get measurement protocol secret
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: dataStreamId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: secretId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Secret
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementProtocolSecret'
+    patch:
+      operationId: updateMeasurementProtocolSecret
+      summary: Update measurement protocol secret
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: dataStreamId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: secretId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: updateMask
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeasurementProtocolSecret'
+      responses:
+        '200':
+          description: Updated secret
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementProtocolSecret'
+    delete:
+      operationId: deleteMeasurementProtocolSecret
+      summary: Delete measurement protocol secret
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: dataStreamId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: secretId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted secret
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyObject'
+
+  /v1beta/properties/{propertyId}/firebaseLinks:
+    get:
+      operationId: listFirebaseLinks
+      summary: List Firebase links
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Firebase links list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FirebaseLinkListResponse'
+    post:
+      operationId: createFirebaseLink
+      summary: Create Firebase link
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FirebaseLink'
+      responses:
+        '200':
+          description: Created Firebase link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FirebaseLink'
+
+  /v1beta/properties/{propertyId}/firebaseLinks/{firebaseLinkId}:
+    delete:
+      operationId: deleteFirebaseLink
+      summary: Delete Firebase link
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: firebaseLinkId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted Firebase link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyObject'
+
+  /v1beta/properties/{propertyId}/googleAdsLinks:
+    get:
+      operationId: listGoogleAdsLinks
+      summary: List Google Ads links
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Google Ads links list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleAdsLinkListResponse'
+    post:
+      operationId: createGoogleAdsLink
+      summary: Create Google Ads link
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleAdsLink'
+      responses:
+        '200':
+          description: Created Google Ads link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleAdsLink'
+
+  /v1beta/properties/{propertyId}/googleAdsLinks/{googleAdsLinkId}:
+    get:
+      operationId: getGoogleAdsLink
+      summary: Get Google Ads link
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: googleAdsLinkId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Google Ads link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleAdsLink'
+    patch:
+      operationId: updateGoogleAdsLink
+      summary: Update Google Ads link
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: googleAdsLinkId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: updateMask
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleAdsLink'
+      responses:
+        '200':
+          description: Updated Google Ads link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleAdsLink'
+    delete:
+      operationId: deleteGoogleAdsLink
+      summary: Delete Google Ads link
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: googleAdsLinkId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted Google Ads link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyObject'
+
+  /v1beta/properties/{propertyId}/customDimensions:
+    get:
+      operationId: listCustomDimensions
+      summary: List custom dimensions
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: pageToken
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Custom dimensions list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomDimensionListResponse'
+    post:
+      operationId: createCustomDimension
+      summary: Create custom dimension
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomDimension'
+      responses:
+        '200':
+          description: Created custom dimension
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomDimension'
+
+  /v1beta/properties/{propertyId}/customDimensions/{customDimensionId}:
+    get:
+      operationId: getCustomDimension
+      summary: Get custom dimension
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: customDimensionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Custom dimension
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomDimension'
+    patch:
+      operationId: updateCustomDimension
+      summary: Update custom dimension
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: customDimensionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: updateMask
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomDimension'
+      responses:
+        '200':
+          description: Updated custom dimension
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomDimension'
+
+  /v1beta/properties/{propertyId}/customDimensions/{customDimensionId}/archive:
+    post:
+      operationId: archiveCustomDimension
+      summary: Archive custom dimension
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: customDimensionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Archived custom dimension
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyObject'
+
+  /v1beta/properties/{propertyId}/customMetrics:
+    get:
+      operationId: listCustomMetrics
+      summary: List custom metrics
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: pageToken
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Custom metrics list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomMetricListResponse'
+    post:
+      operationId: createCustomMetric
+      summary: Create custom metric
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomMetric'
+      responses:
+        '200':
+          description: Created custom metric
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomMetric'
+
+  /v1beta/properties/{propertyId}/customMetrics/{customMetricId}:
+    get:
+      operationId: getCustomMetric
+      summary: Get custom metric
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: customMetricId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Custom metric
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomMetric'
+
+  /v1beta/properties/{propertyId}/customMetrics/{customMetricId}/archive:
+    post:
+      operationId: archiveCustomMetric
+      summary: Archive custom metric
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: customMetricId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Archived custom metric
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyObject'
+
+  /v1beta/properties/{propertyId}/accessBindings:
+    get:
+      operationId: listPropertyAccessBindings
+      summary: List property access bindings
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: pageToken
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Access bindings list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessBindingListResponse'
+    post:
+      operationId: createPropertyAccessBinding
+      summary: Create property access binding
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccessBinding'
+      responses:
+        '200':
+          description: Created access binding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessBinding'
+
+  /v1beta/properties/{propertyId}/accessBindings/{accessBindingId}:
+    get:
+      operationId: getPropertyAccessBinding
+      summary: Get property access binding
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: accessBindingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Access binding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessBinding'
+    patch:
+      operationId: updatePropertyAccessBinding
+      summary: Update property access binding
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: accessBindingId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: updateMask
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccessBinding'
+      responses:
+        '200':
+          description: Updated access binding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessBinding'
+    delete:
+      operationId: deletePropertyAccessBinding
+      summary: Delete property access binding
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: accessBindingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted access binding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyObject'
+
+  /v1beta/properties/{propertyId}/skAdNetworkConversionValueSchema:
+    get:
+      operationId: getSkAdNetworkConversionValueSchema
+      summary: Get SKAdNetwork conversion value schema
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: SKAdNetwork schema
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SKAdNetworkConversionValueSchema'
+    post:
+      operationId: createSkAdNetworkConversionValueSchema
+      summary: Create SKAdNetwork conversion value schema
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SKAdNetworkConversionValueSchema'
+      responses:
+        '200':
+          description: Created SKAdNetwork schema
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SKAdNetworkConversionValueSchema'
+
   /v1beta/properties/{propertyId}/searchAds360Links:
     get:
       operationId: listSearchAds360Links
