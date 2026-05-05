@@ -474,4 +474,5 @@ If you are an AI agent working in this repo:
 - active activation requires Drive, Sheets bootstrap, GitHub, and registry evidence
 
 ---
+
 **Documentation Integrity:** This Knowledge Guide must remain aligned with the [Canonical Sources](canonicals/) and the [Architectural Maps](runtime_boundary_map.md). Any structural changes must be propagated across all three layers as defined in the [README Documentation Architecture](README.md#documentation-integrity-architecture).
