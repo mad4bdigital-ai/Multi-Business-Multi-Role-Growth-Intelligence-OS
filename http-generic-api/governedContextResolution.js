@@ -447,13 +447,20 @@ export function validatePathResolutionContext(pathResolution = {}, requestPayloa
 
 // GAP 21: Task Routes resolution — surfaces matched task route from the MySQL
 // task_routes table rows loaded by the caller before context assembly.
+// GAP 21: task_routes table columns are: task_key, intent_key, route_id, target_module,
+// workflow_key, route_mode, trigger_terms — NOT parent_action_key/endpoint_key.
+// Match on intent_key from request payload, falling back to endpoint_key as intent alias.
 function buildTaskRouteContext({ requestPayload = {}, endpoint = {}, taskRouteRows = [] }) {
-  const parentActionKey = normalize(requestPayload.parent_action_key || endpoint.parent_action_key);
-  const endpointKey = normalize(requestPayload.endpoint_key || endpoint.endpoint_key);
+  const intentKey = normalize(
+    requestPayload.intent_key ||
+    requestPayload.task_key ||
+    requestPayload.endpoint_key ||
+    endpoint.endpoint_key
+  );
 
   if (!taskRouteRows.length) {
     return {
-      requested: !!(parentActionKey || endpointKey),
+      requested: !!intentKey,
       resolution_status: "not_loaded",
       matched_route: null,
       surface: "surface.task_routes"
@@ -461,19 +468,20 @@ function buildTaskRouteContext({ requestPayload = {}, endpoint = {}, taskRouteRo
   }
 
   const matched = taskRouteRows.find(row =>
-    (!normalize(row.parent_action_key) || normalize(row.parent_action_key) === parentActionKey) &&
-    (!normalize(row.endpoint_key) || normalize(row.endpoint_key) === endpointKey)
+    intentKey && (normalize(row.intent_key) === intentKey || normalize(row.task_key) === intentKey)
   );
 
   return {
-    requested: !!(parentActionKey || endpointKey),
+    requested: !!intentKey,
     resolution_status: matched ? "matched" : "no_match",
     matched_route: matched
       ? {
-          route_key: normalize(matched.route_key),
+          route_id: normalize(matched.route_id),
+          task_key: normalize(matched.task_key),
+          intent_key: normalize(matched.intent_key),
           workflow_key: normalize(matched.workflow_key),
-          parent_action_key: normalize(matched.parent_action_key),
-          endpoint_key: normalize(matched.endpoint_key)
+          target_module: normalize(matched.target_module),
+          route_mode: normalize(matched.route_mode)
         }
       : null,
     surface: "surface.task_routes"

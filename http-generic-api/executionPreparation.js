@@ -182,13 +182,12 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
   const pathResolverLoad = await loadPathResolverRowsForRequest(requestPayload, deps);
 
   // GAP 21: load task routes from DB when a loader is available.
+  // task_routes rows are keyed by intent_key / task_key, not parent_action_key.
   let taskRouteRows = [];
   if (typeof deps.loadTaskRouteRows === "function") {
     try {
-      taskRouteRows = await deps.loadTaskRouteRows({
-        parent_action_key,
-        endpoint_key
-      });
+      const intentKey = String(requestPayload.intent_key || requestPayload.task_key || endpoint_key || "").trim();
+      taskRouteRows = await deps.loadTaskRouteRows({ intent_key: intentKey });
     } catch {
       // Non-blocking — task_route context will show resolution_status: "not_loaded"
     }
