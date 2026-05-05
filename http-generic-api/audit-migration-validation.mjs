@@ -41,6 +41,9 @@ const TABLE_MAP = {
   "Site Runtime Inventory Registry":    "site_runtime_inventory",
   "Site Settings Inventory Registry":   "site_settings_inventory",
   "Plugin Inventory Registry":          "plugins",
+  "Business Activity Type Registry":     "business_activity_types",
+  "Business Type Knowledge Profiles":    "business_type_profiles",
+  "Brand Path Resolver":                "brand_paths",
   "Task Routes":                        "task_routes",
   "Workflow Registry":                  "workflows",
   "Registry Surfaces Catalog":          "registry_surfaces_catalog",
@@ -60,6 +63,9 @@ const NATURAL_KEYS = {
   "Site Runtime Inventory Registry":  ["target_key"],
   "Site Settings Inventory Registry": ["target_key"],
   "Plugin Inventory Registry":        ["target_key"],
+  "Business Activity Type Registry":   ["business_activity_type_key"],
+  "Business Type Knowledge Profiles":  ["business_type_key", "knowledge_profile_key"],
+  "Brand Path Resolver":              ["brand_key"],
   "Task Routes":                      ["route_id"],
   "Workflow Registry":                ["Workflow ID"],
   "Registry Surfaces Catalog":        ["surface_id"],
@@ -136,12 +142,17 @@ async function readSheetRows(sheets, spreadsheetId, sheetName) {
 
 // ── DB helpers ────────────────────────────────────────────────────────────────
 async function getPool() {
+  const missing = ["DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD"].filter((key) => !process.env[key]);
+  if (missing.length) {
+    throw new Error(`Missing required DB environment variable(s): ${missing.join(", ")}`);
+  }
+
   return mysql.createPool({
-    host:     process.env.DB_HOST     || "srv1343.hstgr.io",
+    host:     process.env.DB_HOST,
     port:     Number(process.env.DB_PORT) || 3306,
-    database: process.env.DB_NAME     || "u338416126_growthOS",
-    user:     process.env.DB_USER     || "u338416126_growthOS",
-    password: process.env.DB_PASSWORD || "Mad4b@147258369",
+    database: process.env.DB_NAME,
+    user:     process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
     waitForConnections: true,
     connectionLimit: 5,
     timezone: "Z",

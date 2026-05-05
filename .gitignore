@@ -6,3 +6,4 @@ secrets/
 http-generic-api/google-oauth-token.json
 .omx/
 Development/
+memory/

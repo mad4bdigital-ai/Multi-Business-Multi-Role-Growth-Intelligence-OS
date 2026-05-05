@@ -6,6 +6,7 @@ export function buildHealthRoutes(deps) {
     normalizeJobStatus,
     getWaitingCountSafe,
     getRedisRuntimeStatus,
+    testDbConnection,
     SERVICE_VERSION,
     QUEUE_WORKER_ENABLED
   } = deps;
@@ -30,7 +31,17 @@ export function buildHealthRoutes(deps) {
 
     const queueHealth = await getWaitingCountSafe();
     const redisHealth = getRedisRuntimeStatus();
-    const dependencyStatus = redisHealth.connected && queueHealth.ok ? "healthy" : "degraded";
+    const dbHealth = testDbConnection
+      ? await testDbConnection()
+        .then(() => ({ connected: true }))
+        .catch((err) => ({
+          connected: false,
+          error: err?.code || err?.message || "db_connection_failed"
+        }))
+      : { connected: null, skipped: true };
+    const dependencyStatus = redisHealth.connected && queueHealth.ok && dbHealth.connected !== false
+      ? "healthy"
+      : "degraded";
 
     res.json({
       ok: true,
@@ -52,6 +63,11 @@ export function buildHealthRoutes(deps) {
             },
         worker: {
           enabled: QUEUE_WORKER_ENABLED
+        },
+        db: {
+          connected: dbHealth.connected,
+          ...(dbHealth.error ? { error: dbHealth.error } : {}),
+          ...(dbHealth.skipped ? { skipped: true } : {})
         }
       },
       timestamp: new Date().toISOString()

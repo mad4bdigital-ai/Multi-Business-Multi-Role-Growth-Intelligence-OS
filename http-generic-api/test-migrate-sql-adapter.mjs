@@ -98,6 +98,9 @@ const EXPECTED_SHEET_NAMES = [
   "Site Runtime Inventory Registry",
   "Site Settings Inventory Registry",
   "Plugin Inventory Registry",
+  "Business Activity Type Registry",
+  "Business Type Knowledge Profiles",
+  "Brand Path Resolver",
   "Task Routes",
   "Workflow Registry",
   "Registry Surfaces Catalog",
@@ -119,7 +122,9 @@ for (const name of EXPECTED_SHEET_NAMES) {
 const EXPECTED_SQL_TABLES = [
   "brands", "brand_core", "actions", "endpoints",
   "execution_policies", "hosting_accounts", "site_runtime_inventory",
-  "site_settings_inventory", "plugins", "task_routes", "workflows",
+  "site_settings_inventory", "plugins",
+  "business_activity_types", "business_type_profiles", "brand_paths",
+  "task_routes", "workflows",
   "registry_surfaces_catalog", "validation_repair", "json_assets", "execution_log",
 ];
 
@@ -149,6 +154,9 @@ const EXPECTED_COUNTS = {
   site_runtime_inventory:    11,
   site_settings_inventory:   12,
   plugins:                   12,
+  business_activity_types:   13,
+  business_type_profiles:    11,
+  brand_paths:               11,
   task_routes:               46,
   workflows:                 53,
   registry_surfaces_catalog: 38,

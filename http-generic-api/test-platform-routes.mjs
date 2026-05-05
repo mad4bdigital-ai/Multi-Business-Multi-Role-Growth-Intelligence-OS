@@ -21,6 +21,7 @@ import { buildBootstrapRoutes }        from "./routes/bootstrapRoutes.js";
 import { buildObservabilityRoutes }    from "./routes/observabilityRoutes.js";
 import { buildStatusRoutes }           from "./routes/statusRoutes.js";
 import { buildBatchRoutes }            from "./routes/batchRoutes.js";
+import { buildHealthRoutes }           from "./routes/healthRoutes.js";
 
 let passed = 0;
 let failed = 0;
@@ -39,9 +40,22 @@ function section(name) { console.log(`\n== ${name}`); }
 // ── Build Express app with all tested routers ─────────────────────────────────
 
 const DEPS = { requireBackendApiKey: (_req, _res, next) => next() };
+const HEALTH_DEPS = {
+  jobRepository: {
+    values: () => [],
+    size: () => 0,
+  },
+  normalizeJobStatus: (status) => status,
+  getWaitingCountSafe: async () => ({ ok: true, count: 0 }),
+  getRedisRuntimeStatus: () => ({ connected: true }),
+  testDbConnection: async () => {},
+  SERVICE_VERSION: "test",
+  QUEUE_WORKER_ENABLED: false,
+};
 
 const app = express();
 app.use(express.json());
+app.use(buildHealthRoutes(HEALTH_DEPS));
 app.use(buildTenantsRoutes(DEPS));
 app.use(buildAccessRoutes(DEPS));
 app.use(buildPlannerRoutes(DEPS));
@@ -244,6 +258,17 @@ section("GET /tenants — route registered");
 {
   const r = await get("/tenants");
   ok("not 404", r.status !== 404, `got ${r.status}`);
+}
+
+// ── 11a. GET /health — DB dependency visible ───────────────────────────────
+
+section("GET /health — DB dependency visible");
+
+{
+  const r = await get("/health");
+  ok("returns 200", r.status === 200, `got ${r.status}`);
+  ok("reports DB connected", r.body?.dependencies?.db?.connected === true,
+    JSON.stringify(r.body?.dependencies?.db || {}));
 }
 
 // ── 12. POST /customers — route registered ───────────────────────────────────

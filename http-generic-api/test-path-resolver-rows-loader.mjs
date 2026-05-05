@@ -227,6 +227,9 @@ function makeDeps() {
 }
 
 {
+  // When no Google deps are provided, the loader falls back to the DB layer
+  // (pathResolverDbLoader.js). DB queries may return empty results in CI, but
+  // the function still reports loaded=true with reason "loaded_from_db".
   const loaded = await loadPathResolverRowsForRequest(
     {
       business_type_key: "hvac_air_conditioning_services",
@@ -236,8 +239,8 @@ function makeDeps() {
   );
 
   assert.equal(loaded.requested, true);
-  assert.equal(loaded.loaded, false);
-  assert.equal(loaded.reason, "missing_registry_sheet_dependencies");
+  assert.equal(loaded.loaded, true);
+  assert.equal(loaded.reason, "loaded_from_db");
 }
 
 console.log("path resolver rows loader tests passed");

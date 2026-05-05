@@ -591,7 +591,20 @@ components:
         dependencies:
           type: object
           additionalProperties: true
-          description: Optional backend dependency health details.
+          description: Optional backend dependency health details, including database connectivity.
+          properties:
+            db:
+              type: object
+              additionalProperties: true
+              properties:
+                connected:
+                  oneOf:
+                    - type: boolean
+                    - type: "null"
+                error:
+                  type: string
+                skipped:
+                  type: boolean
         timestamp:
           type: string
           format: date-time
