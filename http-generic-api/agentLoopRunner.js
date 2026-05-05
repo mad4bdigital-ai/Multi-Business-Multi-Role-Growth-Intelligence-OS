@@ -1,6 +1,77 @@
 import { randomUUID } from "node:crypto";
 import { getPool } from "./db.js";
 
+function isTruthy(val) {
+  return val === true || val === 1 || val === "1" || val === "TRUE";
+}
+
+async function reviewOutput(output, plan, deps) {
+  const callModel = deps.getCallModelForClass
+    ? deps.getCallModelForClass("standard")
+    : deps.callModel;
+  const messages = [
+    {
+      role: "system",
+      content:
+        'You are a quality reviewer. Review the following output for completeness, accuracy, and alignment with the task intent. Respond with JSON: { "passed": boolean, "issues": string[], "severity": "none"|"minor"|"major" }',
+    },
+    {
+      role: "user",
+      content: `Task intent: ${plan.intent_key || ""}\nOutput to review:\n${output}`,
+    },
+  ];
+  try {
+    const response = await callModel(messages, []);
+    const text =
+      typeof response.content === "string"
+        ? response.content
+        : (response.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
+    const json = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || "null");
+    if (!json) throw new Error("no json");
+    return {
+      passed: Boolean(json.passed),
+      issues: Array.isArray(json.issues) ? json.issues : [],
+      severity: json.severity || "none",
+    };
+  } catch {
+    return { passed: true, issues: [], severity: "none", parse_error: true };
+  }
+}
+
+async function fixOutput(output, issues, plan, deps) {
+  const messages = [
+    {
+      role: "system",
+      content: "You are a content fixer. Fix the issues in the output and return only the corrected content.",
+    },
+    {
+      role: "user",
+      content: `Original output:\n${output}\n\nIssues to fix:\n${issues.join("\n")}`,
+    },
+  ];
+  const response = await deps.callModel(messages, []);
+  if (typeof response.content === "string") return response.content;
+  return (response.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
+}
+
+async function writeReviewStepRun(run_id, tenant_id, reviewResult) {
+  const passed = reviewResult.passed;
+  try {
+    await getPool().query(
+      `INSERT INTO \`step_runs\`
+         (step_run_id, run_id, tenant_id, step_key, step_type, status, input_json, output_json, started_at, completed_at)
+       VALUES (?, ?, ?, 'verify_pass', 'review', ?, NULL, ?, NOW(), NOW())`,
+      [
+        randomUUID(),
+        run_id,
+        tenant_id || null,
+        passed ? "completed" : "review_failed",
+        JSON.stringify(reviewResult),
+      ]
+    );
+  } catch { /* non-blocking */ }
+}
+
 async function loadWorkflow(workflow_key) {
   const [rows] = await getPool().query(
     "SELECT * FROM `workflows` WHERE workflow_key = ? AND (active = 1 OR active = '1' OR active = 'TRUE') LIMIT 1",
@@ -90,12 +161,45 @@ export async function runAgentLoop(plan, deps = {}) {
     return { ok: false, error: "no_engine_registry" };
   }
 
+  // Use class-aware callModel when available; fall back to deps.callModel.
+  const execution_class = workflow.execution_class || "standard";
+  const callModel = deps.getCallModelForClass
+    ? deps.getCallModelForClass(execution_class)
+    : deps.callModel;
+
   const modelResult = await deps.runLogicWithModel(
     { logic_key, logic_body: logicBody, user_input: plan.intent_key || "", context, tools },
-    { callModel: deps.callModel, dispatchTool }
+    { callModel, dispatchTool }
   );
 
   await writeRunResult(run_id, modelResult, plan.tenant_id);
+
+  let reviewSummary = null;
+
+  if (isTruthy(workflow?.review_required)) {
+    try {
+      const reviewResult = await reviewOutput(modelResult.output, plan, deps);
+      let fixApplied = false;
+
+      if (!reviewResult.passed && reviewResult.severity === "major") {
+        const fixed = await fixOutput(modelResult.output, reviewResult.issues, plan, deps);
+        modelResult.output = fixed;
+        fixApplied = true;
+      }
+
+      reviewSummary = {
+        ran: true,
+        passed: reviewResult.passed,
+        issues: reviewResult.issues,
+        severity: reviewResult.severity,
+        fix_applied: fixApplied,
+      };
+
+      writeReviewStepRun(run_id, plan.tenant_id, reviewSummary).catch(() => {});
+    } catch (err) {
+      console.warn("[agentLoopRunner] verify pass failed (non-blocking):", err?.message);
+    }
+  }
 
   return {
     ok: modelResult.ok,
@@ -104,5 +208,6 @@ export async function runAgentLoop(plan, deps = {}) {
     tool_calls_made: modelResult.tool_calls_made,
     iterations: modelResult.iteration_count,
     execution_trace_id: modelResult.execution_trace_id,
+    review: reviewSummary,
   };
 }

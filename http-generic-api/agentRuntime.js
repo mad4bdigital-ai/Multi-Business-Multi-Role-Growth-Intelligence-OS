@@ -38,6 +38,38 @@ function buildAgentDeps(config = {}) {
   };
 }
 
+// Models per execution_class per provider.
+const CLASS_MODELS = {
+  standard:  { anthropic: "claude-haiku-4-5-20251001", openai: "gpt-4o-mini",  gemini: "gemini-1.5-flash" },
+  complex:   { anthropic: "claude-sonnet-4-6",          openai: "gpt-4o",       gemini: "gemini-1.5-pro"  },
+  authority: { anthropic: "claude-opus-4-7",            openai: "gpt-4o",       gemini: "gemini-1.5-pro"  },
+};
+
+let _classCache = {};
+
+export function getCallModelForClass(execution_class) {
+  const cls = execution_class || "standard";
+  if (_classCache[cls]) return _classCache[cls];
+
+  // AGENT_MODEL env var opts out of class routing for all classes.
+  if (process.env.AGENT_MODEL) {
+    _classCache[cls] = getAgentDeps().callModel;
+    return _classCache[cls];
+  }
+
+  const provider = (process.env.AGENT_MODEL_PROVIDER || "anthropic").toLowerCase();
+  const apiKeyByProvider = {
+    anthropic: process.env.ANTHROPIC_API_KEY,
+    openai:    process.env.OPENAI_API_KEY,
+    gemini:    process.env.GOOGLE_AI_API_KEY,
+  };
+  const table = CLASS_MODELS[cls] || CLASS_MODELS.standard;
+  const model = table[provider] || table.anthropic;
+
+  _classCache[cls] = buildCallModel({ provider, model, api_key: apiKeyByProvider[provider] });
+  return _classCache[cls];
+}
+
 let _singleton = null;
 
 export function getAgentDeps() {
@@ -52,11 +84,14 @@ export function getAgentDeps() {
     gemini:    process.env.GOOGLE_AI_API_KEY,
   };
 
-  _singleton = buildAgentDeps({
-    provider,
-    model:   process.env.AGENT_MODEL,
-    api_key: apiKeyByProvider[provider],
-  });
+  _singleton = {
+    ...buildAgentDeps({
+      provider,
+      model:   process.env.AGENT_MODEL,
+      api_key: apiKeyByProvider[provider],
+    }),
+    getCallModelForClass,
+  };
 
   return _singleton;
 }
