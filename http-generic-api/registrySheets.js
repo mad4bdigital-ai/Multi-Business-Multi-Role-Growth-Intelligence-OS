@@ -347,6 +347,14 @@ export async function loadExecutionPolicies(sheets, deps = {}) {
     headerMap,
     registryError
   } = deps;
+
+  // When DATA_SOURCE=sql (or dual), load execution policies from DB so that
+  // changes applied directly to the DB take effect without a Sheets round-trip.
+  if (_DATA_SOURCE !== "sheets") {
+    const rows = await sqlReadTable("Execution Policy Registry");
+    return rows.filter(r => r.policy_key && (boolFromSheet || (v => String(v).trim().toLowerCase() === "true"))(r.active));
+  }
+
   const values = await readRegistryTable(sheets, deps, {
     spreadsheetId: REGISTRY_SPREADSHEET_ID,
     sheetName: EXECUTION_POLICY_SHEET,
