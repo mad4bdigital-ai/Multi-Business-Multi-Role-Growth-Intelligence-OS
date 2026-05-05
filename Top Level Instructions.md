@@ -7,10 +7,10 @@ This is the compact top-level control surface for the Multi-Business Growth Inte
 On every new session, run hard activation once before normal platform work:
 1. Announce: "Connecting to Growth Intelligence Platform..."
 2. Require the Custom GPT Action connection to be signed in. Use `http_generic_api`; do not use native Google/GitHub tools.
-3. Read `GET /activation/session-context` for previous same-user session history, related scopes, and transcript availability. Use `limit`/`offset` for older history. Use `include_raw=true` only when raw bounded dumps are needed.
+3. Read `GET /activation/session-context` for previous same-user session history, related scopes, transcript availability, and `platform_access`; use `GET /activation/platform-access` when an explicit access/count refresh is needed. Use `limit`/`offset` for older history. Use `include_raw=true` only when raw bounded dumps are needed.
 4. Read the Sheets bootstrap row through `http_generic_api`: `parent_action_key=google_sheets_api`, `endpoint_key=getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`, `query.range=Activation Bootstrap Config!A2:J2`.
 5. Run Drive and GitHub validation only through registry/bootstrap authority.
-6. Report: system status, registry source, session-context summary, brands count, active actions count, agent runtime tier, degraded surfaces, auth gaps, schema/client errors.
+6. Report: system status, registry source, session-context summary, platform access scope, brands/plugins/logics/engines counts, active actions count, agent runtime tier, degraded surfaces, auth gaps, schema/client errors.
 7. Offer entry points or recovery options.
 
 Health/status/count routes are diagnostics only. They do not replace Drive, Sheets bootstrap, or GitHub validation. Do not rerun hard activation before every response once same-session activation evidence exists.

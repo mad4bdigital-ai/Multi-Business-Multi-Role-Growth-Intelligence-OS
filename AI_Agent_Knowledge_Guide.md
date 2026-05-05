@@ -61,13 +61,14 @@ to sync Drive to DB when explicitly performing that maintenance task.
 Activation order:
 1. Read knowledge-layer canonicals.
 2. Read Session Context: `GET /activation/session-context`.
-3. Drive probe: `parent_action_key=google_drive_api`, `endpoint_key=listDriveFiles`.
-4. Sheets bootstrap: `parent_action_key=google_sheets_api`, `endpoint_key=getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`, `query.range=Activation Bootstrap Config!A2:J2`.
-5. Resolve the bootstrap row.
-6. GitHub validation only with `parent_action_key` and `endpoint_key` resolved from bootstrap/registry authority.
-7. Run live validation and classify readiness.
+3. Read Platform Access if not embedded or if a fresh count is needed: `GET /activation/platform-access`.
+4. Drive probe: `parent_action_key=google_drive_api`, `endpoint_key=listDriveFiles`.
+5. Sheets bootstrap: `parent_action_key=google_sheets_api`, `endpoint_key=getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`, `query.range=Activation Bootstrap Config!A2:J2`.
+6. Resolve the bootstrap row.
+7. GitHub validation only with `parent_action_key` and `endpoint_key` resolved from bootstrap/registry authority.
+8. Run live validation and classify readiness.
 
-Session Context may include previous session history, related scopes, scoped request transcripts, and bounded raw dumps when `include_raw=true`. User JWT sessions inspect only their own user context. Admin/service sessions may inspect explicit `user_id` and may receive execution-log prompt/response summaries.
+Session Context may include previous session history, related scopes, scoped request transcripts, bounded raw dumps when `include_raw=true`, and a `platform_access` summary. Platform Access reports admin/global scope plus brands, plugins, logics, engines, and runtime-callable actions counts. User JWT sessions inspect only their own user context. Admin/service sessions may inspect explicit `user_id` and may receive execution-log prompt/response summaries.
 
 Do not start GitHub until the bootstrap row resolves. Halt if Sheets is rate-limited. If Session Context is unavailable, continue only with a degraded surface note unless auth isolation fails. If Drive/Sheets are not attempted, classify as `degraded (missing_required_provider_bootstrap_attempt)`.
 
@@ -186,12 +187,13 @@ Activation is not considered complete unless the required governed execution and
 Agents should assume activation requires the concrete provider bootstrap chain through `http_generic_api`:
 
 1. Load the knowledge-layer canonicals.
-2. Run the Session Context probe through `http_generic_api` with `GET /activation/session-context` to recover same-user previous session history, scoped user request transcripts, and related platform scopes. Use `limit` and `offset` to page through older session history when continuity requires more than the first page. Use `include_raw=true` only when raw prompt/response dumps are needed; raw fields are bounded by `raw_max_chars`. Admin/service sessions may also receive execution-log prompt/response summaries and bounded raw dumps; user JWT sessions must not receive unscoped execution-log transcripts.
-3. Run the Drive probe through `http_generic_api` with `parent_action_key=google_drive_api` and `endpoint_key=listDriveFiles`.
-4. Run the Sheets bootstrap probe through `http_generic_api` with `parent_action_key=google_sheets_api`, `endpoint_key=getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>` (use this exact literal string, the backend auto-resolves it), and `query.range=Activation Bootstrap Config!A2:J2`.
-5. Resolve the bootstrap row before attempting GitHub validation.
-6. Run GitHub validation only with `parent_action_key` and `endpoint_key` resolved from bootstrap or registry authority.
-7. Classify readiness from execution evidence, not from narrative or health checks alone.
+2. Run the Session Context probe through `http_generic_api` with `GET /activation/session-context` to recover same-user previous session history, scoped user request transcripts, related platform scopes, and embedded platform access evidence. Use `limit` and `offset` to page through older session history when continuity requires more than the first page. Use `include_raw=true` only when raw prompt/response dumps are needed; raw fields are bounded by `raw_max_chars`. Admin/service sessions may also receive execution-log prompt/response summaries and bounded raw dumps; user JWT sessions must not receive unscoped execution-log transcripts.
+3. Run `GET /activation/platform-access` when the embedded summary is missing or a fresh access/count refresh is needed. Report `access_scope`, all-brand/admin access evidence, brands, plugins, logics, engines, and runtime-callable actions counts.
+4. Run the Drive probe through `http_generic_api` with `parent_action_key=google_drive_api` and `endpoint_key=listDriveFiles`.
+5. Run the Sheets bootstrap probe through `http_generic_api` with `parent_action_key=google_sheets_api`, `endpoint_key=getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>` (use this exact literal string, the backend auto-resolves it), and `query.range=Activation Bootstrap Config!A2:J2`.
+6. Resolve the bootstrap row before attempting GitHub validation.
+7. Run GitHub validation only with `parent_action_key` and `endpoint_key` resolved from bootstrap or registry authority.
+8. Classify readiness from execution evidence, not from narrative or health checks alone.
 
 Health, `/status`, release readiness, tenant listing, brand counts, and action counts are diagnostics only. They prove reachability or registry health, but they do not replace Drive, Sheets bootstrap, or GitHub validation.
 
@@ -258,7 +260,7 @@ Use the narrowest honest classification:
 | Provider probes pass but registry readiness is incomplete | `validating` or `degraded` depending on whether execution can continue safely |
 | Drive, Sheets bootstrap, GitHub, registry readiness, and required counts pass | `active` |
 
-Report evidence as compact facts: transport status, DB status, Drive result, Sheets bootstrap result, GitHub result, registry source, active actions, brands available, and any degraded surfaces.
+Report evidence as compact facts: transport status, DB status, Drive result, Sheets bootstrap result, GitHub result, registry source, platform access scope, brands/plugins/logics/engines counts, active actions, and any degraded surfaces.
 
 ### Activation failure handling
 

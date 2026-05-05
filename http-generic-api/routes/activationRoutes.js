@@ -32,6 +32,23 @@ function asBoolean(value) {
   return String(value || "").trim().toLowerCase() === "true";
 }
 
+function asCount(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function readinessFromResult(result, active = true) {
+  if (!result?.ok) return "degraded";
+  return active ? "active" : "empty";
+}
+
+function splitRegistryList(value) {
+  return String(value || "")
+    .split(/[|,;\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function parseJsonSafe(value) {
   if (!value || typeof value !== "string") return value && typeof value === "object" ? value : null;
   try {
@@ -102,6 +119,155 @@ async function safeQuery(sql, params) {
       }
     };
   }
+}
+
+async function countQuery(surface, sql, params = [], queryFn = safeQuery) {
+  const result = await queryFn(sql, params);
+  const row = result.rows[0] || {};
+  return {
+    surface,
+    result,
+    count: asCount(row.count)
+  };
+}
+
+export async function buildActivationPlatformAccess(req, deps = {}) {
+  const queryFn = deps.query || safeQuery;
+  const isAdmin = req.auth?.is_admin === true;
+  const principalType = req.auth?.mode || (isAdmin ? "backend_api_key" : "unknown");
+
+  const [
+    brands,
+    brandTargets,
+    actions,
+    runtimeActions,
+    plugins,
+    activePluginInventories,
+    logics,
+    activeLogics,
+    workflowEngines,
+    executionEngines
+  ] = await Promise.all([
+    countQuery("brands", "SELECT COUNT(*) AS count FROM `brands`", [], queryFn),
+    countQuery("brand_targets", "SELECT COUNT(DISTINCT target_key) AS count FROM `brands` WHERE target_key IS NOT NULL AND TRIM(target_key) <> ''", [], queryFn),
+    countQuery("actions", "SELECT COUNT(*) AS count FROM `actions`", [], queryFn),
+    countQuery(
+      "runtime_callable_actions",
+      `SELECT COUNT(*) AS count FROM \`actions\`
+       WHERE LOWER(TRIM(COALESCE(runtime_callable, ''))) IN ('1','true','yes','y','active','enabled','callable')`,
+      [],
+      queryFn
+    ),
+    countQuery("plugin_inventories", "SELECT COUNT(*) AS count FROM `plugins`", [], queryFn),
+    countQuery(
+      "active_plugin_inventories",
+      `SELECT COUNT(*) AS count FROM \`plugins\`
+       WHERE TRIM(COALESCE(active_plugins, '')) <> ''
+          OR LOWER(TRIM(COALESCE(active_status, ''))) IN ('1','true','yes','y','active','enabled')`,
+      [],
+      queryFn
+    ),
+    countQuery("logic_definitions", "SELECT COUNT(*) AS count FROM `logic_definitions`", [], queryFn),
+    countQuery(
+      "active_logic_definitions",
+      "SELECT COUNT(*) AS count FROM `logic_definitions` WHERE LOWER(TRIM(COALESCE(status, ''))) = 'active'",
+      [],
+      queryFn
+    ),
+    queryFn(
+      `SELECT mapped_engines, linked_engines, engine_order
+       FROM \`workflows\`
+       WHERE mapped_engines IS NOT NULL OR linked_engines IS NOT NULL OR engine_order IS NOT NULL`,
+      []
+    ),
+    queryFn(
+      `SELECT used_engine_names, used_engine_registry_refs
+       FROM \`execution_log\`
+       WHERE used_engine_names IS NOT NULL OR used_engine_registry_refs IS NOT NULL
+       ORDER BY created_at DESC LIMIT 500`,
+      []
+    )
+  ]);
+
+  const engineSet = new Set();
+  if (workflowEngines.ok) {
+    for (const row of workflowEngines.rows) {
+      for (const value of [row.mapped_engines, row.linked_engines, row.engine_order]) {
+        for (const engine of splitRegistryList(value)) engineSet.add(engine);
+      }
+    }
+  }
+  if (executionEngines.ok) {
+    for (const row of executionEngines.rows) {
+      for (const value of [row.used_engine_names, row.used_engine_registry_refs]) {
+        for (const engine of splitRegistryList(value)) engineSet.add(engine);
+      }
+    }
+  }
+
+  const surfaces = [
+    brands,
+    brandTargets,
+    actions,
+    runtimeActions,
+    plugins,
+    activePluginInventories,
+    logics,
+    activeLogics,
+    { surface: "workflow_engine_references", result: workflowEngines },
+    { surface: "execution_engine_references", result: executionEngines }
+  ];
+
+  const counts = {
+    brands: {
+      total: brands.count,
+      distinct_targets: brandTargets.count
+    },
+    actions: {
+      total: actions.count,
+      runtime_callable: runtimeActions.count
+    },
+    plugins: {
+      inventory_rows: plugins.count,
+      active_inventory_rows: activePluginInventories.count
+    },
+    logics: {
+      total: logics.count,
+      active: activeLogics.count
+    },
+    engines: {
+      distinct_references: engineSet.size,
+      sample: [...engineSet].sort().slice(0, 25)
+    }
+  };
+
+  return {
+    principal: {
+      type: principalType,
+      is_admin: isAdmin,
+      user_id: req.auth?.user_id || null,
+      tenant_id: req.auth?.tenant_id || null
+    },
+    access_scope: isAdmin ? "platform_admin_all" : "user_scoped",
+    access: {
+      brands: isAdmin ? "all_brands" : "tenant_or_user_scoped",
+      plugins: isAdmin ? "all_plugin_inventory" : "tenant_or_user_scoped",
+      logics: isAdmin ? "all_logic_definitions" : "tenant_or_user_scoped",
+      engines: isAdmin ? "all_engine_references" : "tenant_or_user_scoped",
+      actions: isAdmin ? "all_runtime_actions" : "tenant_or_user_scoped"
+    },
+    counts,
+    readiness: {
+      brands: readinessFromResult(brands.result, counts.brands.total > 0),
+      plugins: readinessFromResult(plugins.result, counts.plugins.inventory_rows > 0),
+      logics: readinessFromResult(logics.result, counts.logics.active > 0),
+      engines: readinessFromResult(workflowEngines, counts.engines.distinct_references > 0),
+      actions: readinessFromResult(actions.result, counts.actions.runtime_callable > 0)
+    },
+    degraded_surfaces: surfaces
+      .filter(({ result }) => !result.ok)
+      .map(({ surface, result }) => ({ surface, error: result.error }))
+  };
 }
 
 export function resolveSessionContextSubject(req) {
@@ -229,6 +395,7 @@ export async function buildActivationSessionContext(req) {
       if (key) scopeSet.add(String(key));
     }
   }
+  const platformAccess = await buildActivationPlatformAccess(req);
 
   return {
     subject,
@@ -274,13 +441,15 @@ export async function buildActivationSessionContext(req) {
       api_credentials: apiCredentials.rows.map((row) => ({ ...row, scopes: parseScopes(row.scopes) })),
       installations: installations.rows.map((row) => ({ ...row, scope: parseScopes(row.scope) }))
     },
+    platform_access: platformAccess,
     degraded_surfaces: [
       ["request_envelopes", envelopes],
       ["audit_log", audit],
       ["developer_apps", developerApps],
       ["api_credentials", apiCredentials],
       ["installations", installations],
-      ["execution_log", executionTranscript]
+      ["execution_log", executionTranscript],
+      ["platform_access", { ok: platformAccess.degraded_surfaces.length === 0, error: { code: "platform_access_degraded", details: platformAccess.degraded_surfaces } }]
     ]
       .filter(([, result]) => !result.ok)
       .map(([surface, result]) => ({ surface, error: result.error }))
@@ -304,6 +473,25 @@ export function buildActivationRoutes(deps) {
         ok: false,
         error: {
           code: err.code || "activation_session_context_failed",
+          message: err.message
+        }
+      });
+    }
+  });
+
+  router.get("/activation/platform-access", requireBackendApiKey, async (req, res) => {
+    try {
+      const access = await buildActivationPlatformAccess(req);
+      return res.status(200).json({
+        ok: true,
+        activation_layer: "platform_access",
+        ...access
+      });
+    } catch (err) {
+      return res.status(err.status || 500).json({
+        ok: false,
+        error: {
+          code: err.code || "activation_platform_access_failed",
           message: err.message
         }
       });

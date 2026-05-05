@@ -109,6 +109,8 @@ The hardened activation routing wrapper is active:
   - `session_context_endpoint = /activation/session-context`
   - `session_context_scope = same_user_unless_admin`
   - `session_context_raw_dump_allowed = bounded_when_requested`
+  - `platform_access_endpoint = /activation/platform-access`
+  - `platform_access_counts = brands_plugins_logics_engines_actions`
   - `provider_bootstrap_sequence_required = drive_then_sheets_bootstrap_then_github`
   - project-folder-scoped Google Drive discovery through folder `1gNYX47P4TNuMXEbWvLNCvV4XRocH41K2` when fallback discovery or canonical lookup is needed
 - `system_activation_check` must remain reserved for explicit readiness-check phrasing and must not be preferred for plain `Activate System` when one-request activation is intended

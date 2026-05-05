@@ -323,11 +323,12 @@ When activation begins in a new conversation, module_loader must load activation
 
 1. load knowledge layer canonicals for traceability
 2. fetch repository-backed canonicals through bootstrap/registry-resolved GitHub authority when repository authority is active
-3. execute `GET /activation/session-context` through `http_generic_api` for previous same-user session history, related scopes, and transcript availability
-4. execute Drive validation through `http_generic_api`
-5. execute Sheets validation through `http_generic_api` using `getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`, and `query.range=Activation Bootstrap Config!A2:J2`
-6. execute GitHub validation only after bootstrap row resolution
-7. classify the governed transport validation state as:
+3. execute `GET /activation/session-context` through `http_generic_api` for previous same-user session history, related scopes, transcript availability, and embedded platform access evidence
+4. execute `GET /activation/platform-access` when explicit all-brand/plugin/logic/engine/action counts or access refresh are needed
+5. execute Drive validation through `http_generic_api`
+6. execute Sheets validation through `http_generic_api` using `getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`, and `query.range=Activation Bootstrap Config!A2:J2`
+7. execute GitHub validation only after bootstrap row resolution
+8. classify the governed transport validation state as:
    - `validated`
    - `authorization_gated`
    - `degraded`
@@ -344,6 +345,8 @@ Session context is an activation evidence layer, not a replacement for provider 
 - `session_context_transcript_status`
 - `session_context_raw_dump_requested`
 - `session_context_raw_dump_bounded`
+- `platform_access_scope`
+- `platform_access_counts`
 
 Raw transcript dumps may be requested only with bounded retrieval controls such as `include_raw=true`, `limit`, `offset`, and `raw_max_chars`. User-authenticated reads must remain same-user scoped unless admin/service authority is present.
 

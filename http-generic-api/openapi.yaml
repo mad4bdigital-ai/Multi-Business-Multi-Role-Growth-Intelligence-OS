@@ -1256,6 +1256,78 @@ paths:
         "403": { $ref: "#/components/responses/Unauthorized" }
         "500": { description: Session context read failure, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
 
+  /activation/platform-access:
+    get:
+      tags: [activation]
+      security:
+        - backendBearerAuth: []
+        - backendApiKeyAuth: []
+      operationId: getActivationPlatformAccess
+      summary: Read platform-wide activation access and registry counts
+      description: >
+        Hard activation evidence for admin/service sessions. Returns explicit
+        all-brand scope plus counts and readiness for brands, plugins, logics,
+        engines, and runtime-callable actions.
+      responses:
+        "200":
+          description: Platform-wide activation access summary
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [ok, activation_layer, principal, access_scope, access, counts, readiness]
+                properties:
+                  ok: { type: boolean }
+                  activation_layer: { type: string, enum: [platform_access] }
+                  principal:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      type: { type: string }
+                      is_admin: { type: boolean }
+                      user_id: { type: string }
+                      tenant_id: { type: string }
+                  access_scope:
+                    type: string
+                    enum: [platform_admin_all, user_scoped]
+                  access:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      brands: { type: string }
+                      plugins: { type: string }
+                      logics: { type: string }
+                      engines: { type: string }
+                      actions: { type: string }
+                  counts:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      brands: { type: object, additionalProperties: true, properties: {} }
+                      plugins: { type: object, additionalProperties: true, properties: {} }
+                      logics: { type: object, additionalProperties: true, properties: {} }
+                      engines: { type: object, additionalProperties: true, properties: {} }
+                      actions: { type: object, additionalProperties: true, properties: {} }
+                  readiness:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      brands: { type: string }
+                      plugins: { type: string }
+                      logics: { type: string }
+                      engines: { type: string }
+                      actions: { type: string }
+                  degraded_surfaces:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      properties: {}
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Unauthorized" }
+        "500": { description: Platform access read failure, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
   /governance/resolve-context-diagnostic:
     post:
       tags: [governance]
