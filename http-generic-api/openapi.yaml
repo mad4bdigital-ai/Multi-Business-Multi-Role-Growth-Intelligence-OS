@@ -71,6 +71,13 @@ components:
       description: >
         Required when BACKEND_API_KEY is enabled on the backend. Send as
         Authorization: Bearer <BACKEND_API_KEY>.
+    backendApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: >
+        Alternative Custom GPT-safe backend authentication header. Send
+        x-api-key: <BACKEND_API_KEY>.
 
   schemas:
 
@@ -1145,6 +1152,7 @@ paths:
       tags: [governance]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: resolveContextDiagnostic
       summary: Resolve governed context diagnostic
       description: >
@@ -1207,6 +1215,7 @@ paths:
       tags: [jobs]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: createJob
       summary: Create an async governed execution job
       requestBody:
@@ -1251,6 +1260,7 @@ paths:
       tags: [jobs]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: getJob
       summary: Get async job status
       parameters:
@@ -1291,6 +1301,7 @@ paths:
       tags: [jobs]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: getJobResult
       summary: Get async job result or current completion state
       parameters:
@@ -1332,6 +1343,7 @@ paths:
       tags: [execution]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: executeHttpRequest
       summary: Execute a governed outbound HTTP request
       description: >
@@ -1393,6 +1405,7 @@ paths:
       tags: [ai]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: generateImplementationPlan
       summary: Generate a structured implementation plan
       description: >
@@ -1438,6 +1451,7 @@ paths:
       tags: [ai]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: generateTaskManifest
       summary: Generate a task checklist from an implementation plan
       description: >
@@ -1483,6 +1497,7 @@ paths:
       tags: [ai]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: getAiRegistryReadiness
       summary: Check AI resolver intent binding in Task Routes and Workflow Registry
       description: >
@@ -1523,7 +1538,7 @@ paths:
   /tenants:
     post:
       tags: [tenants]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createTenant
       summary: Create a tenant
       requestBody:
@@ -1541,7 +1556,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     get:
       tags: [tenants]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listTenants
       summary: List tenants
       parameters:
@@ -1559,7 +1574,7 @@ paths:
   /tenants/{tenant_id}/relationships:
     post:
       tags: [tenants]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createTenantRelationship
       summary: Create a tenant relationship
       parameters:
@@ -1583,7 +1598,7 @@ paths:
   /tenants/{tenant_id}/memberships:
     post:
       tags: [tenants]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createMembership
       summary: Add a member to a tenant
       parameters:
@@ -1599,7 +1614,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     get:
       tags: [tenants]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listTenantMemberships
       summary: List memberships for a tenant
       parameters:
@@ -1613,7 +1628,7 @@ paths:
   /users:
     post:
       tags: [identity]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createUser
       summary: Create a user
       requestBody:
@@ -1633,7 +1648,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     get:
       tags: [identity]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listUsers
       summary: List users
       responses:
@@ -1643,7 +1658,7 @@ paths:
   /users/{user_id}/role-assignments:
     post:
       tags: [identity]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: assignRole
       summary: Assign a role to a user within a tenant
       parameters:
@@ -1668,7 +1683,7 @@ paths:
   /plans:
     get:
       tags: [identity]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listPlans
       summary: List all subscription plans
       responses:
@@ -1678,7 +1693,7 @@ paths:
   /subscriptions:
     post:
       tags: [identity]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createSubscription
       summary: Subscribe a tenant to a plan
       requestBody:
@@ -1700,7 +1715,7 @@ paths:
   /tenants/{tenant_id}/subscriptions:
     get:
       tags: [identity]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenantSubscriptions
       summary: Get subscriptions for a tenant
       parameters:
@@ -1712,7 +1727,7 @@ paths:
   /assistance-roles:
     get:
       tags: [identity]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listAssistanceRoles
       summary: List all assistance roles (7 levels from trainee to mentor)
       responses:
@@ -1724,7 +1739,7 @@ paths:
   /access/resolve:
     post:
       tags: [access]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: resolveAccess
       summary: Run the 6-outcome access decision engine
       description: >
@@ -1748,7 +1763,7 @@ paths:
   /access/envelopes:
     get:
       tags: [access]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listAccessEnvelopes
       summary: List persisted access decision envelopes
       parameters:
@@ -1764,7 +1779,7 @@ paths:
   /customers:
     post:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createCustomer
       summary: Create a customer record
       requestBody:
@@ -1786,7 +1801,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     get:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listCustomers
       summary: List customers
       parameters:
@@ -1799,7 +1814,7 @@ paths:
   /tickets:
     post:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createTicket
       summary: Create a support ticket
       requestBody:
@@ -1822,7 +1837,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     get:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listTickets
       summary: List tickets
       parameters:
@@ -1837,7 +1852,7 @@ paths:
   /tickets/{ticket_id}:
     get:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTicket
       summary: Get a ticket by ID
       parameters:
@@ -1848,7 +1863,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: replaceTicket
       summary: Full update of a ticket record
       parameters:
@@ -1873,7 +1888,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     patch:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: updateTicketStatus
       summary: Update ticket status or assignment
       parameters:
@@ -1894,7 +1909,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     delete:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: closeTicket
       summary: Close a ticket (soft delete — sets status=closed)
       parameters:
@@ -1906,7 +1921,7 @@ paths:
   /timeline-events:
     post:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createTimelineEvent
       summary: Append a timeline event to a customer or ticket
       requestBody:
@@ -1932,7 +1947,7 @@ paths:
   /customers/{customer_id}/timeline:
     get:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getCustomerTimeline
       summary: Get timeline events for a customer
       parameters:
@@ -1945,7 +1960,7 @@ paths:
   /tenants/{tenant_id}/tickets:
     get:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenantTickets
       summary: List tickets for a tenant
       parameters:
@@ -1960,7 +1975,7 @@ paths:
   /connected-systems:
     post:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createConnectedSystem
       summary: Register a connected system for a tenant
       requestBody:
@@ -1987,7 +2002,7 @@ paths:
   /connected-systems/{system_id}:
     get:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getConnectedSystem
       summary: Get a connected system by ID
       parameters:
@@ -1998,7 +2013,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: replaceConnectedSystem
       summary: Full update of a connected system record
       parameters:
@@ -2027,7 +2042,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     patch:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: updateConnectedSystem
       summary: Update connected system status or metadata
       parameters:
@@ -2048,7 +2063,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     delete:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: archiveConnectedSystem
       summary: Archive a connected system (soft delete — sets status=archived)
       parameters:
@@ -2060,7 +2075,7 @@ paths:
   /tenants/{tenant_id}/connected-systems:
     get:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenantConnectedSystems
       summary: List connected systems for a tenant
       parameters:
@@ -2072,7 +2087,7 @@ paths:
   /workspaces:
     post:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createWorkspace
       summary: Create a workspace registry entry
       requestBody:
@@ -2095,7 +2110,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     get:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listWorkspaces
       summary: List workspaces
       parameters:
@@ -2108,7 +2123,7 @@ paths:
   /tenants/{tenant_id}/workspaces:
     get:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenantWorkspaces
       summary: List workspaces for a tenant
       parameters:
@@ -2122,7 +2137,7 @@ paths:
   /planner/resolve-intent:
     post:
       tags: [planner]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: resolveIntent
       summary: Resolve an intent key to a task route
       requestBody:
@@ -2145,7 +2160,7 @@ paths:
   /planner/create-plan:
     post:
       tags: [planner]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createExecutionPlan
       summary: Create an execution plan (runs access gate before planning)
       requestBody:
@@ -2169,7 +2184,7 @@ paths:
   /planner/plans/{plan_id}:
     get:
       tags: [planner]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getExecutionPlan
       summary: Get an execution plan by ID
       parameters:
@@ -2180,7 +2195,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     patch:
       tags: [planner]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: updateExecutionPlan
       summary: Update execution plan status
       parameters:
@@ -2203,7 +2218,7 @@ paths:
   /bootstrap/readiness/{tenant_id}:
     get:
       tags: [bootstrap]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getBootstrapReadiness
       summary: Run 8 first-execution readiness checks for a tenant
       description: >
@@ -2234,7 +2249,7 @@ paths:
   /bootstrap/onboarding:
     post:
       tags: [bootstrap]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createOnboardingState
       summary: Create or reset onboarding state for a tenant
       requestBody:
@@ -2253,7 +2268,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     get:
       tags: [bootstrap]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listOnboardingStates
       summary: List onboarding states
       parameters:
@@ -2266,7 +2281,7 @@ paths:
   /bootstrap/onboarding/{tenant_id}/step:
     patch:
       tags: [bootstrap]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: advanceOnboardingStep
       summary: Advance or update the onboarding step for a tenant
       parameters:
@@ -2292,7 +2307,7 @@ paths:
   /logic-definitions:
     post:
       tags: [logic]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createLogicDefinition
       summary: Create a logic definition node
       requestBody:
@@ -2315,7 +2330,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     get:
       tags: [logic]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listLogicDefinitions
       summary: List logic definitions
       parameters:
@@ -2329,7 +2344,7 @@ paths:
   /logic-definitions/{logic_id}/children:
     get:
       tags: [logic]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getLogicChildren
       summary: Get child logic definitions for a parent node
       parameters:
@@ -2341,7 +2356,7 @@ paths:
   /logic-definitions/{logic_id}/status:
     patch:
       tags: [logic]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: updateLogicStatus
       summary: Update status of a logic definition
       parameters:
@@ -2363,7 +2378,7 @@ paths:
   /logic-packs:
     post:
       tags: [logic]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createLogicPack
       summary: Create a logic pack (collection of logic definitions)
       requestBody:
@@ -2387,7 +2402,7 @@ paths:
   /logic-packs/{pack_id}/attach:
     post:
       tags: [logic]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: attachLogicDefinition
       summary: Attach a logic definition to a logic pack
       parameters:
@@ -2410,7 +2425,7 @@ paths:
   /adaptation-records:
     post:
       tags: [logic]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createAdaptationRecord
       summary: Create an adaptation record (proposed logic change)
       requestBody:
@@ -2434,7 +2449,7 @@ paths:
   /adaptation-records/{record_id}/approve:
     patch:
       tags: [logic]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: approveAdaptationRecord
       summary: Approve or reject an adaptation record
       parameters:
@@ -2460,7 +2475,7 @@ paths:
   /workflow-runs:
     post:
       tags: [workflows]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createWorkflowRun
       summary: Start a workflow run (auto-creates approval holds when access requires review)
       description: >
@@ -2493,7 +2508,7 @@ paths:
   /workflow-runs/{run_id}:
     get:
       tags: [workflows]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getWorkflowRun
       summary: Get a workflow run by ID
       parameters:
@@ -2504,7 +2519,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     patch:
       tags: [workflows]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: updateWorkflowRun
       summary: Update workflow run status or output
       parameters:
@@ -2527,7 +2542,7 @@ paths:
   /tenants/{tenant_id}/workflow-runs:
     get:
       tags: [workflows]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenantWorkflowRuns
       summary: List workflow runs for a tenant
       parameters:
@@ -2541,7 +2556,7 @@ paths:
   /workflow-runs/{run_id}/steps:
     post:
       tags: [workflows]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createStepRun
       summary: Record a step execution within a workflow run
       parameters:
@@ -2567,7 +2582,7 @@ paths:
   /approval-holds:
     get:
       tags: [workflows]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listApprovalHolds
       summary: List approval holds pending human decision
       parameters:
@@ -2581,7 +2596,7 @@ paths:
   /approval-holds/{hold_id}/decide:
     post:
       tags: [workflows]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: decideApprovalHold
       summary: Approve or reject an approval hold (resumes or fails parent workflow run)
       parameters:
@@ -2615,7 +2630,7 @@ paths:
   /telemetry/spans:
     post:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: recordTelemetrySpan
       summary: Record a telemetry span
       requestBody:
@@ -2631,7 +2646,7 @@ paths:
   /telemetry/traces/{trace_id}:
     get:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTrace
       summary: Get all spans for a trace ID
       parameters:
@@ -2644,7 +2659,7 @@ paths:
   /usage/record:
     post:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: recordUsage
       summary: Record usage for a meter key (upserts daily bucket)
       requestBody:
@@ -2660,7 +2675,7 @@ paths:
   /usage/{tenant_id}:
     get:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenantUsage
       summary: Get usage meters for a tenant
       parameters:
@@ -2675,7 +2690,7 @@ paths:
   /quota-rules:
     post:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createQuotaRule
       summary: Create or upsert a quota rule
       requestBody:
@@ -2700,7 +2715,7 @@ paths:
   /quota-check/{tenant_id}/{meter_key}:
     get:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: checkQuota
       summary: Check current quota usage against applicable limit
       description: >
@@ -2736,7 +2751,7 @@ paths:
   /audit-log:
     get:
       tags: [security]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getAuditLog
       summary: Query the immutable audit log
       description: >
@@ -2756,7 +2771,7 @@ paths:
   /secret-references:
     post:
       tags: [security]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createSecretReference
       summary: Register a secret reference (no secret values stored)
       requestBody:
@@ -2778,7 +2793,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     get:
       tags: [security]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listSecretReferences
       summary: List secret references (metadata only, no secret values)
       parameters:
@@ -2790,7 +2805,7 @@ paths:
   /incidents:
     post:
       tags: [security]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createIncident
       summary: Open a security or operational incident
       requestBody:
@@ -2813,7 +2828,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     get:
       tags: [security]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listIncidents
       summary: List incidents
       parameters:
@@ -2828,7 +2843,7 @@ paths:
   /incidents/{incident_id}/status:
     patch:
       tags: [security]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: updateIncidentStatus
       summary: Update incident status
       parameters:
@@ -2854,7 +2869,7 @@ paths:
   /developer-apps:
     post:
       tags: [developer-api]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createDeveloperApp
       summary: Register a developer application
       requestBody:
@@ -2878,7 +2893,7 @@ paths:
   /tenants/{tenant_id}/developer-apps:
     get:
       tags: [developer-api]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenantDeveloperApps
       summary: List developer apps for a tenant
       parameters:
@@ -2890,7 +2905,7 @@ paths:
   /developer-apps/{app_id}/credentials:
     post:
       tags: [developer-api]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createApiCredential
       summary: Generate an API key for a developer app (full key returned once only)
       description: >
@@ -2929,7 +2944,7 @@ paths:
   /api-credentials/{credential_id}:
     delete:
       tags: [developer-api]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: revokeApiCredential
       summary: Revoke an API credential
       parameters:
@@ -2942,7 +2957,7 @@ paths:
   /webhooks:
     post:
       tags: [developer-api]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createWebhook
       summary: Register a webhook endpoint
       requestBody:
@@ -2964,7 +2979,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     get:
       tags: [developer-api]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listWebhooks
       summary: List webhooks
       parameters:
@@ -2977,7 +2992,7 @@ paths:
   /rate-limit-rules:
     post:
       tags: [developer-api]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createRateLimitRule
       summary: Create or upsert a rate limit rule
       requestBody:
@@ -3003,7 +3018,7 @@ paths:
   /release/readiness:
     get:
       tags: [release]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getReleaseReadiness
       summary: Run 61-check platform release readiness report
       description: >
@@ -3031,7 +3046,7 @@ paths:
   /release/readiness-history:
     get:
       tags: [release]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getReleaseReadinessHistory
       summary: List past readiness run summaries from release_readiness_log
       parameters:
@@ -3064,7 +3079,7 @@ paths:
   /release/readiness-history/{run_id}:
     get:
       tags: [release]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getReleaseReadinessRun
       summary: Get per-check detail for a specific readiness run
       parameters:
@@ -3098,7 +3113,7 @@ paths:
   /release/entity-classification:
     post:
       tags: [release]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: upsertEntityClassification
       summary: Upsert entity classification entries in data_migration_inventory
       requestBody:
@@ -3146,7 +3161,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     get:
       tags: [release]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: listEntityClassifications
       summary: List all entity classification entries (authority model inventory)
       responses:
@@ -3183,7 +3198,7 @@ paths:
   /connector/dispatch:
     post:
       tags: [planner]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: connectorDispatch
       summary: Dispatch a connector execution (WordPress transport or content workflow)
       description: >
@@ -3236,7 +3251,7 @@ paths:
   /connector/dispatch/status/{run_id}:
     get:
       tags: [planner]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getConnectorDispatchStatus
       summary: Poll connector dispatch status by workflow run ID
       parameters:
@@ -3249,7 +3264,7 @@ paths:
   /connector/history:
     get:
       tags: [planner]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getConnectorHistory
       summary: List recent connector dispatches for a tenant
       parameters:
@@ -3262,7 +3277,7 @@ paths:
   /planner/plans/{plan_id}/execute:
     post:
       tags: [planner]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: executePlan
       summary: Execute a validated/approved plan via the connector dispatch engine
       parameters:
@@ -3360,7 +3375,7 @@ paths:
   /batch:
     post:
       tags: [execution]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: batchDispatch
       summary: Execute up to 50 API requests in a single call (parallel or sequential)
       description: >
@@ -3414,7 +3429,7 @@ paths:
   /tenants/{tenant_id}:
     get:
       tags: [tenants]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenant
       summary: Get a tenant by ID
       parameters:
@@ -3425,7 +3440,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [tenants]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: replaceTenant
       summary: Full update of a tenant record
       parameters:
@@ -3447,7 +3462,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     delete:
       tags: [tenants]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: archiveTenant
       summary: Archive a tenant (soft delete â€” sets status=archived)
       parameters:
@@ -3461,7 +3476,7 @@ paths:
   /users/{user_id}:
     get:
       tags: [identity]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getUser
       summary: Get a user by ID
       parameters:
@@ -3472,7 +3487,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [identity]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: replaceUser
       summary: Full update of a user record
       parameters:
@@ -3495,7 +3510,7 @@ paths:
         "409": { description: Email already in use, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
     delete:
       tags: [identity]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: archiveUser
       summary: Archive a user (soft delete â€” sets status=archived)
       parameters:
@@ -3509,7 +3524,7 @@ paths:
   /entitlements:
     post:
       tags: [identity]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createEntitlement
       summary: Grant a feature entitlement to a tenant
       requestBody:
@@ -3534,7 +3549,7 @@ paths:
   /entitlements/{entitlement_id}:
     get:
       tags: [identity]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getEntitlement
       summary: Get an entitlement by ID
       parameters:
@@ -3545,7 +3560,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [identity]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: replaceEntitlement
       summary: Update an entitlement record
       parameters:
@@ -3568,7 +3583,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     delete:
       tags: [identity]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: revokeEntitlement
       summary: Revoke an entitlement (hard delete)
       parameters:
@@ -3580,7 +3595,7 @@ paths:
   /tenants/{tenant_id}/entitlements:
     get:
       tags: [identity]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenantEntitlements
       summary: List entitlements for a tenant
       parameters:
@@ -3595,7 +3610,7 @@ paths:
   /customers/{customer_id}:
     get:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getCustomer
       summary: Get a customer by ID
       parameters:
@@ -3606,7 +3621,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: replaceCustomer
       summary: Full update of a customer record
       parameters:
@@ -3631,7 +3646,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     delete:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: archiveCustomer
       summary: Archive a customer (soft delete â€” sets status=archived)
       parameters:
@@ -3643,7 +3658,7 @@ paths:
   /tenants/{tenant_id}/customers:
     get:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenantCustomers
       summary: List customers for a tenant
       parameters:
@@ -3658,7 +3673,7 @@ paths:
   /contacts:
     post:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createContact
       summary: Create a contact linked to a customer or tenant
       requestBody:
@@ -3684,7 +3699,7 @@ paths:
   /contacts/{contact_id}:
     put:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: replaceContact
       summary: Full update of a contact record
       parameters:
@@ -3709,7 +3724,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     delete:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: deleteContact
       summary: Delete a contact (hard delete)
       parameters:
@@ -3721,7 +3736,7 @@ paths:
   /customers/{customer_id}/contacts:
     get:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getCustomerContacts
       summary: List contacts for a customer
       parameters:
@@ -3735,7 +3750,7 @@ paths:
   /threads:
     post:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createThread
       summary: Create a communication thread
       requestBody:
@@ -3759,7 +3774,7 @@ paths:
   /threads/{thread_id}:
     get:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getThread
       summary: Get a thread by ID
       parameters:
@@ -3770,7 +3785,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: replaceThread
       summary: Full update of a thread record
       parameters:
@@ -3793,7 +3808,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     delete:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: closeThread
       summary: Close a thread (soft delete â€” sets status=closed)
       parameters:
@@ -3805,7 +3820,7 @@ paths:
   /tenants/{tenant_id}/threads:
     get:
       tags: [customers]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenantThreads
       summary: List threads for a tenant
       parameters:
@@ -3821,7 +3836,7 @@ paths:
   /connected-systems/{system_id}/status:
     patch:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: updateConnectedSystemStatus
       summary: Set status on a connected system
       parameters:
@@ -3845,7 +3860,7 @@ paths:
   /installations:
     post:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createInstallation
       summary: Create an installation (tenant auth grant for a connected system)
       requestBody:
@@ -3870,7 +3885,7 @@ paths:
   /installations/{installation_id}:
     get:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getInstallation
       summary: Get an installation by ID
       parameters:
@@ -3881,7 +3896,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: replaceInstallation
       summary: Update an installation record
       parameters:
@@ -3902,7 +3917,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     delete:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: deleteInstallation
       summary: Delete an installation (hard delete â€” revokes access grant)
       parameters:
@@ -3914,7 +3929,7 @@ paths:
   /tenants/{tenant_id}/installations:
     get:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenantInstallations
       summary: List installations for a tenant (with joined system info)
       parameters:
@@ -3930,7 +3945,7 @@ paths:
   /permission-grants:
     post:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createPermissionGrant
       summary: Grant a permission to an installation
       requestBody:
@@ -3954,7 +3969,7 @@ paths:
   /installations/{installation_id}/permission-grants:
     get:
       tags: [connected-systems]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getInstallationPermissionGrants
       summary: List permission grants for an installation
       parameters:
@@ -3968,7 +3983,7 @@ paths:
   /logic-definitions/{logic_id}:
     get:
       tags: [logic]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getLogicDefinition
       summary: Get a logic definition by ID (includes body_json)
       parameters:
@@ -3979,7 +3994,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [logic]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: replaceLogicDefinition
       summary: Full update of a logic definition
       parameters:
@@ -4004,7 +4019,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     delete:
       tags: [logic]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: archiveLogicDefinition
       summary: Archive a logic definition (soft delete â€” sets status=archived)
       parameters:
@@ -4018,7 +4033,7 @@ paths:
   /logic-packs/{pack_id}:
     put:
       tags: [logic]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: replaceLogicPack
       summary: Full update of a logic pack
       parameters:
@@ -4047,7 +4062,7 @@ paths:
   /tracking/workspaces:
     post:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createTrackingWorkspace
       summary: Create a tracking workspace for analytics event collection
       requestBody:
@@ -4071,7 +4086,7 @@ paths:
   /tracking/workspaces/{workspace_id}:
     get:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTrackingWorkspace
       summary: Get a tracking workspace by ID
       parameters:
@@ -4082,7 +4097,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: replaceTrackingWorkspace
       summary: Update a tracking workspace
       parameters:
@@ -4105,7 +4120,7 @@ paths:
   /tenants/{tenant_id}/tracking/workspaces:
     get:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenantTrackingWorkspaces
       summary: List tracking workspaces for a tenant
       parameters:
@@ -4119,7 +4134,7 @@ paths:
   /tracking/events:
     post:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createTrackingEvent
       summary: Record an analytics tracking event
       requestBody:
@@ -4145,7 +4160,7 @@ paths:
   /tracking/workspaces/{workspace_id}/events:
     get:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTrackingWorkspaceEvents
       summary: List tracking events for a workspace
       parameters:
@@ -4163,7 +4178,7 @@ paths:
   /reporting/views:
     post:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: createReportingView
       summary: Create a saved reporting view definition
       requestBody:
@@ -4188,7 +4203,7 @@ paths:
   /reporting/views/{view_id}:
     get:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getReportingView
       summary: Get a reporting view by ID
       parameters:
@@ -4199,7 +4214,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: replaceReportingView
       summary: Update a reporting view definition
       parameters:
@@ -4224,7 +4239,7 @@ paths:
   /tenants/{tenant_id}/reporting/views:
     get:
       tags: [observability]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenantReportingViews
       summary: List reporting views for a tenant
       parameters:
@@ -4238,7 +4253,7 @@ paths:
   /developer-apps/{app_id}:
     delete:
       tags: [developer-api]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: archiveDeveloperApp
       summary: Archive a developer app (soft delete â€” sets status=archived)
       parameters:
@@ -4252,7 +4267,7 @@ paths:
   /webhooks/{webhook_id}:
     put:
       tags: [developer-api]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: replaceWebhook
       summary: Full update of a webhook
       parameters:
@@ -4274,7 +4289,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     delete:
       tags: [developer-api]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: deleteWebhook
       summary: Delete a webhook (hard delete)
       parameters:
@@ -4286,7 +4301,7 @@ paths:
   /tenants/{tenant_id}/webhooks:
     get:
       tags: [developer-api]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenantWebhooks
       summary: List webhooks for a tenant
       parameters:
@@ -4300,7 +4315,7 @@ paths:
   /incidents/{incident_id}:
     put:
       tags: [security]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: replaceIncident
       summary: Full update of an incident record
       parameters:
@@ -4325,7 +4340,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     delete:
       tags: [security]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: closeIncident
       summary: Close an incident (soft delete â€” sets status=closed and resolved_at=NOW())
       parameters:
@@ -4339,7 +4354,7 @@ paths:
   /tenants/{tenant_id}/secret-references:
     get:
       tags: [security]
-      security: [backendBearerAuth: []]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getTenantSecretReferences
       summary: List secret references for a tenant
       parameters:

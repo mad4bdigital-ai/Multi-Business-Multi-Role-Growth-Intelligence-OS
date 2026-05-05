@@ -30,13 +30,30 @@ export function createBackendApiKeyMiddleware(env) {
     if (!enabled) return next();
 
     const auth = req.headers.authorization || req.header("Authorization") || "";
-    if (!auth.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Missing bearer token." });
+    const headerApiKey = req.headers["x-api-key"] || req.header("x-api-key") || "";
+    const bearerToken = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length) : "";
+    const token = bearerToken || String(headerApiKey || "");
+
+    if (!token) {
+      return res.status(401).json({
+        ok: false,
+        error: {
+          code: "missing_backend_api_key",
+          message: "Missing backend API key. Send Authorization: Bearer <BACKEND_API_KEY> or x-api-key: <BACKEND_API_KEY>.",
+          status: 401
+        }
+      });
     }
 
-    const token = auth.slice("Bearer ".length);
     if (token !== expected) {
-      return res.status(403).json({ error: "Invalid bearer token." });
+      return res.status(403).json({
+        ok: false,
+        error: {
+          code: "invalid_backend_api_key",
+          message: "Invalid backend API key.",
+          status: 403
+        }
+      });
     }
 
     return next();

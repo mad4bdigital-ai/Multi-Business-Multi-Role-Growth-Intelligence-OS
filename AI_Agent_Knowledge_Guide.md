@@ -5,14 +5,15 @@
 This document is an agent-facing knowledge summary for working inside this repository.
 It translates the canonical architecture into an operational guide for AI agents, orchestrators, and governed automation layers.
 
-## 1. Canonical authority order
-Agents should treat these files as the primary knowledge sources, in this order:
+## 1. Authority order
+Agents should treat these files as the primary repository guidance sources, in this order:
 
-1. `system_bootstrap.md`
-2. `memory_schema.json`
-3. `direct_instructions_registry_patch.md`
-4. `module_loader.md`
-5. `prompt_router.md`
+1. `Top Level Instructions.md`
+2. `system_bootstrap.md`
+3. `memory_schema.json`
+4. `direct_instructions_registry_patch.md`
+5. `module_loader.md`
+6. `prompt_router.md`
 
 ### Supporting but secondary
 - `server.js`
@@ -110,16 +111,90 @@ Use it for:
 - preventing invalid routing shortcuts
 
 ## 4. Activation model
-Activation is not considered complete unless the required execution and validation conditions are met.
+Activation is not considered complete unless the required governed execution and validation conditions are met.
 
-Agents should assume activation requires:
-- canonical loading
-- at least one real native Google API attempt when available
-- live validation
-- registry validation
-- execution evidence
+Agents should assume activation requires the concrete provider bootstrap chain through `http_generic_api`:
+
+1. Load the knowledge-layer canonicals.
+2. Run the Drive probe through `http_generic_api` with `parent_action_key=google_drive_api` and `endpoint_key=listDriveFiles`.
+3. Run the Sheets bootstrap probe through `http_generic_api` with `parent_action_key=google_sheets_api`, `endpoint_key=getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`, and `query.range=Activation Bootstrap Config!A2:J2`.
+4. Resolve the bootstrap row before attempting GitHub validation.
+5. Run GitHub validation only with `parent_action_key` and `endpoint_key` resolved from bootstrap or registry authority.
+6. Classify readiness from execution evidence, not from narrative or health checks alone.
+
+Health, `/status`, release readiness, tenant listing, brand counts, and action counts are diagnostics only. They prove reachability or registry health, but they do not replace Drive, Sheets bootstrap, or GitHub validation.
+
+`hard_activation_wrapper` and `system_auto_bootstrap` are routing labels, not provider action keys. Do not send them as `parent_action_key`.
+
+Google auth ownership:
+- platform-owned registry/bootstrap Drive and Sheets files use managed service account ADC by default
+- user-owned Drive/Sheets files or user-connected input sources use refresh-token auth, for example `GOOGLE_AUTH_MODE=refresh_token`
 
 Narrative-only activation is not a valid activation outcome.
+
+### Activation payload patterns
+
+Use these shapes as operational examples. The backend resolves provider domains, auth, schema, and transport policy from registry authority.
+
+Drive activation probe:
+
+```json
+{
+  "parent_action_key": "google_drive_api",
+  "endpoint_key": "listDriveFiles",
+  "timeout_seconds": 10,
+  "readback": {
+    "required": false,
+    "mode": "none"
+  }
+}
+```
+
+Sheets bootstrap row read:
+
+```json
+{
+  "parent_action_key": "google_sheets_api",
+  "endpoint_key": "getSheetValues",
+  "timeout_seconds": 10,
+  "path_params": {
+    "spreadsheetId": "<activation_bootstrap_spreadsheet_id>"
+  },
+  "query": {
+    "range": "Activation Bootstrap Config!A2:J2"
+  },
+  "readback": {
+    "required": false,
+    "mode": "none"
+  }
+}
+```
+
+Do not omit `path_params.spreadsheetId` for the activation bootstrap range. The backend rejects the activation bootstrap range when the request does not target the configured activation bootstrap spreadsheet.
+
+### Activation classification guide
+
+Use the narrowest honest classification:
+
+| Evidence | Classification |
+|---|---|
+| No transport attempt was made | retry once in the same cycle, then `degraded (missing_required_activation_transport_attempt)` |
+| `/health` passes but Drive or Sheets was skipped | `degraded (missing_required_provider_bootstrap_attempt)` |
+| Drive succeeds but Sheets bootstrap fails | `degraded_contract`, `authorization_gated`, or `validation_rate_limited` based on the error |
+| Sheets bootstrap row is unresolved | do not attempt GitHub; report `degraded` with the Sheets reason |
+| Provider probes pass but registry readiness is incomplete | `validating` or `degraded` depending on whether execution can continue safely |
+| Drive, Sheets bootstrap, GitHub, registry readiness, and required counts pass | `active` |
+
+Report evidence as compact facts: transport status, DB status, Drive result, Sheets bootstrap result, GitHub result, registry source, active actions, brands available, and any degraded surfaces.
+
+### Activation failure handling
+
+When provider activation fails:
+- Prefer the provider error code and status over a generic "connector error" label.
+- Distinguish schema/client errors from auth failures and rate limits.
+- Retry only when the error is transient, bounded, and same-cycle safe.
+- Do not claim a surface is unavailable merely because a diagnostic route failed; test the required provider surface directly when available.
+- Do not claim activation is active from `/health`, `/status`, release readiness, tenant listing, or counts alone.
 
 ## 5. Registry-centered architecture
 Important registry families include:
@@ -139,6 +214,19 @@ When making execution decisions, agents should prefer live registry truth over:
 - local summaries
 - stale memory
 
+### Registry authority rules
+
+Registry rows are not comments. They are executable authority. When a row defines an action, endpoint, workflow, policy, or logic binding, agents should treat that row as the source of truth for runtime behavior unless a higher-priority canonical explicitly blocks it.
+
+Before executing provider work, resolve:
+- action key from `actions`
+- endpoint key, method, path, provider domain, and runtime flags from `endpoints`
+- execution class and review requirements from `workflows`
+- target credential binding from `brands`, `hosting_accounts`, or `connected_systems`
+- policy gates from `Execution Policy Registry`
+
+Never invent a provider action key such as `http_get`, `connect`, `google_drive_probe`, or `activation_bootstrap`. If a key is missing, classify the run as degraded or blocked and report the missing authority.
+
 ## 6. Logging and evidence
 Important sinks:
 - `Execution Log Unified`
@@ -153,6 +241,25 @@ Execution should preserve:
 
 `Execution Log Unified` is a special governed sink and may require special duplicate-handling behavior.
 
+### Evidence quality
+
+Good evidence includes:
+- exact route or endpoint key attempted
+- request class, not secrets or raw credentials
+- upstream status and platform status when available
+- trace id, run id, job id, or execution id
+- readback status for mutations
+- concrete degraded surface names
+
+Bad evidence includes:
+- "I tried" without a route or endpoint
+- health-only activation claims
+- screenshots or narrative summaries without transport evidence
+- unverified assumptions copied from previous turns
+- raw credentials, refresh tokens, API keys, or private document contents
+
+When reporting failures, preserve enough detail for the next agent to continue without repeating blind probes.
+
 ## 7. Mutation governance
 Agents should assume:
 - live header reads are required before writes
@@ -163,6 +270,20 @@ Agents should assume:
 
 Do not assume a write is safe merely because the intended value looks correct.
 
+### Mutation checklist
+
+Before governed writes:
+1. Resolve the target table, sheet, document, repo path, or provider endpoint from registry authority.
+2. Confirm the actor, tenant, brand, or target context.
+3. Read current state when the write could overwrite, duplicate, or conflict.
+4. Validate headers/schema or API request contract.
+5. Check duplicate/equivalence rules.
+6. Execute through the governed transport.
+7. Perform readback or postwrite validation when supported.
+8. Log the execution and classify the result.
+
+If any required readback or duplicate check is unavailable, prefer `degraded`, `blocked`, or `requires_review` over pretending the mutation is complete.
+
 ## 8. Connector model
 The repo includes a root runtime and a connector subtree.
 
@@ -170,15 +291,15 @@ The repo includes a root runtime and a connector subtree.
 This is the clearest connector-style boundary currently visible.
 
 Key modules and their authority domains:
-- `server.js` (~4,636 lines) - orchestration and route handlers only
+- `server.js` - orchestration and route handlers only
 - `executionRouting.js` - HTTP execution context resolution, guard chain, transport/native routing classification
 - `auth.js` - Google OAuth scope resolution, policy enforcement, resilience and retry mutation helpers
-- `normalization.js` - canonical normalization layer successfully implementing all A-H domains
+- `normalization.js` - canonical normalization layer for execution payloads and routing fields
 - `mutationGovernance.js` / `governedChangeControl.js` - mutation classification, duplicate detection, exemption rules
 - `jobRunner.js` / `jobUtils.js` - async job dispatch and lifecycle management
 - `authInjection.js` / `authCredentialResolution.js` - credential resolution and auth header injection
 - `driveFileLoader.js` - Drive-backed schema and OAuth config loading (`supportsAllDrives: true`)
-- `github.js` / `hostinger.js` - narrow connector entrypoints (2 exports each)
+- `github.js` / `hostinger.js` - provider connector entrypoints
 - `wordpress/` - 16 phase modules (A-P) for governed site migration
 
 Use it as a pattern for:
@@ -186,6 +307,39 @@ Use it as a pattern for:
 - explicit module boundaries
 - provider-specific dispatch
 - reduced hidden runtime coupling
+
+### Important connector routes
+
+Common `http-generic-api` surfaces:
+- `/health` - transport and dependency health only
+- `/status` - public component status and incidents
+- `/http-execute` - governed provider execution
+- `/jobs`, `/jobs/{jobId}`, `/jobs/{jobId}/result` - async governed execution lifecycle
+- `/governance/resolve-context-diagnostic` - non-mutating governed context resolution
+- `/ai/implementation-plan`, `/ai/task-manifest`, `/ai/registry-readiness` - AI planning and registry binding checks
+- `/release/readiness` - platform readiness diagnostics
+- `/connector/dispatch` and `/planner/plans/{plan_id}/execute` - governed connector/workflow dispatch
+
+Treat `/http-execute` as the main provider execution boundary. Route-specific shortcuts must not bypass auth, policy, runtime-callable checks, or registry validation.
+
+### Auth and credential boundaries
+
+Agents must not manually inject credentials into request headers unless the backend contract explicitly asks for non-sensitive caller headers. `Authorization` is controlled by the backend and registry auth mode.
+
+Custom GPT Action authentication is configured at the Action connection layer, not inside request payloads. The backend accepts either `Authorization: Bearer <BACKEND_API_KEY>` or `x-api-key: <BACKEND_API_KEY>`.
+
+If secured routes return 401 or 403, classify activation as `authorization_gated (backend_action_auth_missing_or_invalid)` and stop the provider bootstrap chain for that cycle. Do not continue with Drive, Sheets, tenants, or release-readiness calls until Action authentication is corrected.
+
+Common auth modes:
+- `managed_service_account_adc` for platform-owned Google registry/bootstrap assets
+- `google_oauth2` or refresh-token-backed Google auth for user-owned files and input sources
+- `bearer_token` or `api_key_header` for registry-authorized provider APIs
+- `delegated_per_target` for brand/target-bound credentials
+
+If auth fails:
+- `invalid_grant` in a user-owned Drive/Sheets flow means refresh-token repair may be required
+- platform bootstrap auth failures point to service account, ADC, sharing, scope, or deployment configuration
+- do not switch a platform-owned bootstrap file to user refresh-token auth just to make a probe pass
 
 ## 9. Documentation trust model
 High trust:
@@ -200,6 +354,18 @@ Medium trust:
 Low trust until aligned:
 - generic public architecture text in `README.md`
 
+### Documentation alignment workflow
+
+When a behavior change touches docs:
+1. Update the canonical source file under `canonicals/` first when the behavior belongs in a generated root canonical.
+2. Run `node build-canonicals.mjs`.
+3. Update root operational docs such as `README.md`, `runtime_boundary_map.md`, `runtime_confirmation_procedure.md`, and this guide when they summarize the same rule.
+4. Run `node build-canonicals.mjs --check`.
+5. Run `node validate-canonical-sources.mjs`.
+6. Run the smallest runtime validation that proves the changed behavior or contract.
+
+Do not leave root docs and canonical source fragments in disagreement. If a file is generated, edit its source instead of the generated output.
+
 ## 10. Recommended agent behavior
 An AI agent operating in this repository should:
 - read canonicals before proposing major runtime changes
@@ -211,6 +377,37 @@ An AI agent operating in this repository should:
 - avoid inventing unsupported policy semantics
 - keep module boundaries explicit
 - treat logging and writeback as part of execution
+
+### Working style for repo changes
+
+Default to the smallest safe change that preserves behavior and improves alignment. Prefer:
+- existing helpers over new abstractions
+- explicit validation over implicit assumptions
+- narrow patches over broad rewrites
+- deleting stale claims over adding competing explanations
+- targeted tests or validators over unverified confidence
+
+For code changes, identify the blast radius:
+- docs-only: canonical checks and diff hygiene may be enough
+- schema or canonical source: run canonical and schema validators
+- connector/runtime behavior: run architecture validation and targeted tests
+- auth/provider behavior: add or run tests around auth mode, credential resolution, and response shaping
+- mutation behavior: include readback or duplicate-prevention coverage when possible
+
+When live provider validation uses secrets, never print the secret. Report only whether the configured credential was present, which route was attempted, and the status/error evidence.
+
+### Common anti-patterns
+
+Avoid:
+- declaring activation active from `/health`
+- using native Google/GitHub tools for governed provider execution
+- putting `target_key` inside `body` when it is a top-level routing field
+- sending `hard_activation_wrapper` as `parent_action_key`
+- omitting `path_params.spreadsheetId` for the activation bootstrap Sheets range
+- treating stale README text as authority over canonicals
+- editing generated canonical roots without updating `canonicals/`
+- broad refactors while fixing a narrow contract drift
+- swallowing provider error details into a generic "client response error"
 
 ## 11. Upgrade priorities for agents
 Prioritize:
@@ -237,11 +434,33 @@ Schema layer:
   - `shared`, `business_identity`, `brand`, `execution`, `analytics`, `governance`,
     `logic_knowledge`, `repair_audit`, `routing_transport`, `graph_addition`, `operations`, `wordpress_api`
 
-Test and validation baselines (as of 2026-04-26):
-- 206 automated tests across 10 suites (`npm test` from `http-generic-api/`)
-- architecture checks via `npm run validate` from `http-generic-api/`
+Current validation expectations:
+- canonical source checks via `node build-canonicals.mjs --check`
+- canonical source structure checks via `node validate-canonical-sources.mjs`
 - memory schema `$ref` checks via `node validate-memory-schema.mjs`
-- CI enforces canonical generated-output checks, memory schema reference checks, syntax, tests, drift detection, export floors on every push
+- architecture checks via `npm run validate` from `http-generic-api/`
+- targeted tests for changed runtime behavior when code changes touch execution, auth, registry, or provider dispatch
+- CI enforces generated-output checks, memory schema reference checks, syntax, tests, drift detection, and export floors on every push
+
+### Suggested validation commands
+
+From repository root:
+
+```powershell
+node build-canonicals.mjs --check
+node validate-canonical-sources.mjs
+node validate-memory-schema.mjs
+git diff --check
+```
+
+From `http-generic-api/`:
+
+```powershell
+npm run validate
+npm test
+```
+
+Run `npm test` when code behavior changes or when the touched files have test coverage. For docs-only changes, record why runtime tests were not necessary.
 
 ## 13. Short operational summary
 If you are an AI agent working in this repo:
@@ -250,3 +469,6 @@ If you are an AI agent working in this repo:
 - registry truth outranks assumptions
 - execution without evidence is not enough
 - documentation should be aligned with canonicals before large refactors
+- platform-owned bootstrap assets use managed service account auth
+- user-owned Drive/Sheets input sources use refresh-token auth
+- active activation requires Drive, Sheets bootstrap, GitHub, and registry evidence

@@ -1,4 +1,4 @@
-﻿openapi: 3.1.0
+openapi: 3.1.0
 
 info:
   title: Governed HTTP Client
@@ -40,6 +40,13 @@ components:
       description: >
         Required when BACKEND_API_KEY is enabled on the backend. Send as
         Authorization: Bearer <BACKEND_API_KEY>.
+    backendApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: >
+        Alternative Custom GPT-safe backend authentication header. Send
+        x-api-key: <BACKEND_API_KEY>.
 
   schemas:
 
@@ -596,7 +603,7 @@ components:
         execution_guardrail:
           type: boolean
 
-    # ── AI resolver schemas ──────────────────────────────────────────────────
+    # -- AI resolver schemas --------------------------------------------------
 
     AiIntentMaturation:
       type: object
@@ -888,6 +895,7 @@ paths:
       tags: [governance]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: resolveContextDiagnostic
       summary: Resolve governed context diagnostic
       description: >
@@ -950,6 +958,7 @@ paths:
       tags: [jobs]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: createJob
       summary: Create an async governed execution job
       requestBody:
@@ -994,6 +1003,7 @@ paths:
       tags: [jobs]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: getJob
       summary: Get async job status
       parameters:
@@ -1034,6 +1044,7 @@ paths:
       tags: [jobs]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: getJobResult
       summary: Get async job result or current completion state
       parameters:
@@ -1075,6 +1086,7 @@ paths:
       tags: [execution]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: executeHttpRequest
       summary: Execute a governed outbound HTTP request
       description: >
@@ -1136,6 +1148,7 @@ paths:
       tags: [ai]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: generateImplementationPlan
       summary: Generate a structured implementation plan
       description: >
@@ -1181,6 +1194,7 @@ paths:
       tags: [ai]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: generateTaskManifest
       summary: Generate a task checklist from an implementation plan
       description: >
@@ -1226,6 +1240,7 @@ paths:
       tags: [ai]
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: getAiRegistryReadiness
       summary: Check AI resolver intent binding in Task Routes and Workflow Registry
       description: >

@@ -40,6 +40,12 @@ components:
       bearerFormat: Backend API Key
       description: |
         Required when BACKEND_API_KEY is enabled on the backend. Send as Authorization: Bearer <BACKEND_API_KEY>.
+    backendApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: |
+        Alternative Custom GPT-safe backend authentication header. Send x-api-key: <BACKEND_API_KEY>.
   schemas:
     ReadbackRequest:
       type: object
@@ -1241,6 +1247,7 @@ paths:
         - governance
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: resolveContextDiagnostic
       summary: Resolve governed context diagnostic
       description: |
@@ -1300,6 +1307,7 @@ paths:
         - jobs
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: createJob
       summary: Create an async governed execution job
       requestBody:
@@ -1344,6 +1352,7 @@ paths:
         - jobs
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: getJob
       summary: Get async job status
       parameters:
@@ -1384,6 +1393,7 @@ paths:
         - jobs
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: getJobResult
       summary: Get async job result or current completion state
       parameters:
@@ -1425,6 +1435,7 @@ paths:
         - execution
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: executeHttpRequest
       summary: Execute a governed outbound HTTP request
       description: |
@@ -1484,6 +1495,7 @@ paths:
         - ai
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: generateImplementationPlan
       summary: Generate a structured implementation plan
       description: |
@@ -1525,6 +1537,7 @@ paths:
         - ai
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: generateTaskManifest
       summary: Generate a task checklist from an implementation plan
       description: |
@@ -1566,6 +1579,7 @@ paths:
         - ai
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: getAiRegistryReadiness
       summary: Check AI resolver intent binding in Task Routes and Workflow Registry
       description: |
@@ -1601,6 +1615,7 @@ paths:
         - tenants
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: createTenant
       summary: Create a tenant
       requestBody:
@@ -1625,6 +1640,7 @@ paths:
         - tenants
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: listTenants
       summary: List tenants
       parameters:
@@ -1656,6 +1672,7 @@ paths:
         - identity
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: createUser
       summary: Create a user
       requestBody:
@@ -1694,6 +1711,7 @@ paths:
         - identity
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: listUsers
       summary: List users
       responses:
@@ -1711,6 +1729,7 @@ paths:
         - access
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: resolveAccess
       summary: Run the 6-outcome access decision engine
       description: |
@@ -1738,6 +1757,7 @@ paths:
         - customers
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: createCustomer
       summary: Create a customer record
       requestBody:
@@ -1778,6 +1798,7 @@ paths:
         - customers
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: listCustomers
       summary: List customers
       parameters:
@@ -1805,6 +1826,7 @@ paths:
         - customers
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: createTicket
       summary: Create a support ticket
       requestBody:
@@ -1854,6 +1876,7 @@ paths:
         - customers
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: listTickets
       summary: List tickets
       parameters:
@@ -1889,6 +1912,7 @@ paths:
         - customers
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: getTicket
       summary: Get a ticket by ID
       parameters:
@@ -1914,6 +1938,7 @@ paths:
         - connected-systems
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: createConnectedSystem
       summary: Register a connected system for a tenant
       requestBody:
@@ -1967,6 +1992,7 @@ paths:
         - connected-systems
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: getTenantConnectedSystems
       summary: List connected systems for a tenant
       parameters:
@@ -1990,6 +2016,7 @@ paths:
         - planner
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: resolveIntent
       summary: Resolve an intent key to a task route
       requestBody:
@@ -2028,6 +2055,7 @@ paths:
         - planner
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: createExecutionPlan
       summary: Create an execution plan (runs access gate before planning)
       requestBody:
@@ -2074,6 +2102,7 @@ paths:
         - release
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: getReleaseReadiness
       summary: Run 61-check platform release readiness report
       description: |
@@ -2110,6 +2139,7 @@ paths:
         - planner
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: connectorDispatch
       summary: Dispatch a connector execution (WordPress transport or content workflow)
       description: |
@@ -2210,6 +2240,7 @@ paths:
         - planner
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: getConnectorDispatchStatus
       summary: Poll connector dispatch status by workflow run ID
       parameters:
@@ -2235,6 +2266,7 @@ paths:
         - planner
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: executePlan
       summary: Execute a validated/approved plan via the connector dispatch engine
       parameters:
@@ -2343,6 +2375,7 @@ paths:
         - execution
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: batchDispatch
       summary: Execute up to 50 API requests in a single call (parallel or sequential)
       description: |
@@ -2422,6 +2455,7 @@ paths:
         - tenants
       security:
         - backendBearerAuth: []
+        - backendApiKeyAuth: []
       operationId: getTenant
       summary: Get a tenant by ID
       parameters:
