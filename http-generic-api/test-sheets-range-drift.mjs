@@ -238,16 +238,17 @@ section("resolveExecutionRequest — pre-encoded range decoded before path encod
   assert("outbound path has no double encoding", String(result.resolvedMethodPath?.path || "").endsWith(`/values/${encodeURIComponent(rawRange)}`), `got: ${result.resolvedMethodPath?.path}`);
 }
 
-section("resolveExecutionRequest - activation bootstrap range rejects wrong spreadsheet");
+section("resolveExecutionRequest - activation bootstrap placeholder auto-resolution & custom ID allowance");
 
 {
-  const result = await resolveExecutionRequest(
+  // Test 1: Placeholder auto-resolution
+  const placeholderResult = await resolveExecutionRequest(
     {
       parent_action_key: "google_sheets_api",
       endpoint_key: "getSheetValues",
       method: "GET",
       path_params: {
-        spreadsheetId: "1hX7a6RQzaJ1FP0z8xN9Krds4VluqilkSRAxYXHKR4sE"
+        spreadsheetId: "<activation_bootstrap_spreadsheet_id>"
       },
       query: { range: "Activation Bootstrap Config!A2:J2" }
     },
@@ -255,15 +256,30 @@ section("resolveExecutionRequest - activation bootstrap range rejects wrong spre
   );
 
   assert(
-    "wrong activation bootstrap workbook is rejected before Google transport",
-    result.ok === false &&
-      result.response?.body?.error?.code === "activation_bootstrap_spreadsheet_mismatch",
-    JSON.stringify(result.response?.body?.error)
+    "placeholder spreadsheet ID is auto-resolved to configured ID",
+    placeholderResult.ok === true && placeholderResult.pathParams.spreadsheetId === ACTIVATION_BOOTSTRAP_SPREADSHEET_ID,
+    `got: ${placeholderResult.pathParams?.spreadsheetId}`
   );
+
+  // Test 2: Custom ID allowance (no hardcode)
+  const customId = "1hX7a6RQzaJ1FP0z8xN9Krds4VluqilkSRAxYXHKR4sE";
+  const customResult = await resolveExecutionRequest(
+    {
+      parent_action_key: "google_sheets_api",
+      endpoint_key: "getSheetValues",
+      method: "GET",
+      path_params: {
+        spreadsheetId: customId
+      },
+      query: { range: "Activation Bootstrap Config!A2:J2" }
+    },
+    makeMinimalDeps({ resolveHttpExecutionContext: sentinelAwareMock })
+  );
+
   assert(
-    "bootstrap mismatch reports expected spreadsheet id",
-    result.response?.body?.error?.details?.expected_spreadsheetId === ACTIVATION_BOOTSTRAP_SPREADSHEET_ID,
-    JSON.stringify(result.response?.body?.error?.details)
+    "custom spreadsheet ID is allowed without rejection (no hardcode)",
+    customResult.ok === true && customResult.pathParams.spreadsheetId === customId,
+    `got: ${customResult.pathParams?.spreadsheetId} (ok=${customResult.ok})`
   );
 }
 
