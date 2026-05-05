@@ -93,6 +93,20 @@ export function normalizeAuthContract({
     return contract;
   }
 
+  if (mode === "google_ads_oauth2") {
+    contract.header_name = "Authorization";
+    contract.secret = getGoogleAccessTokenSync();
+    // Google Ads API requires two additional headers on every request.
+    // GOOGLEADS_LOGIN_CUSTOMER_ID is optional — only needed when calling
+    // on behalf of a client account under a manager (MCC) account.
+    const devToken = String(process.env.GOOGLEADS_DEVELOPER_TOKEN || "").trim();
+    const customerId = String(process.env.GOOGLEADS_LOGIN_CUSTOMER_ID || "").trim();
+    contract.custom_headers = {};
+    if (devToken) contract.custom_headers["developer-token"] = devToken;
+    if (customerId) contract.custom_headers["login-customer-id"] = customerId;
+    return contract;
+  }
+
   if (mode === "bearer_token") {
     contract.header_name = "Authorization";
 

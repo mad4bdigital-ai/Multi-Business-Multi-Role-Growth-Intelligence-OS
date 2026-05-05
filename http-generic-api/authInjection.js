@@ -41,6 +41,7 @@ export function inferAuthMode({ action, brand }) {
   if (headerName) return "api_key_header";
 
   if (apiKeyMode === "google_oauth2") return "google_oauth2";
+  if (apiKeyMode === "google_ads_oauth2") return "google_ads_oauth2";
 
   if (oauthConfigured) return "oauth_gpt_action";
   return "none";
@@ -71,6 +72,11 @@ export function buildResolvedAuthHeaders(contract) {
   if (contract.mode === "google_oauth2") {
     if (!contract.secret) return {};
     return { Authorization: `Bearer ${contract.secret}` };
+  }
+
+  if (contract.mode === "google_ads_oauth2") {
+    if (!contract.secret) return {};
+    return { Authorization: `Bearer ${contract.secret}`, ...contract.custom_headers };
   }
 
   if (contract.mode === "custom_headers") {
@@ -154,6 +160,11 @@ export function injectAuthForSchemaValidation(query, headers, contract) {
 
   if (contract.mode === "google_oauth2") {
     if (contract.secret) nextHeaders.Authorization = `Bearer ${contract.secret}`;
+  }
+
+  if (contract.mode === "google_ads_oauth2") {
+    if (contract.secret) nextHeaders.Authorization = `Bearer ${contract.secret}`;
+    Object.assign(nextHeaders, contract.custom_headers || {});
   }
 
   if (contract.mode === "custom_headers") {
