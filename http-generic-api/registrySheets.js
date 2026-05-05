@@ -1,5 +1,7 @@
 import { cacheGet, cacheSet } from "./registryCache.js";
 import { READ_POLICIES } from "./registryReadPolicies.js";
+import { readTable as sqlReadTable } from "./sqlAdapter.js";
+const _DATA_SOURCE = (process.env.DATA_SOURCE || "sheets").trim().toLowerCase();
 
 function localFetchRange(sheets, spreadsheetId, range) {
   return sheets.spreadsheets.values
@@ -235,6 +237,14 @@ export async function loadActionsRegistry(sheets, deps = {}) {
     headerMap,
     registryError
   } = deps;
+
+  // When DATA_SOURCE=sql (or dual), load action rows from DB — the DB stores
+  // secret_store_ref and other fields that are not present in the Sheets sheet.
+  if (_DATA_SOURCE !== "sheets") {
+    const rows = await sqlReadTable("Actions Registry");
+    return rows.filter(r => r.action_key);
+  }
+
   const values = await readRegistryTable(sheets, deps, {
     spreadsheetId: REGISTRY_SPREADSHEET_ID,
     sheetName: ACTIONS_REGISTRY_SHEET,
