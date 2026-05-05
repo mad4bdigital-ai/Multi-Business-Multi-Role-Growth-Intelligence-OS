@@ -11,6 +11,9 @@ const TABLE_MAP = {
   "Site Runtime Inventory Registry":    "site_runtime_inventory",
   "Site Settings Inventory Registry":   "site_settings_inventory",
   "Plugin Inventory Registry":          "plugins",
+  "Business Activity Type Registry":     "business_activity_types",
+  "Business Type Knowledge Profiles":   "business_type_profiles",
+  "Brand Path Resolver":                "brand_paths",
   "Task Routes":                        "task_routes",
   "Workflow Registry":                  "workflows",
   "Registry Surfaces Catalog":          "registry_surfaces_catalog",
@@ -148,6 +151,26 @@ const SHEET_COLUMNS = {
     "active_plugins", "plugin_versions_json", "plugin_owned_tables",
     "plugin_owned_entities", "plugin_validation_status",
     "last_plugin_validated_at", "active_status",
+  ],
+  // ── Business Activity Type Registry ──────────────────────────────────────
+  business_activity_types: [
+    "business_activity_type_key", "activity_key", "business_type_key",
+    "label", "parent_activity_type", "default_knowledge_profile_key",
+    "supported_engine_categories", "supported_route_keys", "supported_workflows",
+    "brand_core_required", "status", "notes", "active",
+  ],
+  // ── Business Type Knowledge Profiles ─────────────────────────────────────
+  business_type_profiles: [
+    "business_type_key", "knowledge_profile_key", "supported_engine_categories",
+    "authoritative_read_home", "business_type_specific_read_home",
+    "shared_knowledge_read_home", "compatible_route_keys", "compatible_workflows",
+    "profile_status", "notes", "active",
+  ],
+  // ── Brand Path Resolver ───────────────────────────────────────────────────
+  brand_paths: [
+    "brand_key", "normalized_brand_name", "business_type_key",
+    "knowledge_profile_key", "brand_folder_id", "brand_folder_path",
+    "brand_core_docs_json", "target_key", "base_url", "status", "active",
   ],
   // ── Live header: 47 cols (Task Routes) ───────────────────────────────────
   task_routes: [

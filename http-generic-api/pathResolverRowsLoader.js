@@ -394,7 +394,12 @@ export async function loadPathResolverRowsForRequest(requestPayload = {}, deps =
     };
   }
 
-  if (!deps.REGISTRY_SPREADSHEET_ID || !hasFunction(deps.getGoogleClientsForSpreadsheet)) {
+  if (!hasFunction(deps.getGoogleClientsForSpreadsheet)) {
+    const { loadPathResolverRowsFromDb } = await import('./pathResolverDbLoader.js');
+    return loadPathResolverRowsFromDb(loadRequest);
+  }
+
+  if (!deps.REGISTRY_SPREADSHEET_ID) {
     return {
       requested: true,
       loaded: false,

@@ -15,6 +15,7 @@ import { getPool } from "./db.js";
 import { resolveWpAppPassword, resolveSecretFromReference } from "./authCredentialResolution.js";
 import { runWordpressConnectorMigration } from "./wordpress/phaseA.js";
 import { writeAuditLogAsync } from "./auditLogger.js";
+import { runAgentLoop } from "./agentLoopRunner.js";
 
 const EXECUTABLE_DECISIONS = new Set([
   "ALLOW_SELF_SERVE",
@@ -190,15 +191,11 @@ async function dispatchWordpress(plan, brand, wpContext, options) {
   });
 }
 
-async function dispatchContentWorkflow(plan, workflowDef) {
-  return {
-    ok: true,
-    dispatch_mode: "async",
-    workflow_key: plan.workflow_key,
-    target_module: workflowDef?.target_module || "unknown",
-    execution_class: workflowDef?.execution_class || "standard",
-    message: "Content workflow queued. Poll /workflow-runs/:run_id for status.",
-  };
+async function dispatchContentWorkflow(plan, workflowDef, deps = {}) {
+  return runAgentLoop(plan, {
+    ...deps,
+    workflowDef,
+  });
 }
 
 async function dispatchMcpConnector(plan) {
@@ -275,6 +272,7 @@ export async function dispatchPlan(plan_id, {
   post_types = ["post"],
   publish_status = "draft",
   actor_id = null,
+  deps = {},
 } = {}) {
   const t0 = Date.now();
   const trace_id = randomUUID();
@@ -346,7 +344,7 @@ export async function dispatchPlan(plan_id, {
     } else if (isMcp) {
       result = await dispatchMcpConnector(plan);
     } else {
-      result = await dispatchContentWorkflow(plan, workflowDef);
+      result = await dispatchContentWorkflow(plan, workflowDef, deps);
     }
   } catch (err) {
     dispatchError = err;
