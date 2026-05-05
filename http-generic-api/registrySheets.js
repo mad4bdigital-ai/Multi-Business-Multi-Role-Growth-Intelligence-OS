@@ -257,6 +257,7 @@ export async function loadActionsRegistry(sheets, deps = {}) {
       api_key_header_name: getCell(row, map, "api_key_header_name"),
       api_key_value: getCell(row, map, "api_key_value"),
       api_key_storage_mode: getCell(row, map, "api_key_storage_mode"),
+      secret_store_ref: getCell(row, map, "secret_store_ref"),
       openai_schema_file_id: getCell(row, map, "openai_schema_file_id"),
       oauth_config_file_id: getCell(row, map, "oauth_config_file_id"),
       oauth_config_file_name: getCell(row, map, "oauth_config_file_name"),
