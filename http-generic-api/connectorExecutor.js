@@ -16,6 +16,7 @@ import { resolveWpAppPassword, resolveSecretFromReference } from "./authCredenti
 import { runWordpressConnectorMigration } from "./wordpress/phaseA.js";
 import { writeAuditLogAsync } from "./auditLogger.js";
 import { runAgentLoop } from "./agentLoopRunner.js";
+import { getAgentDeps } from "./agentRuntime.js";
 
 const EXECUTABLE_DECISIONS = new Set([
   "ALLOW_SELF_SERVE",
@@ -193,6 +194,7 @@ async function dispatchWordpress(plan, brand, wpContext, options) {
 
 async function dispatchContentWorkflow(plan, workflowDef, deps = {}) {
   return runAgentLoop(plan, {
+    ...getAgentDeps(),
     ...deps,
     workflowDef,
   });

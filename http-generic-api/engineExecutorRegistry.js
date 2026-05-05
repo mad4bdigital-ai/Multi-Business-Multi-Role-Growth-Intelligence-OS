@@ -30,10 +30,16 @@ async function resolveDispatch(engineName, input, context, deps, customHandlers)
   }
 
   if (isMcpEngine(engineName)) {
+    if (typeof deps.dispatchMcpTool !== "function") {
+      return { ok: false, error: "mcp_not_configured", engine: engineName };
+    }
     return deps.dispatchMcpTool(engineName, input);
   }
 
   if (isHttpActionEngine(engineName) || await isActionKey(engineName)) {
+    if (typeof deps.callHttpAction !== "function") {
+      return { ok: false, error: "http_action_not_configured", engine: engineName };
+    }
     const { action_key, endpoint_key, body } = input;
     return deps.callHttpAction(action_key || engineName, endpoint_key || "", body || input);
   }
