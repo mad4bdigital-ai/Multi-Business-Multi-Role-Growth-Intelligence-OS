@@ -211,8 +211,8 @@ Activation readiness spans transport, provider bootstrap, registry authority, an
 
 Required provider bootstrap evidence:
 - Drive probe through `http_generic_api` with `parent_action_key=google_drive_api`
-- Sheets probe through `http_generic_api` with `parent_action_key=google_sheets_api`
-- readback of `Activation Bootstrap Config!A2:J2`
+- Sheets probe through `http_generic_api` with `parent_action_key=google_sheets_api`, `endpoint_key=getSheetValues`, and `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`
+- readback of `query.range=Activation Bootstrap Config!A2:J2`
 - GitHub validation only after bootstrap row resolution, using bootstrap/registry-resolved action and endpoint keys
 
 Boundary rules:

@@ -30,7 +30,7 @@ For plain `Activate System`, this instruction requires:
 For first-turn activation in a new conversation:
 1. read knowledge layer canonicals first for traceability
 2. execute concrete Google Drive and Google Sheets validation through `http_generic_api` using registry-resolved parent action and endpoint keys
-3. read `Activation Bootstrap Config!A2:J2`
+3. read `Activation Bootstrap Config!A2:J2` with Sheets `getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`, and `query.range=Activation Bootstrap Config!A2:J2`
 4. use resolved bootstrap/registry authority for GitHub validation keys
 5. classify missing live validation caused by unavailable provider authorization as `authorization_gated`, not as missing Registry authority
 

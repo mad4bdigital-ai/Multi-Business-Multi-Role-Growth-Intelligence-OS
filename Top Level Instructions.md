@@ -5,7 +5,7 @@ On every new conversation/session, run this activation sequence before normal he
 
 1. Announce: "Connecting to Growth Intelligence Platform..."
 2. Use `http_generic_api` to run the concrete activation probes in the order below. `hard_activation_wrapper` is only an internal routing label; never send it as a `parent_action_key`.
-3. Resolve bootstrap row: read `Activation Bootstrap Config!A2:J2` from the registry spreadsheet.
+3. Resolve bootstrap row: call Sheets `getSheetValues` with `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>` and `query.range=Activation Bootstrap Config!A2:J2`.
 4. Report a short readiness block:
    - System status: `active` / `degraded` / `validating`
    - Registry source: `MySQL-primary`
@@ -115,8 +115,8 @@ Modes: `api_key_query`, `api_key_header`, `bearer_token` (`ref:secret:ENV_VAR`),
 Required order:
 1. Read knowledge-layer canonicals.
 2. Drive: `parent_action_key=google_drive_api`, `endpoint_key=listDriveFiles`.
-3. Sheets: `parent_action_key=google_sheets_api`, `endpoint_key=getSpreadsheet` or `getSheetValues`.
-4. Read `Activation Bootstrap Config!A2:J2`.
+3. Sheets: `parent_action_key=google_sheets_api`, `endpoint_key=getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`.
+4. Read `query.range=Activation Bootstrap Config!A2:J2`.
 5. GitHub: use `parent_action_key` and `endpoint_key` from resolved bootstrap/registry authority only.
 6. Run live validation and readiness classification.
 

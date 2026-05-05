@@ -75,7 +75,7 @@ In Google Sheets, verify:
 - [ ] `Execution Log Unified` received at least one writeback row since deployment
 - [ ] No policy rows contain unsupported custom literals that would bypass normalization
 
-For activation confirmation, do not stop at `/health`, `/status`, release readiness, tenant listing, or count routes. Those checks prove diagnostics only. Activation confirmation requires Drive validation, Sheets bootstrap row readback for `Activation Bootstrap Config!A2:J2`, and GitHub validation using bootstrap/registry-resolved keys.
+For activation confirmation, do not stop at `/health`, `/status`, release readiness, tenant listing, or count routes. Those checks prove diagnostics only. Activation confirmation requires Drive validation, Sheets `getSheetValues` row readback for `Activation Bootstrap Config!A2:J2` using `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`, and GitHub validation using bootstrap/registry-resolved keys.
 
 ---
 

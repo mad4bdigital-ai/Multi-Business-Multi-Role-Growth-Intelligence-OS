@@ -93,7 +93,7 @@ For `system_activation_check` and governed activation readiness validation:
 Activation validation must occur in this order:
 1. knowledge-layer canonical traceability
 2. Drive validation through `http_generic_api` using `parent_action_key=google_drive_api` and registry-resolved endpoint authority
-3. Sheets validation through `http_generic_api` using `parent_action_key=google_sheets_api`, then read `Activation Bootstrap Config!A2:J2`
+3. Sheets validation through `http_generic_api` using `parent_action_key=google_sheets_api`, `endpoint_key=getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`, and `query.range=Activation Bootstrap Config!A2:J2`
 4. GitHub validation only after bootstrap row resolution, using bootstrap/registry-resolved action and endpoint keys
 5. readiness classification
 

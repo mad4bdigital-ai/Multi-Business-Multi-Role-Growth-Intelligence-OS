@@ -324,7 +324,7 @@ When activation begins in a new conversation, module_loader must load activation
 1. load knowledge layer canonicals for traceability
 2. fetch repository-backed canonicals through bootstrap/registry-resolved GitHub authority when repository authority is active
 3. execute Drive validation through `http_generic_api`
-4. execute Sheets validation through `http_generic_api` and read `Activation Bootstrap Config!A2:J2`
+4. execute Sheets validation through `http_generic_api` using `getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`, and `query.range=Activation Bootstrap Config!A2:J2`
 5. execute GitHub validation only after bootstrap row resolution
 6. classify the governed transport validation state as:
    - `validated`
