@@ -22,12 +22,18 @@
 
 import { google } from "googleapis";
 
-// All scopes used across the platform's Google API actions.
-const GOOGLE_SCOPES = [
-  // Workspace
+// Workspace scopes used by the managed service account for platform-owned
+// Drive/Sheets registry and bootstrap files.
+const GOOGLE_WORKSPACE_SCOPES = [
   "https://www.googleapis.com/auth/spreadsheets",
   "https://www.googleapis.com/auth/documents",
   "https://www.googleapis.com/auth/drive",
+];
+
+// All scopes used across user-authorized Google API actions.
+const GOOGLE_SCOPES = [
+  // Workspace
+  ...GOOGLE_WORKSPACE_SCOPES,
   // Analytics (full read/write/admin suite)
   "https://www.googleapis.com/auth/analytics.readonly",
   "https://www.googleapis.com/auth/analytics",
@@ -121,7 +127,7 @@ async function fetchGoogleToken() {
       attempts.push({
         source: "managed service account ADC",
         run: async () => {
-          const auth = new google.auth.GoogleAuth({ scopes: GOOGLE_SCOPES });
+          const auth = new google.auth.GoogleAuth({ scopes: GOOGLE_WORKSPACE_SCOPES });
           const client = await auth.getClient();
           return await client.getAccessToken();
         }
