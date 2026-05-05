@@ -55,10 +55,13 @@ Test suite: 394 assertions across 21 test files (`npm test`). Architecture check
   - `OPENAI_API_KEY` — required when provider is `openai`
   - `GOOGLE_AI_API_KEY` — required when provider is `gemini`
   - `AGENT_MODEL` — override: forces a specific model string, bypasses class routing
-- **Google OAuth (for Sheets, Drive, Analytics):**
+- **Google auth (for Sheets, Drive, Analytics):**
+  - Default production path: Cloud Run Application Default Credentials from the managed service account.
+  - `GOOGLE_AUTH_MODE=refresh_token` — use refresh-token OAuth first for user-owned Drive/Sheets input sources, then fall back to service-account auth.
   - `GOOGLE_CLIENT_ID`
   - `GOOGLE_CLIENT_SECRET`
   - `GOOGLE_REFRESH_TOKEN` — generate via `node generate-google-refresh-token.mjs`
+  - `GOOGLE_APPLICATION_CREDENTIALS` or `GOOGLE_SA_JSON` — optional explicit service-account credentials for local/non-Cloud Run execution.
 - optional:
   - `BRAND_REGISTRY_SHEET`
   - `ACTIONS_REGISTRY_SHEET`
