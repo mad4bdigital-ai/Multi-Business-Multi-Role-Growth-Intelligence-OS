@@ -322,7 +322,7 @@ First-Turn Activation Governed Transport Validation Rule
 When activation begins in a new conversation, module_loader must load activation context in this order:
 
 1. load knowledge layer canonicals for traceability
-2. immediately fetch repository-backed canonicals through `github_api_mcp` when repository authority is active
+2. fetch repository-backed canonicals through bootstrap/registry-resolved GitHub authority when repository authority is active
 3. immediately perform at least one real governed activation transport attempt through `http_generic_api` and preserve machine-readable attempt evidence in the same execution cycle
 4. classify the governed transport validation state as:
    - `validated`
@@ -428,6 +428,8 @@ When routed intent or workflow resolves to:
 - `wf_hard_activation_wrapper`
 
 module_loader must prepare blocking activation context before any downstream user-facing classification is allowed.
+
+`hard_activation_wrapper` is a routing label only. module_loader must never pass it to provider transport as `parent_action_key`.
 
 Activation Trigger Preparation Rule
 

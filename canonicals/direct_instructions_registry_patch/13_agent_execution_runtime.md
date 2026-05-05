@@ -12,15 +12,15 @@ The `execution_class` field on the `workflows` table row is authoritative for mo
 
 | Class | Tier |
 |---|---|
-| `standard` | Haiku — default, low-cost |
-| `complex` | Sonnet — multi-step reasoning |
-| `authority` | Opus — highest-stakes decisions |
+| `standard` | default/low-cost |
+| `complex` | multi-step reasoning |
+| `authority` | highest-stakes decisions |
 
 If `execution_class` is absent on the workflow row, `standard` is applied.
 
 If `AGENT_MODEL` env var is set, it overrides all class routing for all workflows in that process.
 
-Model selection must not be hardcoded in routes or connectors. All routing goes through `getCallModelForClass(execution_class)`.
+Model selection must not be hardcoded in routes or connectors. All routing goes through `getCallModelForClass(execution_class)` and `modelAdapterRouter` maps the selected tier to the configured provider.
 
 ## Verify Pass Enforcement
 
@@ -66,8 +66,9 @@ Skills installed via `skillInstaller.mjs` must upsert `logic_definitions` rows w
 | `OPENAI_API_KEY` | Required when provider is `openai` |
 | `GOOGLE_AI_API_KEY` | Required when provider is `gemini` |
 | `AGENT_MODEL` | Override: forces a specific model for all classes |
-| `GOOGLE_CLIENT_ID` | Required for Google OAuth token generation |
-| `GOOGLE_CLIENT_SECRET` | Required for Google OAuth token generation |
-| `GOOGLE_REFRESH_TOKEN` | Must be populated via `generate-google-refresh-token.mjs` |
+| `GOOGLE_CLIENT_ID` | Required for user-owned Google OAuth token generation |
+| `GOOGLE_CLIENT_SECRET` | Required for user-owned Google OAuth token generation |
+| `GOOGLE_REFRESH_TOKEN` | Required only when user-owned Drive/Sheets flows use refresh-token auth |
+| `GOOGLE_AUTH_MODE` | Set to `refresh_token` for user-owned Drive/Sheets input sources |
 
-If `GOOGLE_REFRESH_TOKEN` is absent or returns `invalid_grant`, all Google API calls will fail. Run the token generator and restart the server before retrying.
+Platform-owned registry/bootstrap Drive and Sheets files use managed service account ADC by default. If a user-owned refresh-token flow returns `invalid_grant`, run the token generator and restart the server before retrying that user-owned flow.

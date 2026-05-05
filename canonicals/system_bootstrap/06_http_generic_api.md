@@ -120,10 +120,11 @@ Execution result must preserve:
 - `request_schema_alignment_status` when applicable
 - `transport_request_contract_status` when applicable
 
-Supported auth modes as of 2026-05: `api_key_query`, `api_key_header`, `bearer_token`, `basic_auth`, `google_oauth2`, `google_ads_oauth2`, `delegated_per_target`, `none`.
+Supported auth modes as of 2026-05: `api_key_query`, `api_key_header`, `bearer_token`, `basic_auth`, `google_oauth2`, `google_ads_oauth2`, `delegated_per_target`, `managed_service_account_adc`, `none`.
 
-`google_oauth2` — Google service-account or refresh-token bearer token, injected by `googleAuthTokenResolver.js`.
-`google_ads_oauth2` — Same token plus `developer-token` and optional `login-customer-id` headers for Google Ads API.
+`managed_service_account_adc` - Google managed service account ADC bearer token for platform-owned registry/bootstrap Drive and Sheets files, injected by `googleAuthTokenResolver.js`.
+`google_oauth2` - Google refresh-token bearer token for user-owned Drive/Sheets files or user-connected input sources, injected by `googleAuthTokenResolver.js`.
+`google_ads_oauth2` - Same token plus `developer-token` and optional `login-customer-id` headers for Google Ads API.
 
 Recovered classification is forbidden unless:
 - external execution succeeds

@@ -92,9 +92,12 @@ For `system_activation_check` and governed activation readiness validation:
 
 Activation validation must occur in this order:
 1. knowledge-layer canonical traceability
-2. live Google Drive canonical file validation
-3. live Registry / worksheet validation through Google Sheets APIs
-4. readiness classification
+2. Drive validation through `http_generic_api` using `parent_action_key=google_drive_api` and registry-resolved endpoint authority
+3. Sheets validation through `http_generic_api` using `parent_action_key=google_sheets_api`, then read `Activation Bootstrap Config!A2:J2`
+4. GitHub validation only after bootstrap row resolution, using bootstrap/registry-resolved action and endpoint keys
+5. readiness classification
+
+Platform-owned activation files use managed service account ADC by default. Refresh-token auth is reserved for user-owned Drive/Sheets files and user-connected input sources.
 
 If live governed validation is possible but skipped:
 - activation readiness must classify as `degraded` or `blocked`

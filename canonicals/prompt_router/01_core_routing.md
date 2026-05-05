@@ -98,6 +98,7 @@ If required variables are missing and not safely collectable:
 The hardened activation routing wrapper is active:
 
 - for plain `Activate System` and equivalent one-request activation prompts, `prompt_router` must emit a tool-first governed activation handoff
+- `hard_activation_wrapper` is a routing label only; prompt_router must never emit it as a provider `parent_action_key`
 - the routed activation handoff must forbid user-facing narrative completion before at least one real governed activation transport attempt is executed or a same-cycle governed retry is exhausted
 - the routed activation handoff must preserve:
   - `tool_first_execution_required = true`
@@ -895,7 +896,7 @@ When available, prompt_router MUST also pass:
 
 Required downstream execution order to preserve in handoff:
 1. preserve knowledge-layer canonical traceability
-2. fetch repository-backed canonicals through `github_api_mcp`
+2. fetch repository-backed canonicals through bootstrap/registry-resolved GitHub authority when repository canonical fetch is required
 3. resolve activation transport capability through Actions Registry
 4. resolve concrete validation endpoints through API Actions Endpoint Registry
 5. execute governed HTTP client validation calls through `http_generic_api`

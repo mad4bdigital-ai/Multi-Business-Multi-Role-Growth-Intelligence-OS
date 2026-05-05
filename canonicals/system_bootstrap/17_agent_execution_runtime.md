@@ -39,7 +39,7 @@ Class routing is cached per class per process via `_classCache`.
 
 When `workflow.review_required = 1` (or `TRUE` or `'1'`), `agentLoopRunner` runs a post-execution quality review after the primary model loop completes.
 
-Review model: always `standard` class (Haiku-tier) — cost-controlled.
+Review model: always `standard` class - cost-controlled and provider-agnostic.
 
 Review result shape: `{ passed: boolean, issues: string[], severity: "none"|"minor"|"major" }`.
 
@@ -86,9 +86,11 @@ The verify pass is non-blocking — a parse error in the review response is trea
 
 Usage: `node http-generic-api/sync-drive-to-db.mjs [--apply]` (dry-run by default).
 
-## Google OAuth
+## Google Workspace Auth
 
-`http-generic-api/generate-google-refresh-token.mjs` generates a fresh `GOOGLE_REFRESH_TOKEN` and writes it to `.env`.
+Platform-owned registry/bootstrap Drive and Sheets files use managed service account ADC by default through `googleAuthTokenResolver.js`. User-owned Drive/Sheets files and user-connected input sources use refresh-token auth, for example `GOOGLE_AUTH_MODE=refresh_token`.
+
+`http-generic-api/generate-google-refresh-token.mjs` generates a fresh `GOOGLE_REFRESH_TOKEN` and writes it to `.env` for user-owned refresh-token flows only.
 
 Modes:
 - Default (auto): starts `localhost:3000` callback server and opens the browser.
@@ -96,7 +98,7 @@ Modes:
 - `--code=<AUTH_CODE>`: exchanges a previously obtained auth code.
 
 Requires `http://localhost:3000/oauth2callback` in the OAuth client's Authorised Redirect URIs.
-Run this when Google APIs return `invalid_grant` (refresh token revoked or expired).
+Run this when user-owned refresh-token Google APIs return `invalid_grant` (refresh token revoked or expired). Do not use refresh-token repair for platform-owned managed service account ADC activation.
 
 ## Governance Rules
 

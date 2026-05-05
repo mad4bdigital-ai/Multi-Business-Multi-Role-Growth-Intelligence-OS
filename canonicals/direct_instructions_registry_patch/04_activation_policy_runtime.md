@@ -2,6 +2,8 @@ Activation Bootstrap Rule
 
 Plain `activate system` must default to governed `system_auto_bootstrap`, not validation-only activation check.
 
+`hard_activation_wrapper` is a routing label only. It may appear as an intent or workflow routing concept, but it must never be sent to provider transport as a `parent_action_key`.
+
 Activation Trigger Line
 
 For plain `Activate System`, the authoritative trigger line is:
@@ -27,8 +29,10 @@ For plain `Activate System`, this instruction requires:
 
 For first-turn activation in a new conversation:
 1. read knowledge layer canonicals first for traceability
-2. immediately auto-trigger native Google Drive, Sheets, and Docs connection attempts for live canonical validation
-3. classify missing live validation caused by unavailable provider authorization as `authorization_gated`, not as missing Registry authority
+2. execute concrete Google Drive and Google Sheets validation through `http_generic_api` using registry-resolved parent action and endpoint keys
+3. read `Activation Bootstrap Config!A2:J2`
+4. use resolved bootstrap/registry authority for GitHub validation keys
+5. classify missing live validation caused by unavailable provider authorization as `authorization_gated`, not as missing Registry authority
 
 Live governed readiness requires Registry-resolved validation through `http_generic_api`; Google remains a provider-specific endpoint path only when selected by registry governance.
 
