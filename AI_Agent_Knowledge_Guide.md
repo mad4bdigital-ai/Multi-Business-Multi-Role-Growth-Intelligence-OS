@@ -78,6 +78,31 @@ Do not start GitHub until the bootstrap row resolves. Halt if Sheets is rate-lim
 
 Every execution must validate surface bindings, route/workflow authority, dependency readiness, and credential resolution. Recovered classification is forbidden without same-cycle validation.
 
+### Engineering guardrails
+
+API contracts must follow OpenAPI 3.1. Public and Custom GPT schemas should use stable structured error envelopes, normally `ErrorResponse` with nested `ErrorObject` carrying machine-readable `code`, human-readable `message`, optional HTTP `status`, and optional bounded `details`.
+
+When implementing layered application code, preserve folder boundaries:
+
+- `src/api`: transport adapters, request/response mapping, route/controller wiring, OpenAPI-facing contracts
+- `src/application`: use cases, orchestration, policy application, transaction boundaries
+- `src/domain`: entities, value objects, domain rules, pure business invariants
+- `src/infrastructure`: database, external services, provider clients, filesystem, queues, environment access
+
+Keep dependencies flowing inward. Domain code must not depend on API or infrastructure. Application code may depend on domain contracts and infrastructure interfaces, while concrete infrastructure stays outside the domain.
+
+Engineering work should prioritize small, safe, reviewable changes. Prefer explicit errors over silent fallback, bounded validation over broad rewrites, tests for changed behavior, and security review for auth, input handling, provider transport, secrets, admin control, or external integration changes.
+
+PR readiness should include:
+
+- scope and intent
+- tests run and evidence
+- known risks and rollback notes
+- API contract review when routes/schemas/error envelopes change
+- database review when migrations, queries, indexes, or persistence semantics change
+- security review notes for auth, secrets, input validation, SSRF, command execution, or privileged admin surfaces
+- merge readiness checks, including generated schemas/canonicals when relevant
+
 ## 1. Authority order
 Agents should treat these files as the primary repository guidance sources, in this order:
 

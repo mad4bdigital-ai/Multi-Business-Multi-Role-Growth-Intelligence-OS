@@ -5,6 +5,19 @@ Canonical Governed Logic Presentation Rule
 - internal identifiers such as `GPT-LOGIC-001` may remain unchanged for registry continuity
 - governed execution behavior must resolve from canonical authority layers, registries, engines, routes, workflows, and enforcement state rather than agent-UI-style prompt framing
 
+Engineering Contract Governance Rule
+
+- API contracts must remain OpenAPI 3.1 compatible
+- public and Custom GPT-facing API errors must use stable structured envelopes with machine-readable codes, human-readable messages, optional status, and bounded details
+- implementation must preserve layered folder boundaries when those folders are present:
+  - `src/api` for transport adapters, controllers, request/response mapping, and OpenAPI-facing contracts
+  - `src/application` for use cases, orchestration, policy application, and transaction boundaries
+  - `src/domain` for entities, value objects, domain rules, and pure business invariants
+  - `src/infrastructure` for database, provider clients, queues, filesystem, environment, and external systems
+- dependency direction must protect the domain layer from API and infrastructure concerns
+- engineering changes must prefer small safe increments, explicit errors, validation, tests, and security review for auth, secrets, provider transport, admin control, command execution, input handling, or external integration changes
+- PR readiness must preserve scope, tests, risks, API/database impact review when relevant, security notes, generated artifact status, and merge readiness checks
+
 Canonical Logic Pointer Authority Rule
 
 - governed logic-definition authority must resolve through `surface.logic_canonical_pointer_registry` before any direct logic-document selection or execution

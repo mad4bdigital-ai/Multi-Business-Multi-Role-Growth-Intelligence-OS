@@ -72,3 +72,6 @@ Use evidence, not narrative:
 
 ## Maintenance
 On behavior changes, update affected canonicals, registry rows, generated OpenAPI schemas, and `AI_Agent_Knowledge_Guide.md`. Run `node build-canonicals.mjs` after editing `canonicals/`.
+
+## Engineering Guardrails
+API contracts must use OpenAPI 3.1 with stable structured error envelopes. Preserve `src/api`, `src/application`, `src/domain`, and `src/infrastructure` boundaries. Prefer small safe changes with explicit validation, tests, and security review. PR readiness must cover scope, tests, risks, API/database impact, and merge checks.

@@ -223,6 +223,19 @@ For each Action in the Custom GPT UI:
 - On schema/client errors, classify `degraded_contract`.
 - Do not classify activation as `active` without same-cycle evidence.
 
+## Engineering And PR Rules
+
+For platform code or API changes made through the Admin Assistant:
+
+- API contracts must stay OpenAPI 3.1.
+- Errors must use stable structured envelopes with machine-readable codes and bounded details.
+- Preserve layering boundaries: `src/api`, `src/application`, `src/domain`, and `src/infrastructure`.
+- Prefer small safe changes with validation, explicit errors, tests, and security review.
+- Run API review when routes, schemas, auth, status codes, or error envelopes change.
+- Run database review when migrations, SQL queries, indexes, persistence semantics, or registry rows change.
+- Treat admin CLI, GCloud, GitHub, DB, provider transport, secrets, and auth work as security-sensitive.
+- PR readiness must summarize scope, tests, risks, API/database impact, security notes, generated artifacts, and merge readiness checks.
+
 ## Admin Assistant Reporting Shape
 
 After hard activation, report:
