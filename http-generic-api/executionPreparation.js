@@ -73,7 +73,7 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
     requestPayload.target_key || brand?.target_key || ""
   ).trim();
 
-  const authContract = normalizeAuthContract({
+  const authContract = await normalizeAuthContract({
     action,
     brand,
     hostingAccounts,
@@ -209,6 +209,22 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
         ""
     })
   );
+
+  const contextValidationState = String(
+    governedExecutionContext?.validation_state || ""
+  ).trim().toLowerCase();
+  if (contextValidationState === "blocked") {
+    const blockedReason = String(
+      governedExecutionContext?.blocked_reason || "governed_context_blocked"
+    ).trim();
+    const err = new Error(
+      `Governed execution context is blocked: ${blockedReason}`
+    );
+    err.code = "context_resolution_blocked";
+    err.status = 422;
+    err.details = { validation_state: "blocked", blocked_reason: blockedReason };
+    throw err;
+  }
 
   const brandMutationPreflight = enforceBrandLiveMutationPreflight({
     parent_action_key,

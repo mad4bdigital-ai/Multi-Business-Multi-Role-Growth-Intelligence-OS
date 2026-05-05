@@ -6,12 +6,19 @@ export function isOAuthConfigured(action) {
 export function inferAuthMode({ action, brand }) {
   if (brand?.auth_type === "basic_auth_app_password") return "basic_auth";
 
-  const actionKey = String(action.action_key || "").trim().toLowerCase();
   const apiKeyMode = String(action.api_key_mode || "").trim().toLowerCase();
   const headerName = String(action.api_key_header_name || "").trim();
   const paramName = String(action.api_key_param_name || "").trim();
   const oauthConfigured = isOAuthConfigured(action);
 
+  // api_key_mode is the governed primary discriminator — resolve it first before
+  // falling through to header/param name heuristics.
+  if (apiKeyMode === "basic_auth_app_password") return "basic_auth";
+  if (apiKeyMode === "google_oauth2") return "google_oauth2";
+  if (apiKeyMode === "google_ads_oauth2") return "google_ads_oauth2";
+  if (apiKeyMode === "bearer_token") return "bearer_token";
+
+  // Header/param heuristics — fallback when api_key_mode is absent or unrecognised.
   if (
     headerName &&
     String(headerName).toLowerCase() === "authorization" &&
@@ -20,28 +27,9 @@ export function inferAuthMode({ action, brand }) {
     return "bearer_token";
   }
 
-  if (apiKeyMode === "basic_auth_app_password") {
-    return "basic_auth";
-  }
-
-  if (
-    actionKey === "googleads_api" &&
-    oauthConfigured &&
-    headerName &&
-    String(headerName).toLowerCase() !== "authorization"
-  ) {
-    return "oauth_gpt_action";
-  }
-
-  if (headerName && apiKeyMode === "custom_api") {
-    return "api_key_header";
-  }
-
+  if (headerName && apiKeyMode === "custom_api") return "api_key_header";
   if (paramName) return "api_key_query";
   if (headerName) return "api_key_header";
-
-  if (apiKeyMode === "google_oauth2") return "google_oauth2";
-  if (apiKeyMode === "google_ads_oauth2") return "google_ads_oauth2";
 
   if (oauthConfigured) return "oauth_gpt_action";
   return "none";

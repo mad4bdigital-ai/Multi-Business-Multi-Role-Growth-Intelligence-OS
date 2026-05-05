@@ -385,7 +385,7 @@ export function requireRuntimeCallableAction(policies, action, endpoint, deps = 
         policies,
         "Execution Capability Governance",
         "Require Runtime Callable For Direct Execution",
-        "FALSE",
+        "TRUE",
         deps
       )
     )
@@ -466,7 +466,7 @@ export function requireEndpointExecutionEligibility(policies, endpoint, deps = {
         policies,
         "Execution Capability Governance",
         "Block Inventory Only Endpoints",
-        "FALSE",
+        "TRUE",
         deps
       )
     )
@@ -486,7 +486,8 @@ export function requireEndpointExecutionEligibility(policies, endpoint, deps = {
 
   debugLog("ENDPOINT_EXECUTION_ELIGIBILITY_INPUT:", JSON.stringify(snapshot));
 
-  if (blockInventoryOnly && !delegatedTransportTarget && endpointRole && endpointRole !== "primary") {
+  // Non-primary endpoint roles are a hard architectural gate — not policy-gated.
+  if (!delegatedTransportTarget && endpointRole && endpointRole !== "primary") {
     debugLog(
       "ENDPOINT_EXECUTION_ELIGIBILITY_BLOCK:",
       JSON.stringify({ ...snapshot, reason: "endpoint_role_blocked" })

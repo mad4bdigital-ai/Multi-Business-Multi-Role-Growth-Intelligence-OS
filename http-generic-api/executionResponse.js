@@ -367,7 +367,15 @@ export async function validateAndShapeExecutionResponse(dispatchResult, context,
     http_status: upstream.status,
     brand_name,
     execution_trace_id,
-    started_at: sync_execution_started_at
+    started_at: sync_execution_started_at,
+    // auth + classification evidence
+    credential_resolution_status: authContract?.credential_resolution_status ?? "",
+    runtime_capability_class: String(action?.runtime_capability_class || ""),
+    primary_executor: String(action?.primary_executor || ""),
+    endpoint_role: String(endpoint?.endpoint_role || ""),
+    transport_action_key: String(endpoint?.transport_action_key || ""),
+    schema_contract_validation_status: schemaContract ? "validated" : "not_declared",
+    transport_request_contract_status: "validated"
   });
 
   return { status: upstream.ok ? 200 : upstream.status, body: responsePayload };

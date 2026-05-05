@@ -243,6 +243,11 @@ export async function performUniversalServerWriteback(input = {}, deps = {}) {
       input.attempt_count === undefined || input.attempt_count === null
         ? undefined
         : Number(input.attempt_count),
+    max_attempts:
+      input.max_attempts === undefined || input.max_attempts === null
+        ? undefined
+        : Number(input.max_attempts),
+    next_retry_at: input.next_retry_at ?? undefined,
     output_summary: buildOutputSummary({
       endpoint_key: input.endpoint_key,
       status,
@@ -292,7 +297,16 @@ export async function performUniversalServerWriteback(input = {}, deps = {}) {
     intake_validation_status: input.intake_validation_status ?? "",
     execution_ready_status: input.execution_ready_status ?? "",
     failure_reason: input.failure_reason ?? "",
-    recovery_action: input.recovery_action ?? ""
+    recovery_action: input.recovery_action ?? "",
+
+    // auth + classification evidence
+    credential_resolution_status: input.credential_resolution_status ?? "",
+    runtime_capability_class: input.runtime_capability_class ?? "",
+    primary_executor: input.primary_executor ?? "",
+    endpoint_role: input.endpoint_role ?? "",
+    transport_action_key: input.transport_action_key ?? "",
+    schema_contract_validation_status: input.schema_contract_validation_status ?? "",
+    transport_request_contract_status: input.transport_request_contract_status ?? ""
   };
 
   let governedSinkSheetTitles = {
@@ -353,6 +367,7 @@ export async function performUniversalServerWriteback(input = {}, deps = {}) {
     execution_log_row2_template_read: !!executionLogWriteMeta?.row2Read,
     execution_log_formula_managed_columns_protected:
       !!executionLogWriteMeta?.formulaManagedColumnsProtected,
+    pre_response_log_guard_passed: !!executionLogWriteMeta,
     execution_log_readback_verified: true,
     workflow_log_retry_attempted: workflowLogRetryAttempted,
     workflow_log_retry_exhausted: false,

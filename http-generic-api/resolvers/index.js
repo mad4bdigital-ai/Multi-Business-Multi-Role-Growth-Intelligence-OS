@@ -48,9 +48,22 @@ export function resolveContext({
         businessActivityTypeKey: activityKey,
         activityTypeRegistryRows
       });
-    } catch {
-      // business activity is supporting context; failure does not block
+      if (!context.business_activity) {
+        // Key was supplied but no matching registry row found — this is a hard block.
+        context.validation_state = "blocked";
+        context.blocked_reason = `business_activity_type_registry_miss: key="${activityKey}"`;
+        return context;
+      }
+    } catch (err) {
+      context.validation_state = "blocked";
+      context.blocked_reason = `business_activity_resolution_failed: ${err.message}`;
+      return context;
     }
+  } else if (business_activity_type_key && activityTypeRegistryRows.length === 0) {
+    // Key requested but registry rows were not loaded — block so the caller knows.
+    context.validation_state = "blocked";
+    context.blocked_reason = "business_activity_registry_rows_not_loaded";
+    return context;
   }
 
   if (business_type_key && profileRows.length > 0) {

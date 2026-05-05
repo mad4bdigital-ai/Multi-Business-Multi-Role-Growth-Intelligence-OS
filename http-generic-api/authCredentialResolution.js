@@ -1,6 +1,6 @@
 import { inferAuthMode } from "./authInjection.js";
 import { policyValue } from "./registryResolution.js";
-import { getGoogleAccessTokenSync } from "./googleAuthTokenResolver.js";
+import { getGoogleAccessToken } from "./googleAuthTokenResolver.js";
 
 // ── Storage-mode-aware secret resolvers ───────────────────────────────────────
 
@@ -51,7 +51,7 @@ export function resolveWpAppPassword(brand = {}) {
 
 // ── Public auth contract builder ───────────────────────────────────────────────
 
-export function normalizeAuthContract({
+async function _buildAuthContract({
   action,
   brand,
   hostingAccounts = [],
@@ -89,16 +89,15 @@ export function normalizeAuthContract({
 
   if (mode === "google_oauth2") {
     contract.header_name = "Authorization";
-    contract.secret = getGoogleAccessTokenSync();
+    contract.secret = await getGoogleAccessToken();
     return contract;
   }
 
   if (mode === "google_ads_oauth2") {
     contract.header_name = "Authorization";
-    contract.secret = getGoogleAccessTokenSync();
+    contract.secret = await getGoogleAccessToken();
     // Google Ads API requires two additional headers on every request.
-    // GOOGLEADS_LOGIN_CUSTOMER_ID is optional — only needed when calling
-    // on behalf of a client account under a manager (MCC) account.
+    // GOOGLEADS_LOGIN_CUSTOMER_ID is optional — only needed for MCC sub-account calls.
     const devToken = String(process.env.GOOGLEADS_DEVELOPER_TOKEN || "").trim();
     const customerId = String(process.env.GOOGLEADS_LOGIN_CUSTOMER_ID || "").trim();
     contract.custom_headers = {};
@@ -116,25 +115,39 @@ export function normalizeAuthContract({
       const accountKey = resolveAccountKey({ brand, targetKey, hostingAccounts });
       const hostingAccount = findHostingAccountByKey(hostingAccounts, accountKey);
 
-      if (hostingAccount) {
-        const accountStorageMode = String(
-          hostingAccount.api_key_storage_mode || ""
-        ).trim().toLowerCase();
+      if (!hostingAccount) {
+        const err = new Error(
+          `[authCredential] No hosting account found for per_target_credentials resolution. ` +
+          `action="${action.action_key}" accountKey="${accountKey || "(unresolved)"}"`
+        );
+        err.code = "auth_resolution_failed";
+        err.status = 500;
+        throw err;
+      }
 
-        if (accountStorageMode === "secret_reference") {
-          contract.secret = resolveSecretFromReference(hostingAccount.api_key_reference);
-          return contract;
-        }
-        // Warn: hosting account key not using secret_reference
+      const accountStorageMode = String(
+        hostingAccount.api_key_storage_mode || ""
+      ).trim().toLowerCase();
+
+      if (accountStorageMode === "secret_reference") {
+        contract.secret = resolveSecretFromReference(hostingAccount.api_key_reference);
+      } else {
         console.warn(
           `[authCredential] hosting account "${hostingAccount.hosting_account_key}" has ` +
           `api_key_storage_mode="${accountStorageMode}" — move to secret_reference.`
         );
         contract.secret = String(hostingAccount.api_key_reference || "").trim();
-        return contract;
       }
 
-      contract.secret = "";
+      if (!contract.secret) {
+        const err = new Error(
+          `[authCredential] Empty secret after per_target_credentials resolution for ` +
+          `hosting account "${hostingAccount.hosting_account_key}".`
+        );
+        err.code = "auth_resolution_failed";
+        err.status = 500;
+        throw err;
+      }
       return contract;
     }
 
@@ -142,6 +155,13 @@ export function normalizeAuthContract({
     return contract;
   }
 
+  return contract;
+}
+
+// Async public entry point — adds credential_resolution_status to every contract.
+export async function normalizeAuthContract(args) {
+  const contract = await _buildAuthContract(args);
+  contract.credential_resolution_status = contract.secret ? "resolved" : "empty_secret";
   return contract;
 }
 
