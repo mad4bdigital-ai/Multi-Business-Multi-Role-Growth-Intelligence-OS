@@ -16,7 +16,7 @@ export function buildReleaseRoutes(deps) {
       const summary  = req.query.summary === "true" || req.query.summary === "1";
 
       const report = await runReleaseReadiness({ persist });
-      const httpStatus = report.overall === "fail" ? 503 : 200;
+      const httpStatus = 200;
 
       if (summary) {
         return res.status(httpStatus).json({

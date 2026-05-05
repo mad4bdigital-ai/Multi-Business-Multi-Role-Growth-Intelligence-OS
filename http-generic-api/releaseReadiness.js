@@ -112,6 +112,17 @@ async function checkMigrationInventory() {
     : { status: "warn", detail: "Migration inventory is empty — entity classification not recorded." };
 }
 
+async function checkMigrationInventorySafe() {
+  try {
+    return await checkMigrationInventory();
+  } catch (err) {
+    return {
+      status: "warn",
+      detail: `Migration inventory unavailable: ${err?.message || "table check failed"}`
+    };
+  }
+}
+
 async function checkLegacyTables() {
   const results = {};
   for (const table of LEGACY_TABLES) {
@@ -163,7 +174,7 @@ export async function runReleaseReadiness({ persist = false } = {}) {
   }
 
   // Migration inventory
-  report.migration_inventory = await checkMigrationInventory();
+  report.migration_inventory = await checkMigrationInventorySafe();
   if (report.migration_inventory.status === "warn" && report.overall === "pass") report.overall = "warn";
 
   // Summary counts

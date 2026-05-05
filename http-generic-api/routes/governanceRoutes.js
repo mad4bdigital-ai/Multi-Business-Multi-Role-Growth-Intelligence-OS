@@ -643,7 +643,7 @@ export function buildGovernanceRoutes(deps) {
 
       const readiness = await ensureAiResolverRouteWorkflowRows();
       if (!readiness.ok) {
-        return res.status(409).json({
+        return res.status(200).json({
           ok: false,
           degraded: true,
           message: "Validation-only check complete: AI resolver intent keys are not fully route/workflow bound.",

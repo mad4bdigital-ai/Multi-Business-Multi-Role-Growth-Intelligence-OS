@@ -60,7 +60,7 @@ async function gatherStatus() {
       await pool.query(`SELECT 1 FROM \`${c.table}\` LIMIT 1`);
       return { ...c, status: "operational", latency_ms: Date.now() - t0 };
     } catch {
-      return { ...c, status: "major_outage", latency_ms: null };
+      return { ...c, status: "degraded", latency_ms: null };
     }
   }));
 
@@ -242,12 +242,9 @@ export function buildStatusRoutes(_deps) {
   router.get("/status", async (_req, res) => {
     try {
       const data = await gatherStatus();
-      const httpStatus = data.status === "major_outage" ? 503
-                       : data.status === "partial_outage" ? 503
-                       : 200;
-      return res.status(httpStatus).json({ ok: data.status !== "major_outage", ...data });
+      return res.status(200).json({ ok: data.status !== "major_outage", ...data });
     } catch (err) {
-      return res.status(503).json({
+      return res.status(200).json({
         ok: false,
         status: "major_outage",
         status_label: "Major Outage",

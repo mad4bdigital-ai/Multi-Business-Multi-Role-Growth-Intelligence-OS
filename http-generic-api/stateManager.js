@@ -5,7 +5,8 @@ import {
   appendRowsIfMissingByKeys as appendRowsIfMissingByKeysCore,
   ensureSiteMigrationRegistrySurfaces as ensureSiteMigrationRegistrySurfacesCore,
   ensureSiteMigrationRouteWorkflowRows as ensureSiteMigrationRouteWorkflowRowsCore,
-  ensureAiResolverRouteWorkflowRows as ensureAiResolverRouteWorkflowRowsCore
+  ensureAiResolverRouteWorkflowRows as ensureAiResolverRouteWorkflowRowsCore,
+  buildAiResolverRegistryReadiness
 } from "./routeWorkflowGovernance.js";
 
 import {
@@ -154,6 +155,25 @@ export function createStateManager(config) {
   }
 
   async function ensureAiResolverRouteWorkflowRows() {
+    const dsMode = (process.env.DATA_SOURCE || "sheets").toLowerCase();
+    if (dsMode !== "sheets") {
+      try {
+        const [taskRoutes, workflows] = await Promise.all([
+          sqlAdapter.readTable(TASK_ROUTES_SHEET),
+          sqlAdapter.readTable(WORKFLOW_REGISTRY_SHEET)
+        ]);
+        if (taskRoutes.length || workflows.length) {
+          return buildAiResolverRegistryReadiness({
+            requiredIntentKeys: REQUIRED_AI_RESOLVER_INTENT_KEYS,
+            taskRoutes,
+            workflows
+          });
+        }
+      } catch (err) {
+        console.warn(`[dataSource] AI resolver SQL readiness failed, falling back to Sheets: ${err.message}`);
+      }
+    }
+
     return ensureAiResolverRouteWorkflowRowsCore({
       REQUIRED_AI_RESOLVER_INTENT_KEYS,
       getGoogleClients,
