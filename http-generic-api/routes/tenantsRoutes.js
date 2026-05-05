@@ -114,6 +114,16 @@ export function buildTenantsRoutes(deps) {
     }
   });
 
+  // ── DELETE /tenants/:id ───────────────────────────────────────────────────
+  router.delete("/tenants/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      await getPool().query("UPDATE `tenants` SET status = 'archived' WHERE tenant_id = ?", [req.params.id]);
+      return res.status(200).json({ ok: true, tenant_id: req.params.id, status: "archived" });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "tenant_delete_failed", message: err.message } });
+    }
+  });
+
   // ── POST /tenants/:id/relationships ───────────────────────────────────────
   router.post("/tenants/:id/relationships", requireBackendApiKey, async (req, res) => {
     try {

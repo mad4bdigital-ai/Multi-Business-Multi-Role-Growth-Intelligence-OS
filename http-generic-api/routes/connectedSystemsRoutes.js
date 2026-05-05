@@ -96,6 +96,16 @@ export function buildConnectedSystemsRoutes(deps) {
     }
   });
 
+  // ── DELETE /connected-systems/:id ────────────────────────────────────────
+  router.delete("/connected-systems/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      await getPool().query("UPDATE `connected_systems` SET status = 'archived' WHERE system_id = ?", [req.params.id]);
+      return res.status(200).json({ ok: true, system_id: req.params.id, status: "archived" });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "system_delete_failed", message: err.message } });
+    }
+  });
+
   // ── PATCH /connected-systems/:id/status ───────────────────────────────────
   router.patch("/connected-systems/:id/status", requireBackendApiKey, async (req, res) => {
     try {
@@ -167,6 +177,16 @@ export function buildConnectedSystemsRoutes(deps) {
       return res.status(200).json({ ok: true, workspaces: rows, count: rows.length });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "workspaces_list_failed", message: err.message } });
+    }
+  });
+
+  // ── DELETE /installations/:id ────────────────────────────────────────────
+  router.delete("/installations/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      await getPool().query("DELETE FROM `installations` WHERE installation_id = ?", [req.params.id]);
+      return res.status(200).json({ ok: true, installation_id: req.params.id, deleted: true });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "installation_delete_failed", message: err.message } });
     }
   });
 

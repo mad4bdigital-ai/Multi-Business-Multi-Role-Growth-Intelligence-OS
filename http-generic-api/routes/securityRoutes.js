@@ -130,6 +130,20 @@ export function buildSecurityRoutes(deps) {
     }
   });
 
+  // ── DELETE /incidents/:id ─────────────────────────────────────────────────
+  router.delete("/incidents/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      await getPool().query(
+        "UPDATE `incidents` SET status = 'closed', resolved_at = NOW() WHERE incident_id = ?",
+        [req.params.id]
+      );
+      writeAuditLogAsync({ action: "incident.closed", resource_type: "incident", resource_id: req.params.id, after_json: { status: "closed" } });
+      return res.status(200).json({ ok: true, incident_id: req.params.id, status: "closed" });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "incident_delete_failed", message: err.message } });
+    }
+  });
+
   // ── GET /incidents ────────────────────────────────────────────────────────
   router.get("/incidents", requireBackendApiKey, async (req, res) => {
     try {

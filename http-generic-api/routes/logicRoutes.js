@@ -47,6 +47,24 @@ export function buildLogicRoutes(deps) {
     }
   });
 
+  // ── GET /logic-definitions/:id ────────────────────────────────────────────
+  router.get("/logic-definitions/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      const [rows] = await getPool().query(
+        `SELECT logic_id, logic_key, display_name, logic_type, parent_logic_id, tenant_id,
+                body_json, version, status, created_at, updated_at
+         FROM \`logic_definitions\` WHERE logic_id = ? LIMIT 1`,
+        [req.params.id]
+      );
+      if (!rows.length) return res.status(404).json({ ok: false, error: { code: "logic_not_found", message: `Logic definition ${req.params.id} not found.` } });
+      const def = rows[0];
+      if (def.body_json) try { def.body_json = JSON.parse(def.body_json); } catch {}
+      return res.status(200).json({ ok: true, definition: def });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "logic_read_failed", message: err.message } });
+    }
+  });
+
   // ── GET /logic-definitions/:id/children ───────────────────────────────────
   router.get("/logic-definitions/:id/children", requireBackendApiKey, async (req, res) => {
     try {
@@ -79,6 +97,16 @@ export function buildLogicRoutes(deps) {
       return res.status(200).json({ ok: true, logic_id: req.params.id, logic_key, display_name });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "logic_update_failed", message: err.message } });
+    }
+  });
+
+  // ── DELETE /logic-definitions/:id ────────────────────────────────────────
+  router.delete("/logic-definitions/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      await getPool().query("UPDATE `logic_definitions` SET status = 'archived' WHERE logic_id = ?", [req.params.id]);
+      return res.status(200).json({ ok: true, logic_id: req.params.id, status: "archived" });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "logic_delete_failed", message: err.message } });
     }
   });
 

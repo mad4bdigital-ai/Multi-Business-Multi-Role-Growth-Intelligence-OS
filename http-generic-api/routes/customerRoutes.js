@@ -180,6 +180,16 @@ export function buildCustomerRoutes(deps) {
     }
   });
 
+  // ── DELETE /customers/:id ─────────────────────────────────────────────────
+  router.delete("/customers/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      await getPool().query("UPDATE `customers` SET status = 'archived' WHERE customer_id = ?", [req.params.id]);
+      return res.status(200).json({ ok: true, customer_id: req.params.id, status: "archived" });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "customer_delete_failed", message: err.message } });
+    }
+  });
+
   // ── POST /contacts ────────────────────────────────────────────────────────
   router.post("/contacts", requireBackendApiKey, async (req, res) => {
     try {
@@ -196,6 +206,16 @@ export function buildCustomerRoutes(deps) {
       return res.status(201).json({ ok: true, contact_id, tenant_id, name });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "contact_create_failed", message: err.message } });
+    }
+  });
+
+  // ── DELETE /contacts/:id ─────────────────────────────────────────────────
+  router.delete("/contacts/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      await getPool().query("DELETE FROM `contacts` WHERE contact_id = ?", [req.params.id]);
+      return res.status(200).json({ ok: true, contact_id: req.params.id, deleted: true });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "contact_delete_failed", message: err.message } });
     }
   });
 
@@ -218,6 +238,16 @@ export function buildCustomerRoutes(deps) {
     }
   });
 
+  // ── DELETE /threads/:id ───────────────────────────────────────────────────
+  router.delete("/threads/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      await getPool().query("UPDATE `threads` SET status = 'closed' WHERE thread_id = ?", [req.params.id]);
+      return res.status(200).json({ ok: true, thread_id: req.params.id, status: "closed" });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "thread_delete_failed", message: err.message } });
+    }
+  });
+
   // ── PUT /threads/:id ──────────────────────────────────────────────────────
   router.put("/threads/:id", requireBackendApiKey, async (req, res) => {
     try {
@@ -232,6 +262,16 @@ export function buildCustomerRoutes(deps) {
       return res.status(200).json({ ok: true, thread_id: req.params.id, subject });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "thread_update_failed", message: err.message } });
+    }
+  });
+
+  // ── DELETE /tickets/:id ───────────────────────────────────────────────────
+  router.delete("/tickets/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      await getPool().query("UPDATE `tickets` SET status = 'closed' WHERE ticket_id = ?", [req.params.id]);
+      return res.status(200).json({ ok: true, ticket_id: req.params.id, status: "closed" });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "ticket_delete_failed", message: err.message } });
     }
   });
 

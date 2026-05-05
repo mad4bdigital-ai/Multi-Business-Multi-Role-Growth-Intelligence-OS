@@ -108,6 +108,26 @@ export function buildIdentityRoutes(deps) {
     }
   });
 
+  // ── DELETE /users/:id ─────────────────────────────────────────────────────
+  router.delete("/users/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      await getPool().query("UPDATE `users` SET status = 'archived' WHERE user_id = ?", [req.params.id]);
+      return res.status(200).json({ ok: true, user_id: req.params.id, status: "archived" });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "user_delete_failed", message: err.message } });
+    }
+  });
+
+  // ── DELETE /entitlements/:id ──────────────────────────────────────────────
+  router.delete("/entitlements/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      await getPool().query("DELETE FROM `entitlements` WHERE entitlement_id = ?", [req.params.id]);
+      return res.status(200).json({ ok: true, entitlement_id: req.params.id, deleted: true });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "entitlement_delete_failed", message: err.message } });
+    }
+  });
+
   // ── GET /plans ─────────────────────────────────────────────────────────────
   router.get("/plans", requireBackendApiKey, async (_req, res) => {
     try {

@@ -38,6 +38,17 @@ export function buildDeveloperApiRoutes(deps) {
     }
   });
 
+  // ── DELETE /developer-apps/:id ───────────────────────────────────────────
+  router.delete("/developer-apps/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      await getPool().query("UPDATE `developer_apps` SET status = 'archived' WHERE app_id = ?", [req.params.id]);
+      writeAuditLogAsync({ action: "developer_app.deleted", resource_type: "developer_app", resource_id: req.params.id });
+      return res.status(200).json({ ok: true, app_id: req.params.id, status: "archived" });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "app_delete_failed", message: err.message } });
+    }
+  });
+
   // ── PUT /developer-apps/:id ───────────────────────────────────────────────
   router.put("/developer-apps/:id", requireBackendApiKey, async (req, res) => {
     try {
@@ -144,6 +155,16 @@ export function buildDeveloperApiRoutes(deps) {
       return res.status(201).json({ ok: true, webhook_id, tenant_id, url, events: eventStr.split(","), status: "active" });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "webhook_create_failed", message: err.message } });
+    }
+  });
+
+  // ── DELETE /webhooks/:id ─────────────────────────────────────────────────
+  router.delete("/webhooks/:id", requireBackendApiKey, async (req, res) => {
+    try {
+      await getPool().query("DELETE FROM `webhooks` WHERE webhook_id = ?", [req.params.id]);
+      return res.status(200).json({ ok: true, webhook_id: req.params.id, deleted: true });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "webhook_delete_failed", message: err.message } });
     }
   });
 

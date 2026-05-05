@@ -3132,6 +3132,10 @@ if (QUEUE_WORKER_ENABLED) {
   console.log("QUEUE_WORKER_DISABLED: skipping BullMQ worker startup for this instance.");
 }
 
+if (!isBackendApiKeyEnabled()) {
+  console.warn("⚠️  WARNING: BACKEND_API_KEY is not set — all authenticated routes are UNPROTECTED. Set BACKEND_API_KEY before receiving external traffic.");
+}
+
 app.listen(port, () => {
   console.log(`http_generic_api_connector listening on port ${port}`);
 });
