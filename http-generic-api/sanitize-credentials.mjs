@@ -59,6 +59,8 @@ console.log(`\n=== Credential Sanitizer — ${APPLY ? "APPLY" : "DRY RUN"} ===\n
 // ── 1. Actions — embedded API key values ──────────────────────────────────────
 // Map: action_key → { envVar, newStorageMode, newSecretRef }
 const ACTION_CREDENTIAL_MAP = {
+  // Self-referential: platform calls its own API using BACKEND_API_KEY
+  http_generic_api:  { envVar: "BACKEND_API_KEY",              newRef: "ref:secret:BACKEND_API_KEY" },
   serpapi_search:    { envVar: "SERPAPI_API_KEY",              newRef: "ref:secret:SERPAPI_API_KEY" },
   scraperapi_scrape: { envVar: "SCRAPERAPI_API_KEY",           newRef: "ref:secret:SCRAPERAPI_API_KEY" },
   abstractapi_scrape:{ envVar: "ABSTRACTAPI_API_KEY",          newRef: "ref:secret:ABSTRACTAPI_API_KEY" },
