@@ -188,3 +188,9 @@ after:
 
 and before:
 - `dependency_validation` or final execution readiness classification.
+
+Google Workspace Auth Credential Resolution
+
+Google Workspace actions now use `api_key_mode=google_oauth2` resolved by `googleAuthTokenResolver.js`. Token is pre-warmed at server start from GOOGLE_APPLICATION_CREDENTIALS (SA file), GOOGLE_SA_JSON (inline), or GOOGLE_REFRESH_TOKEN (user OAuth2). `google_ads_oauth2` extends this with `developer-token` and `login-customer-id` headers for Google Ads API.
+
+system_bootstrap must treat Google Workspace credential resolution as governed token injection, not freeform API key pass-through. `getGoogleAccessToken()` (async) and `getGoogleAccessTokenSync()` (sync cache read) are the only authoritative resolution paths. Token cache TTL is 55 minutes with auto-refresh every 50 minutes.

@@ -16,7 +16,7 @@ These pass automatically in CI on every push/PR:
 - [ ] `wordpress/index.js` barrel exports >= 545 symbols
 - [ ] `github.js` exports exactly 14 public symbols
 - [ ] `server.js` remains under 6,000 lines
-- [ ] `node smoke-test-data-flow.mjs` passes from `http-generic-api/` (70 checks: all 15 tables readable, route→workflow chain, UNIQUE constraints, row count summary)
+- [ ] `node smoke-test-data-flow.mjs` passes from `http-generic-api/` (all SQL tables readable, route→workflow chain, UNIQUE constraints, row count summary)
 
 ---
 
@@ -24,7 +24,6 @@ These pass automatically in CI on every push/PR:
 
 Verify the live Google Sheets registry reflects intended architecture:
 
-- [ ] `Site Runtime Inventory Registry` sheet exists and has required columns (`target_key`, `brand_name`, `base_url`, `site_type`, `active_status`)
 - [ ] `Execution Log Unified` sheet exists and is writable
 - [ ] `JSON Asset Registry` sheet exists and is writable
 - [ ] `REGISTRY_SPREADSHEET_ID` environment variable points to correct spreadsheet

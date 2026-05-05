@@ -77,8 +77,6 @@ The root schema enforces `additionalProperties: false` and all 99 required field
 ### Registry-centered authority layer
 
 Important governed surfaces include:
-- `Registry Surfaces Catalog`
-- `Validation & Repair Registry`
 - `Task Routes`
 - `Workflow Registry`
 - `Actions Registry`
@@ -89,6 +87,8 @@ Important governed surfaces include:
 - `Brand Registry`
 - `Hosting Account Registry`
 - `Brand Core Registry`
+
+These governed surfaces are now SQL-primary. The Google Sheets workbooks remain the human-readable mirror, but MySQL is the authoritative read source for runtime execution.
 
 Runtime behavior should prefer live registry truth over local assumptions, stale memory, or narrative summaries.
 
@@ -139,20 +139,19 @@ node migrate-sheets-to-sql.mjs --merge
 # 5. Merge mode apply: write inserts and updates
 node migrate-sheets-to-sql.mjs --merge --apply
 
-# 6. Reconcile the Registry Surfaces Catalog (report only)
-node reconcile-catalog.mjs
-
-# 7. Tighten the DB: dedup natural keys, add UNIQUE constraints + indexes, TEXT->VARCHAR (dry-run)
+# 6. Tighten the DB: dedup natural keys, add UNIQUE constraints + indexes, TEXT->VARCHAR (dry-run)
 node tighten-db.mjs
 
-# 8. Apply DB tightening
+# 7. Apply DB tightening
 node tighten-db.mjs --apply
 
-# 9. Smoke test data flow across all 15 tables
+# 8. Smoke test data flow
 node smoke-test-data-flow.mjs
 ```
 
-Migration sequence for a fresh database: run `expand-schema.mjs --apply` first, then `migrate-sheets-to-sql.mjs --merge --apply`, then `tighten-db.mjs --apply`. For subsequent incremental syncs use `--merge --apply`; the migrator skips unchanged rows. For the execution log (append-only, no natural key) use seed mode without `--merge`. Run `smoke-test-data-flow.mjs` after any migration or DB change to verify all 15 tables and their linkage chains.
+Migration sequence for a fresh database: run `expand-schema.mjs --apply` first, then `migrate-sheets-to-sql.mjs --merge --apply`, then `tighten-db.mjs --apply`. For subsequent incremental syncs use `--merge --apply`; the migrator skips unchanged rows. For the execution log (append-only, no natural key) use seed mode without `--merge`. Run `smoke-test-data-flow.mjs` after any DB change to verify table integrity.
+
+Migration to SQL is complete. The platform runs SQL-primary for registry lookups.
 
 ### Connector and subsystem layer
 
@@ -186,6 +185,9 @@ Current state:
 - `/health` reports degraded dependency truth for Redis/BullMQ instead of assuming queue connectivity
 - async job submission returns `503` when the queue backend cannot accept work (safely rejects to prevent job loss)
 - runtime instances can run in API-only mode with `QUEUE_WORKER_ENABLED=FALSE`, or connect to Memorystore/Upstash/Hostinger Redis for background workers
+- `All 19 actions are runtime_callable with correct auth modes: api_key_query, bearer_token, google_oauth2, google_ads_oauth2, per_target_credentials, mcp_connector`
+- `googleAuthTokenResolver.js — shared Google OAuth2 token cache; pre-warmed at server start; supports service account file, inline SA JSON, or GOOGLE_REFRESH_TOKEN user OAuth fallback`
+- `connectorExecutor.js — MCP connector branch added: plans with connected_system.connector_family=make_mcp dispatch to dispatchMcpConnector() via JSON-RPC 2.0 to Make MCP stateless endpoint`
 
 ## Upgrade direction
 

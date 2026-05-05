@@ -70,11 +70,70 @@ All intermediate evidence construction and status-string normalization are priva
 
 ---
 
+---
+
+## connectorExecutor.js
+
+### Public exports
+
+#### `dispatchPlan(plan_id, options)`
+- **Purpose:** Execute an approved execution_plan by routing it to the correct connector dispatcher.
+- **Caller:** Planner routes — `POST /planner/plans/:id/execute`
+- **Input:** `plan_id` (UUID), options: `{ apply, post_types, publish_status, actor_id }`
+- **Returns:** `{ ok, run_id, trace_id, plan_id, connector_type, plan_status, apply, duration_ms, result?, error? }`
+- **Routing:** Detects connector type from loaded brand/connected_system:
+  - `brand.auth_type = basic_auth_app_password` OR `connected_system.connector_family = wordpress` → `dispatchWordpress()`
+  - `connected_system.connector_family = make_mcp` → `dispatchMcpConnector()`
+  - else → `dispatchContentWorkflow()` (async stub)
+- **Records:** `workflow_runs`, `step_runs`, `telemetry_spans`, `audit_log`
+
+#### `dispatchMcpConnector(plan)` *(internal, via dispatchPlan)*
+- **Purpose:** Send a JSON-RPC 2.0 `tools/call` to the Make MCP stateless endpoint.
+- **Transport:** `POST https://eu2.make.com/mcp/stateless`, `Authorization: Bearer <MAKE_MCP_TOKEN>`
+- **Envelope:** Built from first step in `plan.steps_json`: `{ jsonrpc: "2.0", method: "tools/call", params: { name: <tool>, arguments: <args> } }`
+- **Auth:** Resolved via `resolveSecretFromReference("ref:secret:MAKE_MCP_TOKEN")` or `process.env.MAKE_MCP_TOKEN`
+- **Returns:** `{ ok: true, dispatch_mode: "sync", rpc_id, tool, mcp_response }`
+
+---
+
+## googleAuthTokenResolver.js
+
+### Public exports
+
+#### `getGoogleAccessToken()`
+- **Purpose:** Async — return a valid Google OAuth2 access token, fetching fresh if cache is stale.
+- **Credential chain (priority order):**
+  1. `GOOGLE_APPLICATION_CREDENTIALS` — path to service account JSON file
+  2. `GOOGLE_SA_JSON` — inline service account JSON (raw or base64)
+  3. `GOOGLE_REFRESH_TOKEN` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` — user OAuth2
+- **Scopes covered:** Sheets, Docs, Drive, Analytics (readonly), Search Ads 360, Search Console, Tag Manager
+- **Cache:** 55-minute TTL; auto-refreshes every 50 minutes via `setInterval().unref()`
+- **Pre-warms** at module import (non-blocking)
+- **Returns:** access token string, or `""` if no credentials are configured
+
+#### `getGoogleAccessTokenSync()`
+- **Purpose:** Sync — return cached token if fresh; trigger background refresh if stale; return stale token or `""` if cache is empty.
+- **Caller:** `authCredentialResolution.normalizeAuthContract()` — used for `google_oauth2` and `google_ads_oauth2` auth modes
+- **Returns:** cached token string or `""` (never throws)
+
+### Internal (not exported)
+`fetchGoogleToken()`, `parseSaJson()`, module-level cache variables.
+
+---
+
 ## Dispatch entrypoint
 
-Both connectors are invoked exclusively via `dispatchEndpointKeyExecution` in `jobRunner.js`:
+Connector dispatch routes through two layers:
+
+- `dispatchPlan()` in `connectorExecutor.js` for connector-family-based execution
+- `dispatchEndpointKeyExecution` in `jobRunner.js` for endpoint-key execution
 
 ```js
+// connectorExecutor.js — dispatchPlan() routing
+case "make_mcp_connector":  // connector_family = make_mcp
+  return await dispatchMcpConnector(plan);  // via dispatchPlan()
+
+// jobRunner.js — dispatchEndpointKeyExecution routing
 case "github_git_blob_chunk_read":
   return await githubGitBlobChunkRead({ input: requestPayload });
 
