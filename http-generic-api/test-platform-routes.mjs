@@ -22,6 +22,7 @@ import { buildObservabilityRoutes }    from "./routes/observabilityRoutes.js";
 import { buildStatusRoutes }           from "./routes/statusRoutes.js";
 import { buildBatchRoutes }            from "./routes/batchRoutes.js";
 import { buildHealthRoutes }           from "./routes/healthRoutes.js";
+import { buildLegalRoutes }            from "./routes/legalRoutes.js";
 
 let passed = 0;
 let failed = 0;
@@ -67,6 +68,7 @@ app.use(buildBootstrapRoutes(DEPS));
 app.use(buildObservabilityRoutes(DEPS));
 app.use(buildStatusRoutes(DEPS));
 app.use(buildBatchRoutes(DEPS));
+app.use(buildLegalRoutes(DEPS));
 
 const server = app.listen(0);
 await new Promise(resolve => server.once("listening", resolve));
@@ -485,6 +487,32 @@ section("POST /batch — execution");
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────────
+
+section("GET /privacy-policy - public HTML page on scoped subdomains");
+
+{
+  const hosts = [
+    "api.mad4b.com",
+    "identity.mad4b.com",
+    "customers.mad4b.com",
+    "systems.mad4b.com",
+    "logic.mad4b.com",
+    "observability.mad4b.com",
+    "developer.mad4b.com",
+    "dev.mad4b.com",
+    "ops.mad4b.com",
+    "status.mad4b.com",
+  ];
+
+  for (const host of hosts) {
+    const res = await fetch(`${base}/privacy-policy`, { headers: { "x-forwarded-host": host } });
+    const html = await res.text();
+    ok(`${host} privacy policy returns 200`, res.status === 200, `got ${res.status}`);
+    ok(`${host} privacy policy is HTML`, (res.headers.get("content-type") || "").includes("text/html"));
+    ok(`${host} privacy policy includes host`, html.includes(`Applies to ${host}`));
+    ok(`${host} privacy policy includes title`, html.includes("<h1>Privacy Policy</h1>"));
+  }
+}
 
 server.close();
 
