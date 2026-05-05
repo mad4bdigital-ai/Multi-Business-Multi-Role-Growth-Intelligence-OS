@@ -249,7 +249,8 @@ components:
         request_url:
           type: string
         response_headers:
-          $ref: "#/components/schemas/StringMap"
+          type: object
+          additionalProperties: true
         data:
           $ref: "#/components/schemas/JsonValue"
         readback:

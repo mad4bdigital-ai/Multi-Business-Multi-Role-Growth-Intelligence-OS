@@ -255,7 +255,8 @@ components:
         request_url:
           type: string
         response_headers:
-          $ref: "#/components/schemas/StringMap"
+          type: object
+          additionalProperties: true
         data:
           $ref: "#/components/schemas/JsonValue"
         readback:
@@ -916,7 +917,7 @@ components:
           description: Optional record identifier when returned by the resource.
     PlatformListResponse:
       type: object
-      additionalProperties: false
+      additionalProperties: true
       required:
         - ok
       properties:
@@ -927,6 +928,10 @@ components:
         count:
           type: integer
         items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlatformRecord"
+        tenants:
           type: array
           items:
             $ref: "#/components/schemas/PlatformRecord"
