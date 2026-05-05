@@ -1818,10 +1818,46 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /tickets/{ticket_id}:
+    get:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: getTicket
+      summary: Get a ticket by ID
+      parameters:
+        - { name: ticket_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Ticket, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: replaceTicket
+      summary: Full update of a ticket record
+      parameters:
+        - { name: ticket_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                category: { type: string }
+                priority: { type: string, enum: [low, normal, high, urgent] }
+                status: { type: string, enum: [open, in_review, awaiting_approval, resolved, closed] }
+                assigned_to: { type: string, format: uuid }
+                metadata_json: { type: object, additionalProperties: true }
+      responses:
+        "200": { description: Ticket updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
     patch:
       tags: [customers]
       security: [backendBearerAuth: []]
-      operationId: updateTicket
+      operationId: updateTicketStatus
       summary: Update ticket status or assignment
       parameters:
         - { name: ticket_id, in: path, required: true, schema: { type: string } }
@@ -1832,13 +1868,23 @@ paths:
             schema:
               type: object
               properties:
-                status: { type: string, enum: [open, in_progress, waiting, resolved, closed] }
+                status: { type: string, enum: [open, in_review, awaiting_approval, resolved, closed] }
                 assigned_to: { type: string, format: uuid }
                 priority: { type: string, enum: [low, normal, high, urgent] }
       responses:
         "200": { description: Ticket updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: closeTicket
+      summary: Close a ticket (soft delete — sets status=closed)
+      parameters:
+        - { name: ticket_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Ticket closed, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /timeline-events:
     post:
@@ -1933,6 +1979,35 @@ paths:
         "200": { description: Connected system, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: replaceConnectedSystem
+      summary: Full update of a connected system record
+      parameters:
+        - { name: system_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [display_name]
+              properties:
+                display_name: { type: string }
+                provider_domain: { type: string }
+                connector_family: { type: string }
+                auth_type: { type: string }
+                service_mode: { type: string, enum: [self_serve, assisted, managed] }
+                self_serve_capable: { type: boolean }
+                assisted_capable: { type: boolean }
+                managed_capable: { type: boolean }
+                config_json: { type: object, additionalProperties: true }
+                status: { type: string, enum: [active, pending, error, archived] }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
     patch:
       tags: [connected-systems]
       security: [backendBearerAuth: []]
@@ -1954,6 +2029,16 @@ paths:
         "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: archiveConnectedSystem
+      summary: Archive a connected system (soft delete — sets status=archived)
+      parameters:
+        - { name: system_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Archived, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /tenants/{tenant_id}/connected-systems:
     get:
@@ -3181,3 +3266,1067 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  # â”€â”€ Status Page (public, no auth) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /status:
+    get:
+      tags: [health]
+      operationId: getStatus
+      summary: Public system status JSON â€” component health and open incidents
+      description: >
+        Returns live DB-backed component health (API, DB, tenant_management, identity,
+        connector_execution, intent_resolution, observability, release_readiness),
+        open incidents, and past 30-day incident history.
+        Returns HTTP 503 when overall status is partial_outage or major_outage.
+      responses:
+        "200":
+          description: System operational
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  status: { type: string, enum: [operational, degraded, partial_outage, major_outage] }
+                  status_label: { type: string }
+                  components: { type: array, items: { type: object, additionalProperties: true } }
+                  active_incidents: { type: array, items: { type: object, additionalProperties: true } }
+                  past_incidents: { type: array, items: { type: object, additionalProperties: true } }
+                  updated_at: { type: string, format: date-time }
+        "503":
+          description: Partial or major outage detected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  status: { type: string }
+
+  /status.html:
+    get:
+      tags: [health]
+      operationId: getStatusHtml
+      summary: Public status page HTML (OpenAI-style component grid + incident history)
+      responses:
+        "200":
+          description: HTML status page
+          content:
+            text/html:
+              schema: { type: string }
+
+  /status/incidents:
+    get:
+      tags: [health]
+      operationId: getStatusIncidents
+      summary: Public incident history (last N days)
+      parameters:
+        - { name: days, in: query, schema: { type: integer, default: 30, maximum: 90 } }
+        - { name: severity, in: query, schema: { type: string, enum: [low, medium, high, critical] } }
+        - { name: status, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Incident list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  incidents: { type: array, items: { type: object, additionalProperties: true } }
+                  count: { type: integer }
+                  window_days: { type: integer }
+
+  # â”€â”€ Batch Dispatcher â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /batch:
+    post:
+      tags: [execution]
+      security: [backendBearerAuth: []]
+      operationId: batchDispatch
+      summary: Execute up to 50 API requests in a single call (parallel or sequential)
+      description: >
+        Fan-out dispatcher that self-calls internal routes. Forwards Authorization and
+        x-api-key headers. /batch sub-requests are blocked to prevent loops.
+        parallel=true (default) executes all requests concurrently via Promise.all.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [requests]
+              properties:
+                requests:
+                  type: array
+                  maxItems: 50
+                  items:
+                    type: object
+                    required: [method, path]
+                    properties:
+                      method: { type: string, enum: [GET, POST, PUT, PATCH, DELETE] }
+                      path: { type: string, pattern: "^/" }
+                      body: { type: object, additionalProperties: true }
+                parallel: { type: boolean, default: true }
+      responses:
+        "200":
+          description: Batch results
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, count, results]
+                properties:
+                  ok: { type: boolean }
+                  count: { type: integer }
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        index: { type: integer }
+                        status: { type: integer }
+                        ok: { type: boolean }
+                        body: { type: object, additionalProperties: true }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Tenants â€” single record â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /tenants/{tenant_id}:
+    get:
+      tags: [tenants]
+      security: [backendBearerAuth: []]
+      operationId: getTenant
+      summary: Get a tenant by ID
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Tenant, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [tenants]
+      security: [backendBearerAuth: []]
+      operationId: replaceTenant
+      summary: Full update of a tenant record
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [display_name]
+              properties:
+                display_name: { type: string }
+                status: { type: string, enum: [active, suspended, archived] }
+                metadata_json: { type: object, additionalProperties: true }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [tenants]
+      security: [backendBearerAuth: []]
+      operationId: archiveTenant
+      summary: Archive a tenant (soft delete â€” sets status=archived)
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Archived, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Users â€” single record + CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /users/{user_id}:
+    get:
+      tags: [identity]
+      security: [backendBearerAuth: []]
+      operationId: getUser
+      summary: Get a user by ID
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: User, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [identity]
+      security: [backendBearerAuth: []]
+      operationId: replaceUser
+      summary: Full update of a user record
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, display_name]
+              properties:
+                email: { type: string, format: email }
+                display_name: { type: string }
+                status: { type: string, enum: [active, suspended, archived] }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { description: Email already in use, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+    delete:
+      tags: [identity]
+      security: [backendBearerAuth: []]
+      operationId: archiveUser
+      summary: Archive a user (soft delete â€” sets status=archived)
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Archived, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Entitlements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /entitlements:
+    post:
+      tags: [identity]
+      security: [backendBearerAuth: []]
+      operationId: createEntitlement
+      summary: Grant a feature entitlement to a tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, entitlement_key]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                entitlement_key: { type: string }
+                entitlement_value: { type: string }
+                source: { type: string, enum: [manual, plan, promotion], default: manual }
+                granted_at: { type: string, format: date-time }
+                expires_at: { type: string, format: date-time }
+      responses:
+        "201": { description: Entitlement granted, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /entitlements/{entitlement_id}:
+    get:
+      tags: [identity]
+      security: [backendBearerAuth: []]
+      operationId: getEntitlement
+      summary: Get an entitlement by ID
+      parameters:
+        - { name: entitlement_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Entitlement, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [identity]
+      security: [backendBearerAuth: []]
+      operationId: replaceEntitlement
+      summary: Update an entitlement record
+      parameters:
+        - { name: entitlement_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entitlement_key]
+              properties:
+                entitlement_key: { type: string }
+                entitlement_value: { type: string }
+                source: { type: string }
+                expires_at: { type: string, format: date-time }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [identity]
+      security: [backendBearerAuth: []]
+      operationId: revokeEntitlement
+      summary: Revoke an entitlement (hard delete)
+      parameters:
+        - { name: entitlement_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Revoked, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tenants/{tenant_id}/entitlements:
+    get:
+      tags: [identity]
+      security: [backendBearerAuth: []]
+      operationId: getTenantEntitlements
+      summary: List entitlements for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+        - { name: key, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Entitlement list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Customers â€” CRUD + list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /customers/{customer_id}:
+    get:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: getCustomer
+      summary: Get a customer by ID
+      parameters:
+        - { name: customer_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Customer, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: replaceCustomer
+      summary: Full update of a customer record
+      parameters:
+        - { name: customer_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [display_name]
+              properties:
+                display_name: { type: string }
+                email: { type: string, format: email }
+                phone: { type: string }
+                company: { type: string }
+                status: { type: string }
+                metadata_json: { type: object, additionalProperties: true }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: archiveCustomer
+      summary: Archive a customer (soft delete â€” sets status=archived)
+      parameters:
+        - { name: customer_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Archived, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tenants/{tenant_id}/customers:
+    get:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: getTenantCustomers
+      summary: List customers for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Customer list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Contacts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /contacts:
+    post:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: createContact
+      summary: Create a contact linked to a customer or tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, name]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                customer_id: { type: string, format: uuid }
+                name: { type: string }
+                email: { type: string, format: email }
+                phone: { type: string }
+                role: { type: string }
+                primary: { type: boolean, default: false }
+      responses:
+        "201": { description: Contact created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /contacts/{contact_id}:
+    put:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: replaceContact
+      summary: Full update of a contact record
+      parameters:
+        - { name: contact_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                phone: { type: string }
+                role: { type: string }
+                primary: { type: boolean }
+                status: { type: string }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: deleteContact
+      summary: Delete a contact (hard delete)
+      parameters:
+        - { name: contact_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Deleted, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /customers/{customer_id}/contacts:
+    get:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: getCustomerContacts
+      summary: List contacts for a customer
+      parameters:
+        - { name: customer_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Contact list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Threads â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /threads:
+    post:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: createThread
+      summary: Create a communication thread
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, subject]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                customer_id: { type: string, format: uuid }
+                subject: { type: string }
+                channel: { type: string, enum: [email, chat, sms, phone, portal], default: email }
+                assigned_to: { type: string, format: uuid }
+      responses:
+        "201": { description: Thread created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /threads/{thread_id}:
+    get:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: getThread
+      summary: Get a thread by ID
+      parameters:
+        - { name: thread_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Thread, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: replaceThread
+      summary: Full update of a thread record
+      parameters:
+        - { name: thread_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject]
+              properties:
+                subject: { type: string }
+                channel: { type: string }
+                status: { type: string, enum: [open, pending, resolved, closed] }
+                assigned_to: { type: string, format: uuid }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: closeThread
+      summary: Close a thread (soft delete â€” sets status=closed)
+      parameters:
+        - { name: thread_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Closed, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tenants/{tenant_id}/threads:
+    get:
+      tags: [customers]
+      security: [backendBearerAuth: []]
+      operationId: getTenantThreads
+      summary: List threads for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: channel, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Thread list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Connected Systems â€” status sub-route â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /connected-systems/{system_id}/status:
+    patch:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: updateConnectedSystemStatus
+      summary: Set status on a connected system
+      parameters:
+        - { name: system_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [active, pending, error, archived] }
+      responses:
+        "200": { description: Status updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Installations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /installations:
+    post:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: createInstallation
+      summary: Create an installation (tenant auth grant for a connected system)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [system_id, tenant_id]
+              properties:
+                system_id: { type: string, format: uuid }
+                tenant_id: { type: string, format: uuid }
+                scope: { type: string }
+                credential_ref: { type: string }
+                expires_at: { type: string, format: date-time }
+                meta_json: { type: object, additionalProperties: true }
+      responses:
+        "201": { description: Installation created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /installations/{installation_id}:
+    get:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: getInstallation
+      summary: Get an installation by ID
+      parameters:
+        - { name: installation_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Installation, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: replaceInstallation
+      summary: Update an installation record
+      parameters:
+        - { name: installation_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scope: { type: string }
+                credential_ref: { type: string }
+                status: { type: string, enum: [active, revoked, expired] }
+                expires_at: { type: string, format: date-time }
+                meta_json: { type: object, additionalProperties: true }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: deleteInstallation
+      summary: Delete an installation (hard delete â€” revokes access grant)
+      parameters:
+        - { name: installation_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Deleted, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tenants/{tenant_id}/installations:
+    get:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: getTenantInstallations
+      summary: List installations for a tenant (with joined system info)
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: system_id, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Installation list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Permission Grants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /permission-grants:
+    post:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: createPermissionGrant
+      summary: Grant a permission to an installation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [installation_id, tenant_id, permission_key]
+              properties:
+                installation_id: { type: string, format: uuid }
+                tenant_id: { type: string, format: uuid }
+                permission_key: { type: string }
+                granted: { type: boolean, default: true }
+                granted_by: { type: string, format: uuid }
+      responses:
+        "201": { description: Grant created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /installations/{installation_id}/permission-grants:
+    get:
+      tags: [connected-systems]
+      security: [backendBearerAuth: []]
+      operationId: getInstallationPermissionGrants
+      summary: List permission grants for an installation
+      parameters:
+        - { name: installation_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Grant list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Logic Definitions â€” single record + CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /logic-definitions/{logic_id}:
+    get:
+      tags: [logic]
+      security: [backendBearerAuth: []]
+      operationId: getLogicDefinition
+      summary: Get a logic definition by ID (includes body_json)
+      parameters:
+        - { name: logic_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Logic definition, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [logic]
+      security: [backendBearerAuth: []]
+      operationId: replaceLogicDefinition
+      summary: Full update of a logic definition
+      parameters:
+        - { name: logic_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [logic_key, display_name]
+              properties:
+                logic_key: { type: string }
+                display_name: { type: string }
+                logic_type: { type: string, enum: [execution, supervisory, evaluation, routing] }
+                body_json: { type: object, additionalProperties: true }
+                version: { type: string }
+                status: { type: string, enum: [draft, active, deprecated, archived] }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [logic]
+      security: [backendBearerAuth: []]
+      operationId: archiveLogicDefinition
+      summary: Archive a logic definition (soft delete â€” sets status=archived)
+      parameters:
+        - { name: logic_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Archived, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Logic Packs â€” PUT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /logic-packs/{pack_id}:
+    put:
+      tags: [logic]
+      security: [backendBearerAuth: []]
+      operationId: replaceLogicPack
+      summary: Full update of a logic pack
+      parameters:
+        - { name: pack_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pack_key, display_name]
+              properties:
+                pack_key: { type: string }
+                display_name: { type: string }
+                pack_type: { type: string }
+                service_mode: { type: string, enum: [self_serve, assisted, managed] }
+                contents_json: { type: object, additionalProperties: true }
+                status: { type: string, enum: [draft, active, deprecated, archived] }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Tracking Workspaces â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /tracking/workspaces:
+    post:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: createTrackingWorkspace
+      summary: Create a tracking workspace for analytics event collection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, workspace_key, display_name]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                workspace_key: { type: string }
+                display_name: { type: string }
+                config_json: { type: object, additionalProperties: true }
+      responses:
+        "201": { description: Workspace created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { description: Key conflict, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
+  /tracking/workspaces/{workspace_id}:
+    get:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: getTrackingWorkspace
+      summary: Get a tracking workspace by ID
+      parameters:
+        - { name: workspace_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Workspace, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: replaceTrackingWorkspace
+      summary: Update a tracking workspace
+      parameters:
+        - { name: workspace_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [display_name]
+              properties:
+                display_name: { type: string }
+                config_json: { type: object, additionalProperties: true }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tenants/{tenant_id}/tracking/workspaces:
+    get:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: getTenantTrackingWorkspaces
+      summary: List tracking workspaces for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Workspace list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Tracking Events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /tracking/events:
+    post:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: createTrackingEvent
+      summary: Record an analytics tracking event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, event_type]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                workspace_id: { type: string, format: uuid }
+                event_type: { type: string }
+                actor_id: { type: string }
+                session_id: { type: string }
+                dimensions_json: { type: object, additionalProperties: true }
+                metrics_json: { type: object, additionalProperties: { type: number } }
+      responses:
+        "201": { description: Event recorded, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tracking/workspaces/{workspace_id}/events:
+    get:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: getTrackingWorkspaceEvents
+      summary: List tracking events for a workspace
+      parameters:
+        - { name: workspace_id, in: path, required: true, schema: { type: string } }
+        - { name: event_type, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: limit, in: query, schema: { type: integer, default: 100, maximum: 1000 } }
+      responses:
+        "200": { description: Event list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Reporting Views â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /reporting/views:
+    post:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: createReportingView
+      summary: Create a saved reporting view definition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, view_key, display_name]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                view_key: { type: string }
+                display_name: { type: string }
+                filters_json: { type: object, additionalProperties: true }
+                columns_json: { type: array, items: { type: string } }
+      responses:
+        "201": { description: View created, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { description: Key conflict, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
+  /reporting/views/{view_id}:
+    get:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: getReportingView
+      summary: Get a reporting view by ID
+      parameters:
+        - { name: view_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Reporting view, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: replaceReportingView
+      summary: Update a reporting view definition
+      parameters:
+        - { name: view_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [view_key, display_name]
+              properties:
+                view_key: { type: string }
+                display_name: { type: string }
+                filters_json: { type: object, additionalProperties: true }
+                columns_json: { type: array, items: { type: string } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tenants/{tenant_id}/reporting/views:
+    get:
+      tags: [observability]
+      security: [backendBearerAuth: []]
+      operationId: getTenantReportingViews
+      summary: List reporting views for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: View list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Developer Apps â€” DELETE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /developer-apps/{app_id}:
+    delete:
+      tags: [developer-api]
+      security: [backendBearerAuth: []]
+      operationId: archiveDeveloperApp
+      summary: Archive a developer app (soft delete â€” sets status=archived)
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Archived, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Webhooks â€” PUT + DELETE + list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /webhooks/{webhook_id}:
+    put:
+      tags: [developer-api]
+      security: [backendBearerAuth: []]
+      operationId: replaceWebhook
+      summary: Full update of a webhook
+      parameters:
+        - { name: webhook_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, events]
+              properties:
+                url: { type: string, format: uri }
+                events: { type: array, items: { type: string } }
+                status: { type: string, enum: [active, disabled] }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [developer-api]
+      security: [backendBearerAuth: []]
+      operationId: deleteWebhook
+      summary: Delete a webhook (hard delete)
+      parameters:
+        - { name: webhook_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Deleted, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /tenants/{tenant_id}/webhooks:
+    get:
+      tags: [developer-api]
+      security: [backendBearerAuth: []]
+      operationId: getTenantWebhooks
+      summary: List webhooks for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Webhook list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Incidents â€” single record PUT + DELETE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /incidents/{incident_id}:
+    put:
+      tags: [security]
+      security: [backendBearerAuth: []]
+      operationId: replaceIncident
+      summary: Full update of an incident record
+      parameters:
+        - { name: incident_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                severity: { type: string, enum: [low, medium, high, critical] }
+                category: { type: string }
+                description: { type: string }
+                assigned_to: { type: string, format: uuid }
+                status: { type: string, enum: [open, investigating, contained, resolved, closed] }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [security]
+      security: [backendBearerAuth: []]
+      operationId: closeIncident
+      summary: Close an incident (soft delete â€” sets status=closed and resolved_at=NOW())
+      parameters:
+        - { name: incident_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Closed, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # â”€â”€ Secret References â€” tenant list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /tenants/{tenant_id}/secret-references:
+    get:
+      tags: [security]
+      security: [backendBearerAuth: []]
+      operationId: getTenantSecretReferences
+      summary: List secret references for a tenant
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Secret reference list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
