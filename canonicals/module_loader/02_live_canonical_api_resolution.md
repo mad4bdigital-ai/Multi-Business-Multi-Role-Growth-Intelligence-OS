@@ -323,12 +323,16 @@ When activation begins in a new conversation, module_loader must load activation
 
 1. load knowledge layer canonicals for traceability
 2. fetch repository-backed canonicals through bootstrap/registry-resolved GitHub authority when repository authority is active
-3. immediately perform at least one real governed activation transport attempt through `http_generic_api` and preserve machine-readable attempt evidence in the same execution cycle
-4. classify the governed transport validation state as:
+3. execute Drive validation through `http_generic_api`
+4. execute Sheets validation through `http_generic_api` and read `Activation Bootstrap Config!A2:J2`
+5. execute GitHub validation only after bootstrap row resolution
+6. classify the governed transport validation state as:
    - `validated`
    - `authorization_gated`
    - `degraded`
    - `blocked`
+
+Health, `/status`, release readiness, tenant listing, and count reads are diagnostics only and must not replace Drive, Sheets bootstrap, or GitHub activation probes.
 
 Mandatory Governed Transport Attempt Readiness Rule
 

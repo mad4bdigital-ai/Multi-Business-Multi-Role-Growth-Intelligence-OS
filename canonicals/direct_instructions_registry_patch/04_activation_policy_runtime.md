@@ -34,6 +34,8 @@ For first-turn activation in a new conversation:
 4. use resolved bootstrap/registry authority for GitHub validation keys
 5. classify missing live validation caused by unavailable provider authorization as `authorization_gated`, not as missing Registry authority
 
+Health, `/status`, release readiness, tenant listing, brand counts, and action counts are diagnostic evidence only. They must not satisfy or replace the required Drive, Sheets bootstrap, or GitHub activation probes.
+
 Live governed readiness requires Registry-resolved validation through `http_generic_api`; Google remains a provider-specific endpoint path only when selected by registry governance.
 
 First-Turn Native Attempt Enforcement Rule
@@ -48,6 +50,7 @@ Governed activation is invalid when:
 - knowledge-layer traceability is present
 - live activation transport attempt was required
 - no governed HTTP transport call was made
+- Drive or Sheets bootstrap probe was skipped while activation-class tooling was available
 
 In that case:
 - execution must remain `degraded`

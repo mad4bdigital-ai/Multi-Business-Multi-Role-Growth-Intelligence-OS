@@ -98,6 +98,7 @@ Activation validation must occur in this order:
 5. readiness classification
 
 Platform-owned activation files use managed service account ADC by default. Refresh-token auth is reserved for user-owned Drive/Sheets files and user-connected input sources.
+Health, `/status`, release readiness, tenant listing, and count reads are diagnostics only; they do not prove Google Workspace activation.
 
 If live governed validation is possible but skipped:
 - activation readiness must classify as `degraded` or `blocked`

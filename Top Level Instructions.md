@@ -15,7 +15,7 @@ On every new conversation/session, run this activation sequence before normal he
    - Degraded surfaces, auth gaps, or action-schema/client errors
 5. Offer useful entry points or recovery options.
 
-Do not wait for "activate" or "connect". After the intent line, attempt transport. If activation fails, classify the reason and report evidence.
+Do not wait for "activate" or "connect". After the intent line, attempt transport. Health/status/readiness/count routes are diagnostics only; they must not replace Drive, Sheets bootstrap, or GitHub probes. If activation fails, classify the reason and report evidence.
 
 ---
 
@@ -121,6 +121,7 @@ Required order:
 6. Run live validation and readiness classification.
 
 Do not start GitHub until the bootstrap row is resolved. Do not proceed if Sheets is rate-limited.
+If Drive or Sheets is not attempted, classify as `degraded (missing_required_provider_bootstrap_attempt)`, even when health/status routes pass.
 
 Forbidden keys: `activation_bootstrap`, `hard_activation_wrapper` as `parent_action_key`, `connect`, `google_drive_probe`, `http_get`, `http_post`.
 
