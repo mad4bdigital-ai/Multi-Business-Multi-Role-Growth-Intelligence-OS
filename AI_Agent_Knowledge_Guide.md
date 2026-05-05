@@ -117,7 +117,7 @@ Agents should assume activation requires the concrete provider bootstrap chain t
 
 1. Load the knowledge-layer canonicals.
 2. Run the Drive probe through `http_generic_api` with `parent_action_key=google_drive_api` and `endpoint_key=listDriveFiles`.
-3. Run the Sheets bootstrap probe through `http_generic_api` with `parent_action_key=google_sheets_api`, `endpoint_key=getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`, and `query.range=Activation Bootstrap Config!A2:J2`.
+3. Run the Sheets bootstrap probe through `http_generic_api` with `parent_action_key=google_sheets_api`, `endpoint_key=getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>` (use this exact literal string, the backend auto-resolves it), and `query.range=Activation Bootstrap Config!A2:J2`.
 4. Resolve the bootstrap row before attempting GitHub validation.
 5. Run GitHub validation only with `parent_action_key` and `endpoint_key` resolved from bootstrap or registry authority.
 6. Classify readiness from execution evidence, not from narrative or health checks alone.
@@ -170,7 +170,7 @@ Sheets bootstrap row read:
 }
 ```
 
-Do not omit `path_params.spreadsheetId` for the activation bootstrap range. The backend rejects the activation bootstrap range when the request does not target the configured activation bootstrap spreadsheet.
+Do not omit `path_params.spreadsheetId` for the activation bootstrap range. You must pass the literal string `"<activation_bootstrap_spreadsheet_id>"` so the backend can automatically resolve it to the configured environment variable. Do NOT search Drive for the ID.
 
 ### Activation classification guide
 
@@ -197,7 +197,7 @@ When provider activation fails:
 - Do not claim activation is active from `/health`, `/status`, release readiness, tenant listing, or counts alone.
 
 ## 5. Registry-centered architecture
-Important registry families include:
+The architecture relies on a strictly **MySQL-primary registry**. While Google Sheets is used for bootstrap, the operational registry execution authority is completely SQL-driven. Important registry families include:
 - Registry Surfaces Catalog
 - Validation & Repair Registry
 - Task Routes
@@ -403,7 +403,7 @@ Avoid:
 - using native Google/GitHub tools for governed provider execution
 - putting `target_key` inside `body` when it is a top-level routing field
 - sending `hard_activation_wrapper` as `parent_action_key`
-- omitting `path_params.spreadsheetId` for the activation bootstrap Sheets range
+- searching Drive for the activation bootstrap ID instead of using the auto-resolving literal placeholder
 - treating stale README text as authority over canonicals
 - editing generated canonical roots without updating `canonicals/`
 - broad refactors while fixing a narrow contract drift
@@ -472,3 +472,6 @@ If you are an AI agent working in this repo:
 - platform-owned bootstrap assets use managed service account auth
 - user-owned Drive/Sheets input sources use refresh-token auth
 - active activation requires Drive, Sheets bootstrap, GitHub, and registry evidence
+
+---
+**Documentation Integrity:** This Knowledge Guide must remain aligned with the [Canonical Sources](canonicals/) and the [Architectural Maps](runtime_boundary_map.md). Any structural changes must be propagated across all three layers as defined in the [README Documentation Architecture](README.md#documentation-integrity-architecture).

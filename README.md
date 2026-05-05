@@ -100,28 +100,70 @@ Important governed surfaces include:
 - `Actions Registry`
 - `API Actions Endpoint Registry`
 - `Execution Policy Registry`
+
+### Canonical governance layer
+
+The root canonical files define:
+- routing expectations
+- loading and readiness expectations
+- activation and bootstrap rules
+- hard enforcement constraints
+- durable memory structure
+
+These documents are the real architecture spine of the project.
+
+### Memory schema layer
+
+`memory_schema.json` is the persistent state contract root. It has been decomposed into 12 domain sub-schemas under `schemas/`, each referenced via JSON Schema `$ref`:
+
+| Sub-schema | Domain |
+|---|---|
+| `shared` | Primitive types shared across domains |
+| `business_identity` | Company, catalog, destinations, modules |
+| `brand` | Brand context, identity, writing engine |
+| `execution` | Runtime validation, activation, Google Workspace |
+| `analytics` | Measurement, revenue signals, tracking bindings |
+| `governance` | Schema state, drift detection, variable contracts |
+| `logic_knowledge` | Logic pointers, logic knowledge, business-type knowledge |
+| `repair_audit` | Repair memory, audit state, anomaly clusters |
+| `routing_transport` | Routing context, HTTP transport, surface roles |
+| `graph_addition` | Graph intelligence, governed addition pipeline |
+| `operations` | System context, monitoring, writeback rules |
+| `wordpress_api` | WordPress state, API inventory, credential resolution |
+
+The root schema enforces `additionalProperties: false` and all 99 required fields. The root is now about 41 KB after moving large domain blocks into `schemas/`. Validate schema references with `node validate-memory-schema.mjs`.
+
+### Registry-centered authority layer
+
+Important governed surfaces include:
+- `Task Routes`
+- `Workflow Registry`
+- `Actions Registry`
+- `API Actions Endpoint Registry`
+- `Execution Policy Registry`
 - `Execution Log Unified`
 - `JSON Asset Registry`
 - `Brand Registry`
 - `Hosting Account Registry`
 - `Brand Core Registry`
 
-These governed surfaces are now SQL-primary. The Google Sheets workbooks remain the human-readable mirror, but MySQL is the authoritative read source for runtime execution.
+These governed surfaces are strictly SQL-primary. MySQL is the sole authoritative read source for runtime execution (`DATA_SOURCE=sql`).
 
-Runtime behavior should prefer live registry truth over local assumptions, stale memory, or narrative summaries.
+Runtime behavior must prefer live registry truth via the `stateManager.js` data layer over local assumptions, stale memory, or narrative summaries.
 
 ### Runtime implementation layer
 
 The main runtime subtree currently visible is [`http-generic-api`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api>).
 
 That subtree currently contains:
-- the main route/orchestration runtime in `server.js`
+- the main route/orchestration runtime, highly modularized into isolated route definition files
+- specialized execution services (`stateManager.js`, `executionResolution.js`, `routeWorkflowGovernance.js`)
 - connector support modules
-- governed registry and writeback helpers
+- governed registry, writeback helpers, and legal endpoints (`/privacy-policy`, `/terms-of-use`)
 - async job orchestration
 - `resolveLogicPointerContext.js` — canonical logic pointer resolution and governed legacy rollback guard
 - a modularized WordPress migration subsystem
-- a MySQL-backed data layer with Google Sheets as the human-readable mirror
+- a strictly MySQL-backed primary data layer
 
 ### Sheets to MySQL data layer
 
@@ -264,6 +306,13 @@ node find-canonical-domain.mjs prompt_router repair
 ```
 
 Do not edit generated root canonical files directly. The authoritative canonical body lives in the matching source files under `canonicals/`.
+
+## Documentation Integrity Architecture
+This repository employs a strict cross-referencing documentation pattern to ensure AI Agents and future developers maintain context when the code changes:
+1. **Central Canonical Enforcement:** Any behavioral change in the backend must be reflected in the relevant `canonicals/` source files, followed by `node build-canonicals.mjs`.
+2. **Agent Knowledge Guide:** `AI_Agent_Knowledge_Guide.md` represents the runtime persona. If structural constraints change (e.g., placeholder auto-resolution for `<activation_bootstrap_spreadsheet_id>`), they must be updated there.
+3. **Architectural Maps:** Files like `runtime_boundary_map.md` and `runtime_confirmation_procedure.md` outline execution topologies. 
+**Rule:** When you update one layer (e.g., extracting `server.js` to `stateManager.js`), trace the update across the Canonical sources, the Agent Knowledge Guide, and the Architectural Maps to maintain absolute documentation parity.
 
 ## Working rules for contributors and agents
 

@@ -70,12 +70,12 @@ The workflow records the commit SHA, runtime URL, and verification result in the
 
 ## Step 4 — Confirm registry alignment (manual)
 
-In Google Sheets, verify:
+In the MySQL database (via direct query or API endpoint), verify:
 - [ ] `Site Runtime Inventory Registry` is readable and has expected columns
 - [ ] `Execution Log Unified` received at least one writeback row since deployment
 - [ ] No policy rows contain unsupported custom literals that would bypass normalization
 
-For activation confirmation, do not stop at `/health`, `/status`, release readiness, tenant listing, or count routes. Those checks prove diagnostics only. Activation confirmation requires Drive validation, Sheets `getSheetValues` row readback for `Activation Bootstrap Config!A2:J2` using `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`, and GitHub validation using bootstrap/registry-resolved keys.
+For activation confirmation, do not stop at `/health`, `/status`, release readiness, tenant listing, or count routes. Those checks prove diagnostics only. Activation confirmation requires Drive validation, Sheets `getSheetValues` row readback for `Activation Bootstrap Config!A2:J2` using `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>` (use this exact literal string, the backend auto-resolves it), and GitHub validation using bootstrap/registry-resolved keys.
 
 ---
 
@@ -144,3 +144,6 @@ Interpretation guidance:
 | Dispatch ReferenceError check | ❌ | ✅ |
 | Job queue round-trip | ❌ | ✅ |
 | Registry sheet writeback | ❌ | ✅ (manual) |
+
+---
+**Documentation Integrity:** This confirmation procedure must remain aligned with the [Canonical Sources](canonicals/) and the [Agent Knowledge Guide](AI_Agent_Knowledge_Guide.md). Any structural changes must be propagated across all three layers as defined in the [README Documentation Architecture](README.md#documentation-integrity-architecture).

@@ -323,7 +323,7 @@ Owns:
 
 ## 4b. SQL data layer boundaries
 
-The following modules add a MySQL-backed secondary read/write path alongside the Google Sheets primary. All SQL boundaries are controlled by the `DATA_SOURCE` environment variable (`sheets` / `dual` / `sql`).
+The following modules define the MySQL-backed primary data layer. The Google Sheets workbooks act as a fallback sync mirror. All SQL boundaries are controlled by the `DATA_SOURCE` environment variable (`sql` is primary).
 
 ### MySQL connection pool boundary
 
@@ -351,10 +351,10 @@ Owns:
 - [`http-generic-api/dataSource.js`](</d:/Nagy/Multi-Business-Multi-Role-Growth-Intelligence-OS/http-generic-api/dataSource.js>)
 
 Owns:
-- `DATA_SOURCE` mode routing (`sheets` / `dual` / `sql`): default is `sheets` (zero behavior change)
-- `init()` — called once by server.js to inject Sheets passthrough functions
+- `DATA_SOURCE` mode routing (`sheets` / `dual` / `sql`): default is `sql` (MySQL primary)
+- `init()` — called once by server.js to inject connection pools
 - `readTable`, `findRows`, `appendRow`, `updateRow`, `deleteRow` — unified access layer consumed by registry and governed-write modules
-- In `dual`/`sql` modes: SQL reads with Sheets fallback on empty, async Sheets mirror on writes (non-blocking)
+- In `dual`/`sql` modes: SQL reads dominate, with Sheets acting strictly as a fallback or parity mirror on writes
 
 ### Migration CLI boundary
 
@@ -551,3 +551,6 @@ The next highest-value decomposition opportunities are:
 - Keep connector entrypoints narrow and explicit.
 - Do not move canonical authority into runtime helper files.
 - Prefer shared normalization contracts over route-local literal handling.
+
+---
+**Documentation Integrity:** This architectural map must remain aligned with the [Canonical Sources](canonicals/) and the [Agent Knowledge Guide](AI_Agent_Knowledge_Guide.md). Any structural changes must be propagated across all three layers as defined in the [README Documentation Architecture](README.md#documentation-integrity-architecture).
