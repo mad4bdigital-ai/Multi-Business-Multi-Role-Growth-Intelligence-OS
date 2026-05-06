@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getPool } from "./db.js";
+import { loadWorkspaceAppContext } from "./appConnectionResolver.js";
 
 function isTruthy(val) {
   return val === true || val === 1 || val === "1" || val === "TRUE";
@@ -178,6 +179,16 @@ export async function runAgentLoop(plan, deps = {}) {
     : null;
 
   if (pathRows) context.path_resolver_rows = pathRows;
+
+  // Inject workspace app-connection context when a workspace_key is present.
+  // connected_apps lists metadata + allowed_actions per connection — no tokens.
+  if (plan.workspace_key && plan.tenant_id) {
+    const appCtx = await loadWorkspaceAppContext(
+      plan.workspace_key, plan.tenant_id, plan.agent_id || null
+    ).catch(() => ({ connected_apps: [] }));
+    context.workspace_app_connections = appCtx.connected_apps;
+    context.workspace_app_connection_count = appCtx.connected_apps.length;
+  }
 
   const tools = buildToolsFromEngines(workflow.mapped_engines || "");
 
