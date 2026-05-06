@@ -22,6 +22,8 @@ function assertThrowsCode(label, fn, code) {
     "Admin User",
     "--tenant-id",
     "tenant-1",
+    "--target",
+    "gcloud",
     "--password-env",
     "ADMIN_SECRET",
     "--apply",
@@ -31,6 +33,7 @@ function assertThrowsCode(label, fn, code) {
   assert.equal(parsed.email, "Admin@Mad4B.com");
   assert.equal(parsed.displayName, "Admin User");
   assert.equal(parsed.tenantId, "tenant-1");
+  assert.equal(parsed.target, "gcloud");
   assert.equal(parsed.passwordEnv, "ADMIN_SECRET");
   assert.equal(parsed.apply, true);
   assert.equal(parsed.json, true);
@@ -53,8 +56,46 @@ assertThrowsCode(
   assert.equal(input.email, "admin@mad4b.com");
   assert.equal(input.displayName, "Admin User");
   assert.equal(input.tenantId, "tenant-generated");
+  assert.equal(input.target, "local");
+  assert.equal(input.runtime, "local");
   assert.equal(input.passwordSource, "missing");
 }
+
+{
+  const input = buildProvisioningInput({
+    argv: [
+      "--email",
+      "admin@mad4b.com",
+      "--display-name",
+      "Admin User",
+      "--target",
+      "gcloud"
+    ],
+    env: {},
+    uuid: () => "tenant-1"
+  });
+
+  assert.equal(input.apply, false);
+  assert.equal(input.target, "gcloud");
+  assert.equal(input.runtime, "local");
+}
+
+assertThrowsCode(
+  "unsupported targets are rejected",
+  () => buildProvisioningInput({
+    argv: [
+      "--email",
+      "admin@mad4b.com",
+      "--display-name",
+      "Admin User",
+      "--target",
+      "production"
+    ],
+    env: {},
+    uuid: () => "tenant-1"
+  }),
+  "unsupported_admin_target"
+);
 
 assertThrowsCode(
   "apply requires password env or password hash env",
@@ -76,6 +117,24 @@ assertThrowsCode(
   "weak_admin_password"
 );
 
+assertThrowsCode(
+  "gcloud apply requires gcloud runtime",
+  () => buildProvisioningInput({
+    argv: [
+      "--email",
+      "admin@mad4b.com",
+      "--display-name",
+      "Admin User",
+      "--target",
+      "gcloud",
+      "--apply"
+    ],
+    env: { ADMIN_INITIAL_PASSWORD_HASH: "$2b$12$reviewedhash" },
+    uuid: () => "tenant-1"
+  }),
+  "gcloud_target_requires_gcloud_runtime"
+);
+
 {
   const input = buildProvisioningInput({
     argv: ["--email", "admin@mad4b.com", "--display-name", "Admin User"],
@@ -87,6 +146,7 @@ assertThrowsCode(
   assert.equal(result.ok, true);
   assert.equal(result.dry_run, true);
   assert.equal(result.input.email, "admin@mad4b.com");
+  assert.equal(result.input.target, "local");
   assert.equal(result.input.password_source, "missing");
   assert.equal(JSON.stringify(result).includes("super-secret"), false);
 }
@@ -130,9 +190,14 @@ assertThrowsCode(
       "Admin User",
       "--tenant-id",
       "tenant-1",
+      "--target",
+      "gcloud",
       "--apply"
     ],
-    env: { ADMIN_INITIAL_PASSWORD_HASH: "$2b$12$reviewedhash" },
+    env: {
+      ADMIN_INITIAL_PASSWORD_HASH: "$2b$12$reviewedhash",
+      K_SERVICE: "http-generic-api"
+    },
     uuid: () => "unused"
   });
 
@@ -145,6 +210,8 @@ assertThrowsCode(
 
   assert.equal(result.ok, true);
   assert.equal(result.dry_run, false);
+  assert.equal(result.input.target, "gcloud");
+  assert.equal(result.input.runtime, "gcloud");
   assert.equal(result.user_id, "user-1");
   assert.equal(result.created.user, true);
   assert.equal(result.created.credentials, true);

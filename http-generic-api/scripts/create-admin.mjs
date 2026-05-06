@@ -5,6 +5,7 @@ import { getPool } from "../db.js";
 
 const DEFAULT_PASSWORD_ENV = "ADMIN_INITIAL_PASSWORD";
 const DEFAULT_PASSWORD_HASH_ENV = "ADMIN_INITIAL_PASSWORD_HASH";
+const SUPPORTED_TARGETS = new Set(["local", "gcloud"]);
 
 function parseBoolean(value) {
   const normalized = String(value ?? "").trim().toLowerCase();
@@ -18,6 +19,7 @@ export function parseArgs(argv = []) {
     email: "",
     displayName: "",
     tenantId: "",
+    target: "local",
     passwordEnv: DEFAULT_PASSWORD_ENV,
     passwordHashEnv: DEFAULT_PASSWORD_HASH_ENV
   };
@@ -36,6 +38,7 @@ export function parseArgs(argv = []) {
     else if (arg === "--email") options.email = next();
     else if (arg === "--display-name") options.displayName = next();
     else if (arg === "--tenant-id") options.tenantId = next();
+    else if (arg === "--target") options.target = next();
     else if (arg === "--password-env") options.passwordEnv = next();
     else if (arg === "--password-hash-env") options.passwordHashEnv = next();
     else if (arg === "--password" || arg.startsWith("--password=")) {
@@ -50,6 +53,21 @@ export function parseArgs(argv = []) {
   }
 
   return options;
+}
+
+function normalizeTarget(target) {
+  const normalized = String(target || "local").trim().toLowerCase();
+  if (!SUPPORTED_TARGETS.has(normalized)) {
+    const err = new Error("target must be one of local or gcloud.");
+    err.code = "unsupported_admin_target";
+    throw err;
+  }
+  return normalized;
+}
+
+function detectRuntime(env) {
+  if (env.K_SERVICE || env.CLOUD_RUN_JOB || env.GOOGLE_CLOUD_PROJECT || env.GCLOUD_PROJECT) return "gcloud";
+  return "local";
 }
 
 function requireNonEmpty(value, label) {
@@ -83,10 +101,14 @@ export function buildProvisioningInput({ argv = [], env = process.env, uuid = ra
   const password = readSecretEnv(env, options.passwordEnv);
   const passwordHash = readSecretEnv(env, options.passwordHashEnv);
   const tenantId = String(options.tenantId || "").trim() || uuid();
+  const target = normalizeTarget(options.target);
+  const runtime = detectRuntime(env);
 
   const input = {
     apply: options.apply,
     json: options.json,
+    target,
+    runtime,
     email: validateEmail(options.email || env.ADMIN_EMAIL),
     displayName: requireNonEmpty(options.displayName || env.ADMIN_DISPLAY_NAME, "displayName"),
     tenantId,
@@ -103,6 +125,14 @@ export function buildProvisioningInput({ argv = [], env = process.env, uuid = ra
     throw err;
   }
 
+  if (input.apply && input.target === "gcloud" && input.runtime !== "gcloud") {
+    const err = new Error(
+      "Refusing --apply --target gcloud outside a GCloud runtime. Run the helper inside Cloud Run/Cloud Build or use --target local with explicit local DB env."
+    );
+    err.code = "gcloud_target_requires_gcloud_runtime";
+    throw err;
+  }
+
   if (input.password && input.password.length < 12) {
     const err = new Error("Admin password must be at least 12 characters.");
     err.code = "weak_admin_password";
@@ -115,6 +145,8 @@ export function buildProvisioningInput({ argv = [], env = process.env, uuid = ra
 function publicInput(input) {
   return {
     apply: Boolean(input.apply),
+    target: input.target,
+    runtime: input.runtime,
     email: input.email,
     display_name: input.displayName,
     tenant_id: input.tenantId,
@@ -129,6 +161,7 @@ function makeDryRunPlan(input) {
     would_apply: false,
     input: publicInput(input),
     planned_operations: [
+      `target ${input.target} database environment`,
       "upsert active user",
       "upsert platform credential password hash",
       "ensure platform_owner actor profile",
