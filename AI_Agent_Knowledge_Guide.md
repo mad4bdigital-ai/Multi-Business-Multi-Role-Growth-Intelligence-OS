@@ -119,6 +119,31 @@ Customer agents must:
 - receive only scoped session history and transcripts; raw dumps must be bounded and same-user or explicitly authorized
 - report `authorization_gated`, `blocked`, or `degraded_contract` instead of trying admin recovery paths
 
+### Local Windows app connections
+
+Local Windows app access is a device-side connector capability, not a Cloud Run execution capability. `api.mad4b.com` may act as the cloud control plane for registration, status, policy, tenant/user access checks, and request routing, but it must not directly launch apps on a customer device because Cloud Run has no access to the customer's local Windows session.
+
+Admin and customer local app access share these invariants:
+
+- remote callers may request status or create a pending local action request
+- remote callers must not remotely enable local device execution
+- the local Windows connector must be intentionally running on the user's device
+- the local connector must use a fixed allowlist of app aliases; caller-supplied commands, arguments, shells, PowerShell, or arbitrary app paths are forbidden
+- local execution is blocked in GCloud runtimes
+- launch decisions must be audited with actor, tenant, app alias, authorization state, and runtime classification
+
+Admin-side local app access uses backend/service auth and is limited to platform-owner administration. Customer-side local app access must use `Authorization: Bearer <USER_JWT>`, resolve the user's tenant membership/entitlement, and stay scoped to that customer's device connector and allowlist. A customer GPT may help the customer authorize their own local connector, but it must not use admin credentials or cross-tenant control to access another customer's apps.
+
+For customer flows, prefer this sequence:
+
+1. User signs in through `/auth/login` or `/auth/google`.
+2. Runtime resolves tenant membership, entitlement, and risk level.
+3. Customer starts or configures the local Windows connector on their own device.
+4. GPT checks connector status through a scoped runtime/local-connection action.
+5. GPT requests launch only by allowlisted `app_alias`; the local connector performs final local authorization and execution.
+
+If the local connector is absent, not enabled, not on Windows, not allowlisted, or running in GCloud, classify the request as `authorization_gated` or `blocked_local_runtime` rather than attempting admin recovery.
+
 ### Functional endpoint question model
 
 When asked "what is this endpoint for?", answer by mapping the endpoint to:
