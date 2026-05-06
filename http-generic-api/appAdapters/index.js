@@ -15,6 +15,8 @@ import { slackAdapter }        from "./slack.js";
 import { webhookAdapter }      from "./webhook.js";
 import { apiKeyAdapter }       from "./apiKey.js";
 import { mcpAdapter }          from "./mcp.js";
+import { makecomAdapter }      from "./makecom.js";
+import { n8nAdapter }          from "./n8n.js";
 import { decryptCredentials, encryptCredentials } from "../tokenEncryption.js";
 import { getPool }             from "../db.js";
 
@@ -26,6 +28,8 @@ const REGISTRY = {
   webhook:      webhookAdapter,
   api_key:      apiKeyAdapter,
   mcp:          mcpAdapter,
+  makecom:      makecomAdapter,
+  n8n:          n8nAdapter,
 };
 
 export function getAdapter(app_key) {

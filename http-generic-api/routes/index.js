@@ -31,6 +31,7 @@ import { buildRootDiscoveryRoutes } from "./rootDiscoveryRoutes.js";
 import { buildSessionRoutes }       from "./sessionRoutes.js";
 import { buildAgentSkillRoutes }    from "./agentSkillRoutes.js";
 import { buildAppIntegrationRoutes } from "./appIntegrationRoutes.js";
+import { buildDevAgentRoutes }       from "./devAgentRoutes.js";
 
 export function registerRoutes(app, deps) {
   app.use(buildRootDiscoveryRoutes());
@@ -51,6 +52,7 @@ export function registerRoutes(app, deps) {
   app.use(buildAgentRegistryRoutes(deps));
   app.use(buildAgentSkillRoutes(deps));
   app.use(buildAppIntegrationRoutes(deps));
+  app.use(buildDevAgentRoutes(deps));
   app.use(buildOutputSinkRoutes(deps));
   app.use(buildSessionRoutes(deps));
   app.use(buildBootstrapRoutes(deps));
