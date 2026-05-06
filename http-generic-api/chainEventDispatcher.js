@@ -34,8 +34,7 @@ async function loadEvent(event_id) {
 async function loadWorkflowDef(workflow_key) {
   if (!workflow_key) return null;
   const [rows] = await getPool().query(
-    `SELECT workflow_key, execution_mode, execution_class, target_module,
-            review_required, agent_id
+    `SELECT workflow_key, execution_mode, execution_class, target_module, review_required
      FROM \`workflows\`
      WHERE workflow_key = ? AND (active = 1 OR active = 'TRUE' OR active = '1') LIMIT 1`,
     [workflow_key]

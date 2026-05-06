@@ -4,11 +4,11 @@ import { getPool } from "../db.js";
 import { writeAuditLog } from "../auditLogger.js";
 
 export function buildAgentRegistryRoutes(deps) {
-const { requireBackendApiKey } = deps;
-const router = Router();
-router.use(requireBackendApiKey);
+  const { requireBackendApiKey } = deps;
+  const router = Router();
+  router.use(requireBackendApiKey);
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+  // ─── Helpers ───────────────────────────────────────────────────────────────
 
 async function findAgent(identifier) {
   const [rows] = await getPool().query(
@@ -252,5 +252,5 @@ router.patch("/agent-delegations/:id", async (req, res) => {
   }
 });
 
-return router;
+  return router;
 }

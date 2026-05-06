@@ -386,7 +386,8 @@ export async function dispatchPlan(plan_id, {
     } else if (isMcp) {
       result = await dispatchMcpConnector(plan);
     } else {
-      result = await dispatchContentWorkflow(plan, workflowDef, deps);
+      // Pass run_id so runAgentLoop writes step_runs against the same workflow_runs record.
+      result = await dispatchContentWorkflow({ ...plan, run_id }, workflowDef, deps);
     }
   } catch (err) {
     dispatchError = err;

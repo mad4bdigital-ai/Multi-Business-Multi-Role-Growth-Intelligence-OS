@@ -6,6 +6,19 @@
 --         each agent is authorised to use, per tenant/brand scope.
 -- All statements idempotent.
 
+-- ─── Part A-0: Guard columns on legacy workflows table ──────────────────────
+-- The workflows table predates Sprints 21-24 and may be missing these columns.
+-- All ADD COLUMN IF NOT EXISTS statements are idempotent.
+
+ALTER TABLE `workflows`
+  ADD COLUMN IF NOT EXISTS `output_artifact_type` VARCHAR(64)   NULL COMMENT 'Artifact class written to output_artifacts',
+  ADD COLUMN IF NOT EXISTS `primary_output`        VARCHAR(255)  NULL COMMENT 'Human-readable label for the primary output',
+  ADD COLUMN IF NOT EXISTS `parent_layer`          VARCHAR(128)  NULL COMMENT 'Platform layer that owns this workflow (e.g. System Intelligence)',
+  ADD COLUMN IF NOT EXISTS `linked_workflows`      TEXT          NULL COMMENT 'Pipe-separated or JSON-array of workflow_keys to chain on completion',
+  ADD COLUMN IF NOT EXISTS `memory_required`       VARCHAR(8)    NULL DEFAULT 'FALSE',
+  ADD COLUMN IF NOT EXISTS `logging_required`      VARCHAR(8)    NULL DEFAULT 'TRUE',
+  ADD COLUMN IF NOT EXISTS `registry_source`       VARCHAR(64)   NULL COMMENT 'seed origin tag (platform_seed, sheets, manual)';
+
 -- ─── Part A: System workflow seeds ───────────────────────────────────────────
 -- workflows.active uses VARCHAR so we store '1' (matches the loadWorkflowDef() query).
 -- review_required, memory_required, logging_required also VARCHAR in legacy schema.

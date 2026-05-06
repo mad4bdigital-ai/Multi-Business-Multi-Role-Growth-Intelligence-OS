@@ -28,7 +28,7 @@ const PASS_KEYS = ["passed", "ok", "valid", "pass"];
 async function loadWorkflowMeta(workflow_key) {
   if (!workflow_key) return null;
   const [rows] = await getPool().query(
-    `SELECT output_artifact_type, primary_output, linked_workflows, execution_class
+    `SELECT output_artifact_type, primary_output, linked_workflows, execution_class, target_module
      FROM \`workflows\` WHERE workflow_key = ? LIMIT 1`,
     [workflow_key]
   );
@@ -94,9 +94,19 @@ async function sinkOutputArtifact({ run_id, agent_id, tenant_id, brand_key, work
   return artifact_id;
 }
 
-async function sinkAdaptationRecord({ run_id, agent_id, tenant_id, workflow_key, output, execution_class }) {
+async function sinkAdaptationRecord({ run_id, agent_id, tenant_id, workflow_key, target_module, output, execution_class }) {
   const { passed, issues, severity } = extractPassFail(output);
   const adaptation_id = randomUUID();
+
+  // Resolve the actual logic_definition UUID via target_module so the record
+  // is joinable to logic_definitions. Falls back to NULL — never stores the
+  // workflow_key string, which would break logic_id FK semantics.
+  const [ldRows] = await getPool().query(
+    "SELECT logic_id FROM `logic_definitions` WHERE logic_key = ? LIMIT 1",
+    [target_module || workflow_key]
+  ).catch(() => [[]]);
+  const logic_id = ldRows[0]?.logic_id || null;
+
   await getPool().query(
     `INSERT INTO \`adaptation_records\`
        (adaptation_id, logic_id, agent_id, tenant_id, adapted_by, adaptation_type,
@@ -104,7 +114,7 @@ async function sinkAdaptationRecord({ run_id, agent_id, tenant_id, workflow_key,
      VALUES (?,?,?,?,'system','annotation',?,?,?,'approved')`,
     [
       adaptation_id,
-      workflow_key || "unknown",
+      logic_id,
       agent_id || null,
       tenant_id,
       JSON.stringify({ run_id, execution_class }),
@@ -200,6 +210,7 @@ export async function routeOutput({
   const artifact_type    = wfMeta?.output_artifact_type || "Operational";
   const primary_output   = wfMeta?.primary_output       || null;
   const linked_workflows = wfMeta?.linked_workflows      || null;
+  const target_module    = wfMeta?.target_module         || null;
 
   const dispatched = [];
 
@@ -220,7 +231,7 @@ export async function routeOutput({
   if (execution_class === "rule_based") {
     try {
       const { adaptation_id, passed } = await sinkAdaptationRecord({
-        run_id, agent_id, tenant_id, workflow_key, output, execution_class,
+        run_id, agent_id, tenant_id, workflow_key, target_module, output, execution_class,
       });
       rulePassed = passed;
       dispatched.push({ sink: "adaptation_record", id: adaptation_id, passed });

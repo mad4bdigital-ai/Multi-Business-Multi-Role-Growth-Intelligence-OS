@@ -186,9 +186,11 @@ async function ingestParsedRecords(records, { tenant_id, user_id, brand_key, wor
         ).catch(() => {});
       }
 
-      if (turn_id && (etype === "task_completed" || etype === "task_aborted" || etype === "task_failed")) {
-        const ts = etype === "task_completed" ? "completed"
-                 : etype === "task_aborted"   ? "aborted" : "failed";
+      // Codex CLI emits "task_complete" (no 'd'); platform format uses "task_completed".
+      if (turn_id && (etype === "task_complete" || etype === "task_completed" ||
+                      etype === "task_aborted"  || etype === "task_failed")) {
+        const ts = (etype === "task_complete" || etype === "task_completed") ? "completed"
+                 : etype === "task_aborted" ? "aborted" : "failed";
         await pool.query(
           "UPDATE `session_turns` SET turn_status = ?, completed_at = ? WHERE turn_id = ?",
           [ts, toDatetime(d.completed_at || rec.timestamp), turn_id]
