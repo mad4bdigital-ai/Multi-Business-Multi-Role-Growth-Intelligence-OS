@@ -144,6 +144,25 @@ For customer flows, prefer this sequence:
 
 If the local connector is absent, not enabled, not on Windows, not allowlisted, or running in GCloud, classify the request as `authorization_gated` or `blocked_local_runtime` rather than attempting admin recovery.
 
+### Native browser plugin tier
+
+Browser automation is a native platform plugin family under the local/cloud connector model. Browser libraries must be exposed as governed platform verbs, not raw library APIs.
+
+Initial tier registry:
+
+| Plugin key | Library | Tier | Status | Primary fit |
+|---|---|---:|---|---|
+| `browser.playwright` | Playwright | 1 | candidate default | controlled cross-browser automation |
+| `browser.puppeteer` | Puppeteer | 2 | Chrome specialist | lightweight Chromium-only jobs |
+| `browser.stagehand` | Stagehand | 3 | approval-gated candidate | AI-adaptive browser workflows |
+| `browser.remote_browser_research` | remote-browser | 4 | research only | legacy/reference evaluation |
+
+Browser plugin capability groups may include managed sessions, navigation, interaction, extraction, artifacts, QA, and AI-adaptive browser workflows. Supported governed verbs include `create_session`, `list_sessions`, `get_session`, `close_session`, `open_url`, `reload_page`, `go_back`, `wait_for_load_state`, `wait_for_selector`, `click_selector`, `form_fill`, `select_option`, `press_key`, `capture_screenshot`, `extract_schema`, `extract_text`, `extract_links`, `get_page_metadata`, `generate_pdf`, `run_assertion`, `inspect_accessibility_snapshot`, `record_trace`, `save_artifact`, `download_allowlisted_file`, and `upload_allowlisted_file`.
+
+Do not expose `eval`, arbitrary JavaScript, raw CDP/WebDriver, shell, filesystem, unrestricted upload/download, or browser-extension background execution as GPT-callable actions.
+
+Every executable browser plugin requires user JWT for customer scope, admin/service auth for admin scope, tenant entitlement, domain allowlists, audit logging, and local consent for customer-owned local connectors. Stagehand and other AI-adaptive browser control must also use approval holds before sensitive actions.
+
 ### Functional endpoint question model
 
 When asked "what is this endpoint for?", answer by mapping the endpoint to:

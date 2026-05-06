@@ -110,6 +110,30 @@ The safe customer flow is:
 
 If the customer connector is missing, disabled, not on Windows, not allowlisted, or not scoped to the signed-in user, return `authorization_gated` or `blocked_local_runtime`. Do not fall back to admin CLI or backend API key.
 
+## Native Browser Plugin Tier
+
+Browser automation should be added as native platform plugins, not as direct GPT access to package APIs.
+
+Initial plugin tier:
+
+| Plugin key | Library | Tier | Use |
+|---|---|---:|---|
+| `browser.playwright` | Playwright | 1 | default controlled browser automation |
+| `browser.puppeteer` | Puppeteer | 2 | Chrome/Chromium specialist jobs |
+| `browser.stagehand` | Stagehand | 3 | approval-gated AI-adaptive browser workflows |
+| `browser.remote_browser_research` | remote-browser | 4 | research-only legacy/reference package |
+
+Expose broad platform verbs across managed sessions, navigation, interaction, extraction, artifacts, and QA:
+
+- `create_session`, `list_sessions`, `get_session`, `close_session`
+- `open_url`, `reload_page`, `go_back`, `wait_for_load_state`, `wait_for_selector`
+- `click_selector`, `form_fill`, `select_option`, `press_key`
+- `capture_screenshot`, `extract_schema`, `extract_text`, `extract_links`, `get_page_metadata`
+- `generate_pdf`, `run_assertion`, `inspect_accessibility_snapshot`, `record_trace`, `save_artifact`
+- `download_allowlisted_file`, `upload_allowlisted_file`
+
+Do not expose raw Playwright, Puppeteer, Stagehand, CDP, WebDriver, extension-background, arbitrary JavaScript, shell, filesystem, or unrestricted upload/download surfaces. Customer use requires `USER_JWT`, tenant entitlement, domain allowlist, local connector consent when running on a customer device, and audit logs. Admin use requires backend/service auth and should still prefer governed browser verbs over admin CLI.
+
 ## Functional Endpoint Answer Model
 
 When asked what an endpoint or operation is for, answer with:
