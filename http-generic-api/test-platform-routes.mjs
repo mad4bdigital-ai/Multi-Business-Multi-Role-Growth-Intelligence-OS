@@ -23,6 +23,7 @@ import { buildStatusRoutes }           from "./routes/statusRoutes.js";
 import { buildBatchRoutes }            from "./routes/batchRoutes.js";
 import { buildHealthRoutes }           from "./routes/healthRoutes.js";
 import { buildLegalRoutes }            from "./routes/legalRoutes.js";
+import { buildRootDiscoveryRoutes }    from "./routes/rootDiscoveryRoutes.js";
 
 let passed = 0;
 let failed = 0;
@@ -56,6 +57,7 @@ const HEALTH_DEPS = {
 
 const app = express();
 app.use(express.json());
+app.use(buildRootDiscoveryRoutes());
 app.use(buildHealthRoutes(HEALTH_DEPS));
 app.use(buildTenantsRoutes(DEPS));
 app.use(buildAccessRoutes(DEPS));
@@ -89,6 +91,20 @@ async function get(path) {
   return { status: res.status, body: await res.json().catch(() => ({})) };
 }
 
+async function getWithHost(path, host) {
+  const res = await fetch(`${base}${path}`, { headers: { "x-forwarded-host": host } });
+  return { status: res.status, body: await res.json().catch(() => ({})) };
+}
+
+async function postWithHost(path, host, body = {}) {
+  const res = await fetch(`${base}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-forwarded-host": host },
+    body: JSON.stringify(body),
+  });
+  return { status: res.status, body: await res.json().catch(() => ({})) };
+}
+
 async function patch(path, body) {
   const res = await fetch(`${base}${path}`, {
     method: "PATCH",
@@ -99,6 +115,32 @@ async function patch(path, body) {
 }
 
 // ── 1. POST /tenants — input validation ───────────────────────────────────────
+
+section("GET / - scoped root discovery JSON");
+{
+  const checks = [
+    ["dev.mad4b.com", "admin-cli", "/admin/control"],
+    ["ops.mad4b.com", "ops", "/release/readiness"],
+    ["logic.mad4b.com", "logic", "/logic-definitions"],
+    ["identity.mad4b.com", "identity", "/users"],
+    ["api.mad4b.com", "runtime", "/activation/session-context"],
+  ];
+
+  for (const [host, scope, expectedPath] of checks) {
+    const r = await getWithHost("/", host);
+    ok(`${host} root returns 200`, r.status === 200, `got ${r.status}`);
+    ok(`${host} root has ok=true`, r.body.ok === true, `body: ${JSON.stringify(r.body)}`);
+    ok(`${host} root scope is ${scope}`, r.body.scope === scope, `got ${r.body.scope}`);
+    ok(`${host} root includes ${expectedPath}`, r.body.primary_paths?.includes(expectedPath), `body: ${JSON.stringify(r.body)}`);
+  }
+}
+
+section("POST / - root discovery stays non-mutating JSON");
+{
+  const r = await postWithHost("/", "dev.mad4b.com", { accidental: true });
+  ok("POST dev root returns 200 discovery", r.status === 200, `got ${r.status}`);
+  ok("POST dev root points to /admin/control", r.body.primary_paths?.includes("/admin/control"), `body: ${JSON.stringify(r.body)}`);
+}
 
 section("POST /tenants — input validation");
 

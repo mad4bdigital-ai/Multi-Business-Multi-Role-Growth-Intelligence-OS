@@ -25,8 +25,10 @@ import { buildBatchRoutes }     from "./batchRoutes.js";
 import { buildLegalRoutes } from "./legalRoutes.js";
 import { buildAuthRoutes } from "./authRoutes.js";
 import { buildAdminCliRoutes, buildAdminControlHandler, requireAdminPrincipal } from "./adminCliRoutes.js";
+import { buildRootDiscoveryRoutes } from "./rootDiscoveryRoutes.js";
 
 export function registerRoutes(app, deps) {
+  app.use(buildRootDiscoveryRoutes());
   app.use(buildStatusRoutes(deps));
   app.use(buildActivationRoutes(deps));
   app.use(buildHealthRoutes(deps));
