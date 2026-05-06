@@ -96,11 +96,52 @@ function getWindowsAppAllowlist(env = process.env) {
   return Object.entries(loadWindowsAppAllowlist(env)).map(([alias, entry]) => normalizeWindowsAppEntry(alias, entry));
 }
 
+function buildWindowsAppAuthorizationStatus({ env, platform }) {
+  const enabled = parseBooleanEnv(env[LOCAL_WINDOWS_APP_CONTROL_ENABLED_ENV]);
+  const gcloudRuntime = isGcloudRuntime(env);
+  const windowsRuntime = platform === "win32";
+  let allowlistCount = 0;
+  let allowlistValid = true;
+  let allowlistError = "";
+
+  try {
+    allowlistCount = getWindowsAppAllowlist(env).length;
+  } catch (error) {
+    allowlistValid = false;
+    allowlistError = error.code || "invalid_windows_app_allowlist";
+  }
+
+  return {
+    authorized: enabled && windowsRuntime && !gcloudRuntime && allowlistValid && allowlistCount > 0,
+    enabled,
+    runtime: gcloudRuntime ? "gcloud" : windowsRuntime ? "local_windows" : "non_windows_local",
+    allowlist: {
+      env_name: LOCAL_WINDOWS_APP_ALLOWLIST_ENV,
+      configured_count: allowlistCount,
+      valid: allowlistValid,
+      error_code: allowlistError || undefined
+    },
+    required_setup: [
+      `${LOCAL_WINDOWS_APP_CONTROL_ENABLED_ENV}=true`,
+      `${LOCAL_WINDOWS_APP_ALLOWLIST_ENV} JSON object with fixed app aliases`,
+      "Run this connector on the local Windows device, not Cloud Run",
+      "Authenticate with the admin/service BACKEND_API_KEY"
+    ]
+  };
+}
+
 export function handleWindowsAppControl(body = {}, deps = {}) {
   const env = deps.env || process.env;
   const platform = deps.platform || process.platform;
   const spawnImpl = deps.spawn || spawn;
   const action = String(body.action || "list").trim().toLowerCase();
+
+  if (action === "status" || action === "authorize") {
+    return {
+      action,
+      ...buildWindowsAppAuthorizationStatus({ env, platform })
+    };
+  }
 
   if (!parseBooleanEnv(env[LOCAL_WINDOWS_APP_CONTROL_ENABLED_ENV])) {
     const err = new Error(`${LOCAL_WINDOWS_APP_CONTROL_ENABLED_ENV}=true is required before local Windows app control can run.`);

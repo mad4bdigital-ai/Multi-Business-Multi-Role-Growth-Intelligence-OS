@@ -3261,9 +3261,9 @@ paths:
                   description: Positional SQL parameters for the db tool.
                 action:
                   type: string
-                  enum: [list, get, set, unset, launch]
+                  enum: [list, get, set, unset, status, authorize, launch]
                   default: list
-                  description: Runtime environment action for env, or list/launch for windows_app.
+                  description: Runtime environment action for env, or status/authorize/list/launch for windows_app.
                 name:
                   type: string
                   description: Environment variable name for env get, set, or unset.

@@ -40,6 +40,12 @@ try {
   assert("env unset reports existing variable", unset.existed === true, JSON.stringify(unset));
 
   {
+    const status = handleWindowsAppControl({ action: "status" }, { env: {}, platform: "win32" });
+    assert("windows app status works before authorization", status.authorized === false && status.enabled === false, JSON.stringify(status));
+    assert("windows app status explains setup", status.required_setup.includes("LOCAL_WINDOWS_APP_CONTROL_ENABLED=true"), JSON.stringify(status));
+  }
+
+  {
     try {
       handleWindowsAppControl({}, { env: {}, platform: "win32" });
       assert("windows app control disabled by default", false);
@@ -56,8 +62,10 @@ try {
       })
     };
     const listed = handleWindowsAppControl({ action: "list" }, { env, platform: "win32" });
+    const authorized = handleWindowsAppControl({ action: "authorize" }, { env, platform: "win32" });
     assert("windows app list returns allowlisted app", listed.apps.length === 1 && listed.apps[0].alias === "notepad", JSON.stringify(listed));
     assert("windows app list does not expose command", !JSON.stringify(listed).includes("notepad.exe"), JSON.stringify(listed));
+    assert("windows app authorize reports authorized", authorized.authorized === true, JSON.stringify(authorized));
   }
 
   {
