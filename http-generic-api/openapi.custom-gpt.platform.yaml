@@ -5,8 +5,8 @@ info:
   summary: Single GPT connector for all cloud platform operations.
   description: Centralised platform API. Use /dispatch for intent-routed ops (local connector shell/file, workflows). Use specific endpoints for provisioning, schema, and admin. The local connector (connector.mad4b.com) handles direct device ops.
 servers:
-  - url: https://admin.mad4b.com
-    description: Mad4B platform — Cloud Run via admin subdomain
+  - url: https://auth.mad4b.com
+    description: Mad4B platform — Cloud Run via auth subdomain
 tags:
   - name: dispatch
     description: Universal intent-based dispatcher — routes to cloud or local connector at runtime.
@@ -339,4 +339,20 @@ paths:
               schema:
                 type: object
                 additionalProperties: true
+                properties:
+                  ok: { type: boolean }
+                  tool: { type: string }
+                  action: { type: string }
+                  stdout: { type: string }
+                  stderr: { type: string }
+                  exit_code: { type: integer }
+                  result: { type: object, additionalProperties: true }
+                  aliases:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        alias: { type: string }
+                        description: { type: string }
+                        allow_extra_args: { type: boolean }
         '403': { description: Admin principal required }

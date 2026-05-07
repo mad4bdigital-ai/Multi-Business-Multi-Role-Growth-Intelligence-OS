@@ -156,7 +156,7 @@ The GPT uses exactly **two** action connectors. Custom GPT is limited to 10 conn
 
 | Connector | File | Server URL | Ops | Purpose |
 |---|---|---:|---:|---|
-| **Platform** | `http-generic-api/openapi.custom-gpt.platform.yaml` | `https://admin.mad4b.com` | 9 | Universal dispatcher, schema, admin CLI, device provisioning, release readiness |
+| **Platform** | `http-generic-api/openapi.custom-gpt.platform.yaml` | `https://auth.mad4b.com` | 9 | Universal dispatcher, schema, admin CLI, device provisioning, release readiness |
 | **Local** | `http-generic-api/openapi.custom-gpt.connector.yaml` | `https://connector.mad4b.com` | 7 | Direct break-glass shell/file/GitHub/gcloud on mohammedlap via Cloudflare Tunnel |
 
 ### Platform connector — operations
