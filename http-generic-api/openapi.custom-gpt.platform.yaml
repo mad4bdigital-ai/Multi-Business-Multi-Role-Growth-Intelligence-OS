@@ -1,0 +1,342 @@
+openapi: 3.1.0
+info:
+  title: Mad4B Platform — Unified HTTP Client
+  version: 1.0.0
+  summary: Single GPT connector for all cloud platform operations.
+  description: Centralised platform API. Use /dispatch for intent-routed ops (local connector shell/file, workflows). Use specific endpoints for provisioning, schema, and admin. The local connector (connector.mad4b.com) handles direct device ops.
+servers:
+  - url: https://admin.mad4b.com
+    description: Mad4B platform — Cloud Run via admin subdomain
+tags:
+  - name: dispatch
+    description: Universal intent-based dispatcher — routes to cloud or local connector at runtime.
+  - name: device
+    description: Local device provisioning and health.
+  - name: schema
+    description: Schema import and management.
+  - name: admin
+    description: Release readiness and admin control.
+components:
+  securitySchemes:
+    backendBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Backend API Key
+      description: "Send Authorization: Bearer <BACKEND_API_KEY>"
+  schemas:
+    DispatchResult:
+      type: object
+      additionalProperties: true
+      properties:
+        ok: { type: boolean }
+        routed: { type: boolean }
+        intent_key: { type: string }
+        workflow_key: { type: string }
+        target_module: { type: string }
+    Error:
+      type: object
+      properties:
+        ok: { type: boolean, example: false }
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+security:
+  - backendBearerAuth: []
+paths:
+
+  /dispatch:
+    post:
+      tags: [dispatch]
+      operationId: dispatch
+      summary: Universal intent dispatcher
+      description: Routes intent_key to the correct module. Local connector ops (local.shell.run, local.file.read, local.file.write, local.health.check) execute directly. Other intents return route metadata with suggested_endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [intent_key, user_id, tenant_id]
+              properties:
+                intent_key:
+                  type: string
+                  description: Route key, e.g. local.shell.run, local.file.read, local.health.check
+                  enum:
+                    - local.shell.run
+                    - local.file.read
+                    - local.file.write
+                    - local.health.check
+                    - local.device.install
+                user_id:
+                  type: string
+                tenant_id:
+                  type: string
+                device_id:
+                  type: string
+                  description: Required for all local.* intents.
+                agent_id:
+                  type: string
+                  description: Caller agent UUID for skill grant validation.
+                payload:
+                  type: object
+                  additionalProperties: true
+                  description: "Intent-specific payload. local.shell.run: {alias}. local.file.read: {path}. local.file.write: {path, content}."
+      responses:
+        '200':
+          description: Dispatched result or route metadata
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DispatchResult' }
+        '400': { description: Missing fields }
+        '403': { description: Skill not granted }
+        '404': { description: Route not found for intent_key }
+
+  /dispatch/routes:
+    get:
+      tags: [dispatch]
+      operationId: listDispatchRoutes
+      summary: List all active dispatch routes
+      description: Returns all active task_routes with their intent_key, workflow_key, target_module, and whether they are directly dispatched or require a specific endpoint call.
+      responses:
+        '200':
+          description: Route list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  count: { type: integer }
+                  routes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        intent_key: { type: string }
+                        workflow_key: { type: string }
+                        target_module: { type: string }
+                        execution_layer: { type: string }
+                        directly_dispatched: { type: boolean }
+
+  /local-connector/install:
+    post:
+      tags: [device]
+      operationId: installDevice
+      summary: Provision a Cloudflare tunnel and local connector for a user device
+      description: Creates a Cloudflare tunnel, adds DNS CNAME, seeds shell allowlist, returns install.bat. Idempotent. Pass reprovision=true to rotate the tunnel and secret.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, tenant_id, device_id]
+              properties:
+                user_id: { type: string }
+                tenant_id: { type: string }
+                device_id: { type: string, description: "Stable machine name, e.g. mohammedlap" }
+                reprovision: { type: boolean, default: false }
+                custom_aliases:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      alias: { type: string }
+                      cmd: { type: string }
+                      args: { type: array, items: { type: string } }
+                      description: { type: string }
+      responses:
+        '200':
+          description: Install bundle with tunnel credentials and install.bat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  config_id: { type: string }
+                  tunnel_url: { type: string }
+                  connector_secret: { type: string }
+                  cf_tunnel_id: { type: string }
+                  cloud_run_env: { type: object, additionalProperties: true }
+                  installation: { type: object, additionalProperties: true }
+
+  /local-connector/install/status:
+    get:
+      tags: [device]
+      operationId: deviceInstallStatus
+      summary: Check local connector installation status for a device
+      description: Returns config and shell allowlist for the given user+device. installed=false means /install has not been called yet.
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema: { type: string }
+        - name: tenant_id
+          in: query
+          required: true
+          schema: { type: string }
+        - name: device_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Install status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  installed: { type: boolean }
+                  config: { type: object, additionalProperties: true }
+                  aliases: { type: array, items: { type: object } }
+
+  /local-connector/health:
+    get:
+      tags: [device]
+      operationId: deviceHealth
+      summary: Check local connector reachability via platform proxy
+      description: Platform calls the device tunnel and returns health. Slower than calling connector.mad4b.com/health directly but works without knowing the device secret.
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema: { type: string }
+        - name: tenant_id
+          in: query
+          required: true
+          schema: { type: string }
+        - name: device_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Health result (ok=false if unreachable)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  tunnel_url: { type: string }
+                  agent: { type: object, additionalProperties: true }
+                  error: { type: object, additionalProperties: true }
+
+  /admin/schema-import/upload:
+    post:
+      tags: [schema]
+      operationId: schemaImportUpload
+      summary: Import a schema file into the platform
+      description: Accepts JSON/YAML schema content or a repo URL. Validates, upserts endpoints, and logs the import job. Use source_type=upload for direct content, repo_link for a GitHub URL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source_type]
+              properties:
+                source_type:
+                  type: string
+                  enum: [upload, repo_link, rollback]
+                content: { type: string }
+                source_url: { type: string }
+                source_ref: { type: string }
+                source_filename: { type: string }
+      responses:
+        '200':
+          description: Import result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  job_id: { type: string }
+                  endpoints_upserted: { type: integer }
+                  warnings: { type: array, items: { type: string } }
+
+  /admin/schema-import/rollback:
+    post:
+      tags: [schema]
+      operationId: schemaImportRollback
+      summary: Rollback the last schema import
+      description: Reverts the most recent schema import job. Restores deprecated endpoints and removes newly-added ones.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                job_id: { type: string, description: Import job to roll back. Omit to roll back the last job. }
+      responses:
+        '200':
+          description: Rollback result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  rolled_back_job_id: { type: string }
+                  endpoints_restored: { type: integer }
+
+  /admin/release/readiness:
+    get:
+      tags: [admin]
+      operationId: releaseReadiness
+      summary: Check platform release readiness
+      description: Returns failing checks, warnings, and a go/no-go decision for the current codebase state. Covers CI, migrations, agent health, and governance drift.
+      responses:
+        '200':
+          description: Readiness report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  ready: { type: boolean }
+                  checks: { type: array, items: { type: object } }
+                  warnings: { type: array, items: { type: string } }
+
+  /admin/cli/control:
+    post:
+      tags: [admin]
+      operationId: adminControl
+      summary: Admin CLI — run governed platform control actions
+      description: Executes tool=shell (allowlisted shell commands on Cloud Run), tool=gcloud, tool=github, tool=db, or tool=env. action=status/list/run for shell. Admin principal required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tool]
+              properties:
+                tool:
+                  type: string
+                  enum: [shell, gcloud, github, db, env, windows_app, hostinger]
+                action:
+                  type: string
+                  enum: [status, list, run]
+                  default: list
+                alias: { type: string }
+                extra_args:
+                  type: array
+                  items: { type: string }
+      responses:
+        '200':
+          description: Control result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '403': { description: Admin principal required }

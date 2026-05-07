@@ -37,6 +37,7 @@ import { buildUploadRoutes }         from "./uploadRoutes.js";
 import { buildTenantCommercialRoutes } from "./tenantCommercialRoutes.js";
 import { buildLocalConnectorRoutes } from "./localConnectorRoutes.js";
 import { buildLocalConnectorInstallRoutes } from "./localConnectorInstallRoutes.js";
+import { buildDispatchRoutes } from "./dispatchRoutes.js";
 
 export function registerRoutes(app, deps) {
   app.use(buildRootDiscoveryRoutes());
@@ -75,6 +76,7 @@ export function registerRoutes(app, deps) {
   app.use(buildLegalRoutes(deps));
   app.use("/auth", buildAuthRoutes(deps));
   app.use(buildTenantCommercialRoutes(deps));
+  app.use(buildDispatchRoutes(deps));
   app.use(buildLocalConnectorRoutes(deps));
   app.use(buildLocalConnectorInstallRoutes(deps));
   app.post("/admin/control", deps.requireBackendApiKey, requireAdminPrincipal, buildAdminControlHandler());
