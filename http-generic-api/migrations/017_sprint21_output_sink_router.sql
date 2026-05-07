@@ -75,3 +75,86 @@ ALTER TABLE `reporting_views`
   ADD COLUMN IF NOT EXISTS `agent_id`      VARCHAR(36)  NULL AFTER `source_run_id`,
   ADD COLUMN IF NOT EXISTS `snapshot_json` LONGTEXT     NULL AFTER `columns_json`,
   ADD COLUMN IF NOT EXISTS `updated_at`    DATETIME     NULL;
+
+-- ─── 5. Local Connector Governance ───────────────────────────────────────────
+-- Tables for user-scoped authentication, authorization, and dynamic allowlists
+
+CREATE TABLE IF NOT EXISTS `local_connector_user_configs` (
+  `id`                    INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `config_id`             VARCHAR(36)  NOT NULL UNIQUE,
+  `user_id`               VARCHAR(36)  NOT NULL COMMENT 'FK to users.user_id',
+  `tenant_id`             VARCHAR(36)  NOT NULL COMMENT 'FK to tenants.tenant_id',
+  `device_id`             VARCHAR(36)  NULL COMMENT 'Unique identifier for the user''s local device',
+  `is_enabled`            BOOLEAN      NOT NULL DEFAULT FALSE,
+  `last_seen_at`          DATETIME     NULL,
+  `created_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_user_tenant` (`user_id`, `tenant_id`),
+  INDEX `idx_device_id`   (`device_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `local_connector_shell_allowlists` (
+  `id`                    INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `allowlist_id`          VARCHAR(36)  NOT NULL UNIQUE,
+  `config_id`             VARCHAR(36)  NOT NULL COMMENT 'FK to local_connector_user_configs.config_id',
+  `alias`                 VARCHAR(128) NOT NULL,
+  `command_template`      TEXT         NOT NULL COMMENT 'Template for the allowed command, e.g., "git {args}"',
+  `allow_extra_args`      BOOLEAN      NOT NULL DEFAULT FALSE,
+  `description`           TEXT         NULL,
+  `created_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_config_alias` (`config_id`, `alias`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `local_connector_file_access_rules` (
+  `id`                    INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `rule_id`               VARCHAR(36)  NOT NULL UNIQUE,
+  `config_id`             VARCHAR(36)  NOT NULL COMMENT 'FK to local_connector_user_configs.config_id',
+  `path_pattern`          VARCHAR(255) NOT NULL COMMENT 'Glob pattern for allowed file paths, e.g., "/Users/user/Documents/*.txt"',
+  `access_mode`           ENUM('read','write','read_write') NOT NULL DEFAULT 'read',
+  `description`           TEXT         NULL,
+  `created_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_config_path` (`config_id`, `path_pattern`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- ─── 5. Local Connector Governance ───────────────────────────────────────────
+-- Tables for user-scoped authentication, authorization, and dynamic allowlists
+
+CREATE TABLE IF NOT EXISTS `local_connector_user_configs` (
+  `id`                    INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `config_id`             VARCHAR(36)  NOT NULL UNIQUE,
+  `user_id`               VARCHAR(36)  NOT NULL COMMENT 'FK to users.user_id',
+  `tenant_id`             VARCHAR(36)  NOT NULL COMMENT 'FK to tenants.tenant_id',
+  `device_id`             VARCHAR(36)  NULL COMMENT 'Unique identifier for the user''s local device',
+  `is_enabled`            BOOLEAN      NOT NULL DEFAULT FALSE,
+  `last_seen_at`          DATETIME     NULL,
+  `created_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_user_tenant` (`user_id`, `tenant_id`),
+  INDEX `idx_device_id`   (`device_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `local_connector_shell_allowlists` (
+  `id`                    INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `allowlist_id`          VARCHAR(36)  NOT NULL UNIQUE,
+  `config_id`             VARCHAR(36)  NOT NULL COMMENT 'FK to local_connector_user_configs.config_id',
+  `alias`                 VARCHAR(128) NOT NULL,
+  `command_template`      TEXT         NOT NULL COMMENT 'Template for the allowed command, e.g., "git {args}"',
+  `allow_extra_args`      BOOLEAN      NOT NULL DEFAULT FALSE,
+  `description`           TEXT         NULL,
+  `created_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_config_alias` (`config_id`, `alias`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `local_connector_file_access_rules` (
+  `id`                    INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `rule_id`               VARCHAR(36)  NOT NULL UNIQUE,
+  `config_id`             VARCHAR(36)  NOT NULL COMMENT 'FK to local_connector_user_configs.config_id',
+  `path_pattern`          VARCHAR(255) NOT NULL COMMENT 'Glob pattern for allowed file paths, e.g., "/Users/user/Documents/*.txt"',
+  `access_mode`           ENUM('read','write','read_write') NOT NULL DEFAULT 'read',
+  `description`           TEXT         NULL,
+  `created_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_config_path` (`config_id`, `path_pattern`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

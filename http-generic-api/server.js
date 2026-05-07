@@ -320,6 +320,7 @@ import { registerRoutes } from "./routes/index.js";
 import { createExecutionFacade } from "./executionFacade.js";
 import { generateImplementationPlan } from "./services/planningResolver.js";
 import { generateTaskManifest } from "./services/taskResolver.js";
+import { createGovernanceValidationEngine } from "./services/governanceValidationEngine.js";
 import {
   formatIntentMaturationForPrompt,
   resolveAiIntentMaturation
@@ -367,6 +368,13 @@ const {
   executeSiteMigrationJob,
   performUniversalServerWriteback,
   logRetryWriteback
+});
+
+const governanceValidationEngine = createGovernanceValidationEngine({
+  getPool: sqlAdapter.getPool,
+  validateByJsonSchema,
+  getCanonicalSurfaceMetadata,
+  getWorkflowRowByKey,
 });
 
 const EXECUTION_RESULT_CLASSIFICATIONS = new Set([
@@ -1495,7 +1503,8 @@ async function performUniversalServerWriteback(input = {}) {
       writeJsonAssetRegistryRow: (row) => writeJsonAssetRegistryRowCore(
         row,
         {
-          getGoogleClients,
+          getGoogleClients: getGoogleClients, // Ensure this is the Sheets client
+          getPool: sqlAdapter.getPool, // For SQL-primary JSON Asset Registry
           readLiveSheetShape,
           jsonAssetRegistrySpreadsheetId: JSON_ASSET_REGISTRY_SPREADSHEET_ID,
           jsonAssetRegistrySheet: JSON_ASSET_REGISTRY_SHEET,
@@ -1519,7 +1528,8 @@ async function performUniversalServerWriteback(input = {}) {
       jsonAssetRegistrySheet: JSON_ASSET_REGISTRY_SHEET,
       executionLogUnifiedSpreadsheetId: EXECUTION_LOG_UNIFIED_SPREADSHEET_ID,
       jsonAssetRegistrySpreadsheetId: JSON_ASSET_REGISTRY_SPREADSHEET_ID
-    }
+    },
+    governanceValidationEngine // Pass the validation engine for post-write readback
   );
 }
 

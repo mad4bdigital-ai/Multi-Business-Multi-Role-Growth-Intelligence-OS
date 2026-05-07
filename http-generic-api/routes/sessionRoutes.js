@@ -2,6 +2,47 @@ import { Router }     from "express";
 import { randomUUID, createHash } from "node:crypto";
 import { getPool }    from "../db.js";
 import { dispatchPlan } from "../connectorExecutor.js";
+import { exportSessionToDrive, bulkExportSessionsToDrive } from "../sessionExportPipeline.js";
+import { uploadContentToDrive } from "../uploadPipeline.js";
+
+// base_instructions can be large system prompts — offload if over this threshold.
+// This is the only per-session Drive write during ingest (raw dump is a separate single upload).
+const INSTRUCTIONS_OFFLOAD_THRESHOLD = Number(process.env.SESSION_INSTRUCTIONS_OFFLOAD_THRESHOLD ?? 4096);
+
+// Upload the full raw session records to Drive as one file. Non-fatal.
+// Returns { driveId, driveUrl } or { driveId: null, driveUrl: null } on failure.
+async function uploadRawDump(records, sessionId) {
+  try {
+    const content = records.map(r => JSON.stringify(r)).join("\n");
+    const result  = await uploadContentToDrive(
+      content,
+      `session_${sessionId}_raw.jsonl`,
+      "application/json",
+      null
+    );
+    return { driveId: result.drive_file_id, driveUrl: result.drive_web_url };
+  } catch {
+    return { driveId: null, driveUrl: null };
+  }
+}
+
+// Upload base_instructions to Drive if large. Non-fatal.
+async function maybeOffloadInstructions(text, sessionId) {
+  if (!text || text.length <= INSTRUCTIONS_OFFLOAD_THRESHOLD) {
+    return { inline: text, driveId: null, driveUrl: null };
+  }
+  try {
+    const result = await uploadContentToDrive(
+      text,
+      `base_instructions_${sessionId}.txt`,
+      "text/plain",
+      null
+    );
+    return { inline: null, driveId: result.drive_file_id, driveUrl: result.drive_web_url };
+  } catch {
+    return { inline: text.slice(0, 4096), driveId: null, driveUrl: null };
+  }
+}
 
 // ── JSONL ingest helpers ──────────────────────────────────────────────────────
 
@@ -46,7 +87,11 @@ function extractInstructions(val) {
 async function ingestParsedRecords(records, { tenant_id, user_id, brand_key, workspace_key }) {
   const pool = getPool();
 
+  // Locate session_meta first so we have a session_id for the raw dump filename.
+  // (full parsing follows below — this is just an early ID extraction)
+
   // --- 1. Locate session_meta ---
+  // (comment added above pool.query — the early ID extraction note is for the block above)
   const meta = records.find(r => r.type === "session_meta" || r.record_type === "session_meta");
 
   // Codex CLI: { type, timestamp, payload: { id, cwd, git, base_instructions: { text } } }
@@ -113,14 +158,23 @@ async function ingestParsedRecords(records, { tenant_id, user_id, brand_key, wor
     }
   }
 
+  // Upload the full raw dump to Drive once — one file per session, non-fatal.
+  const { driveId: rawDriveId, driveUrl: rawDriveUrl } = await uploadRawDump(records, session_id);
+
+  // Offload base_instructions to Drive if they exceed the inline threshold.
+  const instrOff = await maybeOffloadInstructions(instrText, session_id);
+
   // Upsert customer_sessions
   await pool.query(
     `INSERT INTO \`customer_sessions\`
        (session_id, tenant_id, user_id, originator, cli_version, source, model_provider,
         model_name, cwd, git_branch, git_commit_hash, git_repo_url,
         brand_key, workspace_key,
-        base_instructions_hash, base_instructions_text, session_status, started_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?)
+        base_instructions_hash, base_instructions_text,
+        base_instructions_drive_id, base_instructions_drive_url,
+        raw_drive_id, raw_drive_url,
+        session_status, started_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?)
      ON DUPLICATE KEY UPDATE
        session_status = IF(session_status = 'active', 'active', session_status),
        ended_at = NULL`,
@@ -128,26 +182,30 @@ async function ingestParsedRecords(records, { tenant_id, user_id, brand_key, wor
       session_id,
       tenant_id,
       user_id || null,
-      sessionData.originator    || null,
-      sessionData.cli_version   || null,
-      sessionData.source        || null,
+      sessionData.originator     || null,
+      sessionData.cli_version    || null,
+      sessionData.source         || null,
       sessionData.model_provider || null,
-      sessionData.model_name    || null,
-      sessionData.cwd           || null,
-      gitCtx.branch             || null,
-      // Codex: commit_hash  |  platform: commit_hash (same, but guard both)
-      gitCtx.commit_hash        || null,
-      // Codex: repository_url  |  platform: repository_url or repo_url
-      gitCtx.repository_url    || gitCtx.repo_url || null,
+      sessionData.model_name     || null,
+      sessionData.cwd            || null,
+      gitCtx.branch              || null,
+      gitCtx.commit_hash         || null,
+      gitCtx.repository_url      || gitCtx.repo_url || null,
       resolvedBrandKey,
       resolvedWorkspaceKey,
       instrText ? sha256(instrText) : null,
-      instrText,
+      instrOff.inline,
+      instrOff.driveId,
+      instrOff.driveUrl,
+      rawDriveId,
+      rawDriveUrl,
       toDatetime(sessionData.timestamp || sessionData.started_at),
     ]
   );
 
   // --- 2. Process event_msg and response_item records ---
+  // Only structured metadata goes into session_events — no content payloads.
+  // Full content is in the raw Drive dump (raw_drive_id on the session row).
   const turnIndex = {};
   let nextIndex   = 0;
 
@@ -156,7 +214,6 @@ async function ingestParsedRecords(records, { tenant_id, user_id, brand_key, wor
 
     // ── event_msg ─────────────────────────────────────────────────────────────
     if (rtype === "event_msg") {
-      // Codex: { type, timestamp, payload: { type, turn_id, started_at (epoch s), ... } }
       const d       = unwrap(rec);
       const turn_id = d.turn_id || null;
       const etype   = d.type || rec.event_type;
@@ -179,14 +236,12 @@ async function ingestParsedRecords(records, { tenant_id, user_id, brand_key, wor
           ]
         );
 
-        // bump session turn_count
         await pool.query(
           "UPDATE `customer_sessions` SET turn_count = turn_count + 1 WHERE session_id = ?",
           [session_id]
         ).catch(() => {});
       }
 
-      // Codex CLI emits "task_complete" (no 'd'); platform format uses "task_completed".
       if (turn_id && (etype === "task_complete" || etype === "task_completed" ||
                       etype === "task_aborted"  || etype === "task_failed")) {
         const ts = (etype === "task_complete" || etype === "task_completed") ? "completed"
@@ -197,23 +252,26 @@ async function ingestParsedRecords(records, { tenant_id, user_id, brand_key, wor
         ).catch(() => {});
       }
 
-      // Always log as event
+      // Store only the lean metadata fields inline — no full payload content.
+      const leanPayload = JSON.stringify({
+        turn_id, type: etype,
+        model_context_window: d.model_context_window || null,
+        collaboration_mode: d.collaboration_mode_kind || d.collaboration_mode || null,
+      });
       await pool.query(
         `INSERT IGNORE INTO \`session_events\`
            (event_id, session_id, turn_id, tenant_id, record_type, event_type, payload_json, event_timestamp)
          VALUES (?,?,?,?,?,?,?,?)`,
         [
           randomUUID(), session_id, turn_id, tenant_id,
-          "event_msg", etype,
-          JSON.stringify(d),
+          "event_msg", etype, leanPayload,
           toDatetime(d.started_at || rec.timestamp),
         ]
       );
     }
 
-    // ── response_item ─────────────────────────────────────────────────────────
+    // ── response_item — type + timestamp only; full content is in raw Drive dump ─
     if (rtype === "response_item") {
-      // Codex: { type, timestamp, payload: { type: "message", role, content: [...] } }
       const d       = unwrap(rec);
       const turn_id = d.turn_id || null;
       const etype   = d.type || d.role || "response_item";
@@ -221,19 +279,19 @@ async function ingestParsedRecords(records, { tenant_id, user_id, brand_key, wor
       await pool.query(
         `INSERT IGNORE INTO \`session_events\`
            (event_id, session_id, turn_id, tenant_id, record_type, event_type, payload_json, event_timestamp)
-         VALUES (?,?,?,?,?,?,?,?)`,
+         VALUES (?,?,?,?,?,?,NULL,?)`,
         [
           randomUUID(), session_id, turn_id, tenant_id,
           "response_item", etype,
-          JSON.stringify(d),
           toDatetime(rec.timestamp),
         ]
       );
     }
 
-    // ── session_meta as event ─────────────────────────────────────────────────
+    // ── session_meta as event — store context fields, strip base_instructions ──
     if (rtype === "session_meta") {
       const d = unwrap(rec);
+      const { base_instructions: _bi, ...dContext } = d;
       await pool.query(
         `INSERT IGNORE INTO \`session_events\`
            (event_id, session_id, turn_id, tenant_id, record_type, event_type, payload_json, event_timestamp)
@@ -241,14 +299,14 @@ async function ingestParsedRecords(records, { tenant_id, user_id, brand_key, wor
         [
           randomUUID(), session_id, null, tenant_id,
           "session_meta", "session_started",
-          JSON.stringify(d),
+          JSON.stringify(dContext),
           toDatetime(d.timestamp || rec.timestamp),
         ]
       );
     }
   }
 
-  return { session_id };
+  return { session_id, raw_drive_id: rawDriveId };
 }
 
 // ── Routes ────────────────────────────────────────────────────────────────────
@@ -271,9 +329,9 @@ export function buildSessionRoutes(deps) {
       if (!Array.isArray(parsed) || !parsed.length)
         return res.status(400).json({ error: "records array or jsonl string required" });
 
-      const { session_id } = await ingestParsedRecords(parsed, { tenant_id, user_id, brand_key, workspace_key });
+      const result = await ingestParsedRecords(parsed, { tenant_id, user_id, brand_key, workspace_key });
 
-      res.status(201).json({ ok: true, session_id, record_count: parsed.length });
+      res.status(201).json({ ok: true, session_id: result.session_id, record_count: parsed.length, raw_drive_id: result.raw_drive_id });
     } catch (err) {
       const status = err.status || 500;
       res.status(status).json({ error: err.message, code: err.code });
@@ -571,6 +629,88 @@ export function buildSessionRoutes(deps) {
       res.json({ ok: failed === 0, processed: succeeded, failed, skipped: results.filter(r => r.skipped).length, results });
     } catch (err) {
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── PUT /sessions/:id/export — export a single session to Drive ──────────
+  // Body: { user_email? }  — overrides auto-resolved email for Drive sharing.
+  // On success, updates customer_sessions.drive_export_* fields and returns the URL.
+  router.put("/sessions/:id/export", async (req, res) => {
+    try {
+      const { user_email } = req.body || {};
+      const result = await exportSessionToDrive(req.params.id, user_email || null);
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      const status = err.status || 500;
+      res.status(status).json({ ok: false, error: err.message });
+    }
+  });
+
+  // ── POST /sessions/export — bulk Drive export for multiple sessions ───────
+  // Body: { tenant_id, originator?, date_from?, date_to?, session_ids?, user_email_override?, limit? }
+  // Exports each matching session as a separate Drive document.
+  router.post("/sessions/export", async (req, res) => {
+    try {
+      const { tenant_id, originator, date_from, date_to, session_ids, user_email_override, limit } = req.body || {};
+      if (!tenant_id) return res.status(400).json({ ok: false, error: "tenant_id required" });
+
+      const result = await bulkExportSessionsToDrive({
+        tenant_id, originator, date_from, date_to, session_ids, user_email_override,
+        limit: limit || 50,
+      });
+      res.json({ ok: result.failed === 0, ...result });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // ── POST /admin/sessions — record an admin CLI session ────────────────────
+  // Lightweight ingest for admin control sessions — no JSONL parsing.
+  // Body: { session_id?, tenant_id, action_summary, tool?, result_status?, user_email? }
+  // Stores originator='admin_cli'; action_summary goes into session_events as admin_action.
+  router.post("/admin/sessions", async (req, res) => {
+    try {
+      const {
+        session_id: givenId, tenant_id, action_summary, tool = null,
+        result_status = "completed", user_email = null,
+      } = req.body || {};
+
+      if (!tenant_id)      return res.status(400).json({ ok: false, error: "tenant_id required" });
+      if (!action_summary) return res.status(400).json({ ok: false, error: "action_summary required" });
+
+      const pool = getPool();
+      const session_id = givenId || `adm_${randomUUID()}`;
+      const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+
+      await pool.query(
+        `INSERT INTO \`customer_sessions\`
+           (session_id, tenant_id, originator, source, session_status, started_at, ended_at)
+         VALUES (?, ?, 'admin_cli', 'admin_control', ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           session_status = VALUES(session_status),
+           ended_at       = VALUES(ended_at)`,
+        [session_id, tenant_id, result_status === "failed" ? "failed" : "completed", now, now]
+      );
+
+      const adminPayload = { action_summary, tool, result_status, user_email };
+      const adminEvtId  = randomUUID();
+      const adminOff    = await maybeOffload(adminPayload, `adm_${adminEvtId}.json`);
+      await pool.query(
+        `INSERT IGNORE INTO \`session_events\`
+           (event_id, session_id, tenant_id, record_type, event_type,
+            payload_json, payload_drive_id, payload_drive_url, event_timestamp)
+         VALUES (?, ?, ?, 'admin_action', ?, ?, ?, ?, ?)`,
+        [
+          adminEvtId, session_id, tenant_id,
+          tool || "admin_action",
+          adminOff.inline, adminOff.driveId, adminOff.driveUrl,
+          now,
+        ]
+      );
+
+      res.status(201).json({ ok: true, session_id, tenant_id, originator: "admin_cli" });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 

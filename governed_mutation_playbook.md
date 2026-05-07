@@ -63,6 +63,57 @@ Treat as:
 Important restriction:
 - brand-core operational assets must not be reclassified into `JSON Asset Registry` merely because they are JSON-shaped
 
+### `output_artifacts`
+Treat as:
+- an authoritative governed sink for agent outputs
+- evidence-preserving
+- primary source for agent-generated data
+
+Required expectations:
+- `artifact_id` is unique and traceable to `run_id`
+- `artifact_type` aligns with `workflows.output_artifact_type`
+- `sink_targets` accurately reflects dispatch attempts
+- content is stored according to `content_type` (JSON, text, or `storage_ref`)
+
+### `sink_dispatch_log`
+Treat as:
+- an authoritative governed sink for output sink router decisions
+- evidence-preserving, append-only audit trail
+
+Required expectations:
+- `dispatch_id` is unique and traceable to `artifact_id` and `run_id`
+- `status` accurately reflects dispatch outcome (`dispatched`, `completed`, `failed`, `skipped`)
+
+### `agent_chain_events`
+Treat as:
+- an authoritative governed sink for agent chaining events
+- event bus for triggering subsequent agent workflows
+
+Required expectations:
+- `event_id` is unique and traceable to `source_run_id`
+- `status` accurately reflects event lifecycle (`pending`, `dispatched`, `consumed`, `failed`, `skipped`, `expired`)
+
+### `local_connector_user_configs`, `local_connector_shell_allowlists`, `local_connector_file_access_rules`
+Treat as:
+- authoritative governed sinks for user-specific local connector policies
+- critical for secure local interaction
+
+Required expectations:
+- `user_id` and `tenant_id` are correctly resolved and enforced
+- `alias` and `path_pattern` are unique within their scope
+- `is_enabled` and `access_mode` reflect current policy
+- mutations are subject to `approval_holds` for sensitive changes
+
+### `approval_holds`
+Treat as:
+- an authoritative governed sink for human-in-the-loop decisions
+- evidence-preserving for critical actions
+
+Required expectations:
+- `hold_id` is unique and traceable to the originating action/run
+- `status` accurately reflects the review outcome (`pending`, `approved`, `rejected`, `expired`)
+- `reviewer_id` and `review_timestamp` are recorded for auditability
+
 ## 5. Candidate versus active authority
 
 Candidate writes and active-authority writes are not interchangeable.

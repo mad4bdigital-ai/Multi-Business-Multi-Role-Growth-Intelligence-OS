@@ -1,0 +1,192 @@
+import { getPool } from "../db.js";
+import crypto from "node:crypto";
+
+function createLocalActionId() {
+  return `local_action_${crypto.randomUUID().replace(/-/g, "")}`;
+}
+
+async function resolveUserLocalConfig(userId, tenantId, deviceId) {
+  const [configs] = await getPool().query(
+    "SELECT * FROM `local_connector_user_configs` WHERE user_id = ? AND tenant_id = ? AND device_id = ? AND is_enabled = TRUE LIMIT 1",
+    [userId, tenantId, deviceId]
+  );
+  const config = configs[0];
+  if (!config) return null;
+
+  const [shellAllowlists] = await getPool().query(
+    "SELECT * FROM `local_connector_shell_allowlists` WHERE config_id = ?",
+    [config.config_id]
+  );
+  const [fileAccessRules] = await getPool().query(
+    "SELECT * FROM `local_connector_file_access_rules` WHERE config_id = ?",
+    [config.config_id]
+  );
+  return { config, shellAllowlists, fileAccessRules };
+}
+
+async function executeGovernedShellCommand(args) {
+  const { userId, tenantId, deviceId, alias, extraArgs = [], agentId = null, performUniversalServerWriteback } = args;
+  const localActionId = createLocalActionId();
+  const startedAt = new Date();
+  let status = "failed";
+  let output = null;
+  let error = null;
+
+  try {
+    const userConfig = await resolveUserLocalConfig(userId, tenantId, deviceId);
+    if (!userConfig) throw new Error("Local connector not enabled or configured for this user/device.");
+
+    const allowlistEntry = userConfig.shellAllowlists.find(e => e.alias === alias);
+    if (!allowlistEntry) throw new Error(`Command alias '${alias}' not found in allowlist.`);
+    if (extraArgs.length > 0 && !allowlistEntry.allow_extra_args) {
+      throw new Error(`Command alias '${alias}' does not allow extra arguments.`);
+    }
+
+    // TODO: replace with actual HTTP call to tunnel_url
+    output = { simulated: true, command: alias, args: extraArgs, result: `Command '${alias}' executed successfully.` };
+    status = "completed";
+
+  } catch (err) {
+    error = { code: "local_command_execution_failed", message: err.message };
+  } finally {
+    await performUniversalServerWriteback({
+      mode: "sync",
+      job_id: localActionId,
+      target_key: alias,
+      parent_action_key: "local_connector_shell",
+      endpoint_key: alias,
+      source_layer: "local_connector_orchestrator",
+      entry_type: "local_command_execution",
+      execution_class: "local_action",
+      attempt_count: 1,
+      status_source: status,
+      responseBody: output || error,
+      error_code: error?.code,
+      error_message_short: error?.message,
+      http_status: status === "completed" ? 200 : 400,
+      brand_name: null,
+      execution_trace_id: localActionId,
+      started_at: startedAt.toISOString(),
+      agent_id: agentId,
+      tenant_id: tenantId,
+      user_id: userId,
+    });
+  }
+
+  if (error) return { ok: false, status: "failed", reason: error.message, details: error };
+  return { ok: true, status: "completed", result: output };
+}
+
+async function readGovernedLocalFile(args) {
+  const { userId, tenantId, deviceId, path, agentId = null, performUniversalServerWriteback } = args;
+  const localActionId = createLocalActionId();
+  const startedAt = new Date();
+  let status = "failed";
+  let content = null;
+  let error = null;
+
+  try {
+    const userConfig = await resolveUserLocalConfig(userId, tenantId, deviceId);
+    if (!userConfig) throw new Error("Local connector not enabled or configured for this user/device.");
+
+    const rule = userConfig.fileAccessRules.find(r =>
+      r.path_pattern === path && (r.access_mode === "read" || r.access_mode === "read_write")
+    );
+    if (!rule) throw new Error(`File path '${path}' not allowed for read access.`);
+
+    // TODO: replace with actual HTTP call to tunnel_url
+    content = `Simulated content of ${path}`;
+    status = "completed";
+
+  } catch (err) {
+    error = { code: "local_file_read_failed", message: err.message };
+  } finally {
+    await performUniversalServerWriteback({
+      mode: "sync",
+      job_id: localActionId,
+      target_key: path,
+      parent_action_key: "local_connector_file",
+      endpoint_key: "read_file",
+      source_layer: "local_connector_orchestrator",
+      entry_type: "local_file_read",
+      execution_class: "local_action",
+      attempt_count: 1,
+      status_source: status,
+      responseBody: content || error,
+      error_code: error?.code,
+      error_message_short: error?.message,
+      http_status: status === "completed" ? 200 : 400,
+      brand_name: null,
+      execution_trace_id: localActionId,
+      started_at: startedAt.toISOString(),
+      agent_id: agentId,
+      tenant_id: tenantId,
+      user_id: userId,
+    });
+  }
+
+  if (error) return { ok: false, status: "failed", reason: error.message, details: error };
+  return { ok: true, status: "completed", content };
+}
+
+async function writeGovernedLocalFile(args) {
+  const { userId, tenantId, deviceId, path, content, agentId = null, performUniversalServerWriteback } = args;
+  const localActionId = createLocalActionId();
+  const startedAt = new Date();
+  let status = "failed";
+  let result = null;
+  let error = null;
+
+  try {
+    const userConfig = await resolveUserLocalConfig(userId, tenantId, deviceId);
+    if (!userConfig) throw new Error("Local connector not enabled or configured for this user/device.");
+
+    const rule = userConfig.fileAccessRules.find(r =>
+      r.path_pattern === path && (r.access_mode === "write" || r.access_mode === "read_write")
+    );
+    if (!rule) throw new Error(`File path '${path}' not allowed for write access.`);
+
+    // TODO: replace with actual HTTP call to tunnel_url
+    result = { simulated: true, path, bytes_written: content.length, message: `File '${path}' written successfully.` };
+    status = "completed";
+
+  } catch (err) {
+    error = { code: "local_file_write_failed", message: err.message };
+  } finally {
+    await performUniversalServerWriteback({
+      mode: "sync",
+      job_id: localActionId,
+      target_key: path,
+      parent_action_key: "local_connector_file",
+      endpoint_key: "write_file",
+      source_layer: "local_connector_orchestrator",
+      entry_type: "local_file_write",
+      execution_class: "local_action",
+      attempt_count: 1,
+      status_source: status,
+      responseBody: result || error,
+      error_code: error?.code,
+      error_message_short: error?.message,
+      http_status: status === "completed" ? 200 : 400,
+      brand_name: null,
+      execution_trace_id: localActionId,
+      started_at: startedAt.toISOString(),
+      agent_id: agentId,
+      tenant_id: tenantId,
+      user_id: userId,
+    });
+  }
+
+  if (error) return { ok: false, status: "failed", reason: error.message, details: error };
+  return { ok: true, status: "completed", result };
+}
+
+export function createLocalConnectorOrchestrator(deps) {
+  const { performUniversalServerWriteback } = deps;
+  return {
+    resolveUserLocalConfig,
+    executeGovernedShellCommand: (args) => executeGovernedShellCommand({ ...args, performUniversalServerWriteback }),
+    readGovernedLocalFile:       (args) => readGovernedLocalFile({ ...args, performUniversalServerWriteback }),
+    writeGovernedLocalFile:      (args) => writeGovernedLocalFile({ ...args, performUniversalServerWriteback }),
+  };
+}

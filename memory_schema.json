@@ -106,6 +106,10 @@
     "template_impact_state",
     "template_lineage_state"
   ],
+  "output_artifacts_state",
+  "sink_dispatch_state",
+  "agent_chain_state",
+  "local_connector_governance_state"
   "properties": {
     "version": {
       "type": "string",
@@ -1358,6 +1362,18 @@
         "dependent_workflows_traced": false,
         "dependent_chains_traced": false
       }
+    }
+    "output_artifacts_state": {
+      "$ref": "./schemas/operations.schema.json#/$defs/outputArtifactsState"
+    },
+    "sink_dispatch_state": {
+      "$ref": "./schemas/operations.schema.json#/$defs/sinkDispatchState"
+    },
+    "agent_chain_state": {
+      "$ref": "./schemas/operations.schema.json#/$defs/agentChainState"
+    },
+    "local_connector_governance_state": {
+      "$ref": "./schemas/governance.schema.json#/$defs/localConnectorGovernanceState"
     }
   },
   "governance_rules": [

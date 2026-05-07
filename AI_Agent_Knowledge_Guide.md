@@ -25,6 +25,12 @@ For the personal Custom GPT Admin Assistant action setup, scoped OpenAPI files, 
 | `hosting_accounts` | Per-target credentials |
 | `connected_systems` | MCP/external connectors |
 | `business_type_profiles` | Business-type knowledge and engine compatibility |
+| `output_artifacts` | Canonical store for agent-generated outputs |
+| `sink_dispatch_log` | Audit trail for output routing decisions |
+| `agent_chain_events` | Event bus for inter-agent communication and chaining |
+| `local_connector_user_configs` | User-specific local connector enablement and device IDs |
+| `local_connector_shell_allowlists` | User-specific allowlists for local shell commands |
+| `local_connector_file_access_rules` | User-specific allowlists for local file access |
 | `brand_paths` | Brand to business-type path, Drive folder IDs, Brand Core map |
 | `brand_core` | Brand asset rows and Drive subfolder IDs |
 
@@ -34,6 +40,7 @@ All meaningful execution should conceptually follow:
 - `prompt_router`
 - `module_loader`
 - `system_bootstrap`
+- `governanceValidationEngine` (explicitly called by `system_bootstrap` for validation)
 - runtime tool / connector execution
 - governed logging + writeback
 - memory persistence through `memory_schema.json`
@@ -209,6 +216,7 @@ Agents should treat these files as the primary repository guidance sources, in t
 2. `system_bootstrap.md`
 3. `memory_schema.json`
 4. `direct_instructions_registry_patch.md`
+- `governanceValidationEngine` (explicitly called by `system_bootstrap` for validation)
 5. `module_loader.md`
 6. `prompt_router.md`
 
@@ -249,6 +257,7 @@ All meaningful execution should conceptually follow:
 - `prompt_router`
 - `module_loader`
 - `system_bootstrap`
+- `governanceValidationEngine` (explicitly called by `system_bootstrap` for validation)
 - runtime tool / connector execution
 - governed logging + writeback
 - memory persistence through `memory_schema.json`
@@ -264,6 +273,7 @@ Primary execution authority.
 Use it for:
 - activation behavior
 - tool-first execution rules
+- runtime validation enforcement (new)
 - live validation requirements
 - writeback and logging expectations
 - degraded vs validating vs active state classification
@@ -274,6 +284,7 @@ Persistent state contract (root of a decomposed schema set).
 Use it for:
 - durable execution memory
 - state field shape
+- `output_artifacts_state`, `sink_dispatch_state`, `agent_chain_state`, `local_connector_governance_state` (new)
 - structured persistence expectations
 
 Domain sub-schemas live in `schemas/` and are referenced via `$ref` from the root.
@@ -409,6 +420,10 @@ The architecture relies on a strictly **MySQL-primary registry**. While Google S
 - Execution Log Unified
 - JSON Asset Registry
 
+- `output_artifacts` (new)
+- `sink_dispatch_log` (new)
+- `agent_chain_events` (new)
+- `local_connector_user_configs` (new)
 When making execution decisions, agents should prefer live registry truth over:
 - prior turns
 - conversational assumptions
@@ -433,6 +448,8 @@ Important sinks:
 - `Execution Log Unified`
 - `JSON Asset Registry`
 
+- `output_artifacts` (new)
+- `sink_dispatch_log` (new)
 Execution should preserve:
 - execution trace id
 - route / workflow context
@@ -499,6 +516,7 @@ Key modules and their authority domains:
 - `mutationGovernance.js` / `governedChangeControl.js` - mutation classification, duplicate detection, exemption rules
 - `jobRunner.js` / `jobUtils.js` - async job dispatch and lifecycle management
 - `authInjection.js` / `authCredentialResolution.js` - credential resolution and auth header injection
+- `governanceValidationEngine.js` (new) - centralized validation and policy enforcement
 - `driveFileLoader.js` - Drive-backed schema and OAuth config loading (`supportsAllDrives: true`)
 - `github.js` / `hostinger.js` - provider connector entrypoints
 - `wordpress/` - 16 phase modules (A-P) for governed site migration
@@ -518,6 +536,7 @@ Common `http-generic-api` surfaces:
 - `/jobs`, `/jobs/{jobId}`, `/jobs/{jobId}/result` - async governed execution lifecycle
 - `/governance/resolve-context-diagnostic` - non-mutating governed context resolution
 - `/ai/implementation-plan`, `/ai/task-manifest`, `/ai/registry-readiness` - AI planning and registry binding checks
+- `/governance/validate-execution` (new) - endpoint for explicit validation checks
 - `/release/readiness` - platform readiness diagnostics
 - `/connector/dispatch` and `/planner/plans/{plan_id}/execute` - governed connector/workflow dispatch
 

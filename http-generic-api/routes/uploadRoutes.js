@@ -36,7 +36,7 @@ export function buildUploadRoutes(deps) {
   router.post("/uploads", requireBackendApiKey, async (req, res) => {
     const {
       upload_type, source_mode = "direct", content, filename,
-      repo_url, metadata: rawMeta = {}, uploaded_by, user_email,
+      repo_url, metadata: rawMeta = {}, uploaded_by, user_email, tenant_id,
     } = req.body || {};
 
     if (!upload_type || !VALID_TYPES.includes(upload_type)) {
@@ -76,13 +76,13 @@ export function buildUploadRoutes(deps) {
       await pool.query(
         `INSERT INTO \`uploads\`
            (upload_id, upload_type, source_mode, status, filename, mime_type, size_bytes,
-            drive_file_id, drive_folder_id, drive_web_url, metadata, uploaded_by, user_email, expires_at)
-         VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            drive_file_id, drive_folder_id, drive_web_url, metadata, uploaded_by, user_email, tenant_id, expires_at)
+         VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           uploadId, upload_type, source_mode,
           filename || null, mimeType, driveResult.size_bytes,
           driveResult.drive_file_id, driveResult.drive_folder_id, driveResult.drive_web_url,
-          JSON.stringify(meta), uploaded_by || null, user_email || null, expiresAt(),
+          JSON.stringify(meta), uploaded_by || null, user_email || null, tenant_id || null, expiresAt(),
         ]
       );
 
@@ -114,7 +114,7 @@ export function buildUploadRoutes(deps) {
 
   // POST /uploads/prepare — guided mode: create record + return instructions
   router.post("/uploads/prepare", requireBackendApiKey, async (req, res) => {
-    const { upload_type, metadata: rawMeta = {}, uploaded_by, user_email } = req.body || {};
+    const { upload_type, metadata: rawMeta = {}, uploaded_by, user_email, tenant_id } = req.body || {};
 
     if (!upload_type || !VALID_TYPES.includes(upload_type)) {
       return res.status(400).json({
@@ -132,9 +132,9 @@ export function buildUploadRoutes(deps) {
 
       await pool.query(
         `INSERT INTO \`uploads\`
-           (upload_id, upload_type, source_mode, status, metadata, instruction_set, uploaded_by, user_email, expires_at)
-         VALUES (?, ?, 'guided', 'awaiting_upload', ?, ?, ?, ?, ?)`,
-        [uploadId, upload_type, JSON.stringify(meta), JSON.stringify(instructions), uploaded_by || null, user_email || null, expiresAt()]
+           (upload_id, upload_type, source_mode, status, metadata, instruction_set, uploaded_by, user_email, tenant_id, expires_at)
+         VALUES (?, ?, 'guided', 'awaiting_upload', ?, ?, ?, ?, ?, ?)`,
+        [uploadId, upload_type, JSON.stringify(meta), JSON.stringify(instructions), uploaded_by || null, user_email || null, tenant_id || null, expiresAt()]
       );
 
       return res.status(200).json({

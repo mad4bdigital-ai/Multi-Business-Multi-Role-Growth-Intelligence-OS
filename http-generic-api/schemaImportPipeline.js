@@ -168,21 +168,23 @@ export async function runRollback({ actionKey, jobId, requestedBy = null }) {
 
   try {
     // Deprecate import-managed endpoints not in the target snapshot
+    let deprecateResult;
     if (activeIds.size > 0) {
-      await pool.query(
+      [deprecateResult] = await pool.query(
         `UPDATE \`endpoints\`
          SET status = 'deprecated', import_job_id = ?, schema_imported_at = NOW()
          WHERE parent_action_key = ? AND import_job_id IS NOT NULL AND endpoint_key NOT IN (?)`,
         [rollbackJobId, actionKey, [...activeIds]]
       );
     } else {
-      await pool.query(
+      [deprecateResult] = await pool.query(
         `UPDATE \`endpoints\`
          SET status = 'deprecated', import_job_id = ?, schema_imported_at = NOW()
          WHERE parent_action_key = ? AND import_job_id IS NOT NULL`,
         [rollbackJobId, actionKey]
       );
     }
+    const deprecated = deprecateResult?.affectedRows ?? 0;
 
     let restored = 0;
     for (const snap of snapshots) {
@@ -202,12 +204,12 @@ export async function runRollback({ actionKey, jobId, requestedBy = null }) {
 
     await pool.query(
       `UPDATE \`schema_import_jobs\`
-       SET endpoints_upserted = ?, endpoint_snapshots = ?, status = 'completed'
+       SET endpoints_upserted = ?, endpoints_deprecated = ?, endpoint_snapshots = ?, status = 'completed'
        WHERE job_id = ?`,
-      [restored, JSON.stringify(snapshots), rollbackJobId]
+      [restored, deprecated, JSON.stringify(snapshots), rollbackJobId]
     );
 
-    return { ok: true, job_id: rollbackJobId, action_key: actionKey, endpoints_restored: restored, rolled_back_to_job: jobId };
+    return { ok: true, job_id: rollbackJobId, action_key: actionKey, endpoints_restored: restored, endpoints_deprecated: deprecated, rolled_back_to_job: jobId };
   } catch (err) {
     await pool.query(
       "UPDATE `schema_import_jobs` SET status = 'failed', error_message = ? WHERE job_id = ?",

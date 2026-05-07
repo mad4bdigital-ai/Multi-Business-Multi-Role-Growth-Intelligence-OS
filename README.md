@@ -28,6 +28,7 @@ The intended execution chain is:
 1. `prompt_router`
 2. `module_loader`
 3. `system_bootstrap`
+4. `governanceValidationEngine` (new, implicitly part of system_bootstrap)
 4. runtime tool or connector execution
 5. governed logging and writeback
 6. durable memory persistence through `memory_schema.json`
@@ -144,6 +145,10 @@ Important governed surfaces include:
 - `Execution Log Unified`
 - `JSON Asset Registry`
 - `Brand Registry`
+- `output_artifacts` (new)
+- `sink_dispatch_log` (new)
+- `agent_chain_events` (new)
+- `local_connector_user_configs` (new)
 - `Hosting Account Registry`
 - `Brand Core Registry`
 

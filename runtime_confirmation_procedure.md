@@ -41,6 +41,8 @@ This script checks four governed behaviors:
 3. Dry-run site migration — `POST /site-migrations` with `apply: false` does not crash
 4. Local dispatch — `POST /http-execute` with `github_git_blob_chunk_read` does not throw `ReferenceError`
 5. Async job queue — `POST /jobs` enqueues and `GET /jobs/:id` returns a known status
+6. Governance Validation Engine — `POST /governance/validate-execution` returns expected validation status
+7. Local Connector Governance — `GET /local-connector/user-configs` returns expected configuration
 
 **Passing output ends with:**
 ```

@@ -216,12 +216,12 @@ export async function processUpload(uploadRecord) {
       try { skillDef = JSON.parse(raw); } catch { skillDef = (await import("yaml")).parse(raw); }
       const skillId = skillDef.skill_id || `skill_${upload_id}`;
       await pool.query(
-        `INSERT INTO \`agent_skills\` (skill_id, skill_key, display_name, description, parameters_schema, status)
+        `INSERT INTO \`agent_skills\` (skill_id, skill_key, display_name, description, capability_json, status)
          VALUES (?, ?, ?, ?, ?, 'active')
          ON DUPLICATE KEY UPDATE
            display_name = VALUES(display_name),
            description = VALUES(description),
-           parameters_schema = VALUES(parameters_schema),
+           capability_json = VALUES(capability_json),
            status = 'active'`,
         [
           skillId,

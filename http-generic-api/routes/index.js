@@ -34,6 +34,7 @@ import { buildAppIntegrationRoutes } from "./appIntegrationRoutes.js";
 import { buildDevAgentRoutes }       from "./devAgentRoutes.js";
 import { buildSchemaImportRoutes }   from "./schemaImportRoutes.js";
 import { buildUploadRoutes }         from "./uploadRoutes.js";
+import { buildTenantCommercialRoutes } from "./tenantCommercialRoutes.js";
 
 export function registerRoutes(app, deps) {
   app.use(buildRootDiscoveryRoutes());
@@ -71,6 +72,7 @@ export function registerRoutes(app, deps) {
   app.use(buildExecuteRoutes(deps));
   app.use(buildLegalRoutes(deps));
   app.use("/auth", buildAuthRoutes(deps));
+  app.use(buildTenantCommercialRoutes(deps));
   app.post("/admin/control", deps.requireBackendApiKey, requireAdminPrincipal, buildAdminControlHandler());
   app.use("/admin/cli", buildAdminCliRoutes(deps));
 }
