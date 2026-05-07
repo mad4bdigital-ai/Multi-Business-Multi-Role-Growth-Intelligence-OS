@@ -7,6 +7,8 @@ const CONNECTOR_PORT = 7070;
 const CONNECTOR_SUBDOMAIN_SUFFIX = ".connector.mad4b.com";
 const DNS_DOMAIN = "mad4b.com";
 const CONNECTOR_DNS_PARENT = "connector";
+const PLATFORM_TENANT_ID = "00000000-0000-4000-a000-000000000001";
+const PLATFORM_ADMIN_USER_ID = "00000000-0000-4000-a000-000000000002";
 
 const DEFAULT_WINDOWS_ALIASES = [
   { alias: "node_ver",       cmd: "node",     args: ["--version"],                              allow_extra_args: false, description: "Node.js version" },
@@ -15,6 +17,19 @@ const DEFAULT_WINDOWS_ALIASES = [
   { alias: "disk_usage",     cmd: "wmic",     args: ["logicaldisk", "get", "size,freespace,caption"], allow_extra_args: false, description: "Disk usage" },
   { alias: "n8n_health",     cmd: "curl",     args: ["-s", "--max-time", "10", "http://127.0.0.1:5678/"], allow_extra_args: false, description: "n8n health check" },
 ];
+
+function resolveLocalConnectorPrincipalAliases(userId, tenantId) {
+  const normalizedUser = String(userId || "").trim().toLowerCase();
+  const normalizedTenant = String(tenantId || "").trim().toLowerCase();
+  return {
+    userId: ["admin", "nagy", "platform_admin"].includes(normalizedUser)
+      ? PLATFORM_ADMIN_USER_ID
+      : userId,
+    tenantId: ["platform", "mad4b", "platform_owner"].includes(normalizedTenant)
+      ? PLATFORM_TENANT_ID
+      : tenantId,
+  };
+}
 
 // ── Cloudflare tunnel helpers ──────────────────────────────────────────────────
 
@@ -196,13 +211,16 @@ export function buildLocalConnectorInstallRoutes(deps) {
       if (!accountId) return res.status(500).json({ ok: false, error: { code: "missing_config", message: "CLOUDFLARE_ACCOUNT_ID not configured." } });
 
       const pool = getPool();
+      const principal = resolveLocalConnectorPrincipalAliases(user_id, tenant_id);
+      const resolvedUserId = principal.userId;
+      const resolvedTenantId = principal.tenantId;
 
-      const [[tenant]] = await pool.query("SELECT tenant_id FROM `tenants` WHERE tenant_id = ? LIMIT 1", [tenant_id]);
+      const [[tenant]] = await pool.query("SELECT tenant_id FROM `tenants` WHERE tenant_id = ? LIMIT 1", [resolvedTenantId]);
       if (!tenant) return res.status(404).json({ ok: false, error: { code: "tenant_not_found" } });
 
       const [[existing]] = await pool.query(
         "SELECT config_id, cf_tunnel_id, cf_token, connector_secret, tunnel_url FROM `local_connector_user_configs` WHERE user_id = ? AND tenant_id = ? AND device_id = ? LIMIT 1",
-        [user_id, tenant_id, device_id]
+        [resolvedUserId, resolvedTenantId, device_id]
       );
 
       let configId, tunnelId, tunnelToken, tunnelUrl, connectorSecret, dnsRecordName;
@@ -258,14 +276,14 @@ export function buildLocalConnectorInstallRoutes(deps) {
              cf_tunnel_name = VALUES(cf_tunnel_name),
              cf_token = VALUES(cf_token),
              is_enabled = 1`,
-          [configId, user_id, tenant_id, device_id, tunnelUrl, connectorSecret, tunnelId, tunnelName, tunnelToken]
+          [configId, resolvedUserId, resolvedTenantId, device_id, tunnelUrl, connectorSecret, tunnelId, tunnelName, tunnelToken]
         );
       }
 
       // Seed allowlist (idempotent)
       const [[cfgRow]] = await pool.query(
         "SELECT config_id FROM `local_connector_user_configs` WHERE user_id = ? AND tenant_id = ? AND device_id = ? LIMIT 1",
-        [user_id, tenant_id, device_id]
+        [resolvedUserId, resolvedTenantId, device_id]
       );
       const finalConfigId = cfgRow.config_id;
 
@@ -329,9 +347,10 @@ export function buildLocalConnectorInstallRoutes(deps) {
       if (!user_id || !tenant_id || !device_id) {
         return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "user_id, tenant_id, device_id required." } });
       }
+      const principal = resolveLocalConnectorPrincipalAliases(user_id, tenant_id);
       const [[config]] = await getPool().query(
         "SELECT config_id, tunnel_url, cf_tunnel_id, cf_tunnel_name, is_enabled, created_at, updated_at FROM `local_connector_user_configs` WHERE user_id = ? AND tenant_id = ? AND device_id = ? LIMIT 1",
-        [user_id, tenant_id, device_id]
+        [principal.userId, principal.tenantId, device_id]
       );
       if (!config) return res.status(200).json({ ok: true, installed: false });
 
@@ -352,9 +371,10 @@ export function buildLocalConnectorInstallRoutes(deps) {
       if (!user_id || !tenant_id || !device_id) {
         return res.status(400).json({ ok: false, error: { code: "missing_fields" } });
       }
+      const principal = resolveLocalConnectorPrincipalAliases(user_id, tenant_id);
       const [result] = await getPool().query(
         "UPDATE `local_connector_user_configs` SET is_enabled = 0 WHERE user_id = ? AND tenant_id = ? AND device_id = ?",
-        [user_id, tenant_id, device_id]
+        [principal.userId, principal.tenantId, device_id]
       );
       if (result.affectedRows === 0) return res.status(404).json({ ok: false, error: { code: "config_not_found" } });
       return res.status(200).json({ ok: true, message: "Local connector disabled for this device." });

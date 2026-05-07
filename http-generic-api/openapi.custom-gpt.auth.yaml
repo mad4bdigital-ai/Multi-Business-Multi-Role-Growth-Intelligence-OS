@@ -220,8 +220,8 @@ paths:
               type: object
               required: [user_id, tenant_id, device_id]
               properties:
-                user_id: { type: string }
-                tenant_id: { type: string }
+                user_id: { type: string, description: "User UUID; admin alias is accepted for platform admin." }
+                tenant_id: { type: string, description: "Tenant UUID; platform alias is accepted for platform tenant." }
                 device_id: { type: string, description: "Stable machine name, e.g. mohammedlap" }
                 hostname:
                   type: string
