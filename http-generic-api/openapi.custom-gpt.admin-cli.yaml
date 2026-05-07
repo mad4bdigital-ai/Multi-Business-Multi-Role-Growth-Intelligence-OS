@@ -1268,6 +1268,7 @@ paths:
                     - db
                     - env
                     - windows_app
+                    - hostinger
                 args:
                   oneOf:
                     - type: array
@@ -1322,6 +1323,30 @@ paths:
                 app_alias:
                   type: string
                   description: Allowlisted local Windows app alias for windows_app launch.
+                path:
+                  type: string
+                  description: 'Hostinger API path for the hostinger tool, e.g. /v1/dns/zone/mad4b.com/records or /v1/vps/virtual-machines'
+                method:
+                  type: string
+                  enum:
+                    - GET
+                    - POST
+                    - PUT
+                    - DELETE
+                    - PATCH
+                  default: GET
+                  description: HTTP method for the hostinger tool.
+                request_body:
+                  type: object
+                  additionalProperties: true
+                  description: JSON request body for POST/PUT/PATCH Hostinger API calls.
+                api_key_ref:
+                  type: string
+                  enum:
+                    - cloud_plan
+                    - shared_manager
+                  default: cloud_plan
+                  description: Which Hostinger API key to use. cloud_plan for VPS/cloud resources, shared_manager for shared hosting and domains.
       responses:
         '200':
           description: Admin control operation result
@@ -1345,6 +1370,7 @@ paths:
                       - db
                       - env
                       - windows_app
+                      - hostinger
                   result:
                     type: object
                     additionalProperties: true
@@ -1355,6 +1381,87 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           description: Admin control execution failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/cli/hostinger:
+    post:
+      tags:
+        - admin-control
+      security:
+        - backendBearerAuth: []
+      operationId: executeHostingerApiCall
+      summary: Forward a call to the Hostinger REST API
+      description: Proxy endpoint that forwards any Hostinger API call using the server-stored API keys. Use cloud_plan key for VPS, DNS, domains, and billing. Use shared_manager key for shared hosting. The Hostinger API base is https://developers.hostinger.com — supply only the path, e.g. /v1/dns/zone/mad4b.com/records.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - path
+              properties:
+                path:
+                  type: string
+                  description: 'Hostinger API path, e.g. /v1/dns/zone/mad4b.com/records or /v1/vps/virtual-machines'
+                method:
+                  type: string
+                  enum:
+                    - GET
+                    - POST
+                    - PUT
+                    - DELETE
+                    - PATCH
+                  default: GET
+                request_body:
+                  type: object
+                  additionalProperties: true
+                  description: JSON body for POST/PUT/PATCH requests.
+                params:
+                  type: object
+                  additionalProperties: true
+                  description: Query string parameters to append.
+                api_key_ref:
+                  type: string
+                  enum:
+                    - cloud_plan
+                    - shared_manager
+                  default: cloud_plan
+                  description: cloud_plan for VPS/DNS/domains/billing; shared_manager for shared hosting.
+      responses:
+        '200':
+          description: Hostinger API response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required:
+                  - ok
+                  - result
+                properties:
+                  ok:
+                    type: boolean
+                  result:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      status:
+                        type: integer
+                      ok:
+                        type: boolean
+                      data:
+                        type: object
+                        additionalProperties: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: Hostinger API call failure
           content:
             application/json:
               schema:

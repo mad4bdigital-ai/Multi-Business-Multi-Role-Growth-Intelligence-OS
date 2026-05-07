@@ -358,6 +358,46 @@ async function executeCliTool(tool, body = {}) {
   return executeSafe(command, args, { timeout_ms: body.timeout_ms });
 }
 
+async function executeHostingerControl(body = {}) {
+  const apiPath   = String(body.path   || "").trim();
+  const method    = String(body.method || "GET").toUpperCase();
+  const keyRef    = String(body.api_key_ref || "cloud_plan").trim();
+  const reqParams = body.params && typeof body.params === "object" ? body.params : {};
+  const reqBody   = body.request_body;
+
+  if (!apiPath) {
+    const err = new Error("path is required for hostinger control.");
+    err.status = 400; err.code = "missing_path"; throw err;
+  }
+
+  const apiKey = keyRef === "shared_manager"
+    ? process.env.HOSTINGER_SHARED_MANAGER_01_API_KEY
+    : process.env.HOSTINGER_CLOUD_PLAN_01_API_KEY;
+
+  if (!apiKey) {
+    const err = new Error(`Hostinger API key not configured (api_key_ref: ${keyRef}).`);
+    err.status = 500; err.code = "hostinger_key_missing"; throw err;
+  }
+
+  const url = new URL(apiPath.startsWith("/") ? apiPath : `/${apiPath}`, "https://developers.hostinger.com");
+  for (const [k, v] of Object.entries(reqParams)) url.searchParams.set(k, String(v));
+
+  const fetchOpts = {
+    method,
+    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+  };
+  if (reqBody !== undefined && method !== "GET") {
+    fetchOpts.body = JSON.stringify(reqBody);
+  }
+
+  const res  = await fetch(url.toString(), fetchOpts);
+  const text = await res.text().catch(() => "");
+  let data;
+  try { data = JSON.parse(text); } catch { data = { raw: text }; }
+
+  return { status: res.status, ok: res.ok, data };
+}
+
 async function executeAdminControl(body = {}) {
   const tool = String(body.tool || "").trim().toLowerCase();
 
@@ -377,7 +417,11 @@ async function executeAdminControl(body = {}) {
     return { tool, result: handleWindowsAppControl(body) };
   }
 
-  const err = new Error("tool must be one of github, gcloud, db, env, or windows_app.");
+  if (tool === "hostinger") {
+    return { tool, result: await executeHostingerControl(body) };
+  }
+
+  const err = new Error("tool must be one of github, gcloud, db, env, windows_app, or hostinger.");
   err.status = 400;
   err.code = "unsupported_admin_control_tool";
   throw err;
@@ -395,7 +439,9 @@ function auditAdminControl(tool, body) {
       env_action: tool === "env" ? body.action || "list" : undefined,
       env_name: tool === "env" ? body.name : undefined,
       windows_app_action: tool === "windows_app" ? body.action || "list" : undefined,
-      windows_app_alias: tool === "windows_app" ? body.app_alias : undefined
+      windows_app_alias: tool === "windows_app" ? body.app_alias : undefined,
+      hostinger_path: tool === "hostinger" ? body.path : undefined,
+      hostinger_method: tool === "hostinger" ? body.method || "GET" : undefined
     }
   });
 }
@@ -479,6 +525,25 @@ export function buildAdminCliRoutes(deps) {
   });
 
   router.post("/control", requireBackendApiKey, requireAdminPrincipal, adminControlHandler);
+
+  router.post("/hostinger", requireBackendApiKey, requireAdminPrincipal, async (req, res) => {
+    const body = req.body || {};
+    try {
+      writeAuditLogAsync({
+        action: "admin_cli.hostinger",
+        resource_type: "hostinger_api",
+        resource_id: body.path || "unknown",
+        payload: { method: body.method || "GET", path: body.path, api_key_ref: body.api_key_ref || "cloud_plan" },
+      });
+      const result = await executeHostingerControl(body);
+      return res.status(200).json({ ok: true, result });
+    } catch (err) {
+      return res.status(err.status || 500).json({
+        ok: false,
+        error: { code: err.code || "hostinger_failed", message: err.message },
+      });
+    }
+  });
 
   return router;
 }
