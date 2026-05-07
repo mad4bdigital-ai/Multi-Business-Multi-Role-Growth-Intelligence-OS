@@ -1,0 +1,7 @@
+tunnel: 95e4ba8c-782b-4819-9f80-04af4457ce73
+credentials-file: C:\Users\IT\.cloudflared\95e4ba8c-782b-4819-9f80-04af4457ce73.json
+
+ingress:
+  - hostname: connector.mad4b.com
+    service: http://localhost:3001
+  - service: http_status:404
