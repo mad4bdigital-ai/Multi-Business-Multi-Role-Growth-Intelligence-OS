@@ -174,7 +174,7 @@ The GPT uses exactly **two** action connectors. Custom GPT is limited to 10 conn
 | `getActivationPlatformAccess` | `GET /activation/platform-access` | Refresh access scope, counts, and degraded surfaces |
 | `dispatch` | `POST /dispatch` | Universal intent dispatcher â€” routes to correct module at runtime |
 | `listDispatchRoutes` | `GET /dispatch/routes` | List all active task_routes and which are directly dispatched |
-| `installDevice` | `POST /local-connector/install` | Provision Cloudflare tunnel + DNS + DB config + install.bat for a user/device |
+| `installDevice` | `POST /local-connector/install` | Provision Cloudflare tunnel + DNS + DB config + install.bat for a user/device. Admin uses env credentials; customer/API auth uses DB app connections. |
 | `deviceInstallStatus` | `GET /local-connector/install/status` | Check if a device has been provisioned |
 | `deviceHealth` | `GET /local-connector/health` | Proxy health check to device tunnel without knowing its secret |
 | `schemaImportUpload` | `POST /admin/schema-import/upload` | Import JSON/YAML schema or repo URL into the platform |

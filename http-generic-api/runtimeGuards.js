@@ -1,4 +1,6 @@
 import jwt from "jsonwebtoken";
+import { createHash } from "node:crypto";
+import { getPool } from "./db.js";
 
 export function requireEnv(name, value) {
   if (value === undefined || value === null || value === "") {
@@ -29,7 +31,7 @@ export function createBackendApiKeyMiddleware(env) {
   const expected = env?.BACKEND_API_KEY;
   const jwtSecret = env?.JWT_SECRET || "development_fallback_secret_only";
 
-  return function requireBackendApiKey(req, res, next) {
+  return async function requireBackendApiKey(req, res, next) {
     if (!enabled) return next();
 
     const auth = req.headers.authorization || req.header("Authorization") || "";
@@ -84,11 +86,19 @@ export function createBackendApiKeyMiddleware(env) {
         principal_type: "user",
         is_admin: false,
         user_id: payload.user_id || null,
+        tenant_id: payload.tenant_id || null,
         email: payload.email || null,
         claims: payload
       };
       return next();
     } catch {
+      if (/^pk_[A-Za-z0-9]{8}_[A-Za-z0-9]+$/.test(String(bearerToken || "").trim())) {
+        const apiCredential = await resolveApiCredentialAuth(bearerToken).catch(() => null);
+        if (apiCredential) {
+          req.auth = apiCredential;
+          return next();
+        }
+      }
       return res.status(403).json({
         ok: false,
         error: {
@@ -98,5 +108,43 @@ export function createBackendApiKeyMiddleware(env) {
         }
       });
     }
+  };
+}
+
+async function resolveApiCredentialAuth(token) {
+  const normalized = String(token || "").trim();
+  const match = normalized.match(/^pk_([A-Za-z0-9]{8})_[A-Za-z0-9]+$/);
+  if (!match) return null;
+
+  const keyPrefix = match[1];
+  const keyHash = createHash("sha256").update(normalized).digest("hex");
+  const [rows] = await getPool().query(
+    `SELECT ac.credential_id, ac.app_id, ac.tenant_id, ac.scopes, da.created_by
+       FROM \`api_credentials\` ac
+       LEFT JOIN \`developer_apps\` da ON da.app_id = ac.app_id
+      WHERE ac.key_prefix = ?
+        AND ac.key_hash = ?
+        AND ac.status = 'active'
+        AND (ac.expires_at IS NULL OR ac.expires_at > NOW())
+      LIMIT 1`,
+    [keyPrefix, keyHash]
+  );
+  const credential = rows[0];
+  if (!credential) return null;
+
+  await getPool().query(
+    "UPDATE `api_credentials` SET last_used_at = NOW() WHERE credential_id = ?",
+    [credential.credential_id]
+  ).catch(() => {});
+
+  return {
+    mode: "api_credential",
+    principal_type: "api_client",
+    is_admin: false,
+    tenant_id: credential.tenant_id,
+    user_id: credential.created_by || null,
+    app_id: credential.app_id,
+    credential_id: credential.credential_id,
+    scopes: String(credential.scopes || "").split(",").map((s) => s.trim()).filter(Boolean),
   };
 }

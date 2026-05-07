@@ -23,8 +23,8 @@ components:
     backendBearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: Backend API Key
-      description: "Send Authorization: Bearer <BACKEND_API_KEY>"
+      bearerFormat: Backend API Key, user JWT, or platform API key
+      description: "Send Authorization: Bearer <BACKEND_API_KEY|USER_JWT|pk_api_key>"
   schemas:
     DispatchResult:
       type: object
@@ -211,7 +211,7 @@ paths:
       tags: [device]
       operationId: installDevice
       summary: Provision a Cloudflare tunnel and local connector for a user device
-      description: Creates a Cloudflare tunnel, adds DNS CNAME, seeds shell allowlist, returns install.bat. Idempotent. Pass reprovision=true to rotate the tunnel and secret.
+      description: Creates tunnel, DNS, allowlist, and install.bat. Owner/admin uses env credentials; user/API clients use DB app connections.
       requestBody:
         required: true
         content:
@@ -226,6 +226,12 @@ paths:
                 hostname:
                   type: string
                   description: Optional full route hostname under .connector.mad4b.com. Omit to auto-generate from user_id and device_id.
+                cloudflare_connection_id:
+                  type: string
+                  description: Optional DB app connection for non-admin Cloudflare credentials.
+                hostinger_connection_id:
+                  type: string
+                  description: Optional DB app connection for non-admin Hostinger credentials.
                 reprovision: { type: boolean, default: false }
                 custom_aliases:
                   type: array

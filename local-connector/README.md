@@ -154,6 +154,14 @@ Generated hostnames use the shape:
 
 The optional `hostname` request field may override this, but it must remain under `.connector.mad4b.com`.
 
+Credential source depends on auth:
+
+- owner/admin bearer auth uses Cloud Run root env credentials for Cloudflare and Hostinger.
+- signed-in users and tenant API keys resolve `cloudflare` and `hostinger` credentials from `user_app_connections`.
+- API-key callers must belong to the same tenant and provide the target `user_id` when the key is app-level.
+
+When a user logs in from a new device, call the same install route with the new `device_id`; the route is idempotent for existing devices and provisions a new tunnel/DNS path for new devices.
+
 This makes provisioning fully automated for any user/device. The platform stores `connector_secret` per device and uses it when proxying requests through `/dispatch`.
 
 ---

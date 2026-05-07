@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getPool } from "../db.js";
 import { createHash, randomUUID } from "node:crypto";
+import { decryptCredentials } from "../tokenEncryption.js";
 
 const CF_API = "https://api.cloudflare.com/client/v4";
 const CONNECTOR_PORT = 7070;
@@ -31,18 +32,181 @@ function resolveLocalConnectorPrincipalAliases(userId, tenantId) {
   };
 }
 
+function firstString(...values) {
+  for (const value of values) {
+    const str = String(value || "").trim();
+    if (str) return str;
+  }
+  return "";
+}
+
+function parseMaybeJsonObject(value) {
+  if (!value) return {};
+  if (typeof value === "object") return value;
+  try {
+    const parsed = JSON.parse(String(value));
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function httpError(status, code, message) {
+  const err = new Error(message || code);
+  err.status = status;
+  err.code = code;
+  return err;
+}
+
+async function assertActiveMembership(userId, tenantId) {
+  const [rows] = await getPool().query(
+    "SELECT 1 FROM `memberships` WHERE user_id = ? AND tenant_id = ? AND status = 'active' LIMIT 1",
+    [userId, tenantId]
+  );
+  if (!rows.length) throw httpError(403, "membership_required", "User is not an active member of this tenant.");
+}
+
+function assertApiCredentialScope(req, acceptedScopes = []) {
+  if (req.auth?.mode !== "api_credential") return;
+  const scopes = Array.isArray(req.auth.scopes) ? req.auth.scopes : [];
+  if (!scopes.length) return;
+  const allowed = acceptedScopes.some((scope) => scopes.includes(scope)) || scopes.includes("local_connector.*");
+  if (!allowed) throw httpError(403, "scope_not_granted", `API credential requires one of: ${acceptedScopes.join(", ")}`);
+}
+
+async function resolveRequestedLocalPrincipal(req, { user_id, tenant_id }) {
+  if (req.auth?.is_admin === true) {
+    const principal = resolveLocalConnectorPrincipalAliases(user_id, tenant_id);
+    return { ...principal, source: "admin_env" };
+  }
+
+  if (req.auth?.mode === "user_jwt") {
+    const userId = req.auth.user_id;
+    const tenantId = req.auth.tenant_id || tenant_id;
+    if (!userId || !tenantId) throw httpError(400, "missing_principal", "Signed-in user and tenant_id are required.");
+    if (req.auth.tenant_id && tenant_id && req.auth.tenant_id !== tenant_id) {
+      throw httpError(403, "tenant_mismatch", "Request tenant_id does not match the signed-in user's token.");
+    }
+    await assertActiveMembership(userId, tenantId);
+    return { userId, tenantId, source: "user_jwt" };
+  }
+
+  if (req.auth?.mode === "api_credential") {
+    assertApiCredentialScope(req, ["local_connector.install", "local_connector.manage"]);
+    const tenantId = req.auth.tenant_id;
+    const userId = user_id || req.auth.user_id;
+    if (!tenantId || !userId) {
+      throw httpError(400, "missing_principal", "API credential calls require a user_id for the device owner.");
+    }
+    if (tenant_id && tenant_id !== tenantId) {
+      throw httpError(403, "tenant_mismatch", "Request tenant_id does not match the API credential tenant.");
+    }
+    await assertActiveMembership(userId, tenantId);
+    return { userId, tenantId, source: "api_credential" };
+  }
+
+  throw httpError(403, "unsupported_auth_mode", "Unsupported authentication mode for local connector install.");
+}
+
+async function loadConnectionCredentials({ connectionId = null, tenantId, userId, appKeys = [] }) {
+  const params = [];
+  let sql = "SELECT * FROM `user_app_connections` WHERE status = 'active'";
+  if (connectionId) {
+    sql += " AND connection_id = ?";
+    params.push(connectionId);
+  } else {
+    sql += " AND tenant_id = ? AND app_key IN (?) AND (user_id = ? OR is_primary = 1)";
+    params.push(tenantId, appKeys, userId);
+  }
+  sql += " ORDER BY (user_id = ?) DESC, is_primary DESC, connected_at DESC LIMIT 1";
+  params.push(userId);
+
+  const [rows] = await getPool().query(sql, params);
+  const connection = rows[0];
+  if (!connection) return null;
+  return {
+    connection,
+    credentials: decryptCredentials(connection.encrypted_credentials) || {},
+  };
+}
+
+async function resolveProvisioningCredentials(req, principal, body = {}) {
+  if (req.auth?.is_admin === true) {
+    return {
+      source: "server_env",
+      cloudflareAccountId: process.env.CLOUDFLARE_ACCOUNT_ID,
+      cloudflareToken: process.env.CLOUDFLARE_API_TOKEN,
+      hostingerToken: hostingerApiKey(),
+    };
+  }
+
+  const cloudflare = await loadConnectionCredentials({
+    connectionId: body.cloudflare_connection_id || null,
+    tenantId: principal.tenantId,
+    userId: principal.userId,
+    appKeys: ["cloudflare"],
+  });
+  const hostinger = await loadConnectionCredentials({
+    connectionId: body.hostinger_connection_id || null,
+    tenantId: principal.tenantId,
+    userId: principal.userId,
+    appKeys: ["hostinger"],
+  });
+
+  const cloudflareCreds = cloudflare?.credentials || {};
+  const hostingerCreds = hostinger?.credentials || {};
+  const cloudflareMetadata = parseMaybeJsonObject(cloudflare?.connection?.account_metadata);
+  const cloudflareToken = firstString(
+    cloudflareCreds.cloudflare_api_token,
+    cloudflareCreds.api_token,
+    cloudflareCreds.bearer_token,
+    cloudflareCreds.api_key,
+    cloudflareCreds.access_token
+  );
+  const cloudflareAccountId = firstString(
+    cloudflareCreds.cloudflare_account_id,
+    cloudflareCreds.account_id,
+    cloudflareMetadata.cloudflare_account_id,
+    cloudflareMetadata.account_id
+  );
+  const hostingerToken = firstString(
+    hostingerCreds.hostinger_api_token,
+    hostingerCreds.api_token,
+    hostingerCreds.bearer_token,
+    hostingerCreds.api_key,
+    hostingerCreds.access_token
+  );
+
+  if (!cloudflareToken || !cloudflareAccountId || !hostingerToken) {
+    throw httpError(
+      403,
+      "customer_credentials_required",
+      "Customer local integration routing requires active DB app connections for cloudflare and hostinger credentials."
+    );
+  }
+
+  return {
+    source: "db_user_app_connections",
+    cloudflareAccountId,
+    cloudflareToken,
+    hostingerToken,
+    cloudflareConnectionId: cloudflare.connection.connection_id,
+    hostingerConnectionId: hostinger.connection.connection_id,
+  };
+}
+
 // ── Cloudflare tunnel helpers ──────────────────────────────────────────────────
 
-function cfHeaders() {
-  const token = process.env.CLOUDFLARE_API_TOKEN;
+function cfHeaders(tokenOverride = null) {
+  const token = tokenOverride || process.env.CLOUDFLARE_API_TOKEN;
   if (!token) throw new Error("CLOUDFLARE_API_TOKEN not configured.");
   return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 }
 
-async function cfRequest(method, path, body) {
+async function cfRequest(method, path, body, tokenOverride = null) {
   const res = await fetch(`${CF_API}${path}`, {
     method,
-    headers: cfHeaders(),
+    headers: cfHeaders(tokenOverride),
     body: body ? JSON.stringify(body) : undefined,
     signal: AbortSignal.timeout(20000),
   });
@@ -51,19 +215,19 @@ async function cfRequest(method, path, body) {
   return json.result;
 }
 
-async function provisionTunnel(accountId, tunnelName) {
+async function provisionTunnel(accountId, tunnelName, cfToken = null) {
   const tunnel = await cfRequest("POST", `/accounts/${accountId}/cfd_tunnel`, {
     name: tunnelName,
     tunnel_secret: Buffer.from(randomUUID().replace(/-/g, ""), "hex").toString("base64"),
     config_src: "cloudflare",
-  });
-  const tokenResult = await cfRequest("GET", `/accounts/${accountId}/cfd_tunnel/${tunnel.id}/token`);
+  }, cfToken);
+  const tokenResult = await cfRequest("GET", `/accounts/${accountId}/cfd_tunnel/${tunnel.id}/token`, null, cfToken);
   return { tunnelId: tunnel.id, tunnelName: tunnel.name, token: tokenResult };
 }
 
-async function readTunnelIngress(accountId, tunnelId) {
+async function readTunnelIngress(accountId, tunnelId, cfToken = null) {
   try {
-    const result = await cfRequest("GET", `/accounts/${accountId}/cfd_tunnel/${tunnelId}/configurations`);
+    const result = await cfRequest("GET", `/accounts/${accountId}/cfd_tunnel/${tunnelId}/configurations`, null, cfToken);
     return Array.isArray(result?.config?.ingress) ? result.config.ingress : [];
   } catch (err) {
     console.warn("[install] Cloudflare ingress read warning:", err.message);
@@ -83,16 +247,17 @@ function upsertIngressEntry(existingIngress, hostname, serviceUrl) {
   ];
 }
 
-async function publishTunnelIngress(accountId, tunnelId, hostname, serviceUrl = `http://localhost:${CONNECTOR_PORT}`) {
-  const existingIngress = await readTunnelIngress(accountId, tunnelId);
+async function publishTunnelIngress(accountId, tunnelId, hostname, serviceUrl = `http://localhost:${CONNECTOR_PORT}`, cfToken = null) {
+  const existingIngress = await readTunnelIngress(accountId, tunnelId, cfToken);
   return cfRequest("PUT", `/accounts/${accountId}/cfd_tunnel/${tunnelId}/configurations`, {
     config: {
       ingress: upsertIngressEntry(existingIngress, hostname, serviceUrl),
     },
-  });
+  }, cfToken);
 }
 
-function hostingerApiKey() {
+function hostingerApiKey(tokenOverride = null) {
+  if (tokenOverride) return tokenOverride;
   return (
     process.env.HOSTINGER_CLOUD_PLAN_01_API_KEY ||
     process.env.HOSTINGER_API_TOKEN ||
@@ -101,11 +266,11 @@ function hostingerApiKey() {
   );
 }
 
-async function upsertHostingerCname(recordName, tunnelId) {
+async function upsertHostingerCname(recordName, tunnelId, hostingerToken = null) {
   const target = `${tunnelId}.cfargotunnel.com.`;
   const res = await fetch(`https://developers.hostinger.com/api/v1/dns/zone/${encodeURIComponent(DNS_DOMAIN)}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${hostingerApiKey()}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${hostingerApiKey(hostingerToken)}` },
     body: JSON.stringify({ records: [{ name: recordName, type: "CNAME", ttl: 300, content: target }] }),
     signal: AbortSignal.timeout(15000),
   });
@@ -207,13 +372,13 @@ export function buildLocalConnectorInstallRoutes(deps) {
         return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "user_id, tenant_id, device_id required." } });
       }
 
-      const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-      if (!accountId) return res.status(500).json({ ok: false, error: { code: "missing_config", message: "CLOUDFLARE_ACCOUNT_ID not configured." } });
-
       const pool = getPool();
-      const principal = resolveLocalConnectorPrincipalAliases(user_id, tenant_id);
+      const principal = await resolveRequestedLocalPrincipal(req, { user_id, tenant_id });
       const resolvedUserId = principal.userId;
       const resolvedTenantId = principal.tenantId;
+      const provisioningCredentials = await resolveProvisioningCredentials(req, principal, req.body || {});
+      const accountId = provisioningCredentials.cloudflareAccountId;
+      if (!accountId) return res.status(500).json({ ok: false, error: { code: "missing_config", message: "Cloudflare account id not configured." } });
 
       const [[tenant]] = await pool.query("SELECT tenant_id FROM `tenants` WHERE tenant_id = ? LIMIT 1", [resolvedTenantId]);
       if (!tenant) return res.status(404).json({ ok: false, error: { code: "tenant_not_found" } });
@@ -235,23 +400,23 @@ export function buildLocalConnectorInstallRoutes(deps) {
         dnsRecordName = tunnelUrl ? new URL(tunnelUrl).hostname.slice(0, -`.${DNS_DOMAIN}`.length) : null;
         if (tunnelId && tunnelUrl && dnsRecordName) {
           const existingHostname = new URL(tunnelUrl).hostname;
-          await publishTunnelIngress(accountId, tunnelId, existingHostname);
+          await publishTunnelIngress(accountId, tunnelId, existingHostname, `http://localhost:${CONNECTOR_PORT}`, provisioningCredentials.cloudflareToken);
           try {
-            await upsertHostingerCname(dnsRecordName, tunnelId);
+            await upsertHostingerCname(dnsRecordName, tunnelId, provisioningCredentials.hostingerToken);
           } catch (dnsErr) {
             console.warn("[install] DNS warning:", dnsErr.message);
           }
         }
       } else {
         // Provision a new Cloudflare tunnel
-        const route = buildUserDeviceRoute({ userId: user_id, deviceId: device_id, requestedHostname: hostname });
-        const tunnelName = `${safeDnsLabel(user_id, "user")}-${safeDnsLabel(device_id, "device")}-connector`.slice(0, 128);
-        const { tunnelId: newTunnelId, token } = await provisionTunnel(accountId, tunnelName);
-        await publishTunnelIngress(accountId, newTunnelId, route.hostname);
+        const route = buildUserDeviceRoute({ userId: resolvedUserId, deviceId: device_id, requestedHostname: hostname });
+        const tunnelName = `${safeDnsLabel(resolvedUserId, "user")}-${safeDnsLabel(device_id, "device")}-connector`.slice(0, 128);
+        const { tunnelId: newTunnelId, token } = await provisionTunnel(accountId, tunnelName, provisioningCredentials.cloudflareToken);
+        await publishTunnelIngress(accountId, newTunnelId, route.hostname, `http://localhost:${CONNECTOR_PORT}`, provisioningCredentials.cloudflareToken);
 
         // Add CNAME via Hostinger
         try {
-          await upsertHostingerCname(route.recordName, newTunnelId);
+          await upsertHostingerCname(route.recordName, newTunnelId, provisioningCredentials.hostingerToken);
         } catch (dnsErr) {
           // Non-fatal if CNAME already exists — log and continue
           console.warn("[install] DNS warning:", dnsErr.message);
@@ -319,6 +484,7 @@ export function buildLocalConnectorInstallRoutes(deps) {
         },
         connector_secret: connectorSecret,
         cf_tunnel_id: tunnelId,
+        credential_source: provisioningCredentials.source,
         cloud_run_env: {
           CONNECTOR_LOCAL_API_KEY: connectorSecret,
           instruction: `gcloud run services update http-generic-api --region=europe-west1 --update-env-vars="CONNECTOR_LOCAL_API_KEY=${connectorSecret}"`,
@@ -336,7 +502,7 @@ export function buildLocalConnectorInstallRoutes(deps) {
         },
       });
     } catch (err) {
-      return res.status(500).json({ ok: false, error: { code: "install_failed", message: err.message } });
+      return res.status(err.status || 500).json({ ok: false, error: { code: err.code || "install_failed", message: err.message } });
     }
   });
 
@@ -347,7 +513,7 @@ export function buildLocalConnectorInstallRoutes(deps) {
       if (!user_id || !tenant_id || !device_id) {
         return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "user_id, tenant_id, device_id required." } });
       }
-      const principal = resolveLocalConnectorPrincipalAliases(user_id, tenant_id);
+      const principal = await resolveRequestedLocalPrincipal(req, { user_id, tenant_id });
       const [[config]] = await getPool().query(
         "SELECT config_id, tunnel_url, cf_tunnel_id, cf_tunnel_name, is_enabled, created_at, updated_at FROM `local_connector_user_configs` WHERE user_id = ? AND tenant_id = ? AND device_id = ? LIMIT 1",
         [principal.userId, principal.tenantId, device_id]
@@ -360,7 +526,7 @@ export function buildLocalConnectorInstallRoutes(deps) {
       );
       return res.status(200).json({ ok: true, installed: true, config, aliases });
     } catch (err) {
-      return res.status(500).json({ ok: false, error: { code: "status_failed", message: err.message } });
+      return res.status(err.status || 500).json({ ok: false, error: { code: err.code || "status_failed", message: err.message } });
     }
   });
 
@@ -371,7 +537,7 @@ export function buildLocalConnectorInstallRoutes(deps) {
       if (!user_id || !tenant_id || !device_id) {
         return res.status(400).json({ ok: false, error: { code: "missing_fields" } });
       }
-      const principal = resolveLocalConnectorPrincipalAliases(user_id, tenant_id);
+      const principal = await resolveRequestedLocalPrincipal(req, { user_id, tenant_id });
       const [result] = await getPool().query(
         "UPDATE `local_connector_user_configs` SET is_enabled = 0 WHERE user_id = ? AND tenant_id = ? AND device_id = ?",
         [principal.userId, principal.tenantId, device_id]
@@ -379,7 +545,7 @@ export function buildLocalConnectorInstallRoutes(deps) {
       if (result.affectedRows === 0) return res.status(404).json({ ok: false, error: { code: "config_not_found" } });
       return res.status(200).json({ ok: true, message: "Local connector disabled for this device." });
     } catch (err) {
-      return res.status(500).json({ ok: false, error: { code: "uninstall_failed", message: err.message } });
+      return res.status(err.status || 500).json({ ok: false, error: { code: err.code || "uninstall_failed", message: err.message } });
     }
   });
 

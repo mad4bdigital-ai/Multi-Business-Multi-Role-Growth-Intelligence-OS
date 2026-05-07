@@ -203,18 +203,19 @@ Completed sprints: WordPress extraction (S2), http-generic-api decomposition (S3
 
 - `http-generic-api/services/localConnectorOrchestrator.js` â€” factory-pattern orchestrator that executes governed shell/file/health ops on user devices via Cloudflare tunnel. Token from `local_connector_user_configs.connector_secret`.
 - `http-generic-api/routes/localConnectorRoutes.js` â€” `POST /local-connector/shell`, `POST /local-connector/file/read`, `POST /local-connector/file/write`, `GET /local-connector/health`.
-- `http-generic-api/routes/localConnectorInstallRoutes.js` â€” `POST /local-connector/install` auto-provisions a Cloudflare tunnel per user/device (CF API + Hostinger DNS), seeds shell allowlist, returns `install.bat`. Idempotent. `GET /local-connector/install/status`, `DELETE /local-connector/uninstall`.
+- `http-generic-api/routes/localConnectorInstallRoutes.js` â€” `POST /local-connector/install` auto-provisions a Cloudflare tunnel per user/device (CF API + Hostinger DNS), seeds shell allowlist, returns `install.bat`. Owner/admin auth uses root env credentials; user/API-client auth resolves Cloudflare and Hostinger credentials from DB app connections. Idempotent for repeat login and new-device routing.
 - `http-generic-api/routes/dispatchRoutes.js` â€” `POST /dispatch` universal intent dispatcher: resolves `intent_key â†’ task_routes â†’ target_module â†’ MODULE_EXECUTORS`, validates agent skill grants, executes or returns routing advice. `GET /dispatch/routes` lists all active routes with `directly_dispatched` flag.
 - `http-generic-api/openapi.custom-gpt.auth.yaml` â€” consolidated 16-operation OpenAPI spec for `auth.mad4b.com`, replacing 8+ separate scoped connectors in the GPT and centralizing activation, dispatch, GCloud, DNS, schema, admin, and device provisioning.
 - `local-connector/` â€” Node.js break-glass connector running on `mohammedlap` at port 7070, exposed via Cloudflare Tunnel to `connector.mad4b.com`. Also routes `n8n.mad4b.com â†’ localhost:5678`.
 
-### Migrations (032â€“034)
+### Migrations (032â€“035)
 
 | File | Sprint | Content |
 |---|---|---|
 | `032_sprint35_local_connector_seed.sql` | S35 | `connector_secret` column, mohammedlap device seed, shell allowlist |
 | `033_sprint36_tunnel_provisioning.sql` | S36 | `cf_tunnel_id`, `cf_tunnel_name`, `cf_token` columns |
 | `034_sprint37_local_connector_workflow_routes.sql` | S37 | workflows, task_routes, agent_skills (skl-loc-con-001/002/003), agent_skill_grants, agent_workflow_bindings, agent_supervision_policy |
+| `035_sprint39_customer_local_integration_credentials.sql` | S39 | `cloudflare` and `hostinger` app integration catalog rows for customer-owned routing credentials |
 
 ### Custom GPT â€” 2-connector architecture (Sprint 38)
 
