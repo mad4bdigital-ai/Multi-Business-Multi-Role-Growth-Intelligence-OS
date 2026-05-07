@@ -1269,6 +1269,7 @@ paths:
                     - env
                     - windows_app
                     - hostinger
+                    - shell
                 args:
                   oneOf:
                     - type: array
@@ -1347,6 +1348,14 @@ paths:
                     - shared_manager
                   default: cloud_plan
                   description: Which Hostinger API key to use. cloud_plan for VPS/cloud resources, shared_manager for shared hosting and domains.
+                alias:
+                  type: string
+                  description: Shell command alias to run. Must exist in ADMIN_SHELL_ALLOWLIST. Use with tool=shell, action=run.
+                extra_args:
+                  type: array
+                  items:
+                    type: string
+                  description: Extra arguments appended after the allowlisted shell command args. Only permitted if the alias has allow_extra_args=true. Shell metacharacters are rejected.
       responses:
         '200':
           description: Admin control operation result
@@ -1371,6 +1380,7 @@ paths:
                       - env
                       - windows_app
                       - hostinger
+                      - shell
                   result:
                     type: object
                     additionalProperties: true

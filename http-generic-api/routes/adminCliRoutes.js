@@ -8,6 +8,9 @@ const MAX_COMMAND_TIMEOUT_MS = 600000;
 const SENSITIVE_ENV_PATTERN = /(password|passwd|pwd|secret|token|key|credential|private|auth|cookie|session)/i;
 const LOCAL_WINDOWS_APP_ALLOWLIST_ENV = "LOCAL_WINDOWS_APP_ALLOWLIST";
 const LOCAL_WINDOWS_APP_CONTROL_ENABLED_ENV = "LOCAL_WINDOWS_APP_CONTROL_ENABLED";
+const ADMIN_SHELL_ALLOWLIST_ENV = "ADMIN_SHELL_ALLOWLIST";
+const ADMIN_SHELL_ENABLED_ENV   = "ADMIN_SHELL_ENABLED";
+const EXTRA_ARG_UNSAFE_PATTERN  = /[;&|`$<>\\!{}()\n\r]/;
 
 export function parseArgs(input) {
   if (Array.isArray(input)) return input.map((arg) => String(arg));
@@ -358,6 +361,107 @@ async function executeCliTool(tool, body = {}) {
   return executeSafe(command, args, { timeout_ms: body.timeout_ms });
 }
 
+function loadShellAllowlist(env = process.env) {
+  const raw = String(env[ADMIN_SHELL_ALLOWLIST_ENV] || "").trim();
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("must be a JSON object");
+    return parsed;
+  } catch (e) {
+    const err = new Error(`${ADMIN_SHELL_ALLOWLIST_ENV} must be valid JSON object: ${e.message}`);
+    err.status = 500; err.code = "invalid_shell_allowlist"; throw err;
+  }
+}
+
+function getShellAllowlist(env = process.env) {
+  return Object.entries(loadShellAllowlist(env)).map(([alias, entry]) => {
+    const normalized = String(alias).trim().toLowerCase();
+    if (!/^[a-z0-9_-]{1,64}$/.test(normalized)) {
+      const err = new Error(`Shell alias '${alias}' must use only lowercase letters, numbers, underscore, or dash.`);
+      err.status = 500; err.code = "invalid_shell_alias"; throw err;
+    }
+    const value     = typeof entry === "string" ? { command: entry, args: [] } : entry;
+    const command   = String(value?.command || "").trim();
+    const args      = Array.isArray(value?.args) ? value.args.map(String) : [];
+    const display   = String(value?.display_name || normalized);
+    const allowExtra = value?.allow_extra_args === true;
+    const maxExtra  = Math.min(parseInt(value?.max_extra_args) || 10, 20);
+    const timeoutMs = Math.min(parseInt(value?.timeout_ms) || DEFAULT_COMMAND_TIMEOUT_MS, MAX_COMMAND_TIMEOUT_MS);
+    if (!command) {
+      const err = new Error(`Shell alias '${normalized}' is missing command.`);
+      err.status = 500; err.code = "invalid_shell_entry"; throw err;
+    }
+    return { alias: normalized, display_name: display, command, args, allow_extra_args: allowExtra, max_extra_args: maxExtra, timeout_ms: timeoutMs };
+  });
+}
+
+function buildShellAuthStatus(env = process.env) {
+  const enabled = parseBooleanEnv(env[ADMIN_SHELL_ENABLED_ENV]);
+  let allowlistCount = 0, allowlistValid = true, allowlistError = "";
+  try { allowlistCount = getShellAllowlist(env).length; }
+  catch (e) { allowlistValid = false; allowlistError = e.code || "invalid_shell_allowlist"; }
+  return {
+    authorized: enabled && allowlistValid && allowlistCount > 0,
+    enabled,
+    allowlist: { env_name: ADMIN_SHELL_ALLOWLIST_ENV, configured_count: allowlistCount, valid: allowlistValid, error_code: allowlistError || undefined },
+    required_setup: [
+      `${ADMIN_SHELL_ENABLED_ENV}=true`,
+      `${ADMIN_SHELL_ALLOWLIST_ENV}={"alias":{"command":"cmd","args":[],"display_name":"..."}}`,
+    ],
+  };
+}
+
+async function executeShellControl(body = {}) {
+  const action    = String(body.action || "list").trim().toLowerCase();
+  const alias     = String(body.alias  || "").trim().toLowerCase();
+  const extraArgs = Array.isArray(body.extra_args) ? body.extra_args.map(String) : [];
+
+  if (action === "status") return { action, ...buildShellAuthStatus() };
+
+  if (!parseBooleanEnv(process.env[ADMIN_SHELL_ENABLED_ENV])) {
+    const err = new Error(`${ADMIN_SHELL_ENABLED_ENV}=true is required before shell control can run.`);
+    err.status = 403; err.code = "shell_control_disabled"; throw err;
+  }
+
+  const allowlist = getShellAllowlist();
+  if (action === "list") {
+    return {
+      action, enabled: true,
+      commands: allowlist.map(({ alias: a, display_name, command, allow_extra_args, max_extra_args }) =>
+        ({ alias: a, display_name, command, allow_extra_args, max_extra_args })),
+      count: allowlist.length,
+    };
+  }
+
+  if (action === "run") {
+    if (!alias) { const e = new Error("alias required for shell run."); e.status = 400; e.code = "missing_alias"; throw e; }
+    const entry = allowlist.find((e) => e.alias === alias);
+    if (!entry) { const e = new Error(`alias '${alias}' not in shell allowlist.`); e.status = 400; e.code = "shell_alias_not_found"; throw e; }
+
+    if (extraArgs.length > 0) {
+      if (!entry.allow_extra_args) {
+        const e = new Error(`extra_args not permitted for alias '${alias}'.`); e.status = 400; e.code = "extra_args_not_allowed"; throw e;
+      }
+      if (extraArgs.length > entry.max_extra_args) {
+        const e = new Error(`Too many extra_args (max ${entry.max_extra_args}).`); e.status = 400; e.code = "too_many_extra_args"; throw e;
+      }
+      for (const arg of extraArgs) {
+        if (EXTRA_ARG_UNSAFE_PATTERN.test(arg)) {
+          const e = new Error(`extra_args contains disallowed shell metacharacter: ${JSON.stringify(arg)}`);
+          e.status = 400; e.code = "unsafe_extra_arg"; throw e;
+        }
+      }
+    }
+
+    const result = await executeSafe(entry.command, [...entry.args, ...extraArgs], { timeout_ms: body.timeout_ms || entry.timeout_ms });
+    return { action, alias, command: entry.command, ...result };
+  }
+
+  const err = new Error("shell action must be one of: status, list, run.");
+  err.status = 400; err.code = "unsupported_shell_action"; throw err;
+}
+
 async function executeHostingerControl(body = {}) {
   const apiPath   = String(body.path   || "").trim();
   const method    = String(body.method || "GET").toUpperCase();
@@ -421,7 +525,11 @@ async function executeAdminControl(body = {}) {
     return { tool, result: await executeHostingerControl(body) };
   }
 
-  const err = new Error("tool must be one of github, gcloud, db, env, windows_app, or hostinger.");
+  if (tool === "shell") {
+    return { tool, result: await executeShellControl(body) };
+  }
+
+  const err = new Error("tool must be one of github, gcloud, db, env, windows_app, hostinger, or shell.");
   err.status = 400;
   err.code = "unsupported_admin_control_tool";
   throw err;
@@ -441,7 +549,9 @@ function auditAdminControl(tool, body) {
       windows_app_action: tool === "windows_app" ? body.action || "list" : undefined,
       windows_app_alias: tool === "windows_app" ? body.app_alias : undefined,
       hostinger_path: tool === "hostinger" ? body.path : undefined,
-      hostinger_method: tool === "hostinger" ? body.method || "GET" : undefined
+      hostinger_method: tool === "hostinger" ? body.method || "GET" : undefined,
+      shell_alias: tool === "shell" ? body.alias : undefined,
+      shell_action: tool === "shell" ? body.action || "list" : undefined
     }
   });
 }
