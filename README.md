@@ -1,4 +1,4 @@
-# Multi-Business Multi-Role Growth Intelligence OS
+﻿# Multi-Business Multi-Role Growth Intelligence OS
 
 This repository is a governed, registry-driven execution system. It is not primarily a generic web application stack, even though it contains application runtime code.
 
@@ -99,11 +99,11 @@ Important governed surfaces (all SQL-primary, `DATA_SOURCE=sql`):
 
 | Surface | Role |
 |---|---|
-| `task_routes` | intent_key → workflow_key → target_module routing authority |
+| `task_routes` | intent_key â†’ workflow_key â†’ target_module routing authority |
 | `workflows` | Workflow registry: execution_class, review_required, target_module |
 | `agent_skills` | Skill capability definitions (skill_key, scope, capability_json) |
 | `agent_skill_grants` | Per-agent skill grant bindings with status |
-| `agent_workflow_bindings` | Agent ↔ workflow binding, trigger_condition |
+| `agent_workflow_bindings` | Agent â†” workflow binding, trigger_condition |
 | `agent_supervision_policy` | Auto-approve class thresholds per agent+tenant |
 | `actions` | Action keys, auth mode, schema binding |
 | `endpoints` | Endpoint keys, method, path, domain |
@@ -130,7 +130,7 @@ That subtree currently contains:
 - connector support modules
 - governed registry, writeback helpers, and legal endpoints (`/privacy-policy`, `/terms-of-use`)
 - async job orchestration
-- `resolveLogicPointerContext.js` — canonical logic pointer resolution and governed legacy rollback guard
+- `resolveLogicPointerContext.js` â€” canonical logic pointer resolution and governed legacy rollback guard
 - a modularized WordPress migration subsystem
 - a strictly MySQL-backed primary data layer
 
@@ -153,7 +153,7 @@ The `http-generic-api/` subtree includes a production MySQL-backed data layer al
 **Migration scripts (run from `http-generic-api/`):**
 
 ```powershell
-# 1. Verify schema is up to date (dry-run — no writes)
+# 1. Verify schema is up to date (dry-run â€” no writes)
 node expand-schema.mjs
 
 # 2. Apply any missing columns
@@ -197,18 +197,18 @@ Its WordPress subsystem is split into:
 
 ## Current repository status
 
-Completed sprints: WordPress extraction (S2), http-generic-api decomposition (S3), memory schema decomposition (S4), output sink router (S21), session/upload system (S29–S29b), schema import pipeline (S28), local connector (S35), tunnel auto-provisioning (S36), workflow pipeline (S37), unified dispatch / 2-connector GPT (S38).
+Completed sprints: WordPress extraction (S2), http-generic-api decomposition (S3), memory schema decomposition (S4), output sink router (S21), session/upload system (S29â€“S29b), schema import pipeline (S28), local connector (S35), tunnel auto-provisioning (S36), workflow pipeline (S37), unified dispatch / 2-connector GPT (S38).
 
-### Platform layer — local connector pipeline (Sprints 35–38)
+### Platform layer â€” local connector pipeline (Sprints 35â€“38)
 
-- `http-generic-api/services/localConnectorOrchestrator.js` — factory-pattern orchestrator that executes governed shell/file/health ops on user devices via Cloudflare tunnel. Token from `local_connector_user_configs.connector_secret`.
-- `http-generic-api/routes/localConnectorRoutes.js` — `POST /local-connector/shell`, `POST /local-connector/file/read`, `POST /local-connector/file/write`, `GET /local-connector/health`.
-- `http-generic-api/routes/localConnectorInstallRoutes.js` — `POST /local-connector/install` auto-provisions a Cloudflare tunnel per user/device (CF API + Hostinger DNS), seeds shell allowlist, returns `install.bat`. Idempotent. `GET /local-connector/install/status`, `DELETE /local-connector/uninstall`.
-- `http-generic-api/routes/dispatchRoutes.js` — `POST /dispatch` universal intent dispatcher: resolves `intent_key → task_routes → target_module → MODULE_EXECUTORS`, validates agent skill grants, executes or returns routing advice. `GET /dispatch/routes` lists all active routes with `directly_dispatched` flag.
-- `http-generic-api/openapi.custom-gpt.platform.yaml` — consolidated 9-operation OpenAPI spec for `admin.mad4b.com` replacing 8+ separate scoped connectors in the GPT.
-- `local-connector/` — Node.js break-glass connector running on `mohammedlap` at port 7070, exposed via Cloudflare Tunnel to `connector.mad4b.com`. Also routes `n8n.mad4b.com → localhost:5678`.
+- `http-generic-api/services/localConnectorOrchestrator.js` â€” factory-pattern orchestrator that executes governed shell/file/health ops on user devices via Cloudflare tunnel. Token from `local_connector_user_configs.connector_secret`.
+- `http-generic-api/routes/localConnectorRoutes.js` â€” `POST /local-connector/shell`, `POST /local-connector/file/read`, `POST /local-connector/file/write`, `GET /local-connector/health`.
+- `http-generic-api/routes/localConnectorInstallRoutes.js` â€” `POST /local-connector/install` auto-provisions a Cloudflare tunnel per user/device (CF API + Hostinger DNS), seeds shell allowlist, returns `install.bat`. Idempotent. `GET /local-connector/install/status`, `DELETE /local-connector/uninstall`.
+- `http-generic-api/routes/dispatchRoutes.js` â€” `POST /dispatch` universal intent dispatcher: resolves `intent_key â†’ task_routes â†’ target_module â†’ MODULE_EXECUTORS`, validates agent skill grants, executes or returns routing advice. `GET /dispatch/routes` lists all active routes with `directly_dispatched` flag.
+- `http-generic-api/openapi.custom-gpt.auth.yaml` â€” consolidated 9-operation OpenAPI spec for `admin.mad4b.com` replacing 8+ separate scoped connectors in the GPT.
+- `local-connector/` â€” Node.js break-glass connector running on `mohammedlap` at port 7070, exposed via Cloudflare Tunnel to `connector.mad4b.com`. Also routes `n8n.mad4b.com â†’ localhost:5678`.
 
-### Migrations (032–034)
+### Migrations (032â€“034)
 
 | File | Sprint | Content |
 |---|---|---|
@@ -216,25 +216,25 @@ Completed sprints: WordPress extraction (S2), http-generic-api decomposition (S3
 | `033_sprint36_tunnel_provisioning.sql` | S36 | `cf_tunnel_id`, `cf_tunnel_name`, `cf_token` columns |
 | `034_sprint37_local_connector_workflow_routes.sql` | S37 | workflows, task_routes, agent_skills (skl-loc-con-001/002/003), agent_skill_grants, agent_workflow_bindings, agent_supervision_policy |
 
-### Custom GPT — 2-connector architecture (Sprint 38)
+### Custom GPT â€” 2-connector architecture (Sprint 38)
 
 The GPT uses exactly two action connectors:
-- **Platform** (`openapi.custom-gpt.platform.yaml` → `admin.mad4b.com`): 9 ops including `/dispatch` for all governed device ops
-- **Local** (`openapi.custom-gpt.connector.yaml` → `connector.mad4b.com`): 7 ops for direct break-glass access to mohammedlap
+- **Platform** (`openapi.custom-gpt.auth.yaml` â†’ `admin.mad4b.com`): 9 ops including `/dispatch` for all governed device ops
+- **Local** (`openapi.custom-gpt.connector.yaml` â†’ `connector.mad4b.com`): 7 ops for direct break-glass access to mohammedlap
 
 Intent routing via `POST /dispatch` validates `agent_skill_grants` at runtime and executes directly for local connector modules or returns `suggested_endpoint` for other modules.
 
 ### Core runtime state
 
-- `http-generic-api/server.js` decomposed from ~29,000 → ~4,636 lines
-- `http-generic-api/wordpress/` — 16 phase modules (A-P), 545 exports
-- `http-generic-api/normalization.js` — canonical normalization for 8 domains (A-H)
-- `memory_schema.json` → 12 domain sub-schemas in `schemas/` (~41 KB root)
+- `http-generic-api/server.js` decomposed from ~29,000 â†’ ~4,636 lines
+- `http-generic-api/wordpress/` â€” 16 phase modules (A-P), 545 exports
+- `http-generic-api/normalization.js` â€” canonical normalization for 8 domains (A-H)
+- `memory_schema.json` â†’ 12 domain sub-schemas in `schemas/` (~41 KB root)
 - governed sinks: `Execution Log Unified`, `JSON Asset Registry`, `output_artifacts`, `sink_dispatch_log`, `agent_chain_events`, `local_connector_user_configs`
 - 150 tests passing (up from 46+ test files / 800+ assertions baseline)
 - `/health` reports degraded dependency truth for Redis/BullMQ
 - async job submission returns `503` when queue backend cannot accept work
-- `googleAuthTokenResolver.js` — platform bootstrap uses managed service account ADC; user-owned Drive/Sheets uses refresh-token auth
+- `googleAuthTokenResolver.js` â€” platform bootstrap uses managed service account ADC; user-owned Drive/Sheets uses refresh-token auth
 - MCP connector branch added: `makecom_mcp` dispatches via JSON-RPC 2.0 to Make MCP stateless endpoint
 
 ## Upgrade direction

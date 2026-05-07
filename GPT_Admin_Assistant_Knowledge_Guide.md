@@ -1,4 +1,4 @@
-# GPT Admin Assistant Knowledge Guide
+﻿# GPT Admin Assistant Knowledge Guide
 
 ## Purpose
 
@@ -150,20 +150,20 @@ Example:
 
 `GET /activation/session-context` in the Runtime scope loads same-user session history, related scopes, transcript availability, and `platform_access` for hard activation continuity. It is useful at the start of a GPT session and for recovery from prior degraded work. It does not replace Drive, Sheets bootstrap, GitHub validation, release readiness, or provider execution evidence. Raw transcript fields are optional, bounded, and should be requested only with `include_raw=true` when needed.
 
-## Scoped Action Files — 2-Connector Architecture (Sprint 38)
+## Scoped Action Files â€” 2-Connector Architecture (Sprint 38)
 
-The GPT uses exactly **two** action connectors. Custom GPT is limited to 10 connectors × 30 ops; this architecture consolidates platform ops into a single cloud client and keeps the local break-glass client separate.
+The GPT uses exactly **two** action connectors. Custom GPT is limited to 10 connectors Ã— 30 ops; this architecture consolidates platform ops into a single cloud client and keeps the local break-glass client separate.
 
 | Connector | File | Server URL | Ops | Purpose |
 |---|---|---:|---:|---|
-| **Platform** | `http-generic-api/openapi.custom-gpt.platform.yaml` | `https://auth.mad4b.com` | 9 | Universal dispatcher, schema, admin CLI, device provisioning, release readiness |
+| **Platform** | `http-generic-api/openapi.custom-gpt.auth.yaml` | `https://auth.mad4b.com` | 9 | Universal dispatcher, schema, admin CLI, device provisioning, release readiness |
 | **Local** | `http-generic-api/openapi.custom-gpt.connector.yaml` | `https://connector.mad4b.com` | 7 | Direct break-glass shell/file/GitHub/gcloud on mohammedlap via Cloudflare Tunnel |
 
-### Platform connector — operations
+### Platform connector â€” operations
 
 | Operation | Path | Use |
 |---|---|---|
-| `dispatch` | `POST /dispatch` | Universal intent dispatcher — routes to correct module at runtime |
+| `dispatch` | `POST /dispatch` | Universal intent dispatcher â€” routes to correct module at runtime |
 | `listDispatchRoutes` | `GET /dispatch/routes` | List all active task_routes and which are directly dispatched |
 | `installDevice` | `POST /local-connector/install` | Provision Cloudflare tunnel + DNS + DB config + install.bat for a user/device |
 | `deviceInstallStatus` | `GET /local-connector/install/status` | Check if a device has been provisioned |
@@ -171,11 +171,11 @@ The GPT uses exactly **two** action connectors. Custom GPT is limited to 10 conn
 | `schemaImportUpload` | `POST /admin/schema-import/upload` | Import JSON/YAML schema or repo URL into the platform |
 | `schemaImportRollback` | `POST /admin/schema-import/rollback` | Rollback the last schema import job |
 | `releaseReadiness` | `GET /admin/release/readiness` | CI/migration/agent health go/no-go decision |
-| `adminControl` | `POST /admin/cli/control` | Admin CLI — shell, gcloud, github, db, env, windows_app, hostinger |
+| `adminControl` | `POST /admin/cli/control` | Admin CLI â€” shell, gcloud, github, db, env, windows_app, hostinger |
 
-### Platform connector — dispatch routing
+### Platform connector â€” dispatch routing
 
-The `/dispatch` operation routes `intent_key` values to the correct backend module. At runtime, the platform resolves `intent_key → task_routes → target_module → executor`.
+The `/dispatch` operation routes `intent_key` values to the correct backend module. At runtime, the platform resolves `intent_key â†’ task_routes â†’ target_module â†’ executor`.
 
 **Directly dispatched (executes immediately and returns result):**
 
@@ -201,10 +201,10 @@ The `/dispatch` operation routes `intent_key` values to the correct backend modu
 ```
 
 **When to use `/dispatch` vs local connector directly:**
-- Use `/dispatch` for **governed platform ops** — shell run, file access, health check on any user device, routed through skill grant validation and audit trail.
-- Use **local connector directly** (connector.mad4b.com) for **break-glass recovery** — when Cloud Run is down, for GitHub/gcloud CLI work that doesn't require platform routing.
+- Use `/dispatch` for **governed platform ops** â€” shell run, file access, health check on any user device, routed through skill grant validation and audit trail.
+- Use **local connector directly** (connector.mad4b.com) for **break-glass recovery** â€” when Cloud Run is down, for GitHub/gcloud CLI work that doesn't require platform routing.
 
-### Legacy scoped action files (still available — do not add to GPT)
+### Legacy scoped action files (still available â€” do not add to GPT)
 
 These scoped files remain in the repo for specific direct use cases but are not loaded into the GPT:
 
@@ -327,7 +327,7 @@ Functional use:
 
 Per-user API keys should be created here when moving from shared admin backend auth to user-scoped integrations.
 
-### Make.com integration — two distinct connection types
+### Make.com integration â€” two distinct connection types
 
 Make.com has two registered adapters and two `app_integrations` catalog entries. Pick the correct one for the task:
 
@@ -344,7 +344,7 @@ Use `openapi.custom-gpt.admin-cli.yaml` only for high-risk platform-owner work.
 
 Operations:
 
-- `executeAdminControl`: raw admin control dispatcher — tool routing by `tool` field
+- `executeAdminControl`: raw admin control dispatcher â€” tool routing by `tool` field
 - `executeHostingerApiCall`: direct Hostinger REST API proxy (`POST /admin/cli/hostinger`)
 
 ### Tool routing inside executeAdminControl
@@ -381,7 +381,7 @@ Release readiness is diagnostic evidence; it does not replace hard activation pr
 
 Use `openapi.custom-gpt.connector.yaml` for break-glass operations or real-time direct device ops when the primary Cloud Run API is unavailable or when lower-latency direct access is preferred.
 
-The connector runs on the admin's local Windows machine (`mohammedlap`) and is reachable via Cloudflare Tunnel at `connector.mad4b.com`. It binds only to `127.0.0.1` — Cloudflare Tunnel is the sole internet entry point. Auth: `Authorization: Bearer <BACKEND_API_KEY>`. `/health` is unauthenticated.
+The connector runs on the admin's local Windows machine (`mohammedlap`) and is reachable via Cloudflare Tunnel at `connector.mad4b.com`. It binds only to `127.0.0.1` â€” Cloudflare Tunnel is the sole internet entry point. Auth: `Authorization: Bearer <BACKEND_API_KEY>`. `/health` is unauthenticated.
 
 **Device:** mohammedlap | **Tunnel:** 95e4ba8c-782b-4819-9f80-04af4457ce73 | **Port:** 7070
 
@@ -397,9 +397,9 @@ Key operations:
 
 When to use: Cloud Run is down, deployment rollback needed, recovery commit to push, n8n/local services to check.
 
-When not to use: Cloud Run is healthy — prefer `/dispatch` for governed device ops with audit trail. Never use as a general-purpose shell.
+When not to use: Cloud Run is healthy â€” prefer `/dispatch` for governed device ops with audit trail. Never use as a general-purpose shell.
 
-Also routes n8n at `n8n.mad4b.com → localhost:5678` via the same Cloudflare tunnel.
+Also routes n8n at `n8n.mad4b.com â†’ localhost:5678` via the same Cloudflare tunnel.
 
 ## Privacy Policy URLs
 
