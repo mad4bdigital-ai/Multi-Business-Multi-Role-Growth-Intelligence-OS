@@ -16,7 +16,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: Backend API Key
-      description: Send Authorization: Bearer <BACKEND_API_KEY>
+      description: "Send Authorization: Bearer <BACKEND_API_KEY>"
   schemas:
     ConnectorError:
       type: object
@@ -177,6 +177,113 @@ paths:
                 additionalProperties: true
         '401':
           description: Unauthorized
+  /fetch-upload:
+    post:
+      tags: [connector]
+      operationId: connectorFetchUpload
+      summary: Fetch a remote URL and push the content to the platform upload system
+      description: |
+        The connector fetches the given URL using Node's built-in fetch (handles HTTP/HTTPS, follows redirects), then forwards the content to the main API POST /uploads endpoint using the connector's own BACKEND_API_KEY. Returns the upload_id the user can reference in chat for validation and processing. Use this for URLs that are publicly accessible. For sites requiring authentication or JS rendering, use shell-fetch-upload with curl.
+      security:
+        - backendBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, upload_type]
+              properties:
+                url:
+                  type: string
+                  description: The URL to fetch — raw GitHub URLs, CDN-hosted schemas, plugin repos, etc.
+                upload_type:
+                  type: string
+                  enum: [schema, skill, knowledge, repo_link, asset]
+                filename:
+                  type: string
+                  description: Override the filename derived from the URL.
+                uploaded_by:
+                  type: string
+                  description: Actor reference logged against the upload.
+                metadata:
+                  type: object
+                  additionalProperties: true
+                  description: Metadata segments (goal, platform, helpers) forwarded to the upload record.
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+                  default: 30000
+      responses:
+        '200':
+          description: Content fetched and upload record created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  fetched_url: { type: string }
+                  via: { type: string }
+                  upload_id: { type: string }
+                  status: { type: string }
+        '401': { description: Unauthorized }
+        '403': { description: Fetch-upload disabled on this connector }
+        '502': { description: Remote fetch failed or forward to main API failed }
+
+  /shell-fetch-upload:
+    post:
+      tags: [connector]
+      operationId: connectorShellFetchUpload
+      summary: Download a URL via curl and push the content to the platform upload system
+      description: |
+        Downloads the given URL using curl (shell-level, handles edge cases Node fetch cannot — self-signed certs, unusual redirects, legacy TLS). Forwards the content to the main API POST /uploads. Use this when /fetch-upload fails or when the target requires curl-specific flags. The URL is validated against unsafe shell characters before execution.
+      security:
+        - backendBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, upload_type]
+              properties:
+                url:
+                  type: string
+                  description: URL to download via curl. Must not contain shell metacharacters.
+                upload_type:
+                  type: string
+                  enum: [schema, skill, knowledge, repo_link, asset]
+                filename:
+                  type: string
+                uploaded_by:
+                  type: string
+                metadata:
+                  type: object
+                  additionalProperties: true
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+                  default: 60000
+      responses:
+        '200':
+          description: File downloaded and upload record created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  fetched_url: { type: string }
+                  via: { type: string }
+                  upload_id: { type: string }
+                  status: { type: string }
+        '401': { description: Unauthorized }
+        '400': { description: URL contains unsafe characters }
+        '502': { description: curl failed or forward to main API failed }
+
   /files:
     post:
       tags: [connector]

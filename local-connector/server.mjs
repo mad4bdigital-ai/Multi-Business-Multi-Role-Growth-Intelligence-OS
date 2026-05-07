@@ -223,8 +223,101 @@ function healthBody() {
 }
 
 // ---------------------------------------------------------------------------
+// Config — fetch-upload
+// ---------------------------------------------------------------------------
+
+const MAIN_API_URL = (process.env.MAIN_API_URL ?? 'https://api.mad4b.com').replace(/\/$/, '');
+const FETCH_UPLOAD_ENABLED = process.env.CONNECTOR_FETCH_UPLOAD_ENABLED !== 'false';
+
+// ---------------------------------------------------------------------------
 // Route handlers
 // ---------------------------------------------------------------------------
+
+async function handleFetchUpload(req, res) {
+  if (!FETCH_UPLOAD_ENABLED) return err(res, 403, 'DISABLED', 'fetch-upload is disabled on this connector');
+  if (!requireAuth(req, res)) return;
+  let body;
+  try { body = await readBody(req); } catch { return err(res, 400, 'BAD_BODY', 'Invalid JSON'); }
+
+  const { url, upload_type, metadata = {}, filename, uploaded_by, timeout_ms } = body;
+  if (!url || typeof url !== 'string') return err(res, 400, 'MISSING_URL', 'url is required');
+  if (!upload_type) return err(res, 400, 'MISSING_TYPE', 'upload_type is required');
+
+  audit(req, { action: 'fetch_upload:browser', url, upload_type });
+
+  let content;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), clampTimeout(timeout_ms));
+    const fetchRes = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!fetchRes.ok) return err(res, 502, 'FETCH_FAILED', `Remote ${fetchRes.status} ${fetchRes.statusText}`);
+    content = await fetchRes.text();
+  } catch (e) {
+    return err(res, 502, 'FETCH_ERROR', e.message);
+  }
+
+  try {
+    const uploadRes = await fetch(`${MAIN_API_URL}/uploads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+      body: JSON.stringify({
+        upload_type,
+        source_mode: 'connector_browser',
+        content,
+        filename: filename || url.split('/').pop() || 'fetched_file',
+        uploaded_by: uploaded_by || `connector:${os.hostname()}`,
+        metadata: { ...metadata, source: { mode: 'connector_browser', origin_url: url, fetched_at: new Date().toISOString(), ...(metadata.source || {}) } },
+      }),
+    });
+    const result = await uploadRes.json();
+    return ok(res, { fetched_url: url, via: 'fetch', ...result });
+  } catch (e) {
+    return err(res, 502, 'FORWARD_ERROR', e.message);
+  }
+}
+
+async function handleShellFetchUpload(req, res) {
+  if (!FETCH_UPLOAD_ENABLED) return err(res, 403, 'DISABLED', 'fetch-upload is disabled on this connector');
+  if (!requireAuth(req, res)) return;
+  let body;
+  try { body = await readBody(req); } catch { return err(res, 400, 'BAD_BODY', 'Invalid JSON'); }
+
+  const { url, upload_type, metadata = {}, filename, uploaded_by, timeout_ms } = body;
+  if (!url || typeof url !== 'string') return err(res, 400, 'MISSING_URL', 'url is required');
+  if (!upload_type) return err(res, 400, 'MISSING_TYPE', 'upload_type is required');
+  if (UNSAFE_CHARS.test(url)) return err(res, 400, 'UNSAFE_URL', 'URL contains unsafe characters');
+
+  audit(req, { action: 'fetch_upload:shell', url, upload_type });
+
+  let stdout;
+  try {
+    const result = await runCommand('curl', ['-sL', '--max-time', '60', url], clampTimeout(timeout_ms));
+    if (result.exitCode !== 0) return err(res, 502, 'CURL_FAILED', result.stderr || 'curl exited non-zero');
+    stdout = result.stdout;
+  } catch (e) {
+    return err(res, 502, 'CURL_ERROR', e.message);
+  }
+
+  try {
+    const uploadRes = await fetch(`${MAIN_API_URL}/uploads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+      body: JSON.stringify({
+        upload_type,
+        source_mode: 'connector_shell',
+        content: stdout,
+        filename: filename || url.split('/').pop() || 'fetched_file',
+        uploaded_by: uploaded_by || `connector:${os.hostname()}`,
+        metadata: { ...metadata, source: { mode: 'connector_shell', origin_url: url, fetched_at: new Date().toISOString(), ...(metadata.source || {}) } },
+      }),
+    });
+    const result = await uploadRes.json();
+    return ok(res, { fetched_url: url, via: 'curl', ...result });
+  } catch (e) {
+    return err(res, 502, 'FORWARD_ERROR', e.message);
+  }
+}
 
 async function handleGitHub(req, res) {
   if (!requireAuth(req, res)) return;
@@ -397,6 +490,8 @@ const server = http.createServer(async (req, res) => {
     if (method === 'POST' && url === '/gcloud') return await handleGCloud(req, res);
     if (method === 'POST' && url === '/shell') return await handleShell(req, res);
     if (method === 'POST' && url === '/files') return await handleFiles(req, res);
+    if (method === 'POST' && url === '/fetch-upload') return await handleFetchUpload(req, res);
+    if (method === 'POST' && url === '/shell-fetch-upload') return await handleShellFetchUpload(req, res);
 
     return err(res, 404, 'NOT_FOUND', `No route for ${method} ${url}`);
   } catch (e) {

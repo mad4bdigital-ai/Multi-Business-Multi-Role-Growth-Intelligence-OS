@@ -1,0 +1,30 @@
+-- Sprint 29: Upload System — Drive-backed file staging with short IDs
+
+CREATE TABLE IF NOT EXISTS `uploads` (
+  `id`                INT UNSIGNED  AUTO_INCREMENT PRIMARY KEY,
+  `upload_id`         VARCHAR(20)   NOT NULL UNIQUE                COMMENT 'Short ID returned to user: upl_xxxxxxxxxx',
+  `upload_type`       ENUM('schema','skill','knowledge','repo_link','asset') NOT NULL,
+  `source_mode`       ENUM('direct','guided','connector_browser','connector_shell','repo_fetch') NOT NULL DEFAULT 'direct',
+  `status`            ENUM('awaiting_upload','pending','processing','processed','failed','expired') NOT NULL DEFAULT 'pending',
+  `filename`          VARCHAR(512)  NULL,
+  `mime_type`         VARCHAR(128)  NULL,
+  `size_bytes`        INT UNSIGNED  NULL,
+  `drive_file_id`     VARCHAR(256)  NULL                           COMMENT 'Google Drive file ID where content is stored',
+  `drive_folder_id`   VARCHAR(256)  NULL,
+  `drive_web_url`     TEXT          NULL,
+  `processed_ref`     VARCHAR(128)  NULL                           COMMENT 'ID of entity created by processing: import_job_id, skill_id, etc.',
+  `processed_at`      DATETIME      NULL,
+  `error_message`     TEXT          NULL,
+  `metadata`          JSON          NULL                           COMMENT 'Structured segments: goal, platform, helpers, source',
+  `instruction_set`   JSON          NULL                           COMMENT 'Step-by-step instructions for guided mode',
+  `tenant_id`         VARCHAR(36)   NULL,
+  `uploaded_by`       VARCHAR(128)  NULL,
+  `created_at`        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `expires_at`        DATETIME      NULL,
+  INDEX `idx_uploads_type`       (`upload_type`),
+  INDEX `idx_uploads_status`     (`status`),
+  INDEX `idx_uploads_tenant`     (`tenant_id`),
+  INDEX `idx_uploads_created_at` (`created_at`),
+  INDEX `idx_uploads_expires_at` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
