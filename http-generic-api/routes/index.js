@@ -38,9 +38,11 @@ import { buildTenantCommercialRoutes } from "./tenantCommercialRoutes.js";
 import { buildLocalConnectorRoutes } from "./localConnectorRoutes.js";
 import { buildLocalConnectorInstallRoutes } from "./localConnectorInstallRoutes.js";
 import { buildDispatchRoutes } from "./dispatchRoutes.js";
+import { buildOnboardingRoutes } from "./onboardingRoutes.js";
 
 export function registerRoutes(app, deps) {
   app.use(buildRootDiscoveryRoutes());
+  app.use(buildOnboardingRoutes(deps));
   app.use(buildStatusRoutes(deps));
   app.use(buildActivationRoutes(deps));
   app.use(buildHealthRoutes(deps));

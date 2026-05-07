@@ -203,7 +203,7 @@ Completed sprints: WordPress extraction (S2), http-generic-api decomposition (S3
 
 - `http-generic-api/services/localConnectorOrchestrator.js` â€” factory-pattern orchestrator that executes governed shell/file/health ops on user devices via Cloudflare tunnel. Token from `local_connector_user_configs.connector_secret`.
 - `http-generic-api/routes/localConnectorRoutes.js` â€” `POST /local-connector/shell`, `POST /local-connector/file/read`, `POST /local-connector/file/write`, `GET /local-connector/health`.
-- `http-generic-api/routes/localConnectorInstallRoutes.js` â€” `POST /local-connector/install` auto-provisions a Cloudflare tunnel per user/device (CF API + Hostinger DNS), seeds shell allowlist, returns `install.bat`. Owner/admin auth uses root env credentials; user/API-client auth resolves Cloudflare and Hostinger credentials from DB app connections. Idempotent for repeat login and new-device routing.
+- `http-generic-api/routes/localConnectorInstallRoutes.js` â€” `POST /local-connector/install` auto-provisions a Cloudflare tunnel per user/device (CF API + Hostinger DNS), seeds shell allowlist, returns `install.bat`, `install-local-connector.ps1`, `.env`, and `start-connector.bat`. Owner/admin auth uses root env credentials; user/API-client auth resolves Cloudflare and Hostinger credentials from DB app connections. Idempotent for repeat login and new-device routing.
 - `http-generic-api/routes/dispatchRoutes.js` â€” `POST /dispatch` universal intent dispatcher: resolves `intent_key â†’ task_routes â†’ target_module â†’ MODULE_EXECUTORS`, validates agent skill grants, executes or returns routing advice. `GET /dispatch/routes` lists all active routes with `directly_dispatched` flag.
 - `http-generic-api/openapi.custom-gpt.auth.yaml` â€” consolidated 16-operation OpenAPI spec for `auth.mad4b.com`, replacing 8+ separate scoped connectors in the GPT and centralizing activation, dispatch, GCloud, DNS, schema, admin, and device provisioning.
 - `local-connector/` â€” Node.js break-glass connector running on `mohammedlap` at port 7070, exposed via Cloudflare Tunnel to `connector.mad4b.com`. Also routes `n8n.mad4b.com â†’ localhost:5678`.
@@ -222,6 +222,7 @@ Completed sprints: WordPress extraction (S2), http-generic-api decomposition (S3
 The GPT uses exactly two action connectors:
 - **Platform** (`openapi.custom-gpt.auth.yaml` â†’ `auth.mad4b.com`): 16 ops including `/activation/env-bootstrap`, `/dispatch`, `/admin/cli/gcloud`, `/admin/cli/dns`, schema import, release readiness, and governed device provisioning
 - **Local** (`openapi.custom-gpt.connector.yaml` â†’ `connector.mad4b.com`): 7 ops for direct break-glass access to mohammedlap
+- **Self-serve setup** (`https://auth.mad4b.com/connect`): signup/signin, DB credential capture for Cloudflare + Hostinger, new-device install bundle generation, and Custom GPT redirect.
 
 Intent routing via `POST /dispatch` validates `agent_skill_grants` at runtime and executes directly for local connector modules or returns `suggested_endpoint` for other modules.
 

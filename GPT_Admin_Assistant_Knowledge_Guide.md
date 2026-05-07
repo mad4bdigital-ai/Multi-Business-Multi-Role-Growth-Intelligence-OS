@@ -174,7 +174,7 @@ The GPT uses exactly **two** action connectors. Custom GPT is limited to 10 conn
 | `getActivationPlatformAccess` | `GET /activation/platform-access` | Refresh access scope, counts, and degraded surfaces |
 | `dispatch` | `POST /dispatch` | Universal intent dispatcher â€” routes to correct module at runtime |
 | `listDispatchRoutes` | `GET /dispatch/routes` | List all active task_routes and which are directly dispatched |
-| `installDevice` | `POST /local-connector/install` | Provision Cloudflare tunnel + DNS + DB config + install.bat for a user/device. Admin uses env credentials; customer/API auth uses DB app connections. |
+| `installDevice` | `POST /local-connector/install` | Provision Cloudflare tunnel + DNS + DB config + local install bundle for a user/device. Admin uses env credentials; customer/API auth uses DB app connections. |
 | `deviceInstallStatus` | `GET /local-connector/install/status` | Check if a device has been provisioned |
 | `deviceHealth` | `GET /local-connector/health` | Proxy health check to device tunnel without knowing its secret |
 | `schemaImportUpload` | `POST /admin/schema-import/upload` | Import JSON/YAML schema or repo URL into the platform |
@@ -216,6 +216,7 @@ The `/dispatch` operation routes `intent_key` values to the correct backend modu
 **When to use `/dispatch` vs local connector directly:**
 - Use `/dispatch` for **governed platform ops** â€” shell run, file access, health check on any user device, routed through skill grant validation and audit trail.
 - Use **local connector directly** (connector.mad4b.com) for **break-glass recovery** â€” when Cloud Run is down, for GitHub/gcloud CLI work that doesn't require platform routing.
+- Use `https://auth.mad4b.com/connect` for **self-serve onboarding** â€” signup/signin, DB credential capture, new-device install bundle, and the Custom GPT redirect.
 
 ### Legacy scoped action files (still available â€” do not add to GPT)
 

@@ -350,6 +350,50 @@ function buildInstallScript({ cfToken, connectorSecret, tunnelUrl, aliases, port
   ].join("\r\n");
 }
 
+function buildConnectorEnv({ connectorSecret, aliases, port }) {
+  const allowlistVal = buildAllowlistEnvValue(aliases);
+  return [
+    `BACKEND_API_KEY=${connectorSecret}`,
+    "MAIN_API_URL=https://api.mad4b.com",
+    `CONNECTOR_PORT=${port}`,
+    "CONNECTOR_SHELL_ENABLED=true",
+    "CONNECTOR_FILES_ENABLED=false",
+    "CONNECTOR_FETCH_UPLOAD_ENABLED=true",
+    `CONNECTOR_SHELL_ALLOWLIST=${allowlistVal}`,
+  ].join("\r\n");
+}
+
+function buildStartConnectorBat() {
+  return [
+    "@echo off",
+    "setlocal",
+    "cd /d \"%~dp0\"",
+    "node \"%~dp0server.mjs\" >> \"%~dp0connector.log\" 2>&1",
+  ].join("\r\n");
+}
+
+function buildInstallPowerShell({ cfToken, connectorSecret, tunnelUrl, aliases, port }) {
+  const envText = buildConnectorEnv({ connectorSecret, aliases, port });
+  const startBat = buildStartConnectorBat();
+  return [
+    "# Mad4B Local Connector - run as Administrator from the local-connector folder",
+    "$ErrorActionPreference = 'Stop'",
+    "$Root = Split-Path -Parent $MyInvocation.MyCommand.Path",
+    `$EnvText = @'`,
+    envText,
+    "'@",
+    "Set-Content -Path (Join-Path $Root '.env') -Value $EnvText -Encoding ascii",
+    `$StartBat = @'`,
+    startBat,
+    "'@",
+    "Set-Content -Path (Join-Path $Root 'start-connector.bat') -Value $StartBat -Encoding ascii",
+    "if (-not (Get-Command cloudflared -ErrorAction SilentlyContinue)) { winget install Cloudflare.cloudflared -e --silent }",
+    `cloudflared service install ${cfToken}`,
+    "Start-Process -FilePath (Join-Path $Root 'start-connector.bat') -WindowStyle Hidden",
+    `Write-Host "Connector route: ${tunnelUrl}"`,
+  ].join("\r\n");
+}
+
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 export function buildLocalConnectorInstallRoutes(deps) {
@@ -470,6 +514,15 @@ export function buildLocalConnectorInstallRoutes(deps) {
         aliases: allAliases,
         port: CONNECTOR_PORT,
       });
+      const connectorEnv = buildConnectorEnv({ connectorSecret, aliases: allAliases, port: CONNECTOR_PORT });
+      const startConnectorBat = buildStartConnectorBat();
+      const installPowerShell = buildInstallPowerShell({
+        cfToken: tunnelToken,
+        connectorSecret,
+        tunnelUrl,
+        aliases: allAliases,
+        port: CONNECTOR_PORT,
+      });
 
       return res.status(200).json({
         ok: true,
@@ -492,10 +545,23 @@ export function buildLocalConnectorInstallRoutes(deps) {
         installation: {
           aliases: allAliases.map((a) => a.alias),
           install_bat: installScript,
+          install_ps1: installPowerShell,
+          files: {
+            ".env": connectorEnv,
+            "start-connector.bat": startConnectorBat,
+            "install-local-connector.ps1": installPowerShell,
+            "install.bat": installScript,
+          },
+          local_runtime: {
+            port: CONNECTOR_PORT,
+            env_file: ".env",
+            start_command: "start-connector.bat",
+            tunnel_command: `cloudflared service install ${tunnelToken}`,
+          },
           steps: [
-            "1. Save install_bat content as install.bat in your local-connector folder.",
-            "2. Run install.bat as Administrator (installs cloudflared service + starts connector).",
-            `3. Update Cloud Run: ${`gcloud run services update http-generic-api --region=europe-west1 --update-env-vars="CONNECTOR_LOCAL_API_KEY=${connectorSecret}"`}`,
+            "1. Put server.mjs and install-local-connector.ps1 in the user's local-connector folder.",
+            "2. Run install-local-connector.ps1 as Administrator. It writes .env, installs cloudflared, and starts server.mjs.",
+            "3. On later boots, run start-connector.bat or configure it as a Windows startup task.",
             `4. Confirm DNS CNAME ${dnsRecordName}.${DNS_DOMAIN} -> ${tunnelId}.cfargotunnel.com.`,
             `5. Test: GET /local-connector/health?user_id=${user_id}&tenant_id=${tenant_id}&device_id=${device_id}`,
           ],

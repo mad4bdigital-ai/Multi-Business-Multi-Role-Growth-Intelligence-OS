@@ -19,13 +19,15 @@ export function buildAuthRoutes(deps) {
   // ── POST /auth/register ─────────────────────────────────────────────────────
   router.post("/register", async (req, res) => {
     try {
-      const { email, password, display_name } = req.body || {};
+      const { email, password, display_name, tenant_display_name } = req.body || {};
       if (!email || !password || !display_name) {
         return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "email, password, and display_name are required." } });
       }
 
       const user_id = randomUUID();
+      const tenant_id = randomUUID();
       const password_hash = await bcrypt.hash(password, 10);
+      const tenantName = tenant_display_name || `${display_name}'s workspace`;
 
       // Attempt to create user
       const connection = await getPool().getConnection();
@@ -42,6 +44,17 @@ export function buildAuthRoutes(deps) {
           [user_id, "platform", password_hash]
         );
 
+        await connection.query(
+          `INSERT INTO \`tenants\` (tenant_id, tenant_type, display_name, status, metadata_json)
+           VALUES (?, 'managed_client_account', ?, 'active', ?)`,
+          [tenant_id, tenantName, JSON.stringify({ source: "self_serve_signup" })]
+        );
+
+        await connection.query(
+          `INSERT INTO \`memberships\` (user_id, tenant_id, role, status) VALUES (?, ?, 'owner', 'active')`,
+          [user_id, tenant_id]
+        );
+
         await connection.commit();
       } catch (err) {
         await connection.rollback();
@@ -54,9 +67,17 @@ export function buildAuthRoutes(deps) {
       }
 
       // Generate token
-      const token = jwt.sign({ user_id, email }, JWT_SECRET, { expiresIn: "7d" });
+      const token = jwt.sign({ user_id, email, tenant_id }, JWT_SECRET, { expiresIn: "7d" });
 
-      return res.status(201).json({ ok: true, user_id, email, display_name, token });
+      return res.status(201).json({
+        ok: true,
+        user_id,
+        email,
+        display_name,
+        tenant_id,
+        memberships: [{ tenant_id, role: "owner", status: "active" }],
+        token
+      });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "registration_failed", message: err.message } });
     }
@@ -92,10 +113,28 @@ export function buildAuthRoutes(deps) {
         return res.status(401).json({ ok: false, error: { code: "invalid_credentials", message: "Invalid email or password." } });
       }
 
-      // Generate token
-      const token = jwt.sign({ user_id: user.user_id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
+      const [memberships] = await getPool().query(
+        `SELECT m.tenant_id, m.role, m.status, t.display_name AS tenant_display_name
+           FROM \`memberships\` m
+           LEFT JOIN \`tenants\` t ON t.tenant_id = m.tenant_id
+          WHERE m.user_id = ? AND m.status = 'active'
+          ORDER BY m.granted_at ASC`,
+        [user.user_id]
+      );
+      const tenant_id = memberships[0]?.tenant_id || null;
 
-      return res.status(200).json({ ok: true, user_id: user.user_id, email: user.email, display_name: user.display_name, token });
+      // Generate token
+      const token = jwt.sign({ user_id: user.user_id, email: user.email, tenant_id }, JWT_SECRET, { expiresIn: "7d" });
+
+      return res.status(200).json({
+        ok: true,
+        user_id: user.user_id,
+        email: user.email,
+        display_name: user.display_name,
+        tenant_id,
+        memberships,
+        token
+      });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "login_failed", message: err.message } });
     }
@@ -170,10 +209,20 @@ export function buildAuthRoutes(deps) {
         connection.release();
       }
 
-      // Generate JWT
-      const token = jwt.sign({ user_id, email }, JWT_SECRET, { expiresIn: "7d" });
+      const [memberships] = await getPool().query(
+        `SELECT m.tenant_id, m.role, m.status, t.display_name AS tenant_display_name
+           FROM \`memberships\` m
+           LEFT JOIN \`tenants\` t ON t.tenant_id = m.tenant_id
+          WHERE m.user_id = ? AND m.status = 'active'
+          ORDER BY m.granted_at ASC`,
+        [user_id]
+      );
+      const tenant_id = memberships[0]?.tenant_id || null;
 
-      return res.status(200).json({ ok: true, user_id, email, display_name, token });
+      // Generate JWT
+      const token = jwt.sign({ user_id, email, tenant_id }, JWT_SECRET, { expiresIn: "7d" });
+
+      return res.status(200).json({ ok: true, user_id, email, display_name, tenant_id, memberships, token });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "google_auth_failed", message: err.message } });
     }

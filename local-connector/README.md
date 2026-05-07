@@ -144,7 +144,7 @@ For new users/devices, the platform route `POST /local-connector/install` now pr
 2. Publishes the Cloudflare application route for the generated hostname.
 3. Adds the Hostinger DNS CNAME.
 4. Stores `tunnel_url`, tunnel metadata, and `connector_secret` in `local_connector_user_configs`.
-5. Returns an `install.bat` that installs cloudflared and starts the local connector.
+5. Returns an install bundle with `install-local-connector.ps1`, `.env`, `start-connector.bat`, and `install.bat`.
 
 Generated hostnames use the shape:
 
@@ -163,6 +163,17 @@ Credential source depends on auth:
 When a user logs in from a new device, call the same install route with the new `device_id`; the route is idempotent for existing devices and provisions a new tunnel/DNS path for new devices.
 
 This makes provisioning fully automated for any user/device. The platform stores `connector_secret` per device and uses it when proxying requests through `/dispatch`.
+
+The generated `.env` is the local runtime contract for `server.mjs`:
+
+```
+BACKEND_API_KEY=<device connector secret>
+CONNECTOR_PORT=7070
+CONNECTOR_SHELL_ENABLED=true
+CONNECTOR_SHELL_ALLOWLIST={...}
+```
+
+Run `install-local-connector.ps1` as Administrator from the `local-connector` folder. It writes `.env`, registers the Cloudflare tunnel with the returned connector token, and starts `server.mjs`. Later launches can use `start-connector.bat` directly.
 
 ---
 
