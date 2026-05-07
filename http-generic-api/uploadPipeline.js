@@ -81,31 +81,50 @@ export function buildInstructions(uploadId, uploadType, baseUrl) {
 // Drive upload
 // ---------------------------------------------------------------------------
 
-export async function uploadContentToDrive(content, filename, mimeType) {
+export async function uploadContentToDrive(content, filename, mimeType, userEmail = null) {
   const folderId = process.env.UPLOADS_DRIVE_FOLDER_ID;
   if (!folderId) throw new Error("UPLOADS_DRIVE_FOLDER_ID is not configured");
 
   const drive = getDrive();
   const safeFilename = String(filename || "upload.txt").replace(/[^\w.\-]/g, "_");
 
-  const response = await drive.files.create(
-    {
-      requestBody: {
-        name: safeFilename,
-        parents: [folderId],
-        mimeType: mimeType || "text/plain",
-      },
-      media: {
-        mimeType: mimeType || "text/plain",
-        body: Readable.from([content]),
-      },
-      supportsAllDrives: true,
-      fields: "id,webViewLink,name,mimeType,size",
+  const response = await drive.files.create({
+    requestBody: {
+      name: safeFilename,
+      parents: [folderId],
+      mimeType: mimeType || "text/plain",
+    },
+    media: {
+      mimeType: mimeType || "text/plain",
+      body: Readable.from([content]),
+    },
+    supportsAllDrives: true,
+    fields: "id,webViewLink,name,mimeType,size",
+  });
+
+  const fileId = response.data.id;
+
+  // Share with user email so they can open and edit the file directly in Drive
+  if (userEmail && typeof userEmail === "string" && userEmail.includes("@")) {
+    try {
+      await drive.permissions.create({
+        fileId,
+        supportsAllDrives: true,
+        sendNotificationEmail: false,
+        requestBody: {
+          role: "writer",
+          type: "user",
+          emailAddress: userEmail,
+        },
+      });
+    } catch (permErr) {
+      // Non-fatal — file is uploaded, sharing failed (e.g. external domain restriction)
+      console.warn(`[uploads] Drive permission share failed for ${fileId} → ${userEmail}:`, permErr.message);
     }
-  );
+  }
 
   return {
-    drive_file_id: response.data.id,
+    drive_file_id: fileId,
     drive_folder_id: folderId,
     drive_web_url: response.data.webViewLink || null,
     size_bytes: response.data.size ? Number(response.data.size) : null,

@@ -36,7 +36,7 @@ export function buildUploadRoutes(deps) {
   router.post("/uploads", requireBackendApiKey, async (req, res) => {
     const {
       upload_type, source_mode = "direct", content, filename,
-      repo_url, metadata: rawMeta = {}, uploaded_by,
+      repo_url, metadata: rawMeta = {}, uploaded_by, user_email,
     } = req.body || {};
 
     if (!upload_type || !VALID_TYPES.includes(upload_type)) {
@@ -65,23 +65,24 @@ export function buildUploadRoutes(deps) {
         source: { mode: source_mode, origin_url: isRepoLink ? rawContent : null, ...(rawMeta.source || {}) },
       });
 
-      // Upload content to Drive
+      // Upload content to Drive and share with user email (writer access)
       const driveResult = await uploadContentToDrive(
         rawContent,
         filename || (isRepoLink ? "repo_link.txt" : "upload.txt"),
-        mimeType
+        mimeType,
+        user_email || null
       );
 
       await pool.query(
         `INSERT INTO \`uploads\`
            (upload_id, upload_type, source_mode, status, filename, mime_type, size_bytes,
-            drive_file_id, drive_folder_id, drive_web_url, metadata, uploaded_by, expires_at)
-         VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            drive_file_id, drive_folder_id, drive_web_url, metadata, uploaded_by, user_email, expires_at)
+         VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           uploadId, upload_type, source_mode,
           filename || null, mimeType, driveResult.size_bytes,
           driveResult.drive_file_id, driveResult.drive_folder_id, driveResult.drive_web_url,
-          JSON.stringify(meta), uploaded_by || null, expiresAt(),
+          JSON.stringify(meta), uploaded_by || null, user_email || null, expiresAt(),
         ]
       );
 
@@ -113,7 +114,7 @@ export function buildUploadRoutes(deps) {
 
   // POST /uploads/prepare — guided mode: create record + return instructions
   router.post("/uploads/prepare", requireBackendApiKey, async (req, res) => {
-    const { upload_type, metadata: rawMeta = {}, uploaded_by } = req.body || {};
+    const { upload_type, metadata: rawMeta = {}, uploaded_by, user_email } = req.body || {};
 
     if (!upload_type || !VALID_TYPES.includes(upload_type)) {
       return res.status(400).json({
@@ -131,9 +132,9 @@ export function buildUploadRoutes(deps) {
 
       await pool.query(
         `INSERT INTO \`uploads\`
-           (upload_id, upload_type, source_mode, status, metadata, instruction_set, uploaded_by, expires_at)
-         VALUES (?, ?, 'guided', 'awaiting_upload', ?, ?, ?, ?)`,
-        [uploadId, upload_type, JSON.stringify(meta), JSON.stringify(instructions), uploaded_by || null, expiresAt()]
+           (upload_id, upload_type, source_mode, status, metadata, instruction_set, uploaded_by, user_email, expires_at)
+         VALUES (?, ?, 'guided', 'awaiting_upload', ?, ?, ?, ?, ?)`,
+        [uploadId, upload_type, JSON.stringify(meta), JSON.stringify(instructions), uploaded_by || null, user_email || null, expiresAt()]
       );
 
       return res.status(200).json({
@@ -173,7 +174,12 @@ export function buildUploadRoutes(deps) {
 
       const record = rows[0];
       const mimeType = guessMimeType(filename || record.filename);
-      const driveResult = await uploadContentToDrive(content, filename || record.filename || "upload.txt", mimeType);
+      const driveResult = await uploadContentToDrive(
+        content,
+        filename || record.filename || "upload.txt",
+        mimeType,
+        record.user_email || null
+      );
 
       await pool.query(
         `UPDATE \`uploads\`
@@ -279,7 +285,7 @@ export function buildUploadRoutes(deps) {
 
   // GET /uploads — list with filters
   router.get("/uploads", requireBackendApiKey, async (req, res) => {
-    const { upload_type, status, tenant_id, uploaded_by, limit = "20", offset = "0" } = req.query;
+    const { upload_type, status, tenant_id, uploaded_by, user_email, limit = "20", offset = "0" } = req.query;
     const pool = getPool();
     try {
       const conditions = [];
@@ -288,6 +294,7 @@ export function buildUploadRoutes(deps) {
       if (status) { conditions.push("status = ?"); params.push(status); }
       if (tenant_id) { conditions.push("tenant_id = ?"); params.push(tenant_id); }
       if (uploaded_by) { conditions.push("uploaded_by = ?"); params.push(uploaded_by); }
+      if (user_email) { conditions.push("user_email = ?"); params.push(user_email); }
 
       const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
       params.push(Number(limit), Number(offset));
