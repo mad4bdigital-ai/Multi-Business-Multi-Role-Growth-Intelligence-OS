@@ -2,7 +2,7 @@ export const CANONICALS = [
   {
     output: 'system_bootstrap.md',
     sourceDir: 'canonicals/system_bootstrap',
-    expectedFileCount: 18,
+    expectedFileCount: 19,
     index: [
       ['Header and purpose', '00_header_purpose.md', 'Canonical identity, status, and purpose.'],
       ['Logic pointers and knowledge profiles', '01_logic_pointer_knowledge.md', 'Logic pointer authority, knowledge profiles, brand onboarding, and asset-read governance.'],
@@ -22,12 +22,13 @@ export const CANONICALS = [
       ['Business type and brand path resolution', '15_business_type_brand_path_resolution.md', 'Canonical path resolver for Business Type folders and brand folders under resolved business types.'],
       ['Context resolver layer', '16_context_resolver_layer.md', 'Resolver layer architecture, resolveContext contract, resolver inventory, and validation state model.'],
       ['Agent execution runtime', '17_agent_execution_runtime.md', 'Agent runtime, model class routing, verify pass, engine dispatch, Drive knowledge layer, and sync script.'],
+      ['Local connector and dispatch governance', '18_local_connector_dispatch.md', 'Dispatch layer, task_routes authority, agent skill grants, local connector config, auto-provisioning, and DNS governance.'],
     ],
   },
   {
     output: 'direct_instructions_registry_patch.md',
     sourceDir: 'canonicals/direct_instructions_registry_patch',
-    expectedFileCount: 14,
+    expectedFileCount: 15,
     index: [
       ['Header and purpose', '00_header_purpose.md', 'Canonical identity, status, and direct patch purpose.'],
       ['Governance foundation', '01_governance_foundation.md', 'Canonical presentation, pointer authority, brand core, activation, and early logging governance.'],
@@ -43,6 +44,7 @@ export const CANONICALS = [
       ['Business type and brand path resolution', '11_business_type_brand_path_resolution.md', 'Direct instruction patch for business-type-first and brand-under-business-type path governance.'],
       ['Context resolver layer', '12_context_resolver_layer.md', 'Resolver-first enforcement, resolver precedence rules, and blocked context handling.'],
       ['Agent execution runtime', '13_agent_execution_runtime.md', 'Agent runtime enforcement, model tier selection, verify pass, engine dispatch, and Drive knowledge layer.'],
+      ['Dispatch and local connector governance', '14_dispatch_local_connector_governance.md', 'task_routes mutation rules, MODULE_EXECUTORS registration, agent skills/grants/bindings, supervision policy, and DNS enforcement.'],
     ],
   },
   {

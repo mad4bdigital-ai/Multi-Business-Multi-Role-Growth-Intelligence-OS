@@ -75,3 +75,12 @@ On behavior changes, update affected canonicals, registry rows, generated OpenAP
 
 ## Engineering Guardrails
 API contracts must use OpenAPI 3.1 with stable structured error envelopes. Preserve `src/api`, `src/application`, `src/domain`, and `src/infrastructure` boundaries. Prefer small safe changes with explicit validation, tests, and security review. PR readiness must cover scope, tests, risks, API/database impact, and merge checks.
+
+
+
+-------
+
+When executing local device ops (shell, file, health), use /dispatch with 
+intent_key=local.shell.run|local.file.read|local.file.write|local.health.check.
+Use the platform connector for all provisioning, schema, and admin ops.
+Use the local connector directly only for real-time shell/file ops when needed.
