@@ -163,7 +163,7 @@ Each schema must be added to the Custom GPT UI as a separate Action. Each file s
 | Logic | `http-generic-api/openapi.custom-gpt.logic.yaml` | `https://logic.mad4b.com` | 19 | Logic definitions, packs, adaptations, workflow runs, approvals |
 | Observability | `http-generic-api/openapi.custom-gpt.observability.yaml` | `https://observability.mad4b.com` | 25 | Telemetry, usage, quota, tracking, reporting, audit, secrets, incidents |
 | Developer | `http-generic-api/openapi.custom-gpt.developer.yaml` | `https://developer.mad4b.com` | 11 | Developer apps, API credentials, webhooks, rate limits |
-| Admin CLI | `http-generic-api/openapi.custom-gpt.admin-cli.yaml` | `https://dev.mad4b.com` | 1 | Raw admin control dispatcher for CLI, DB, and environment operations |
+| Admin CLI | `http-generic-api/openapi.custom-gpt.admin-cli.yaml` | `https://admin.mad4b.com` | 1 | Raw admin control dispatcher for CLI, DB, and environment operations |
 | Ops | `http-generic-api/openapi.custom-gpt.ops.yaml` | `https://ops.mad4b.com` | 5 | Release readiness and entity classification |
 
 ## Runtime Scope
@@ -306,7 +306,7 @@ Each scoped subdomain should serve public HTML privacy policy pages:
 - `https://logic.mad4b.com/privacy-policy`
 - `https://observability.mad4b.com/privacy-policy`
 - `https://developer.mad4b.com/privacy-policy`
-- `https://dev.mad4b.com/privacy-policy`
+- `https://admin.mad4b.com/privacy-policy`
 - `https://ops.mad4b.com/privacy-policy`
 - `https://status.mad4b.com/privacy-policy`
 

@@ -119,7 +119,7 @@ async function patch(path, body) {
 section("GET / - scoped root discovery JSON");
 {
   const checks = [
-    ["dev.mad4b.com", "admin-cli", "/admin/control"],
+    ["admin.mad4b.com", "admin-cli", "/admin/control"],
     ["ops.mad4b.com", "ops", "/release/readiness"],
     ["logic.mad4b.com", "logic", "/logic-definitions"],
     ["identity.mad4b.com", "identity", "/users"],
@@ -137,7 +137,7 @@ section("GET / - scoped root discovery JSON");
 
 section("POST / - root discovery stays non-mutating JSON");
 {
-  const r = await postWithHost("/", "dev.mad4b.com", { accidental: true });
+  const r = await postWithHost("/", "admin.mad4b.com", { accidental: true });
   ok("POST dev root returns 200 discovery", r.status === 200, `got ${r.status}`);
   ok("POST dev root points to /admin/control", r.body.primary_paths?.includes("/admin/control"), `body: ${JSON.stringify(r.body)}`);
 }
@@ -560,7 +560,7 @@ section("GET /privacy-policy - public HTML page on scoped subdomains");
     "logic.mad4b.com",
     "observability.mad4b.com",
     "developer.mad4b.com",
-    "dev.mad4b.com",
+    "admin.mad4b.com",
     "ops.mad4b.com",
     "status.mad4b.com",
   ];

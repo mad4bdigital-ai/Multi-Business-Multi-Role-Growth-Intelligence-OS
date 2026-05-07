@@ -44,7 +44,7 @@ const SCOPES_BY_HOST = {
     schema_file: "openapi.custom-gpt.developer.yaml",
     primary_paths: ["/developer-apps", "/webhooks", "/rate-limit-rules"]
   },
-  "dev.mad4b.com": {
+  "admin.mad4b.com": {
     scope: "admin-cli",
     schema_file: "openapi.custom-gpt.admin-cli.yaml",
     primary_paths: ["/admin/control"]

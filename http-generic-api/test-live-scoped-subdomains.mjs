@@ -55,7 +55,7 @@ const SCOPES = [
   },
   {
     scope: "admin-cli",
-    baseUrl: "https://dev.mad4b.com",
+    baseUrl: "https://admin.mad4b.com",
     publicPaths: ["/", "/privacy-policy"],
     authenticatedPaths: []
   },

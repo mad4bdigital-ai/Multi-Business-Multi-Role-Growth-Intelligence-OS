@@ -19,7 +19,7 @@ const SERVER_SCOPES = [
   { slug: "logic", host: "logic.mad4b.com", title: "Logic And Workflow Actions" },
   { slug: "observability", host: "observability.mad4b.com", title: "Observability And Security Actions" },
   { slug: "developer", host: "developer.mad4b.com", title: "Developer And Release Actions" },
-  { slug: "admin-cli", host: "dev.mad4b.com", title: "Admin Control Actions" },
+  { slug: "admin-cli", host: "admin.mad4b.com", title: "Admin Control Actions" },
   { slug: "ops", host: "ops.mad4b.com", title: "Platform Operations Actions" },
   { slug: "platform", host: "platform.mad4b.com", title: "Platform Extension Actions" }
 ];

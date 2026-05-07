@@ -38,7 +38,7 @@ const EXPECTED_SERVER_URLS = {
   "openapi.custom-gpt.logic.yaml": "https://logic.mad4b.com",
   "openapi.custom-gpt.observability.yaml": "https://observability.mad4b.com",
   "openapi.custom-gpt.developer.yaml": "https://developer.mad4b.com",
-  "openapi.custom-gpt.admin-cli.yaml": "https://dev.mad4b.com",
+  "openapi.custom-gpt.admin-cli.yaml": "https://admin.mad4b.com",
   "openapi.custom-gpt.ops.yaml": "https://ops.mad4b.com",
 };
 
