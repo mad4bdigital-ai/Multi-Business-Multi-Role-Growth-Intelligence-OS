@@ -210,6 +210,11 @@ When mutation behavior changes:
 - update this playbook if semantics change materially
 - avoid documenting policies that runtime does not actually enforce
 
+Custom GPT OpenAPI schema mutations must preserve importer compatibility. In particular:
+- keep each GPT action schema to one `components.securitySchemes` entry unless the target importer explicitly supports more
+- configure OAuth popup details in the GPT Action authentication layer, not as a second OpenAPI security scheme when bearer auth already protects API calls
+- validate generated/imported schemas before publishing docs that tell users to re-import them
+
 ## 10. Immediate hardening targets
 
 Based on the current upgrade plan, the next mutation hardening targets are:
