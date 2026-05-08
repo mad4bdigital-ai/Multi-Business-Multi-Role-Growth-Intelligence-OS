@@ -40,11 +40,13 @@ import { buildLocalConnectorInstallRoutes } from "./localConnectorInstallRoutes.
 import { buildDispatchRoutes } from "./dispatchRoutes.js";
 import { buildOnboardingRoutes } from "./onboardingRoutes.js";
 import { buildConnectRoutes } from "./connectRoutes.js";
+import { buildSystemLayerRoutes } from "./systemLayerRoutes.js";
 
 export function registerRoutes(app, deps) {
   app.use(buildLegalRoutes(deps));
   app.use(buildRootDiscoveryRoutes());
   app.use(buildConnectRoutes(deps));
+  app.use(buildSystemLayerRoutes(deps));
   app.use("/auth", buildAuthRoutes(deps));
   app.use(buildOnboardingRoutes(deps));
   app.use(buildStatusRoutes(deps));

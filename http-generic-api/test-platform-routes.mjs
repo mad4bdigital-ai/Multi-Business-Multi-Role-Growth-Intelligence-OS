@@ -24,6 +24,7 @@ import { buildBatchRoutes }            from "./routes/batchRoutes.js";
 import { buildHealthRoutes }           from "./routes/healthRoutes.js";
 import { buildLegalRoutes }            from "./routes/legalRoutes.js";
 import { buildRootDiscoveryRoutes }    from "./routes/rootDiscoveryRoutes.js";
+import { buildSystemLayerRoutes }      from "./routes/systemLayerRoutes.js";
 
 let passed = 0;
 let failed = 0;
@@ -59,6 +60,10 @@ const app = express();
 app.use(express.json());
 app.use(buildRootDiscoveryRoutes());
 app.use(buildHealthRoutes(HEALTH_DEPS));
+app.use((req, _res, next) => {
+  req.auth = { is_admin: true };
+  next();
+});
 app.use(buildTenantsRoutes(DEPS));
 app.use(buildAccessRoutes(DEPS));
 app.use(buildPlannerRoutes(DEPS));
@@ -71,6 +76,7 @@ app.use(buildObservabilityRoutes(DEPS));
 app.use(buildStatusRoutes(DEPS));
 app.use(buildBatchRoutes(DEPS));
 app.use(buildLegalRoutes(DEPS));
+app.use(buildSystemLayerRoutes(DEPS));
 
 const server = app.listen(0);
 await new Promise(resolve => server.once("listening", resolve));
@@ -280,6 +286,25 @@ section("GET /connector/history — route registered");
 {
   const r = await get("/connector/history?tenant_id=t1");
   ok("not 404 (route registered)", r.status !== 404, `got ${r.status}`);
+}
+
+section("Admin system layer connector facade");
+
+{
+  const r = await get("/admin/system/tools");
+  ok("system tools returns 200", r.status === 200, `got ${r.status}`);
+  ok("system tools exposes connector registry list", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "connector_registry_list"));
+  ok("system tools exposes connector registry get", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "connector_registry_get"));
+}
+{
+  const r = await post("/admin/system/tools/call", {});
+  ok("system tool call validates name", r.status === 400, `got ${r.status}`);
+  ok("system tool call missing name code", r.body.error?.code === "missing_tool_name", `got ${r.body.error?.code}`);
+}
+{
+  const r = await get("/admin/system/connectors?status=flying");
+  ok("system connector list validates status", r.status === 400, `got ${r.status}`);
+  ok("system connector invalid status code", r.body.error?.code === "invalid_status", `got ${r.body.error?.code}`);
 }
 
 // ── 9. GET /planner/plans/:id — route registration ───────────────────────────
