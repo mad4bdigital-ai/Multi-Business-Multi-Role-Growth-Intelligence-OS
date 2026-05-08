@@ -1,4 +1,10 @@
 import { Router } from "express";
+import { readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const SCHEMA_DIR = resolve(__dirname, "..");
 
 const DEFAULT_SCOPE = {
   scope: "runtime",
@@ -75,6 +81,17 @@ const SCOPES_BY_HOST = {
   }
 };
 
+function unique(values) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function schemaFilesForScope(scope) {
+  return unique([
+    scope.schema_file,
+    ...Object.values(scope.schema_variants || {})
+  ]);
+}
+
 function requestHost(req) {
   return String(req.headers["x-forwarded-host"] || req.headers.host || "")
     .split(",")[0]
@@ -85,6 +102,40 @@ function requestHost(req) {
 
 export function buildRootDiscoveryRoutes() {
   const router = Router();
+
+  router.get("/:schemaFile(openapi.*.yaml)", async (req, res) => {
+    const host = requestHost(req);
+    const scope = SCOPES_BY_HOST[host] || DEFAULT_SCOPE;
+    const requestedFile = String(req.params.schemaFile || "").trim();
+    const allowedSchemaFiles = schemaFilesForScope(scope);
+
+    if (!allowedSchemaFiles.includes(requestedFile)) {
+      return res.status(404).json({
+        ok: false,
+        error: {
+          code: "schema_not_found",
+          message: "No public OpenAPI schema is available for this host and file."
+        }
+      });
+    }
+
+    try {
+      const schema = await readFile(resolve(SCHEMA_DIR, requestedFile), "utf8");
+      return res
+        .status(200)
+        .type("application/yaml")
+        .set("Cache-Control", "public, max-age=300")
+        .send(schema);
+    } catch {
+      return res.status(404).json({
+        ok: false,
+        error: {
+          code: "schema_file_missing",
+          message: "The advertised OpenAPI schema file is not available."
+        }
+      });
+    }
+  });
 
   router.all("/", (req, res) => {
     const host = requestHost(req);

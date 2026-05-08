@@ -102,6 +102,15 @@ async function getWithHost(path, host) {
   return { status: res.status, body: await res.json().catch(() => ({})) };
 }
 
+async function getTextWithHost(path, host) {
+  const res = await fetch(`${base}${path}`, { headers: { "x-forwarded-host": host } });
+  return {
+    status: res.status,
+    contentType: res.headers.get("content-type") || "",
+    text: await res.text(),
+  };
+}
+
 async function postWithHost(path, host, body = {}) {
   const res = await fetch(`${base}${path}`, {
     method: "POST",
@@ -139,6 +148,18 @@ section("GET / - scoped root discovery JSON");
     ok(`${host} root scope is ${scope}`, r.body.scope === scope, `got ${r.body.scope}`);
     ok(`${host} root includes ${expectedPath}`, r.body.primary_paths?.includes(expectedPath), `body: ${JSON.stringify(r.body)}`);
   }
+}
+
+section("GET /openapi*.yaml - public scoped schemas");
+{
+  const tenantSchema = await getTextWithHost("/openapi.tenant-gpt.auth.yaml", "auth.mad4b.com");
+  ok("auth host serves tenant GPT schema", tenantSchema.status === 200, `got ${tenantSchema.status}`);
+  ok("tenant GPT schema is YAML", tenantSchema.contentType.includes("application/yaml"), tenantSchema.contentType);
+  ok("tenant GPT schema includes OAuth authorization URL", tenantSchema.text.includes("authorizationUrl: https://auth.mad4b.com/auth/oauth/authorize"));
+  ok("tenant GPT schema includes linked tenant scope", tenantSchema.text.includes("https://auth.mad4b.com/scopes/tenant.links"));
+
+  const wrongHost = await getTextWithHost("/openapi.tenant-gpt.auth.yaml", "api.mad4b.com");
+  ok("wrong host cannot fetch tenant schema", wrongHost.status === 404, `got ${wrongHost.status}`);
 }
 
 section("POST / - root discovery stays non-mutating JSON");
