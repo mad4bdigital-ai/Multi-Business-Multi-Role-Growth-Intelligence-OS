@@ -88,7 +88,7 @@ function App() {
         },
       });
       const container = document.getElementById('gsi-btn-container');
-      if (container) window.google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', width: 320, text: 'signin_with' });
+      if (container) window.google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', width: 320, text: 'signin_with', locale: 'en' });
     };
     setup();
   }, [step]);
