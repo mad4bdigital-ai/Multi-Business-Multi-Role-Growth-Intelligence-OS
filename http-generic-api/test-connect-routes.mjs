@@ -115,10 +115,17 @@ try {
     const systemToolCallSchema = doc.paths?.["/system/tools/call"]?.post?.requestBody?.content?.["application/json"]?.schema;
     const statusConnection = doc.paths?.["/connect/status"]?.get?.responses?.["200"]?.content?.["application/json"]?.schema?.properties?.connection;
     const deviceResponse = doc.paths?.["/connect/device-install"]?.post?.responses?.["200"]?.content?.["application/json"]?.schema;
+    const protectedOperations = exposedPaths.flatMap((pathKey) => {
+      const pathItem = doc.paths[pathKey] || {};
+      return Object.entries(pathItem)
+        .filter(([method, operation]) => ["get", "post", "put", "delete", "patch"].includes(method) && !(Array.isArray(operation?.security) && operation.security.length === 0))
+        .map(([method, operation]) => ({ pathKey, method, operation }));
+    });
     assert("tenant GPT schema uses OAuth action auth", securityScheme?.type === "oauth2", JSON.stringify(securityScheme));
     assert("tenant GPT schema declares authorization code flow", Boolean(securityScheme?.flows?.authorizationCode), JSON.stringify(securityScheme));
     assert("tenant GPT schema declares tenant scope", Boolean(securityScheme?.flows?.authorizationCode?.scopes?.tenant), JSON.stringify(securityScheme?.flows?.authorizationCode?.scopes));
     assert("tenant GPT schema root security requires tenant scope", doc.security?.[0]?.userBearerAuth?.includes("tenant"), JSON.stringify(doc.security));
+    assert("tenant GPT schema embeds OAuth security on protected operations", protectedOperations.every(({ operation }) => operation.security?.[0]?.userBearerAuth?.includes("tenant")), JSON.stringify(protectedOperations.map(({ pathKey, method }) => `${method.toUpperCase()} ${pathKey}`)));
     assert("tenant GPT schema hides OAuth plumbing operations", !exposedPaths.some((path) => path.startsWith("/auth/")), exposedPaths.join(", "));
     assert("tenant GPT schema exposes system tools list", exposedPaths.includes("/system/tools"), exposedPaths.join(", "));
     assert("tenant GPT schema exposes system tools call", exposedPaths.includes("/system/tools/call"), exposedPaths.join(", "));

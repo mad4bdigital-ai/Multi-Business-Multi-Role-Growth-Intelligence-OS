@@ -395,6 +395,15 @@ function normalizeTenantAuthDoc(sourceDoc, tenantDoc) {
     [schemeName]: clone(config.security_scheme)
   };
   normalizedDoc.security = clone(config.security);
+
+  for (const pathItem of Object.values(normalizedDoc.paths || {})) {
+    for (const [method, operation] of Object.entries(pathItem || {})) {
+      if (!METHOD_NAMES.has(method) || !operation || typeof operation !== "object") continue;
+      if (Array.isArray(operation.security) && operation.security.length === 0) continue;
+      operation.security = clone(config.security);
+    }
+  }
+
   return normalizedDoc;
 }
 

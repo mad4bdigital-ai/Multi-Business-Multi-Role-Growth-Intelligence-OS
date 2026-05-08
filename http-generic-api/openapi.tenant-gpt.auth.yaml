@@ -137,6 +137,9 @@ paths:
                     items:
                       type: object
                       additionalProperties: true
+      security:
+        - userBearerAuth:
+            - tenant
   /system/tools/call:
     post:
       tags:
@@ -183,6 +186,9 @@ paths:
           description: Invalid tool request
         '403':
           description: Tenant scope violation
+      security:
+        - userBearerAuth:
+            - tenant
   /system/connectors:
     get:
       tags:
@@ -232,6 +238,9 @@ paths:
                     items:
                       type: object
                       additionalProperties: true
+      security:
+        - userBearerAuth:
+            - tenant
   /system/connectors/{system_id}:
     get:
       tags:
@@ -262,6 +271,9 @@ paths:
           description: Tenant scope violation
         '404':
           description: Connector system not found
+      security:
+        - userBearerAuth:
+            - tenant
   /connect/status:
     get:
       tags:
@@ -325,6 +337,9 @@ paths:
                           type: boolean
         '403':
           description: User JWT required
+      security:
+        - userBearerAuth:
+            - tenant
   /connect/activate:
     post:
       tags:
@@ -417,6 +432,9 @@ paths:
                     type: string
         '403':
           description: User JWT required
+      security:
+        - userBearerAuth:
+            - tenant
   /connect/device-install:
     post:
       tags:
@@ -519,6 +537,9 @@ paths:
                     additionalProperties: true
         '403':
           description: User JWT required
+      security:
+        - userBearerAuth:
+            - tenant
   /local-connector/install:
     post:
       tags:
@@ -593,6 +614,9 @@ paths:
                   installation:
                     type: object
                     additionalProperties: true
+      security:
+        - userBearerAuth:
+            - tenant
   /local-connector/install/status:
     get:
       tags:
@@ -635,6 +659,9 @@ paths:
                     type: array
                     items:
                       type: object
+      security:
+        - userBearerAuth:
+            - tenant
   /local-connector/health:
     get:
       tags:
@@ -676,6 +703,9 @@ paths:
                   error:
                     type: object
                     additionalProperties: true
+      security:
+        - userBearerAuth:
+            - tenant
   /app-connections:
     post:
       tags:
@@ -735,3 +765,6 @@ paths:
           description: Missing required fields
         '403':
           description: Authentication required
+      security:
+        - userBearerAuth:
+            - tenant
