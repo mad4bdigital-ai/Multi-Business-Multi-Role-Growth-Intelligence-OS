@@ -41,6 +41,17 @@ const EXPECTED_SERVER_URLS = {
   "openapi.custom-gpt.admin-cli.yaml": "https://admin.mad4b.com",
   "openapi.custom-gpt.ops.yaml": "https://ops.mad4b.com",
 };
+const EXPECTED_SCOPE_TAGS = {
+  "openapi.custom-gpt.runtime.yaml": new Set(["health", "activation", "governance", "jobs", "execution", "ai", "tenants"]),
+  "openapi.custom-gpt.identity.yaml": new Set(["identity", "access"]),
+  "openapi.custom-gpt.customers.yaml": new Set(["customers"]),
+  "openapi.custom-gpt.systems.yaml": new Set(["connected-systems", "planner", "bootstrap"]),
+  "openapi.custom-gpt.logic.yaml": new Set(["logic", "workflows"]),
+  "openapi.custom-gpt.observability.yaml": new Set(["observability", "security"]),
+  "openapi.custom-gpt.developer.yaml": new Set(["developer-api"]),
+  "openapi.custom-gpt.admin-cli.yaml": new Set(["admin-control"]),
+  "openapi.custom-gpt.ops.yaml": new Set(["release"]),
+};
 
 let passed = 0;
 let failed = 0;
@@ -141,6 +152,11 @@ for (const file of SCHEMAS) {
   assert(`operation count <= ${MAX_OPERATIONS}`, operations.length <= MAX_OPERATIONS, `got ${operations.length}`);
   assert("has at least one operation", operations.length > 0);
   assert("does not expose root path operation", !operations.some((operation) => operation.pathKey === "/"));
+  const expectedTags = EXPECTED_SCOPE_TAGS[file];
+  const unexpectedTags = operations
+    .map((operation) => operation.operation.tags?.[0] || "untagged")
+    .filter((tag) => !expectedTags.has(tag));
+  assert("operations match declared scope tag classification", unexpectedTags.length === 0, unexpectedTags.join(", "));
 
   const securitySchemes = Object.keys(doc.components?.securitySchemes || {});
   assert("exposes one security scheme", securitySchemes.length === 1, `got ${securitySchemes.join(", ")}`);
@@ -181,6 +197,17 @@ for (const file of SCHEMAS) {
       assert(`${opLabel} request body schema is object`, schema?.type === "object", JSON.stringify(requestSchema));
     }
   }
+}
+
+section("openapi.custom-gpt.auth-dispatcher.yaml");
+{
+  const doc = loadSchema("openapi.custom-gpt.auth-dispatcher.yaml");
+  const operations = collectOperations(doc);
+  assert("auth dispatcher uses auth host", doc.servers?.[0]?.url === "https://auth.mad4b.com", doc.servers?.[0]?.url);
+  assert("auth dispatcher has admin operations", operations.length > 0);
+  assert("auth dispatcher is admin-control only", operations.every((operation) => operation.operation.tags?.[0] === "admin-control"));
+  assert("auth dispatcher exposes system layer tools", operations.some((operation) => operation.pathKey === "/admin/system/tools"));
+  assert("auth dispatcher exposes system layer tool calls", operations.some((operation) => operation.pathKey === "/admin/system/tools/call"));
 }
 
 console.log(`\nResults: ${passed} passed, ${failed} failed`);

@@ -1617,6 +1617,518 @@ paths:
                 $ref: '#/components/schemas/PlatformListResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /planner/resolve-intent:
+    post:
+      tags:
+        - planner
+      security:
+        - backendBearerAuth: []
+      operationId: resolveIntent
+      summary: Resolve an intent key to a task route
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - intent_key
+              properties:
+                intent_key:
+                  type: string
+                tenant_id:
+                  type: string
+                  format: uuid
+                context:
+                  type: object
+                  additionalProperties: true
+                  properties: {}
+      responses:
+        '200':
+          description: Intent resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /planner/create-plan:
+    post:
+      tags:
+        - planner
+      security:
+        - backendBearerAuth: []
+      operationId: createExecutionPlan
+      summary: Create an execution plan (runs access gate before planning)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenant_id
+                - intent_key
+              properties:
+                tenant_id:
+                  type: string
+                  format: uuid
+                user_id:
+                  type: string
+                  format: uuid
+                intent_key:
+                  type: string
+                input_context:
+                  type: object
+                  additionalProperties: true
+                  properties: {}
+      responses:
+        '201':
+          description: Plan created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Access denied by decision engine
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /planner/plans/{plan_id}:
+    get:
+      tags:
+        - planner
+      security:
+        - backendBearerAuth: []
+      operationId: getExecutionPlan
+      summary: Get an execution plan by ID
+      parameters:
+        - name: plan_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Execution plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - planner
+      security:
+        - backendBearerAuth: []
+      operationId: updateExecutionPlan
+      summary: Update execution plan status
+      parameters:
+        - name: plan_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plan_status:
+                  type: string
+                  enum:
+                    - pending
+                    - active
+                    - completed
+                    - failed
+                    - cancelled
+      responses:
+        '200':
+          description: Plan updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /bootstrap/readiness/{tenant_id}:
+    get:
+      tags:
+        - bootstrap
+      security:
+        - backendBearerAuth: []
+      operationId: getBootstrapReadiness
+      summary: Run 8 first-execution readiness checks for a tenant
+      description: |
+        Checks: active_tenant_context, active_membership, commercial_eligibility, connector_available, workspace_bootstrapped, policy_path_resolved, review_path_resolved, managed_assignment_ready. Falls back to legacy tables when new platform tables are empty.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: persist
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Readiness report
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - ok
+                  - ready
+                  - overall_status
+                  - tenant_id
+                  - checks
+                properties:
+                  ok:
+                    type: boolean
+                  ready:
+                    type: boolean
+                  overall_status:
+                    type: string
+                    enum:
+                      - ready
+                      - degraded
+                      - not_ready
+                  tenant_id:
+                    type: string
+                  checks:
+                    type: object
+                    additionalProperties: true
+                    properties: {}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /bootstrap/onboarding:
+    post:
+      tags:
+        - bootstrap
+      security:
+        - backendBearerAuth: []
+      operationId: createOnboardingState
+      summary: Create or reset onboarding state for a tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenant_id
+              properties:
+                tenant_id:
+                  type: string
+                  format: uuid
+                onboarding_template:
+                  type: string
+                current_step:
+                  type: string
+      responses:
+        '201':
+          description: Onboarding state created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      tags:
+        - bootstrap
+      security:
+        - backendBearerAuth: []
+      operationId: listOnboardingStates
+      summary: List onboarding states
+      parameters:
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Onboarding states
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /bootstrap/onboarding/{tenant_id}/step:
+    patch:
+      tags:
+        - bootstrap
+      security:
+        - backendBearerAuth: []
+      operationId: advanceOnboardingStep
+      summary: Advance or update the onboarding step for a tenant
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - current_step
+              properties:
+                current_step:
+                  type: string
+                completion_status:
+                  type: string
+                  enum:
+                    - in_progress
+                    - complete
+                    - skipped
+                step_data:
+                  type: object
+                  additionalProperties: true
+                  properties: {}
+      responses:
+        '200':
+          description: Step advanced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /connector/dispatch:
+    post:
+      tags:
+        - planner
+      security:
+        - backendBearerAuth: []
+      operationId: connectorDispatch
+      summary: Dispatch a connector execution (WordPress transport or content workflow)
+      description: Sprint 09 bridge. Accepts either an existing plan_id or creates an ad-hoc execution plan from brand_key + workflow_key + tenant_id, then dispatches immediately. Use apply=false (default) for dry-run preview. WordPress connector resolves brand credentials and calls runWordpressConnectorMigration. Co.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plan_id:
+                  type: string
+                  format: uuid
+                  description: Existing validated/approved plan. If omitted an ad-hoc plan is created.
+                tenant_id:
+                  type: string
+                  format: uuid
+                user_id:
+                  type: string
+                  format: uuid
+                brand_key:
+                  type: string
+                target_key:
+                  type: string
+                workflow_key:
+                  type: string
+                intent_key:
+                  type: string
+                apply:
+                  type: boolean
+                  default: false
+                post_types:
+                  type: array
+                  items:
+                    type: string
+                  default:
+                    - post
+                publish_status:
+                  type: string
+                  enum:
+                    - draft
+                    - publish
+                    - private
+                  default: draft
+      responses:
+        '200':
+          description: Dispatch completed or queued
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - ok
+                  - run_id
+                  - trace_id
+                  - plan_id
+                  - connector_type
+                properties:
+                  ok:
+                    type: boolean
+                  run_id:
+                    type: string
+                  trace_id:
+                    type: string
+                  plan_id:
+                    type: string
+                  connector_type:
+                    type: string
+                    enum:
+                      - wordpress
+                      - content_workflow
+                  plan_status:
+                    type: string
+                  apply:
+                    type: boolean
+                  duration_ms:
+                    type: integer
+                  result:
+                    type: object
+                    additionalProperties: true
+                    properties: {}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Access denied — requires human approval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /connector/dispatch/status/{run_id}:
+    get:
+      tags:
+        - planner
+      security:
+        - backendBearerAuth: []
+      operationId: getConnectorDispatchStatus
+      summary: Poll connector dispatch status by workflow run ID
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Run status with steps
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /connector/history:
+    get:
+      tags:
+        - planner
+      security:
+        - backendBearerAuth: []
+      operationId: getConnectorHistory
+      summary: List recent connector dispatches for a tenant
+      parameters:
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Dispatch history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /planner/plans/{plan_id}/execute:
+    post:
+      tags:
+        - planner
+      security:
+        - backendBearerAuth: []
+      operationId: executePlan
+      summary: Execute a validated/approved plan via the connector dispatch engine
+      parameters:
+        - name: plan_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: apply
+          in: query
+          schema:
+            type: boolean
+            default: false
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                post_types:
+                  type: array
+                  items:
+                    type: string
+                publish_status:
+                  type: string
+                  enum:
+                    - draft
+                    - publish
+                    - private
+                  default: draft
+                actor_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Execution dispatched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /connected-systems/{system_id}/status:
     patch:
       tags:
@@ -1894,515 +2406,3 @@ paths:
                 $ref: '#/components/schemas/PlatformListResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /planner/resolve-intent:
-    post:
-      tags:
-        - planner
-      security:
-        - backendBearerAuth: []
-      operationId: resolveIntent
-      summary: Resolve an intent key to a task route
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - intent_key
-              properties:
-                intent_key:
-                  type: string
-                tenant_id:
-                  type: string
-                  format: uuid
-                context:
-                  type: object
-                  additionalProperties: true
-                  properties: {}
-      responses:
-        '200':
-          description: Intent resolved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /planner/create-plan:
-    post:
-      tags:
-        - planner
-      security:
-        - backendBearerAuth: []
-      operationId: createExecutionPlan
-      summary: Create an execution plan (runs access gate before planning)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - tenant_id
-                - intent_key
-              properties:
-                tenant_id:
-                  type: string
-                  format: uuid
-                user_id:
-                  type: string
-                  format: uuid
-                intent_key:
-                  type: string
-                input_context:
-                  type: object
-                  additionalProperties: true
-                  properties: {}
-      responses:
-        '201':
-          description: Plan created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          description: Access denied by decision engine
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /planner/plans/{plan_id}:
-    get:
-      tags:
-        - planner
-      security:
-        - backendBearerAuth: []
-      operationId: getExecutionPlan
-      summary: Get an execution plan by ID
-      parameters:
-        - name: plan_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Execution plan
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    patch:
-      tags:
-        - planner
-      security:
-        - backendBearerAuth: []
-      operationId: updateExecutionPlan
-      summary: Update execution plan status
-      parameters:
-        - name: plan_id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                plan_status:
-                  type: string
-                  enum:
-                    - pending
-                    - active
-                    - completed
-                    - failed
-                    - cancelled
-      responses:
-        '200':
-          description: Plan updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /connector/dispatch:
-    post:
-      tags:
-        - planner
-      security:
-        - backendBearerAuth: []
-      operationId: connectorDispatch
-      summary: Dispatch a connector execution (WordPress transport or content workflow)
-      description: Sprint 09 bridge. Accepts either an existing plan_id or creates an ad-hoc execution plan from brand_key + workflow_key + tenant_id, then dispatches immediately. Use apply=false (default) for dry-run preview. WordPress connector resolves brand credentials and calls runWordpressConnectorMigration. Co.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                plan_id:
-                  type: string
-                  format: uuid
-                  description: Existing validated/approved plan. If omitted an ad-hoc plan is created.
-                tenant_id:
-                  type: string
-                  format: uuid
-                user_id:
-                  type: string
-                  format: uuid
-                brand_key:
-                  type: string
-                target_key:
-                  type: string
-                workflow_key:
-                  type: string
-                intent_key:
-                  type: string
-                apply:
-                  type: boolean
-                  default: false
-                post_types:
-                  type: array
-                  items:
-                    type: string
-                  default:
-                    - post
-                publish_status:
-                  type: string
-                  enum:
-                    - draft
-                    - publish
-                    - private
-                  default: draft
-      responses:
-        '200':
-          description: Dispatch completed or queued
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: false
-                required:
-                  - ok
-                  - run_id
-                  - trace_id
-                  - plan_id
-                  - connector_type
-                properties:
-                  ok:
-                    type: boolean
-                  run_id:
-                    type: string
-                  trace_id:
-                    type: string
-                  plan_id:
-                    type: string
-                  connector_type:
-                    type: string
-                    enum:
-                      - wordpress
-                      - content_workflow
-                  plan_status:
-                    type: string
-                  apply:
-                    type: boolean
-                  duration_ms:
-                    type: integer
-                  result:
-                    type: object
-                    additionalProperties: true
-                    properties: {}
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          description: Access denied — requires human approval
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /connector/dispatch/status/{run_id}:
-    get:
-      tags:
-        - planner
-      security:
-        - backendBearerAuth: []
-      operationId: getConnectorDispatchStatus
-      summary: Poll connector dispatch status by workflow run ID
-      parameters:
-        - name: run_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Run status with steps
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /connector/history:
-    get:
-      tags:
-        - planner
-      security:
-        - backendBearerAuth: []
-      operationId: getConnectorHistory
-      summary: List recent connector dispatches for a tenant
-      parameters:
-        - name: tenant_id
-          in: query
-          schema:
-            type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 20
-            maximum: 100
-      responses:
-        '200':
-          description: Dispatch history
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlatformListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /planner/plans/{plan_id}/execute:
-    post:
-      tags:
-        - planner
-      security:
-        - backendBearerAuth: []
-      operationId: executePlan
-      summary: Execute a validated/approved plan via the connector dispatch engine
-      parameters:
-        - name: plan_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: apply
-          in: query
-          schema:
-            type: boolean
-            default: false
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                post_types:
-                  type: array
-                  items:
-                    type: string
-                publish_status:
-                  type: string
-                  enum:
-                    - draft
-                    - publish
-                    - private
-                  default: draft
-                actor_id:
-                  type: string
-                  format: uuid
-      responses:
-        '200':
-          description: Execution dispatched
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /bootstrap/readiness/{tenant_id}:
-    get:
-      tags:
-        - bootstrap
-      security:
-        - backendBearerAuth: []
-      operationId: getBootstrapReadiness
-      summary: Run 8 first-execution readiness checks for a tenant
-      description: |
-        Checks: active_tenant_context, active_membership, commercial_eligibility, connector_available, workspace_bootstrapped, policy_path_resolved, review_path_resolved, managed_assignment_ready. Falls back to legacy tables when new platform tables are empty.
-      parameters:
-        - name: tenant_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: persist
-          in: query
-          schema:
-            type: boolean
-      responses:
-        '200':
-          description: Readiness report
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: false
-                required:
-                  - ok
-                  - ready
-                  - overall_status
-                  - tenant_id
-                  - checks
-                properties:
-                  ok:
-                    type: boolean
-                  ready:
-                    type: boolean
-                  overall_status:
-                    type: string
-                    enum:
-                      - ready
-                      - degraded
-                      - not_ready
-                  tenant_id:
-                    type: string
-                  checks:
-                    type: object
-                    additionalProperties: true
-                    properties: {}
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /bootstrap/onboarding:
-    post:
-      tags:
-        - bootstrap
-      security:
-        - backendBearerAuth: []
-      operationId: createOnboardingState
-      summary: Create or reset onboarding state for a tenant
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - tenant_id
-              properties:
-                tenant_id:
-                  type: string
-                  format: uuid
-                onboarding_template:
-                  type: string
-                current_step:
-                  type: string
-      responses:
-        '201':
-          description: Onboarding state created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    get:
-      tags:
-        - bootstrap
-      security:
-        - backendBearerAuth: []
-      operationId: listOnboardingStates
-      summary: List onboarding states
-      parameters:
-        - name: tenant_id
-          in: query
-          schema:
-            type: string
-        - name: status
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Onboarding states
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlatformListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /bootstrap/onboarding/{tenant_id}/step:
-    patch:
-      tags:
-        - bootstrap
-      security:
-        - backendBearerAuth: []
-      operationId: advanceOnboardingStep
-      summary: Advance or update the onboarding step for a tenant
-      parameters:
-        - name: tenant_id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - current_step
-              properties:
-                current_step:
-                  type: string
-                completion_status:
-                  type: string
-                  enum:
-                    - in_progress
-                    - complete
-                    - skipped
-                step_data:
-                  type: object
-                  additionalProperties: true
-                  properties: {}
-      responses:
-        '200':
-          description: Step advanced
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'

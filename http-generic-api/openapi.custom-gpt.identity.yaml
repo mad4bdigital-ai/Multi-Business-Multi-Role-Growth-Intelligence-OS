@@ -1510,6 +1510,92 @@ paths:
                 $ref: '#/components/schemas/PlatformListResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /access/resolve:
+    post:
+      tags:
+        - access
+      security:
+        - backendBearerAuth: []
+      operationId: resolveAccess
+      summary: Run the 6-outcome access decision engine
+      description: |
+        Evaluates tenant context, membership, subscription, and policy to produce one of: ALLOW_SELF_SERVE, ALLOW_WITH_OPTIONAL_ASSISTANCE, REQUIRE_REVIEW, REQUIRE_SUPERVISOR_APPROVAL, ROUTE_TO_MANAGED_SERVICE, or DENY.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - tenant_id
+              properties:
+                tenant_id:
+                  type: string
+                  format: uuid
+                user_id:
+                  type: string
+                  description: Platform user identifier. UUIDs and registry/user-key strings are accepted.
+                risk_level:
+                  type: string
+                  enum:
+                    - low
+                    - medium
+                    - high
+                    - critical
+                  default: low
+                intent_flags:
+                  type: object
+                  additionalProperties:
+                    type: boolean
+                  description: Boolean intent flags, for example public_scope or destructive. Array flag-name input is accepted by the backend for compatibility.
+                  properties: {}
+                persist:
+                  type: boolean
+                  default: false
+                  description: Write the resolved envelope to request_envelopes table.
+      responses:
+        '200':
+          description: Access decision resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessResolveResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /access/envelopes:
+    get:
+      tags:
+        - access
+      security:
+        - backendBearerAuth: []
+      operationId: listAccessEnvelopes
+      summary: List persisted access decision envelopes
+      parameters:
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+        - name: decision
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Envelope list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /users/{user_id}:
     get:
       tags:
@@ -1767,92 +1853,6 @@ paths:
       responses:
         '200':
           description: Entitlement list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlatformListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /access/resolve:
-    post:
-      tags:
-        - access
-      security:
-        - backendBearerAuth: []
-      operationId: resolveAccess
-      summary: Run the 6-outcome access decision engine
-      description: |
-        Evaluates tenant context, membership, subscription, and policy to produce one of: ALLOW_SELF_SERVE, ALLOW_WITH_OPTIONAL_ASSISTANCE, REQUIRE_REVIEW, REQUIRE_SUPERVISOR_APPROVAL, ROUTE_TO_MANAGED_SERVICE, or DENY.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required:
-                - tenant_id
-              properties:
-                tenant_id:
-                  type: string
-                  format: uuid
-                user_id:
-                  type: string
-                  description: Platform user identifier. UUIDs and registry/user-key strings are accepted.
-                risk_level:
-                  type: string
-                  enum:
-                    - low
-                    - medium
-                    - high
-                    - critical
-                  default: low
-                intent_flags:
-                  type: object
-                  additionalProperties:
-                    type: boolean
-                  description: Boolean intent flags, for example public_scope or destructive. Array flag-name input is accepted by the backend for compatibility.
-                  properties: {}
-                persist:
-                  type: boolean
-                  default: false
-                  description: Write the resolved envelope to request_envelopes table.
-      responses:
-        '200':
-          description: Access decision resolved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AccessResolveResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /access/envelopes:
-    get:
-      tags:
-        - access
-      security:
-        - backendBearerAuth: []
-      operationId: listAccessEnvelopes
-      summary: List persisted access decision envelopes
-      parameters:
-        - name: tenant_id
-          in: query
-          schema:
-            type: string
-        - name: decision
-          in: query
-          schema:
-            type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-      responses:
-        '200':
-          description: Envelope list
           content:
             application/json:
               schema:

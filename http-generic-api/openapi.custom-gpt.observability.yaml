@@ -1564,6 +1564,249 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /audit-log:
+    get:
+      tags:
+        - security
+      security:
+        - backendBearerAuth: []
+      operationId: getAuditLog
+      summary: Query the immutable audit log
+      description: |
+        The audit log is append-only; no UPDATE or DELETE is ever issued against it. Use actor_id, resource_type, tenant_id, and date range to filter entries.
+      parameters:
+        - name: actor_id
+          in: query
+          schema:
+            type: string
+        - name: resource_type
+          in: query
+          schema:
+            type: string
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /secret-references:
+    post:
+      tags:
+        - security
+      security:
+        - backendBearerAuth: []
+      operationId: createSecretReference
+      summary: Register a secret reference (no secret values stored)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - secret_key
+                - storage_backend
+              properties:
+                secret_key:
+                  type: string
+                storage_backend:
+                  type: string
+                  enum:
+                    - env_var
+                    - vault
+                    - aws_secrets_manager
+                env_var_name:
+                  type: string
+                tenant_id:
+                  type: string
+                  format: uuid
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Secret reference created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      tags:
+        - security
+      security:
+        - backendBearerAuth: []
+      operationId: listSecretReferences
+      summary: List secret references (metadata only, no secret values)
+      parameters:
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Secret reference list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /incidents:
+    post:
+      tags:
+        - security
+      security:
+        - backendBearerAuth: []
+      operationId: createIncident
+      summary: Open a security or operational incident
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - severity
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                severity:
+                  type: string
+                  enum:
+                    - low
+                    - medium
+                    - high
+                    - critical
+                tenant_id:
+                  type: string
+                  format: uuid
+                reported_by:
+                  type: string
+                  format: uuid
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Incident created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      tags:
+        - security
+      security:
+        - backendBearerAuth: []
+      operationId: listIncidents
+      summary: List incidents
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: severity
+          in: query
+          schema:
+            type: string
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Incident list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /incidents/{incident_id}/status:
+    patch:
+      tags:
+        - security
+      security:
+        - backendBearerAuth: []
+      operationId: updateIncidentStatus
+      summary: Update incident status
+      parameters:
+        - name: incident_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - open
+                    - investigating
+                    - mitigated
+                    - resolved
+                    - closed
+                resolved_by:
+                  type: string
+                  format: uuid
+                resolution_notes:
+                  type: string
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /tracking/workspaces:
     post:
       tags:
@@ -1936,249 +2179,6 @@ paths:
                 $ref: '#/components/schemas/PlatformListResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /audit-log:
-    get:
-      tags:
-        - security
-      security:
-        - backendBearerAuth: []
-      operationId: getAuditLog
-      summary: Query the immutable audit log
-      description: |
-        The audit log is append-only; no UPDATE or DELETE is ever issued against it. Use actor_id, resource_type, tenant_id, and date range to filter entries.
-      parameters:
-        - name: actor_id
-          in: query
-          schema:
-            type: string
-        - name: resource_type
-          in: query
-          schema:
-            type: string
-        - name: tenant_id
-          in: query
-          schema:
-            type: string
-        - name: from
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: to
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 100
-      responses:
-        '200':
-          description: Audit log entries
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlatformListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /secret-references:
-    post:
-      tags:
-        - security
-      security:
-        - backendBearerAuth: []
-      operationId: createSecretReference
-      summary: Register a secret reference (no secret values stored)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - secret_key
-                - storage_backend
-              properties:
-                secret_key:
-                  type: string
-                storage_backend:
-                  type: string
-                  enum:
-                    - env_var
-                    - vault
-                    - aws_secrets_manager
-                env_var_name:
-                  type: string
-                tenant_id:
-                  type: string
-                  format: uuid
-                description:
-                  type: string
-      responses:
-        '201':
-          description: Secret reference created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    get:
-      tags:
-        - security
-      security:
-        - backendBearerAuth: []
-      operationId: listSecretReferences
-      summary: List secret references (metadata only, no secret values)
-      parameters:
-        - name: tenant_id
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Secret reference list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlatformListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /incidents:
-    post:
-      tags:
-        - security
-      security:
-        - backendBearerAuth: []
-      operationId: createIncident
-      summary: Open a security or operational incident
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - title
-                - severity
-              properties:
-                title:
-                  type: string
-                description:
-                  type: string
-                severity:
-                  type: string
-                  enum:
-                    - low
-                    - medium
-                    - high
-                    - critical
-                tenant_id:
-                  type: string
-                  format: uuid
-                reported_by:
-                  type: string
-                  format: uuid
-                tags:
-                  type: array
-                  items:
-                    type: string
-      responses:
-        '201':
-          description: Incident created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    get:
-      tags:
-        - security
-      security:
-        - backendBearerAuth: []
-      operationId: listIncidents
-      summary: List incidents
-      parameters:
-        - name: status
-          in: query
-          schema:
-            type: string
-        - name: severity
-          in: query
-          schema:
-            type: string
-        - name: tenant_id
-          in: query
-          schema:
-            type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-      responses:
-        '200':
-          description: Incident list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlatformListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /incidents/{incident_id}/status:
-    patch:
-      tags:
-        - security
-      security:
-        - backendBearerAuth: []
-      operationId: updateIncidentStatus
-      summary: Update incident status
-      parameters:
-        - name: incident_id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - status
-              properties:
-                status:
-                  type: string
-                  enum:
-                    - open
-                    - investigating
-                    - mitigated
-                    - resolved
-                    - closed
-                resolved_by:
-                  type: string
-                  format: uuid
-                resolution_notes:
-                  type: string
-      responses:
-        '200':
-          description: Status updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /incidents/{incident_id}:
     put:
       tags:

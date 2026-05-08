@@ -1315,130 +1315,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
-  /status:
-    get:
-      tags:
-        - health
-      operationId: getStatus
-      summary: Public system status JSON â€” component health and open incidents
-      description: |
-        Returns live DB-backed component health (API, DB, tenant_management, identity, connector_execution, intent_resolution, observability, release_readiness), open incidents, and past 30-day incident history. Returns HTTP 503 when overall status is partial_outage or major_outage.
-      responses:
-        '200':
-          description: System operational
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  status:
-                    type: string
-                    enum:
-                      - operational
-                      - degraded
-                      - partial_outage
-                      - major_outage
-                  status_label:
-                    type: string
-                  components:
-                    type: array
-                    items:
-                      type: object
-                      additionalProperties: true
-                      properties: {}
-                  active_incidents:
-                    type: array
-                    items:
-                      type: object
-                      additionalProperties: true
-                      properties: {}
-                  past_incidents:
-                    type: array
-                    items:
-                      type: object
-                      additionalProperties: true
-                      properties: {}
-                  updated_at:
-                    type: string
-                    format: date-time
-        '503':
-          description: Partial or major outage detected
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  status:
-                    type: string
-      security:
-        - backendBearerAuth: []
-  /status.html:
-    get:
-      tags:
-        - health
-      operationId: getStatusHtml
-      summary: Public status page HTML (OpenAI-style component grid + incident history)
-      responses:
-        '200':
-          description: HTML status page
-          content:
-            text/html:
-              schema:
-                type: string
-      security:
-        - backendBearerAuth: []
-  /status/incidents:
-    get:
-      tags:
-        - health
-      operationId: getStatusIncidents
-      summary: Public incident history (last N days)
-      parameters:
-        - name: days
-          in: query
-          schema:
-            type: integer
-            default: 30
-            maximum: 90
-        - name: severity
-          in: query
-          schema:
-            type: string
-            enum:
-              - low
-              - medium
-              - high
-              - critical
-        - name: status
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Incident list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  incidents:
-                    type: array
-                    items:
-                      type: object
-                      additionalProperties: true
-                      properties: {}
-                  count:
-                    type: integer
-                  window_days:
-                    type: integer
-      security:
-        - backendBearerAuth: []
   /activation/session-context:
     get:
       tags:
@@ -2110,87 +1986,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /batch:
-    post:
-      tags:
-        - execution
-      security:
-        - backendBearerAuth: []
-      operationId: batchDispatch
-      summary: Execute up to 50 API requests in a single call (parallel or sequential)
-      description: |
-        Fan-out dispatcher that self-calls internal routes. Forwards Authorization and x-api-key headers. /batch sub-requests are blocked to prevent loops. parallel=true (default) executes all requests concurrently via Promise.all.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - requests
-              properties:
-                requests:
-                  type: array
-                  maxItems: 50
-                  items:
-                    type: object
-                    required:
-                      - method
-                      - path
-                    properties:
-                      method:
-                        type: string
-                        enum:
-                          - GET
-                          - POST
-                          - PUT
-                          - PATCH
-                          - DELETE
-                      path:
-                        type: string
-                        pattern: ^/
-                      body:
-                        type: object
-                        additionalProperties: true
-                        properties: {}
-                parallel:
-                  type: boolean
-                  default: true
-      responses:
-        '200':
-          description: Batch results
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - ok
-                  - count
-                  - results
-                properties:
-                  ok:
-                    type: boolean
-                  count:
-                    type: integer
-                  results:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        index:
-                          type: integer
-                        status:
-                          type: integer
-                        ok:
-                          type: boolean
-                        body:
-                          type: object
-                          additionalProperties: true
-                          properties: {}
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
   /ai/implementation-plan:
     post:
       tags:
@@ -2556,6 +2351,211 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlatformListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /status:
+    get:
+      tags:
+        - health
+      operationId: getStatus
+      summary: Public system status JSON â€” component health and open incidents
+      description: |
+        Returns live DB-backed component health (API, DB, tenant_management, identity, connector_execution, intent_resolution, observability, release_readiness), open incidents, and past 30-day incident history. Returns HTTP 503 when overall status is partial_outage or major_outage.
+      responses:
+        '200':
+          description: System operational
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  status:
+                    type: string
+                    enum:
+                      - operational
+                      - degraded
+                      - partial_outage
+                      - major_outage
+                  status_label:
+                    type: string
+                  components:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      properties: {}
+                  active_incidents:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      properties: {}
+                  past_incidents:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      properties: {}
+                  updated_at:
+                    type: string
+                    format: date-time
+        '503':
+          description: Partial or major outage detected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  status:
+                    type: string
+      security:
+        - backendBearerAuth: []
+  /status.html:
+    get:
+      tags:
+        - health
+      operationId: getStatusHtml
+      summary: Public status page HTML (OpenAI-style component grid + incident history)
+      responses:
+        '200':
+          description: HTML status page
+          content:
+            text/html:
+              schema:
+                type: string
+      security:
+        - backendBearerAuth: []
+  /status/incidents:
+    get:
+      tags:
+        - health
+      operationId: getStatusIncidents
+      summary: Public incident history (last N days)
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+            maximum: 90
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum:
+              - low
+              - medium
+              - high
+              - critical
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Incident list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  incidents:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      properties: {}
+                  count:
+                    type: integer
+                  window_days:
+                    type: integer
+      security:
+        - backendBearerAuth: []
+  /batch:
+    post:
+      tags:
+        - execution
+      security:
+        - backendBearerAuth: []
+      operationId: batchDispatch
+      summary: Execute up to 50 API requests in a single call (parallel or sequential)
+      description: |
+        Fan-out dispatcher that self-calls internal routes. Forwards Authorization and x-api-key headers. /batch sub-requests are blocked to prevent loops. parallel=true (default) executes all requests concurrently via Promise.all.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requests
+              properties:
+                requests:
+                  type: array
+                  maxItems: 50
+                  items:
+                    type: object
+                    required:
+                      - method
+                      - path
+                    properties:
+                      method:
+                        type: string
+                        enum:
+                          - GET
+                          - POST
+                          - PUT
+                          - PATCH
+                          - DELETE
+                      path:
+                        type: string
+                        pattern: ^/
+                      body:
+                        type: object
+                        additionalProperties: true
+                        properties: {}
+                parallel:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Batch results
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                  - count
+                  - results
+                properties:
+                  ok:
+                    type: boolean
+                  count:
+                    type: integer
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        index:
+                          type: integer
+                        status:
+                          type: integer
+                        ok:
+                          type: boolean
+                        body:
+                          type: object
+                          additionalProperties: true
+                          properties: {}
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
   /tenants/{tenant_id}:

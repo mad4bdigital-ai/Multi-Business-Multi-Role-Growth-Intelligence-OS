@@ -1,12 +1,12 @@
 openapi: 3.1.0
 info:
-  title: Governed HTTP Client — AI Platform - Developer And Release Actions
+  title: Governed HTTP Client — AI Platform - Developer Actions
   version: 3.0.0-platform
   summary: Custom GPT action schema for developer-api.
   description: 'Custom GPT action schema generated from openapi.yaml. Scope tags: developer-api.'
 servers:
   - url: https://developer.mad4b.com
-    description: Developer And Release Actions custom domain
+    description: Developer Actions custom domain
 tags:
   - name: developer-api
     description: Developer apps, API credentials (key generation), webhooks, and rate limits.

@@ -1606,169 +1606,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-  /logic-definitions/{logic_id}:
-    get:
-      tags:
-        - logic
-      security:
-        - backendBearerAuth: []
-      operationId: getLogicDefinition
-      summary: Get a logic definition by ID (includes body_json)
-      parameters:
-        - name: logic_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Logic definition
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    put:
-      tags:
-        - logic
-      security:
-        - backendBearerAuth: []
-      operationId: replaceLogicDefinition
-      summary: Full update of a logic definition
-      parameters:
-        - name: logic_id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - logic_key
-                - display_name
-              properties:
-                logic_key:
-                  type: string
-                display_name:
-                  type: string
-                logic_type:
-                  type: string
-                  enum:
-                    - execution
-                    - supervisory
-                    - evaluation
-                    - routing
-                body_json:
-                  type: object
-                  additionalProperties: true
-                  properties: {}
-                version:
-                  type: string
-                status:
-                  type: string
-                  enum:
-                    - draft
-                    - active
-                    - deprecated
-                    - archived
-      responses:
-        '200':
-          description: Updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    delete:
-      tags:
-        - logic
-      security:
-        - backendBearerAuth: []
-      operationId: archiveLogicDefinition
-      summary: Archive a logic definition (soft delete â€” sets status=archived)
-      parameters:
-        - name: logic_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Archived
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /logic-packs/{pack_id}:
-    put:
-      tags:
-        - logic
-      security:
-        - backendBearerAuth: []
-      operationId: replaceLogicPack
-      summary: Full update of a logic pack
-      parameters:
-        - name: pack_id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - pack_key
-                - display_name
-              properties:
-                pack_key:
-                  type: string
-                display_name:
-                  type: string
-                pack_type:
-                  type: string
-                service_mode:
-                  type: string
-                  enum:
-                    - self_serve
-                    - assisted
-                    - managed
-                contents_json:
-                  type: object
-                  additionalProperties: true
-                  properties: {}
-                status:
-                  type: string
-                  enum:
-                    - draft
-                    - active
-                    - deprecated
-                    - archived
-      responses:
-        '200':
-          description: Updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
   /workflow-runs:
     post:
       tags:
@@ -2099,3 +1936,166 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /logic-definitions/{logic_id}:
+    get:
+      tags:
+        - logic
+      security:
+        - backendBearerAuth: []
+      operationId: getLogicDefinition
+      summary: Get a logic definition by ID (includes body_json)
+      parameters:
+        - name: logic_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Logic definition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - logic
+      security:
+        - backendBearerAuth: []
+      operationId: replaceLogicDefinition
+      summary: Full update of a logic definition
+      parameters:
+        - name: logic_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - logic_key
+                - display_name
+              properties:
+                logic_key:
+                  type: string
+                display_name:
+                  type: string
+                logic_type:
+                  type: string
+                  enum:
+                    - execution
+                    - supervisory
+                    - evaluation
+                    - routing
+                body_json:
+                  type: object
+                  additionalProperties: true
+                  properties: {}
+                version:
+                  type: string
+                status:
+                  type: string
+                  enum:
+                    - draft
+                    - active
+                    - deprecated
+                    - archived
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags:
+        - logic
+      security:
+        - backendBearerAuth: []
+      operationId: archiveLogicDefinition
+      summary: Archive a logic definition (soft delete â€” sets status=archived)
+      parameters:
+        - name: logic_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /logic-packs/{pack_id}:
+    put:
+      tags:
+        - logic
+      security:
+        - backendBearerAuth: []
+      operationId: replaceLogicPack
+      summary: Full update of a logic pack
+      parameters:
+        - name: pack_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - pack_key
+                - display_name
+              properties:
+                pack_key:
+                  type: string
+                display_name:
+                  type: string
+                pack_type:
+                  type: string
+                service_mode:
+                  type: string
+                  enum:
+                    - self_serve
+                    - assisted
+                    - managed
+                contents_json:
+                  type: object
+                  additionalProperties: true
+                  properties: {}
+                status:
+                  type: string
+                  enum:
+                    - draft
+                    - active
+                    - deprecated
+                    - archived
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'

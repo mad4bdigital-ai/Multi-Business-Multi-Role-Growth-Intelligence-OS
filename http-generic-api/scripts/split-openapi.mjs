@@ -13,16 +13,60 @@ const CUSTOM_GPT_DESCRIPTION_LIMIT = 300;
 const CUSTOM_GPT_REQUIRED_SECURITY = [{ [CUSTOM_GPT_SECURITY_SCHEME]: [] }];
 
 const SERVER_SCOPES = [
-  { slug: "runtime", host: "api.mad4b.com", title: "Runtime Governed Actions" },
-  { slug: "identity", host: "identity.mad4b.com", title: "Identity And Access Actions" },
-  { slug: "customers", host: "customers.mad4b.com", title: "Customer Operations Actions" },
-  { slug: "systems", host: "systems.mad4b.com", title: "Connected Systems Actions" },
-  { slug: "logic", host: "logic.mad4b.com", title: "Logic And Workflow Actions" },
-  { slug: "observability", host: "observability.mad4b.com", title: "Observability And Security Actions" },
-  { slug: "developer", host: "developer.mad4b.com", title: "Developer And Release Actions" },
-  { slug: "admin-cli", host: "admin.mad4b.com", title: "Admin Control Actions" },
-  { slug: "ops", host: "ops.mad4b.com", title: "Platform Operations Actions" },
-  { slug: "platform", host: "platform.mad4b.com", title: "Platform Extension Actions" }
+  {
+    slug: "runtime",
+    host: "api.mad4b.com",
+    title: "Runtime Governed Actions",
+    tags: ["health", "activation", "governance", "jobs", "execution", "ai", "tenants"]
+  },
+  {
+    slug: "identity",
+    host: "identity.mad4b.com",
+    title: "Identity And Access Actions",
+    tags: ["identity", "access"]
+  },
+  {
+    slug: "customers",
+    host: "customers.mad4b.com",
+    title: "Customer Operations Actions",
+    tags: ["customers"]
+  },
+  {
+    slug: "systems",
+    host: "systems.mad4b.com",
+    title: "Connected Systems Actions",
+    tags: ["connected-systems", "planner", "bootstrap"]
+  },
+  {
+    slug: "logic",
+    host: "logic.mad4b.com",
+    title: "Logic And Workflow Actions",
+    tags: ["logic", "workflows"]
+  },
+  {
+    slug: "observability",
+    host: "observability.mad4b.com",
+    title: "Observability And Security Actions",
+    tags: ["observability", "security"]
+  },
+  {
+    slug: "developer",
+    host: "developer.mad4b.com",
+    title: "Developer Actions",
+    tags: ["developer-api"]
+  },
+  {
+    slug: "admin-cli",
+    host: "admin.mad4b.com",
+    title: "Admin Control Actions",
+    tags: ["admin-control"]
+  },
+  {
+    slug: "ops",
+    host: "ops.mad4b.com",
+    title: "Platform Operations Actions",
+    tags: ["release"]
+  }
 ];
 
 function clone(value) {
@@ -122,6 +166,45 @@ function chunkOperationsByTag(operations) {
   }
 
   flushChunk();
+
+  return chunks;
+}
+
+function buildExplicitScopeChunks(operations) {
+  const assignedTags = new Set();
+  const chunks = [];
+
+  for (const scope of SERVER_SCOPES) {
+    const scopeTags = new Set(scope.tags || []);
+    if (scopeTags.size === 0) {
+      throw new Error(`Scope ${scope.slug} must declare at least one tag.`);
+    }
+
+    for (const tag of scopeTags) {
+      if (assignedTags.has(tag)) {
+        throw new Error(`Tag ${tag} is assigned to more than one scope.`);
+      }
+      assignedTags.add(tag);
+    }
+
+    const scopeOperations = operations.filter((operation) => scopeTags.has(operation.primaryTag));
+    chunks.push({
+      operations: scopeOperations,
+      tags: [...scopeTags].filter((tag) => scopeOperations.some((operation) => operation.primaryTag === tag)),
+      scope
+    });
+  }
+
+  const sourceTags = new Set(operations.map((operation) => operation.primaryTag));
+  const missingTags = [...sourceTags].filter((tag) => !assignedTags.has(tag)).sort();
+  if (missingTags.length > 0) {
+    throw new Error(`Unclassified OpenAPI tags: ${missingTags.join(", ")}`);
+  }
+
+  const emptyScopes = chunks.filter((chunk) => chunk.operations.length === 0).map((chunk) => chunk.scope.slug);
+  if (emptyScopes.length > 0) {
+    throw new Error(`Configured scopes have no operations: ${emptyScopes.join(", ")}`);
+  }
 
   return chunks;
 }
@@ -379,7 +462,7 @@ function main() {
   const raw = fs.readFileSync(openApiPath, "utf8");
   const doc = yaml.load(raw);
   const sourceOperations = collectOperations(doc);
-  const chunks = chunkOperationsByTag(sourceOperations);
+  const chunks = buildExplicitScopeChunks(sourceOperations);
 
   if (chunks.length > SERVER_SCOPES.length) {
     console.error(`Need ${chunks.length} unique server scopes, but only ${SERVER_SCOPES.length} are configured.`);
@@ -391,8 +474,8 @@ function main() {
   const generatedDocs = [];
   const serverUrls = new Set();
 
-  chunks.forEach((chunk, index) => {
-    const scope = SERVER_SCOPES[index];
+  chunks.forEach((chunk) => {
+    const scope = chunk.scope;
     const serverUrl = `https://${scope.host}`;
 
     if (serverUrls.has(serverUrl)) {
