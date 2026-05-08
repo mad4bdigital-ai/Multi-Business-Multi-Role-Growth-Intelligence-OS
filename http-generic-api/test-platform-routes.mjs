@@ -295,6 +295,10 @@ section("Admin system layer connector facade");
   ok("system tools returns 200", r.status === 200, `got ${r.status}`);
   ok("system tools exposes connector registry list", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "connector_registry_list"));
   ok("system tools exposes connector registry get", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "connector_registry_get"));
+  ok("system tools exposes provider bootstrap chain", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "activation_provider_bootstrap_validate"));
+  ok("system tools exposes Drive probe", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "activation_drive_probe"));
+  ok("system tools exposes Sheets bootstrap read", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "activation_sheets_bootstrap_read"));
+  ok("system tools exposes GitHub validation", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "activation_github_validate"));
 }
 {
   const r = await post("/admin/system/tools/call", {});
@@ -310,6 +314,7 @@ section("Admin system layer connector facade");
   const r = await get("/system/tools");
   ok("shared system tools returns 200", r.status === 200, `got ${r.status}`);
   ok("shared system tools exposes MCP facade protocol", r.body.protocol === "openapi-mcp-facade", `got ${r.body.protocol}`);
+  ok("shared system tools exposes provider bootstrap chain to admin", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "activation_provider_bootstrap_validate"));
 }
 {
   const r = await post("/system/tools/call", {});

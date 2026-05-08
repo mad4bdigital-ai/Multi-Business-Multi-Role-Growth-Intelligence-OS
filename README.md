@@ -52,10 +52,11 @@ Execution without validation evidence is not considered complete.
 Conversation or Custom GPT activation must follow the provider bootstrap chain, not just health diagnostics:
 
 1. health may prove transport reachability only
-2. Drive probe: `google_drive_api:listDriveFiles`
-3. Sheets probe: `google_sheets_api:getSheetValues` with `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`
-4. bootstrap row: `query.range=Activation Bootstrap Config!A2:J2`
-5. GitHub validation using bootstrap/registry-resolved action and endpoint keys
+2. Admin GPT on `auth.mad4b.com`: call `/system/tools/call` with `name: "activation_provider_bootstrap_validate"` for the governed same-cycle Drive, Sheets bootstrap, and GitHub chain.
+3. Direct runtime fallback: Drive probe `google_drive_api:listDriveFiles`
+4. Direct runtime fallback: Sheets probe `google_sheets_api:getSheetValues` with `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`
+5. Direct runtime fallback bootstrap row: `query.range=Activation Bootstrap Config!A2:J2`
+6. Direct runtime fallback GitHub validation using bootstrap/registry-resolved action and endpoint keys
 
 Health, `/status`, release-readiness, tenant listing, brand counts, and action counts are diagnostics only. They must not replace Drive, Sheets bootstrap, or GitHub probes. If Drive or Sheets is skipped while activation tooling is available, classify activation as degraded with `missing_required_provider_bootstrap_attempt`.
 

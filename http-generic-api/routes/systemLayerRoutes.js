@@ -1,5 +1,14 @@
 import { Router } from "express";
+import {
+  ACTIVATION_BOOTSTRAP_CONFIG_RANGE,
+  ACTIVATION_BOOTSTRAP_CONFIG_SHEET,
+  ACTIVATION_BOOTSTRAP_SPREADSHEET_ID,
+  GITHUB_API_BASE_URL,
+  GITHUB_TOKEN
+} from "../config.js";
 import { getPool } from "../db.js";
+import { getGoogleClientsForSpreadsheet } from "../googleSheets.js";
+import { runGovernedActivation } from "../governedActivationRunner.js";
 import { requireAdminPrincipal } from "./adminCliRoutes.js";
 
 const SYSTEM_LAYER_TOOLS = [
@@ -29,9 +38,44 @@ const SYSTEM_LAYER_TOOLS = [
       required: ["system_id"],
     },
   },
+  {
+    name: "activation_drive_probe",
+    description: "Admin-only Google Drive bootstrap transport probe for hard activation evidence.",
+    requires_admin: true,
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
+  {
+    name: "activation_sheets_bootstrap_read",
+    description: "Admin-only Sheets bootstrap workbook and Activation Bootstrap Config row read.",
+    requires_admin: true,
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
+  {
+    name: "activation_github_validate",
+    description: "Admin-only GitHub validation using bootstrap-resolved repository binding.",
+    requires_admin: true,
+    inputSchema: {
+      type: "object",
+      properties: {
+        github_owner: { type: "string" },
+        github_repo: { type: "string" },
+        github_branch: { type: "string", default: "main" },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "activation_provider_bootstrap_validate",
+    description: "Admin-only same-cycle Drive, Sheets bootstrap, and GitHub activation validation chain.",
+    requires_admin: true,
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
 ];
 
 const VALID_STATUSES = new Set(["active", "pending", "error", "archived"]);
+const ADMIN_ONLY_SYSTEM_TOOLS = new Set(
+  SYSTEM_LAYER_TOOLS.filter((tool) => tool.requires_admin === true).map((tool) => tool.name)
+);
 
 function isAdminPrincipal(auth) {
   return auth?.is_admin === true;
@@ -39,6 +83,19 @@ function isAdminPrincipal(auth) {
 
 function principalTenantId(auth) {
   return auth?.tenant_id || null;
+}
+
+function toolsForPrincipal(auth) {
+  if (isAdminPrincipal(auth)) return SYSTEM_LAYER_TOOLS;
+  return SYSTEM_LAYER_TOOLS.filter((tool) => tool.requires_admin !== true);
+}
+
+function assertAdminToolAccess(name, auth) {
+  if (!ADMIN_ONLY_SYSTEM_TOOLS.has(name) || isAdminPrincipal(auth)) return;
+  const err = new Error("This system-layer tool requires an admin/service principal.");
+  err.status = 403;
+  err.code = "admin_system_tool_required";
+  throw err;
 }
 
 function scopeFiltersToPrincipal(filters = {}, auth = {}) {
@@ -75,6 +132,219 @@ function parseConfigJson(value) {
   } catch {
     return { parse_error: true };
   }
+}
+
+function providerProbeError(err) {
+  const status = Number(err?.status || err?.code || err?.response?.status || 0);
+  const message = err?.response?.data?.error?.message || err?.message || "Provider probe failed.";
+  const code = err?.code || (status === 401 || status === 403 ? "provider_auth_failed" : "provider_probe_failed");
+  return {
+    ok: false,
+    status: status || undefined,
+    code,
+    message,
+    auth_failed: status === 401 || status === 403 || code === "missing_github_token" || code === "provider_auth_failed",
+    rate_limited: status === 429,
+  };
+}
+
+function parseGithubRepo(value) {
+  const normalized = String(value || "").trim().replace(/^https:\/\/github\.com\//i, "");
+  const [owner, repo] = normalized.split("/").map((part) => part.trim()).filter(Boolean);
+  if (!owner || !repo) return null;
+  return { owner, repo: repo.replace(/\.git$/i, "") };
+}
+
+function bootstrapRowObject(values = []) {
+  const row = Array.isArray(values?.[0]) ? values[0] : Array.isArray(values) ? values : [];
+  const mapped = {
+    system_name: row[0] || "",
+    api_base_url: row[1] || "",
+    environment: row[2] || "",
+    registry_sheet_id: row[3] || "",
+    activity_sheet_id: row[4] || "",
+    github_repo: row[5] || process.env.GITHUB_REPO || "",
+    cloudflare_zone: row[6] || "",
+    connector_url: row[7] || "",
+    bootstrap_version: row[8] || "",
+    activated_at: row[9] || "",
+  };
+  const repo = parseGithubRepo(mapped.github_repo || process.env.GITHUB_REPO);
+  return {
+    ...mapped,
+    github_parent_action_key: "github_api_mcp",
+    github_endpoint_key: "getRepositoryContent",
+    github_owner: repo?.owner || "",
+    github_repo: repo?.repo || mapped.github_repo,
+    github_branch: process.env.GITHUB_BRANCH || "main",
+    raw_values: row,
+  };
+}
+
+async function activationDriveProbe() {
+  try {
+    const { drive } = await getGoogleClientsForSpreadsheet(ACTIVATION_BOOTSTRAP_SPREADSHEET_ID);
+    const response = await drive.files.list({
+      pageSize: 1,
+      fields: "files(id,name,mimeType),nextPageToken",
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
+    return {
+      ok: true,
+      provider: "google_drive",
+      attempted_binding: { parent_action_key: "google_drive_api", endpoint_key: "listDriveFiles" },
+      sample_count: Array.isArray(response.data?.files) ? response.data.files.length : 0,
+    };
+  } catch (err) {
+    return { provider: "google_drive", ...providerProbeError(err) };
+  }
+}
+
+async function activationSheetsBootstrapRead() {
+  try {
+    const { sheets, spreadsheetId } = await getGoogleClientsForSpreadsheet(ACTIVATION_BOOTSTRAP_SPREADSHEET_ID);
+    const metadata = await sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: "spreadsheetId,properties.title,sheets.properties.title",
+    });
+    const sheetExists = (metadata.data?.sheets || []).some(
+      (sheet) => String(sheet?.properties?.title || "").trim() === ACTIVATION_BOOTSTRAP_CONFIG_SHEET
+    );
+    if (!sheetExists) {
+      return {
+        ok: false,
+        provider: "google_sheets",
+        code: "activation_bootstrap_sheet_missing",
+        message: `Missing sheet ${ACTIVATION_BOOTSTRAP_CONFIG_SHEET}.`,
+        spreadsheet_id: spreadsheetId,
+      };
+    }
+
+    const values = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: ACTIVATION_BOOTSTRAP_CONFIG_RANGE,
+    });
+    const row = bootstrapRowObject(values.data?.values || []);
+    return {
+      ok: true,
+      provider: "google_sheets",
+      attempted_binding: { parent_action_key: "google_sheets_api", endpoint_key: "getSheetValues" },
+      spreadsheet_id: spreadsheetId,
+      range: ACTIVATION_BOOTSTRAP_CONFIG_RANGE,
+      workbook_title: metadata.data?.properties?.title || null,
+      bootstrap_row_read: Array.isArray(values.data?.values?.[0]),
+      bootstrap_row: row,
+    };
+  } catch (err) {
+    return { provider: "google_sheets", ...providerProbeError(err) };
+  }
+}
+
+function resolveGithubValidationTarget(args = {}, bootstrapRow = {}) {
+  const explicit = args.github_owner && args.github_repo ? { owner: args.github_owner, repo: args.github_repo } : null;
+  const fromBootstrap = bootstrapRow.github_owner && bootstrapRow.github_repo
+    ? { owner: bootstrapRow.github_owner, repo: bootstrapRow.github_repo }
+    : parseGithubRepo(bootstrapRow.github_repo);
+  const fromEnv = parseGithubRepo(process.env.GITHUB_REPO);
+  const target = explicit || fromBootstrap || fromEnv;
+  return target ? { ...target, branch: args.github_branch || bootstrapRow.github_branch || process.env.GITHUB_BRANCH || "main" } : null;
+}
+
+async function activationGithubValidate(args = {}, bootstrapRow = {}) {
+  try {
+    if (!GITHUB_TOKEN) {
+      const err = new Error("Missing required environment variable: GITHUB_TOKEN");
+      err.code = "missing_github_token";
+      err.status = 500;
+      throw err;
+    }
+    const target = resolveGithubValidationTarget(args, bootstrapRow);
+    if (!target) {
+      return {
+        ok: false,
+        provider: "github",
+        code: "missing_github_validation_target",
+        message: "GitHub validation requires github_owner/github_repo or a bootstrap/env repository binding.",
+      };
+    }
+
+    const response = await fetch(
+      `${GITHUB_API_BASE_URL}/repos/${encodeURIComponent(target.owner)}/${encodeURIComponent(target.repo)}`,
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      }
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const err = new Error(payload?.message || `GitHub validation failed with status ${response.status}.`);
+      err.code = response.status === 401 || response.status === 403 ? "provider_auth_failed" : "github_validation_failed";
+      err.status = response.status;
+      throw err;
+    }
+
+    return {
+      ok: true,
+      provider: "github",
+      attempted_binding: {
+        parent_action_key: bootstrapRow.github_parent_action_key || "github_api_mcp",
+        endpoint_key: bootstrapRow.github_endpoint_key || "getRepositoryContent",
+      },
+      repository: payload.full_name || `${target.owner}/${target.repo}`,
+      default_branch: payload.default_branch || null,
+      requested_branch: target.branch,
+      private: Boolean(payload.private),
+    };
+  } catch (err) {
+    return { provider: "github", ...providerProbeError(err) };
+  }
+}
+
+async function activationProviderBootstrapValidate(args = {}) {
+  let bootstrapRow = null;
+  const result = await runGovernedActivation({
+    attemptDrive: async () => {
+      const probe = await activationDriveProbe();
+      return { ok: probe.ok, auth_failed: probe.auth_failed };
+    },
+    attemptSheets: async () => {
+      const probe = await activationSheetsBootstrapRead();
+      if (probe.ok) bootstrapRow = probe.bootstrap_row;
+      return { ok: probe.ok, auth_failed: probe.auth_failed, rate_limited: probe.rate_limited };
+    },
+    getSpreadsheet: async () => {
+      if (bootstrapRow) {
+        return { ok: true, data: { sheets: [{ properties: { title: ACTIVATION_BOOTSTRAP_CONFIG_SHEET } }] } };
+      }
+      const probe = await activationSheetsBootstrapRead();
+      if (probe.ok) bootstrapRow = probe.bootstrap_row;
+      return probe.ok
+        ? { ok: true, data: { sheets: [{ properties: { title: ACTIVATION_BOOTSTRAP_CONFIG_SHEET } }] } }
+        : { ok: false, reason: probe.code || "activation_bootstrap_workbook_unreadable" };
+    },
+    readBootstrapRow: async () => {
+      if (!bootstrapRow) {
+        const probe = await activationSheetsBootstrapRead();
+        if (!probe.ok) return { ok: false };
+        bootstrapRow = probe.bootstrap_row;
+      }
+      return { ok: true, row: bootstrapRow };
+    },
+    attemptGitHub: async (bindings) => {
+      const probe = await activationGithubValidate(args, { ...bootstrapRow, ...bindings });
+      return { ok: probe.ok, auth_failed: probe.auth_failed };
+    },
+  });
+
+  return {
+    ok: result.runtime_classification?.activation_status === "active",
+    activation_layer: "provider_bootstrap_system_tool",
+    ...result,
+  };
 }
 
 function systemRow(row) {
@@ -207,11 +477,22 @@ async function getConnectorRegistrySystem(systemId, auth = null) {
 }
 
 async function callSystemLayerTool(name, args = {}, auth = null) {
+  assertAdminToolAccess(name, auth);
   switch (name) {
     case "connector_registry_list":
       return { connectors: await listConnectorRegistry(args, auth) };
     case "connector_registry_get":
       return { connector: await getConnectorRegistrySystem(args.system_id, auth) };
+    case "activation_drive_probe":
+      return await activationDriveProbe(args);
+    case "activation_sheets_bootstrap_read":
+      return await activationSheetsBootstrapRead(args);
+    case "activation_github_validate": {
+      const sheetsProbe = await activationSheetsBootstrapRead();
+      return await activationGithubValidate(args, sheetsProbe.ok ? sheetsProbe.bootstrap_row : {});
+    }
+    case "activation_provider_bootstrap_validate":
+      return await activationProviderBootstrapValidate(args);
     default: {
       const err = new Error(`Unknown system layer tool: ${name}`);
       err.status = 400;
@@ -246,7 +527,7 @@ export function buildSystemLayerRoutes(deps) {
         is_admin: isAdminPrincipal(req.auth),
         tenant_id: principalTenantId(req.auth),
       },
-      tools: SYSTEM_LAYER_TOOLS,
+      tools: toolsForPrincipal(req.auth),
     });
   });
 
@@ -299,11 +580,11 @@ export function buildSystemLayerRoutes(deps) {
     }
   });
 
-  router.get("/admin/system/tools", ...adminOnly, async (_req, res) => {
+  router.get("/admin/system/tools", ...adminOnly, async (req, res) => {
     return res.status(200).json({
       ok: true,
       protocol: "openapi-mcp-facade",
-      tools: SYSTEM_LAYER_TOOLS,
+      tools: toolsForPrincipal(req.auth),
     });
   });
 

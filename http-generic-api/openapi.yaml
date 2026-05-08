@@ -3342,7 +3342,7 @@ paths:
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: callSystemTool
       summary: Call a governed MCP-style system tool
-      description: Calls a fixed system-layer tool through principal-aware runtime validation. Tenant principals are scoped to their tenant; admin principals can inspect all connector registry records.
+      description: Calls a fixed system-layer tool through principal-aware runtime validation. Tenant principals are scoped to their tenant; admin principals can inspect all connector registry records and run provider-bootstrap probes.
       requestBody:
         required: true
         content:
@@ -3354,11 +3354,11 @@ paths:
               properties:
                 name:
                   type: string
-                  enum: [connector_registry_list, connector_registry_get]
+                  enum: [connector_registry_list, connector_registry_get, activation_drive_probe, activation_sheets_bootstrap_read, activation_github_validate, activation_provider_bootstrap_validate]
                 arguments:
                   type: object
                   additionalProperties: true
-                  description: Tool arguments. For connector_registry_get, include system_id.
+                  description: Tool arguments. For connector_registry_get, include system_id. For activation_github_validate, optional github_owner, github_repo, and github_branch override bootstrap/env bindings. Activation provider tools require admin/service auth.
       responses:
         "200":
           description: System tool result
@@ -3473,7 +3473,7 @@ paths:
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: callAdminSystemTool
       summary: Call an MCP-style system layer tool
-      description: Calls a fixed, governed system-layer tool. Initial tools expose the connected_systems registry through connector_registry_list and connector_registry_get.
+      description: Calls a fixed, governed system-layer tool. Tools expose the connected_systems registry and admin-only provider-bootstrap probes for Drive, Sheets, and GitHub activation evidence.
       requestBody:
         required: true
         content:
@@ -3485,11 +3485,11 @@ paths:
               properties:
                 name:
                   type: string
-                  enum: [connector_registry_list, connector_registry_get]
+                  enum: [connector_registry_list, connector_registry_get, activation_drive_probe, activation_sheets_bootstrap_read, activation_github_validate, activation_provider_bootstrap_validate]
                 arguments:
                   type: object
                   additionalProperties: true
-                  description: Tool arguments. For connector_registry_get, include system_id.
+                  description: Tool arguments. For connector_registry_get, include system_id. For activation_github_validate, optional github_owner, github_repo, and github_branch override bootstrap/env bindings.
       responses:
         "200":
           description: System tool result

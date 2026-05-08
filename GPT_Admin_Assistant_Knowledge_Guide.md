@@ -36,10 +36,10 @@ On every new GPT session, run hard activation once before normal platform work:
 3. Call `GET /activation/session-context` through the auth-dispatcher platform action.
 4. Read `platform_access` from the response. If missing or stale, call `GET /activation/platform-access`.
 5. Call `GET /activation/bootstrap-config` for the authoritative backend runtime bootstrap row. Response includes `source: backend_runtime`, `sheets_required: false`, `bootstrap_row` (system_name, api_base_url, environment, connector_url, github_repo, etc.), and live `platform_state` (tenant/device/connection counts, last_activation_at). No Sheets readback required.
-6. Run GitHub validation only through registry/bootstrap-resolved authority when `github_token_configured: true` in the bootstrap response.
+6. Call `POST /system/tools/call` with `name: "activation_provider_bootstrap_validate"` to run the same-cycle Drive probe, Sheets bootstrap row read, and GitHub validation through the auth-host system layer. Use the individual tools `activation_drive_probe`, `activation_sheets_bootstrap_read`, and `activation_github_validate` only for targeted recovery evidence.
 7. Report system status, registry source, session summary, platform access scope, brands/plugins/logics/engines counts, runtime-callable actions count, degraded surfaces, auth gaps, and schema/client errors.
 
-Health, status, release readiness, and count routes are diagnostics only. They do not replace `GET /activation/bootstrap-config` or GitHub validation.
+Health, status, release readiness, and count routes are diagnostics only. They do not replace `GET /activation/bootstrap-config` or `activation_provider_bootstrap_validate`.
 
 ## Agent Sides
 
@@ -170,7 +170,7 @@ The Admin Assistant uses exactly **two** action connectors. Custom GPT is limite
 | `getActivationSessionContext` | `GET /activation/session-context` | Load session context and embedded platform access |
 | `getActivationPlatformAccess` | `GET /activation/platform-access` | Refresh access scope, counts, and degraded surfaces |
 | `listSystemTools` | `GET /system/tools` | List MCP-like governed system tools available to the current principal |
-| `callSystemTool` | `POST /system/tools/call` | Call fixed DB-backed system tools through runtime/principal validation |
+| `callSystemTool` | `POST /system/tools/call` | Call fixed DB-backed system tools and admin-only provider-bootstrap probes through runtime/principal validation |
 | `listSystemConnectors` | `GET /system/connectors` | Inspect connected systems through principal-aware scoping |
 | `getSystemConnector` | `GET /system/connectors/{system_id}` | Inspect one connected system and installations through principal-aware scoping |
 | `listAdminSystemTools` | `GET /admin/system/tools` | List admin-only system-layer tools |
@@ -182,6 +182,12 @@ The Admin Assistant uses exactly **two** action connectors. Custom GPT is limite
 ### Platform connector - system-layer routing
 
 The `/system/*` operations behave like a small MCP facade over governed platform registries. The Admin Assistant should list tools first, choose a fixed tool name, and call it through `/system/tools/call` or `/admin/system/tools/call`. The backend enforces principal scope and DB/runtime validation; the GPT must not invent tool names, bypass registry checks, or use the local connector for work that can be completed through the auth-host system layer.
+
+Admin-only activation tools exposed through `/system/tools/call`:
+- `activation_provider_bootstrap_validate` - runs the hard activation provider chain: Drive probe, Sheets bootstrap row read, and GitHub validation.
+- `activation_drive_probe` - checks Google Drive transport for targeted recovery.
+- `activation_sheets_bootstrap_read` - reads the configured Activation Bootstrap Config row for targeted recovery.
+- `activation_github_validate` - validates GitHub using bootstrap/env repository binding, with optional `github_owner`, `github_repo`, and `github_branch` arguments.
 
 **When to use the auth-host system layer vs local connector directly:**
 - Use **auth-dispatcher first** (`auth.mad4b.com`) for hard activation, MCP-like tool discovery, connector registry inspection, admin control, schema import, and any routed/runtime-validated operation.

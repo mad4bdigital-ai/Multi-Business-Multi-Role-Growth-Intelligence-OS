@@ -75,11 +75,12 @@ Activation order:
 1. Read knowledge-layer canonicals.
 2. Read Session Context: `GET /activation/session-context`.
 3. Read Platform Access if not embedded or if a fresh count is needed: `GET /activation/platform-access`.
-4. Drive probe: `parent_action_key=google_drive_api`, `endpoint_key=listDriveFiles`.
-5. Sheets bootstrap: `parent_action_key=google_sheets_api`, `endpoint_key=getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`, `query.range=Activation Bootstrap Config!A2:J2`.
-6. Resolve the bootstrap row.
-7. GitHub validation only with `parent_action_key` and `endpoint_key` resolved from bootstrap/registry authority.
-8. Run live validation and classify readiness.
+4. Admin GPT path: call `/system/tools/call` with `name: "activation_provider_bootstrap_validate"` through `auth.mad4b.com` to run the governed Drive probe, Sheets bootstrap row read, and GitHub validation in one same-cycle tool call.
+5. Direct runtime path, when not using the auth-host system layer: Drive probe with `parent_action_key=google_drive_api`, `endpoint_key=listDriveFiles`.
+6. Direct runtime path: Sheets bootstrap with `parent_action_key=google_sheets_api`, `endpoint_key=getSheetValues`, `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`, `query.range=Activation Bootstrap Config!A2:J2`.
+7. Resolve the bootstrap row.
+8. GitHub validation only with `parent_action_key` and `endpoint_key` resolved from bootstrap/registry authority.
+9. Run live validation and classify readiness.
 
 Session Context may include previous session history, related scopes, scoped request transcripts, bounded raw dumps when `include_raw=true`, and a `platform_access` summary. Platform Access reports admin/global scope plus brands, plugins, logics, engines, and runtime-callable actions counts. User JWT sessions inspect only their own user context. Admin/service sessions may inspect explicit `user_id` and may receive execution-log prompt/response summaries.
 
