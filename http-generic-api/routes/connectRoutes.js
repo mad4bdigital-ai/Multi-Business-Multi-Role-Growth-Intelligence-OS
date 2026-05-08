@@ -130,6 +130,42 @@ export function buildConnectRoutes(deps) {
     }
   });
 
+  // GET /policy — tenant GPT governance scope (no auth required)
+  router.get("/policy", (_req, res) => {
+    return res.json({
+      ok: true,
+      scope: "tenant",
+      version: "1.0",
+      permitted_operations: [
+        "auth.register — create a new tenant account (email + password)",
+        "auth.login — sign in with email and password",
+        "auth.google — sign in with a Google ID token from /connect page",
+        "connect.status — check your tenant connection state (user JWT required)",
+        "connect.activate — activate managed or dedicated backend connection (user JWT required)",
+        "connect.device_install — provision local connector for your device (user JWT required)",
+        "local_connector.install — full Cloudflare tunnel provisioning (user JWT required)",
+        "local_connector.health — check connector reachability (user JWT required)",
+        "app_connections — store encrypted Cloudflare / Hostinger credentials (user JWT required)",
+      ],
+      platform_admin_required: [
+        "activation/* — platform bootstrap and session context (admin BACKEND_API_KEY only)",
+        "dispatch — intent routing (admin BACKEND_API_KEY only)",
+        "admin/* — admin CLI and control (admin BACKEND_API_KEY only)",
+        "http-execute — governed HTTP executor (admin BACKEND_API_KEY only)",
+      ],
+      connection_modes: ["managed", "dedicated"],
+      access_model: "Sign in via POST /auth/login, /auth/register, or /auth/google. Use the returned token as Authorization: Bearer <token> on all subsequent calls. For Google Sign-In, complete the flow at https://auth.mad4b.com/connect and use the token shown on the final step.",
+      onboarding_url: "https://auth.mad4b.com/connect",
+      activation_sequence: [
+        "1. GET /policy — understand scope (no auth)",
+        "2. POST /auth/login or /auth/register — get user JWT",
+        "   OR: direct user to https://auth.mad4b.com/connect for Google Sign-In",
+        "3. GET /connect/status — verify tenant connection with user JWT",
+        "4. If not connected: POST /connect/activate with mode managed or dedicated",
+      ],
+    });
+  });
+
   // GET /connect — serve HTML page (no auth required)
   router.get("/connect", (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");

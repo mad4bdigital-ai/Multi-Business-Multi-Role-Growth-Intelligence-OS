@@ -206,7 +206,7 @@ function App() {
                 {step === 'preferences' && <PreferencesStep tenant={tenant} onSave={handleSavePreferences} onBack={() => setStep('credentials')}/>}
                 {step === 'business' && <BusinessProfileStep tenant={tenant} onSave={handleSaveBusiness} onBack={() => setStep('preferences')}/>}
                 {step === 'device' && <DeviceInstall tenant={tenant} deviceId={deviceId} setDeviceId={setDeviceId} onComplete={handleDeviceComplete} onBack={() => setStep('hub')} completed={connections.device === 'installed_here'}/>}
-                {step === 'launch' && <GptLaunch session={session} tenant={tenant} deviceId={deviceId} connections={connections} onLaunch={handleOpenGpt} onBack={() => setStep('hub')}/>}
+                {step === 'launch' && <GptLaunch session={session} tenant={tenant} deviceId={deviceId} connections={connections} onLaunch={handleOpenGpt} onBack={() => setStep('hub')} userToken={localStorage.getItem('mad4b_connect_token')}/>}
               </section>
             </div>
           )}

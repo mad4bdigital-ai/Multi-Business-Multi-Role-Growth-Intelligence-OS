@@ -224,7 +224,7 @@ function ArtifactCard({ kind, label, code, value, size, icon, accent, index }) {
 // ============================================================================
 // GPT LAUNCH
 // ============================================================================
-function GptLaunch({ session, tenant, deviceId, connections, onLaunch, onBack }) {
+function GptLaunch({ session, tenant, deviceId, connections, onLaunch, onBack, userToken }) {
   const checks = [
     { label: "Account signed in", state: !!session, value: session?.email },
     { label: "Workspace selected", state: !!tenant, value: tenant?.name },
@@ -235,8 +235,14 @@ function GptLaunch({ session, tenant, deviceId, connections, onLaunch, onBack })
   ];
   const ready = checks.every(c => c.state);
   const [copied, setCopied] = useStateC(false);
-  const ctx = `tenant_id=${tenant?.tenant_id}\nuser_id=usr_7f4a93\ndevice_id=${deviceId}\ntunnel_url=https://${deviceId}.connector.mad4b.com`;
+  const [tokenVisible, setTokenVisible] = useStateC(false);
+  const [tokenCopied, setTokenCopied] = useStateC(false);
+
+  const ctx = `tenant_id=${tenant?.tenant_id}\ndevice_id=${deviceId}\ntunnel_url=https://${deviceId}.connector.mad4b.com${userToken ? `\nAuthorization: Bearer ${userToken}` : ""}`;
   const copy = () => { navigator.clipboard?.writeText(ctx); setCopied(true); setTimeout(() => setCopied(false), 1300); };
+  const copyToken = () => { if (userToken) { navigator.clipboard?.writeText(userToken); setTokenCopied(true); setTimeout(() => setTokenCopied(false), 1300); } };
+
+  const maskedToken = userToken ? userToken.slice(0, 12) + "·".repeat(20) + userToken.slice(-6) : null;
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 28, alignItems: "start" }}>
@@ -254,7 +260,7 @@ function GptLaunch({ session, tenant, deviceId, connections, onLaunch, onBack })
         </h1>
         <p style={{ fontSize: 15, color: "var(--ink-soft)", maxWidth: 480, marginBottom: 28 }}>
           {ready
-            ? `Open the Growth Intelligence GPT for ${tenant?.name}. Activation context (no secrets) is ready to copy if you want to paste it as the GPT's first turn.`
+            ? `Open the Growth Intelligence GPT for ${tenant?.name}. Copy your session token below to link your account to the Tenant GPT.`
             : "Finish the activation steps to unlock the launch."}
         </p>
 
@@ -274,6 +280,28 @@ function GptLaunch({ session, tenant, deviceId, connections, onLaunch, onBack })
             {copied ? "Copied context" : "Copy activation context"}
           </button>
         </div>
+
+        {userToken && (
+          <div style={{ marginTop: 24, padding: "16px 18px", borderRadius: 8, background: "var(--fill)", border: "1px solid var(--line)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink-soft)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Your session token</span>
+              <button onClick={() => setTokenVisible(v => !v)} style={{ fontSize: 11.5, color: "var(--blue)", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", padding: 0 }}>
+                {tokenVisible ? "hide" : "reveal"}
+              </button>
+            </div>
+            <div className="mono" style={{ fontSize: 11.5, color: "var(--ink)", wordBreak: "break-all", lineHeight: 1.55, marginBottom: 10, userSelect: tokenVisible ? "text" : "none" }}>
+              {tokenVisible ? userToken : maskedToken}
+            </div>
+            <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
+              Paste this into the Tenant GPT when prompted for your session token to link your account and workspace.
+            </p>
+            <button className="btn btn-ghost btn-sm" onClick={copyToken}>
+              <Icon.copy width={12} height={12} stroke="currentColor"/>
+              {tokenCopied ? "Copied!" : "Copy token"}
+            </button>
+          </div>
+        )}
+
         <div className="mono" style={{ fontSize: 11, color: "var(--muted)", marginTop: 14 }}>
           fallback: TENANT_GPT_URL → CUSTOM_GPT_URL → https://chatgpt.com/gpts
         </div>
