@@ -35,7 +35,7 @@ On every new GPT session, run hard activation once before normal platform work:
 2. Confirm the Custom GPT Action connection is signed in.
 3. Call `GET /activation/session-context` through the auth-dispatcher platform action.
 4. Read `platform_access` from the response. If missing or stale, call `GET /activation/platform-access`.
-5. Call `GET /activation/bootstrap-config` for the authoritative backend runtime bootstrap row. Response includes `source: backend_runtime`, `sheets_required: false`, `bootstrap_row` (system_name, api_base_url, environment, connector_url, github_repo, etc.), and live `platform_state` (tenant/device/connection counts, last_activation_at). No Sheets readback required.
+5. Call `GET /activation/bootstrap-config` for the authoritative backend runtime bootstrap row. Response includes `source: backend_runtime`, `sheets_required: false`, `bootstrap_row` (system_name, api_base_url, environment, connector_url, github_repo, etc.), and live `platform_state` (tenant/device/connection counts, last_activation_at). This backend row is required context, but it does not replace the provider-bootstrap validation tool.
 6. Call `POST /system/tools/call` with `name: "activation_provider_bootstrap_validate"` to run the same-cycle Drive probe, Sheets bootstrap row read, and GitHub validation through the auth-host system layer. Use the individual tools `activation_drive_probe`, `activation_sheets_bootstrap_read`, and `activation_github_validate` only for targeted recovery evidence.
 7. Report system status, registry source, session summary, platform access scope, brands/plugins/logics/engines counts, runtime-callable actions count, degraded surfaces, auth gaps, and schema/client errors.
 
@@ -218,14 +218,14 @@ Key operations and functional use:
 
 - `getActivationSessionContext`: admin and customer activation continuity; previous same-user sessions, related scopes, transcript availability, and embedded `platform_access`
 - `getActivationPlatformAccess`: admin access/count refresh for all-brand scope, brands, plugins, logics, engines, and runtime-callable actions
-- `executeHttpRequest`: governed provider call through registry `parent_action_key` and `endpoint_key`; use for Drive, Sheets, GitHub, and other provider actions after authority resolves
+- `executeHttpRequest`: governed provider call through registry `parent_action_key` and `endpoint_key`; use for direct runtime clients outside the Admin GPT two-action setup. In the Admin Assistant, hard activation provider probes go through `activation_provider_bootstrap_validate` on `/system/tools/call`.
 - `batchDispatch`: bounded multi-request dispatch for low-risk grouped diagnostics; not a bypass for auth or mutation policy
 - `createJob`, `getJob`, `getJobResult`: async governed execution for longer work
 - `generateImplementationPlan`, `generateTaskManifest`: AI resolver chain for implementation planning
 - `getAiRegistryReadiness`: route/workflow AI readiness evidence
 - Tenant operations: admin or customer tenant state depending on auth; create, list, read, replace, archive, memberships, relationships
 
-Provider calls must go through `executeHttpRequest`; do not invent provider URLs or action keys.
+Provider calls must go through the active governed surface for the client: Admin GPT uses auth-host `/system/tools/call` for hard activation probes; direct runtime clients use `executeHttpRequest`. Do not invent provider URLs or action keys.
 
 ## Identity Scope
 
@@ -272,7 +272,7 @@ Functional use:
 - Connector dispatch/history/status: operational execution tracking; not raw provider transport
 - Bootstrap readiness and onboarding states: setup diagnostics
 
-Use this scope for platform connectivity and execution planning. For raw provider calls, use runtime `executeHttpRequest`.
+Use this scope for platform connectivity and execution planning. For Admin GPT activation probes, use auth-host `/system/tools/call`; for direct runtime clients, use runtime `executeHttpRequest`.
 
 ## Logic Scope
 
