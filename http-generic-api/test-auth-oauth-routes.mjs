@@ -91,11 +91,16 @@ try {
   section("authorize popup");
 
   {
-    const result = await getText(baseUrl, `/auth/oauth/authorize?redirect_uri=${encodedRedirect}&state=${state}`);
+    const result = await getText(baseUrl, `/auth/oauth/authorize?redirect_uri=${encodedRedirect}&state=${state}&screen_hint=signup&activation_mode=managed&device_id=my-laptop&workspace_name=Acme%20Growth&sign_in_options=google,email,register`);
     assert("authorize returns html", result.status === 200, `${result.status}`);
     assert("authorize is not cacheable", result.cacheControl.includes("no-store"), result.cacheControl);
     assert("authorize includes app name", result.text.includes("Growth Intelligence Platform"));
     assert("authorize renders Google Sign-In", result.text.includes("accounts.google.com/gsi/client"));
+    assert("authorize includes existing-account option", result.text.includes("Existing account"));
+    assert("authorize includes new-workspace option", result.text.includes("New workspace"));
+    assert("authorize carries activation mode", result.text.includes('"activation_mode":"managed"'));
+    assert("authorize carries device id", result.text.includes('"device_id":"my-laptop"'));
+    assert("authorize preselects signup panel", result.text.includes('const INITIAL_PANEL = "register"'));
     assert("authorize includes privacy policy link", result.text.includes('href="/privacy-policy"'));
     assert("authorize includes configured Google client", result.text.includes(process.env.GOOGLE_CLIENT_ID));
   }
@@ -113,11 +118,20 @@ try {
     { expiresIn: "7d" }
   );
 
-  const codeResult = await postJson(baseUrl, "/auth/oauth/code", { token: userToken, redirect_uri: redirectUri, state });
+  const activationContext = {
+    activation_mode: "dedicated",
+    device_id: "tenant-pc",
+    workspace_name: "Tenant Workspace",
+    screen_hint: "signin",
+    sign_in_options: ["email", "register"],
+  };
+  const codeResult = await postJson(baseUrl, "/auth/oauth/code", { token: userToken, redirect_uri: redirectUri, state, activation_context: activationContext });
   assert("code endpoint accepts signed user token", codeResult.status === 200, `${codeResult.status}`);
   assert("code response includes code", typeof codeResult.body.code === "string" && codeResult.body.code.length > 40);
   assert("code response redirects with state", String(codeResult.body.redirect_to || "").includes(`state=${state}`), codeResult.body.redirect_to);
   assert("code response redirects with code", String(codeResult.body.redirect_to || "").includes("code="), codeResult.body.redirect_to);
+  assert("code response preserves activation mode", codeResult.body.activation_context?.activation_mode === "dedicated", JSON.stringify(codeResult.body.activation_context));
+  assert("code response preserves sign-in options", Array.isArray(codeResult.body.activation_context?.sign_in_options) && codeResult.body.activation_context.sign_in_options.includes("email"), JSON.stringify(codeResult.body.activation_context));
 
   const exchange = await postForm(baseUrl, "/auth/oauth/token", {
     grant_type: "authorization_code",
@@ -128,6 +142,7 @@ try {
   assert("token endpoint returns bearer token", exchange.body.token_type === "Bearer", JSON.stringify(exchange.body));
   assert("token endpoint returns original user JWT", exchange.body.access_token === userToken);
   assert("token endpoint returns tenant scope", exchange.body.scope === "tenant", JSON.stringify(exchange.body));
+  assert("token endpoint returns activation context", exchange.body.activation_context?.device_id === "tenant-pc", JSON.stringify(exchange.body));
 
   const mismatch = await postForm(baseUrl, "/auth/oauth/token", {
     grant_type: "authorization_code",

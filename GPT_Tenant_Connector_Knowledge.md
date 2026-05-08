@@ -42,7 +42,16 @@ The platform uses these credentials to provision the tunnel under the tenant's o
 
 URL: `https://auth.mad4b.com/connect`
 
-Primary sign-in option: **Continue with Google** through the GPT Action OAuth popup. `https://auth.mad4b.com/connect` is the web fallback. Email/password login and new-account registration are fallback account paths.
+Primary sign-in option: the GPT Action OAuth popup at `https://auth.mad4b.com/auth/oauth/authorize`. It presents Google first, and can also present existing-account and new-workspace options when `sign_in_options=google,email,register` is supplied. `https://auth.mad4b.com/connect` is the web fallback.
+
+Safe activation redirect hints:
+- `screen_hint=google|signin|signup`
+- `activation_mode=managed|dedicated`
+- `device_id=<stable-hostname>`
+- `workspace_name=<display-name>`
+- `sign_in_options=google,email,register`
+
+Do not put passwords, API keys, connector secrets, Google ID tokens, or provider tokens in redirect query parameters.
 
 Three sections:
 1. **Sign in / Sign up** — GPT Action OAuth popup first, then the web Google button, email+password, or new-account registration

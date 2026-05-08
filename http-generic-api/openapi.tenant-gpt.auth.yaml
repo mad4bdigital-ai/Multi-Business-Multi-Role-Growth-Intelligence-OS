@@ -24,7 +24,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: User JWT
-      description: "Configured by GPT Action OAuth. ChatGPT obtains the per-user tenant token through the OAuth popup; do not call OAuth token or Google ID-token endpoints as normal actions."
+      description: "Configured by GPT Action OAuth. ChatGPT obtains the per-user tenant token through the OAuth popup; do not call OAuth token or Google ID-token endpoints as normal actions. The authorize URL may include safe activation hints such as screen_hint, activation_mode, device_id, workspace_name, and sign_in_options, but never secrets."
   schemas:
     AuthResult:
       type: object

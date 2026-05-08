@@ -14,6 +14,54 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 const OAUTH_CODE_TTL_SECONDS = 5 * 60;
 const USER_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
+const VALID_SIGN_IN_OPTIONS = new Set(["google", "email", "register"]);
+
+function cleanOption(value, allowed, fallback = null) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return allowed.has(normalized) ? normalized : fallback;
+}
+
+function cleanText(value, maxLength = 120) {
+  return String(value || "").trim().slice(0, maxLength);
+}
+
+function parseSignInOptions(value) {
+  const raw = String(value || "google,email,register")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter((item) => VALID_SIGN_IN_OPTIONS.has(item));
+  const unique = [...new Set(raw)];
+  return unique.length ? unique : ["google", "email", "register"];
+}
+
+function parseActivationContext(query = {}) {
+  const context = {
+    purpose: "tenant_activation",
+    activation_mode: cleanOption(query.activation_mode || query.mode, new Set(["managed", "dedicated"]), null),
+    cloudflare_mode: cleanOption(query.cloudflare_mode, new Set(["managed", "dedicated"]), null),
+    google_auth_mode: cleanOption(query.google_auth_mode, new Set(["managed", "dedicated", "user_oauth"]), null),
+    n8n_activation_mode: cleanOption(query.n8n_activation_mode, new Set(["managed_main_server", "self_hosted_local"]), null),
+    device_id: cleanText(query.device_id, 32),
+    workspace_name: cleanText(query.workspace_name || query.tenant_display_name, 120),
+    screen_hint: cleanOption(query.screen_hint, new Set(["signin", "signup", "google"]), "google"),
+    sign_in_options: parseSignInOptions(query.sign_in_options || query.auth_options),
+  };
+
+  return Object.fromEntries(
+    Object.entries(context).filter(([, value]) => {
+      if (Array.isArray(value)) return value.length > 0;
+      return value !== null && value !== "";
+    })
+  );
+}
+
+function escapeHtmlAttribute(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
 
 function parseOAuthRedirectUri(redirectUri) {
   try {
@@ -36,7 +84,23 @@ function appendOAuthParams(redirectUri, params) {
   return url.toString();
 }
 
-function buildOAuthAuthorizeHtml({ clientId, redirectUri, state }) {
+function buildOAuthAuthorizeHtml({ clientId, redirectUri, state, activationContext }) {
+  const signInOptions = Array.isArray(activationContext?.sign_in_options)
+    ? activationContext.sign_in_options
+    : ["google", "email", "register"];
+  const showGoogle = signInOptions.includes("google");
+  const showEmail = signInOptions.includes("email");
+  const showRegister = signInOptions.includes("register");
+  const initialPanel = activationContext?.screen_hint === "signup" && showRegister
+    ? "register"
+    : activationContext?.screen_hint === "signin" && showEmail
+      ? "email"
+      : showGoogle
+        ? "google"
+        : showEmail
+          ? "email"
+          : "register";
+
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -45,9 +109,17 @@ function buildOAuthAuthorizeHtml({ clientId, redirectUri, state }) {
   <title>Growth Intelligence Platform - Google Sign-In</title>
   <style>
     body{font-family:Arial,sans-serif;margin:0;background:#f5f5f7;color:#1d1d1f;display:grid;min-height:100vh;place-items:center}
-    main{width:min(440px,calc(100vw - 32px));background:#fff;border:1px solid #e5e5ea;border-radius:12px;padding:28px;box-shadow:0 18px 60px rgba(0,0,0,.08)}
+    main{width:min(460px,calc(100vw - 32px));background:#fff;border:1px solid #e5e5ea;border-radius:12px;padding:28px;box-shadow:0 18px 60px rgba(0,0,0,.08)}
     h1{font-size:22px;margin:0 0 8px}
     p{font-size:14px;line-height:1.45;color:#3a3a3d}
+    nav{display:flex;gap:8px;margin:18px 0;flex-wrap:wrap}
+    nav button,.submit{border:1px solid #d2d2d7;background:#fff;border-radius:8px;padding:10px 12px;font-weight:700;cursor:pointer}
+    nav button[aria-selected="true"],.submit{background:#1d1d1f;color:#fff;border-color:#1d1d1f}
+    form{display:grid;gap:10px;margin-top:12px}
+    label{display:grid;gap:5px;font-size:12px;font-weight:700;color:#3a3a3d}
+    input{border:1px solid #d2d2d7;border-radius:8px;padding:11px 12px;font-size:14px}
+    section[hidden]{display:none}
+    .hint{font-size:12px;color:#6e6e73;margin-top:8px}
     .links{font-size:12px;margin-top:18px;color:#86868b}
     .links a{color:#0058b8}
     .error{margin-top:14px;color:#b3261e;font-size:13px;white-space:pre-wrap}
@@ -56,10 +128,33 @@ function buildOAuthAuthorizeHtml({ clientId, redirectUri, state }) {
 <body>
   <main>
     <h1>Growth Intelligence Platform</h1>
-    <p>Continue with Google to connect this GPT to your tenant workspace.</p>
-    <div id="gsi-btn-container"></div>
+    <p>Sign in to connect this GPT to your tenant workspace and continue activation.</p>
+    <nav aria-label="Sign-in options">
+      ${showGoogle ? '<button type="button" data-panel="google">Google</button>' : ''}
+      ${showEmail ? '<button type="button" data-panel="email">Existing account</button>' : ''}
+      ${showRegister ? '<button type="button" data-panel="register">New workspace</button>' : ''}
+    </nav>
+    ${showGoogle ? '<section id="panel-google"><div id="gsi-btn-container"></div><p class="hint">Recommended. Uses Google Sign-In and returns a tenant JWT to ChatGPT.</p></section>' : ''}
+    ${showEmail ? `<section id="panel-email" hidden>
+      <form id="login-form">
+        <label>Email<input name="email" type="email" autocomplete="email" required></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="submit" type="submit">Sign in</button>
+      </form>
+    </section>` : ''}
+    ${showRegister ? `<section id="panel-register" hidden>
+      <form id="register-form">
+        <label>Email<input name="email" type="email" autocomplete="email" required></label>
+        <label>Password<input name="password" type="password" autocomplete="new-password" required minlength="8"></label>
+        <label>Your name<input name="display_name" autocomplete="name" required></label>
+        <label>Workspace name<input name="tenant_display_name" value="${escapeHtmlAttribute(activationContext?.workspace_name || "")}" required></label>
+        <button class="submit" type="submit">Create workspace</button>
+      </form>
+    </section>` : ''}
     <div id="error" class="error" role="alert"></div>
     <div class="links">
+      <a href="/connect" target="_blank" rel="noopener">Open setup page</a>
+      <span aria-hidden="true"> | </span>
       <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>
       <span aria-hidden="true"> | </span>
       <a href="/terms-of-use" target="_blank" rel="noopener">Terms of Use</a>
@@ -70,9 +165,47 @@ function buildOAuthAuthorizeHtml({ clientId, redirectUri, state }) {
     const GOOGLE_CLIENT_ID = ${JSON.stringify(String(clientId || ""))};
     const REDIRECT_URI = ${JSON.stringify(String(redirectUri || ""))};
     const STATE = ${JSON.stringify(String(state || ""))};
+    const ACTIVATION_CONTEXT = ${JSON.stringify(activationContext || {})};
+    const INITIAL_PANEL = ${JSON.stringify(initialPanel)};
     const errorBox = document.getElementById("error");
     function showError(message){ errorBox.textContent = message || "Sign-in failed."; }
+    function setPanel(panel){
+      document.querySelectorAll("nav button").forEach((button) => button.setAttribute("aria-selected", String(button.dataset.panel === panel)));
+      document.querySelectorAll("section[id^='panel-']").forEach((section) => { section.hidden = section.id !== "panel-" + panel; });
+    }
+    document.querySelectorAll("nav button").forEach((button) => button.addEventListener("click", () => setPanel(button.dataset.panel)));
+    setPanel(INITIAL_PANEL);
+    async function issueOAuthCode(token){
+      const codeRes = await fetch("/auth/oauth/code", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, redirect_uri: REDIRECT_URI, state: STATE, activation_context: ACTIVATION_CONTEXT })
+      });
+      const codeData = await codeRes.json();
+      if (!codeRes.ok || !codeData.redirect_to) throw new Error(codeData?.error?.message || "Could not complete OAuth sign-in.");
+      window.location.assign(codeData.redirect_to);
+    }
+    async function submitCredentials(path, form){
+      const payload = Object.fromEntries(new FormData(form).entries());
+      const authRes = await fetch(path, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const authData = await authRes.json();
+      if (!authRes.ok || !authData.token) throw new Error(authData?.error?.message || "Sign-in failed.");
+      await issueOAuthCode(authData.token);
+    }
+    document.getElementById("login-form")?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try { await submitCredentials("/auth/login", event.currentTarget); } catch (err) { showError(err.message); }
+    });
+    document.getElementById("register-form")?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try { await submitCredentials("/auth/register", event.currentTarget); } catch (err) { showError(err.message); }
+    });
     function setup(){
+      if (!document.getElementById("gsi-btn-container")) return;
       if (!GOOGLE_CLIENT_ID) return showError("Google client ID is not configured.");
       if (!REDIRECT_URI) return showError("OAuth redirect_uri is required.");
       if (!window.google?.accounts?.id) return setTimeout(setup, 250);
@@ -87,14 +220,7 @@ function buildOAuthAuthorizeHtml({ clientId, redirectUri, state }) {
             });
             const authData = await authRes.json();
             if (!authRes.ok || !authData.token) throw new Error(authData?.error?.message || "Google sign-in failed.");
-            const codeRes = await fetch("/auth/oauth/code", {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ token: authData.token, redirect_uri: REDIRECT_URI, state: STATE })
-            });
-            const codeData = await codeRes.json();
-            if (!codeRes.ok || !codeData.redirect_to) throw new Error(codeData?.error?.message || "Could not complete OAuth sign-in.");
-            window.location.assign(codeData.redirect_to);
+            await issueOAuthCode(authData.token);
           } catch (err) {
             showError(err.message);
           }
@@ -120,6 +246,7 @@ export function buildAuthRoutes(deps) {
   router.get("/oauth/authorize", (req, res) => {
     const redirectUri = String(req.query.redirect_uri || "");
     const state = String(req.query.state || "");
+    const activationContext = parseActivationContext(req.query);
 
     if (!parseOAuthRedirectUri(redirectUri)) {
       return res.status(400).type("text/plain").send("OAuth redirect_uri must be a valid http or https URL.");
@@ -129,12 +256,15 @@ export function buildAuthRoutes(deps) {
     return res
       .status(200)
       .type("html")
-      .send(buildOAuthAuthorizeHtml({ clientId: GOOGLE_CLIENT_ID, redirectUri, state }));
+      .send(buildOAuthAuthorizeHtml({ clientId: GOOGLE_CLIENT_ID, redirectUri, state, activationContext }));
   });
 
   router.post("/oauth/code", async (req, res) => {
     try {
       const { token, redirect_uri, state } = req.body || {};
+      const activation_context = req.body?.activation_context && typeof req.body.activation_context === "object"
+        ? parseActivationContext(req.body.activation_context)
+        : {};
       if (!token || !redirect_uri) {
         return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "token and redirect_uri are required." } });
       }
@@ -151,6 +281,7 @@ export function buildAuthRoutes(deps) {
           email: payload.email,
           tenant_id: payload.tenant_id || null,
           redirect_uri,
+          activation_context,
         },
         JWT_SECRET,
         { expiresIn: OAUTH_CODE_TTL_SECONDS, jwtid: randomUUID() }
@@ -160,6 +291,7 @@ export function buildAuthRoutes(deps) {
         ok: true,
         code,
         expires_in: OAUTH_CODE_TTL_SECONDS,
+        activation_context,
         redirect_to: appendOAuthParams(redirect_uri, { code, state }),
       });
     } catch {
@@ -193,6 +325,7 @@ export function buildAuthRoutes(deps) {
         token_type: "Bearer",
         expires_in: USER_TOKEN_TTL_SECONDS,
         scope: "tenant",
+        activation_context: payload.activation_context || {},
       });
     } catch {
       return res.status(400).json({ error: "invalid_grant", error_description: "OAuth code is invalid or expired." });
