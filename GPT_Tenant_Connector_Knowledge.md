@@ -42,7 +42,7 @@ The platform uses these credentials to provision the tunnel under the tenant's o
 
 URL: `https://auth.mad4b.com/connect`
 
-Primary sign-in option: the GPT Action OAuth popup at `https://auth.mad4b.com/auth/oauth/authorize`, exchanging through `https://auth.mad4b.com/auth/oauth/token` with scope `tenant`. The Tenant Assistant action must be configured as OAuth so ChatGPT attaches the returned user JWT automatically; no-auth, API-key auth, or the admin backend key will produce `user_jwt_required` on `/connect/status`. The popup presents Google first, and can also present existing-account and new-workspace options when `sign_in_options=google,email,register` is supplied. `https://auth.mad4b.com/connect` is the web fallback.
+Primary sign-in option: the GPT Action OAuth popup at `https://auth.mad4b.com/auth/oauth/authorize`, exchanging through `https://auth.mad4b.com/auth/oauth/token` with scope `tenant`. The Tenant Assistant action must be configured as OAuth so ChatGPT attaches the returned user JWT automatically; no-auth, API-key auth, or the admin backend key will produce `user_jwt_required` on `/connect/status`. The popup presents Google first, and can also present existing-account and new-workspace options when `sign_in_options=google,email,register` is supplied. `https://auth.mad4b.com/connect` is the web fallback. Account passwords and registration details must be entered only in the OAuth popup or hosted web page, never in GPT chat.
 
 Safe activation redirect hints:
 - `screen_hint=google|signin|signup`
@@ -51,10 +51,10 @@ Safe activation redirect hints:
 - `workspace_name=<display-name>`
 - `sign_in_options=google,email,register`
 
-Do not put passwords, API keys, connector secrets, Google ID tokens, or provider tokens in redirect query parameters.
+Do not put passwords, API keys, connector secrets, Google ID tokens, or provider tokens in redirect query parameters, OpenAPI examples, action request bodies, or chat replies.
 
 Three sections:
-1. **Sign in / Sign up** — GPT Action OAuth popup first, then the web Google button, email+password, or new-account registration
+1. **Sign in / Sign up** — GPT Action OAuth popup first, then the web Google button, existing-account login, or new-account registration inside the hosted page
 2. **Backend Connection Activation** — CF/Hostinger credentials for dedicated mode, Device ID
 3. **Local runtime** — shows install status once credentials are saved
 
@@ -113,7 +113,7 @@ Custom aliases can be added via the platform admin or by calling `/local-connect
 - The device has no DB config row. Run the install flow again.
 
 **`invalid_credentials` on sign-in**
-- Check email/password. If using Google, the Google account email must match the registered email.
+- Complete sign-in again inside the OAuth popup or hosted `/connect` page. If using Google, the Google account email must match the registered email.
 
 **`alias_not_found` on shell run**
 - The alias is not in the allowlist. Use `action=list` to see available aliases.
