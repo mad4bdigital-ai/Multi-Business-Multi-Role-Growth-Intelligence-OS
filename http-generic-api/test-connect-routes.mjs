@@ -56,6 +56,17 @@ async function post(baseUrl, path, body) {
   return { status: response.status, body: await readJson(response) };
 }
 
+async function getRaw(baseUrl, path) {
+  const response = await fetch(`${baseUrl}${path}`);
+  const body = Buffer.from(await response.arrayBuffer());
+  return {
+    status: response.status,
+    contentType: response.headers.get("content-type") || "",
+    cacheControl: response.headers.get("cache-control") || "",
+    body,
+  };
+}
+
 const app = express();
 app.use(express.json());
 app.use((req, _res, next) => {
@@ -74,6 +85,21 @@ app.use(buildConnectRoutes({
 const { server, baseUrl } = await startServer(app);
 
 try {
+  section("connect page public assets");
+
+  {
+    const result = await getRaw(baseUrl, "/connect/assets/mad4b-logo-1080.png");
+    assert("serves raster MAD4B logo asset", result.status === 200, `${result.status}`);
+    assert("logo asset is png", result.contentType === "image/png", result.contentType);
+    assert("logo asset is cacheable", result.cacheControl.includes("max-age=86400"), result.cacheControl);
+    assert("logo asset has png signature", result.body.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])));
+  }
+
+  {
+    const result = await getRaw(baseUrl, "/connect");
+    assert("connect shell references app bundle", result.status === 200, `${result.status}`);
+  }
+
   section("auth openapi contract");
 
   {

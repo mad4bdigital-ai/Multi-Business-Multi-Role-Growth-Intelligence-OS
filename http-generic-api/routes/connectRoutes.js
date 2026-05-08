@@ -114,7 +114,19 @@ export function buildConnectRoutes(deps) {
   const router = Router();
 
   // Serve connect page static assets
-  const ALLOWED_ASSETS = new Set(['tokens.css','tweaks-panel.jsx','core.jsx','steps-1.jsx','steps-2.jsx','steps-2-hub.jsx','steps-3.jsx','steps-4.jsx','evidence.jsx','app.jsx']);
+  const ALLOWED_ASSETS = new Set([
+    'tokens.css',
+    'tweaks-panel.jsx',
+    'core.jsx',
+    'steps-1.jsx',
+    'steps-2.jsx',
+    'steps-2-hub.jsx',
+    'steps-3.jsx',
+    'steps-4.jsx',
+    'evidence.jsx',
+    'app.jsx',
+    'mad4b-logo-1080.png'
+  ]);
 
   router.get("/connect/assets/:file", (req, res) => {
     const { file } = req.params;
@@ -122,8 +134,13 @@ export function buildConnectRoutes(deps) {
     try {
       const content = readFileSync(join(CONNECT_STATIC, file));
       const ext = file.split('.').pop();
-      res.setHeader('Content-Type', ext === 'css' ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8');
-      res.setHeader('Cache-Control', 'no-cache');
+      const contentType = ext === 'css'
+        ? 'text/css; charset=utf-8'
+        : ext === 'png'
+          ? 'image/png'
+          : 'text/javascript; charset=utf-8';
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', ext === 'png' ? 'public, max-age=86400' : 'no-cache');
       res.send(content);
     } catch {
       res.status(404).end();
