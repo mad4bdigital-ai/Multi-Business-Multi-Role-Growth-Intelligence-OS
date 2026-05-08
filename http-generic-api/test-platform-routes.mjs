@@ -575,6 +575,17 @@ section("GET /privacy-policy - public HTML page on scoped subdomains");
   }
 }
 
+section("GET /terms-of-use - public HTML page");
+
+{
+  const res = await fetch(`${base}/terms-of-use`, { headers: { "x-forwarded-host": "auth.mad4b.com" } });
+  const html = await res.text();
+  ok("terms of use returns 200", res.status === 200, `got ${res.status}`);
+  ok("terms of use is HTML", (res.headers.get("content-type") || "").includes("text/html"));
+  ok("terms of use includes host", html.includes("Applies to auth.mad4b.com"));
+  ok("terms of use links privacy policy", html.includes("/privacy-policy"));
+}
+
 server.close();
 
 console.log(`\n── Results ──`);

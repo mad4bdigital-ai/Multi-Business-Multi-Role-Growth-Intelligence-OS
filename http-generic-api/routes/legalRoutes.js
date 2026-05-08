@@ -120,6 +120,98 @@ function sendPrivacyPolicy(req, res) {
   return res.status(200).send(privacyPolicyHtml(req));
 }
 
+function termsOfUseHtml(req) {
+  const host = escapeHtml(requestHost(req));
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Terms of Use | Growth Intelligence Platform</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#f7f8fb;color:#1f2937;line-height:1.6}
+    header{background:#ffffff;border-bottom:1px solid #dde3ea;padding:28px 24px}
+    main{max-width:820px;margin:0 auto;padding:32px 24px 56px}
+    h1{font-size:30px;line-height:1.2;margin:0 0 8px;color:#111827}
+    h2{font-size:18px;margin:30px 0 10px;color:#111827}
+    p,li{font-size:15px}
+    ul{padding-left:22px}
+    .meta{color:#607085;font-size:14px;margin:0}
+    .panel{background:#ffffff;border:1px solid #dde3ea;border-radius:8px;padding:24px;margin-top:24px}
+    .host{display:inline-block;background:#eef4ff;border:1px solid #c7d7fe;color:#1e3a8a;border-radius:999px;padding:4px 10px;font-size:13px;margin-top:10px}
+    footer{border-top:1px solid #dde3ea;color:#607085;font-size:13px;padding:20px 24px;text-align:center}
+    a{color:#1d4ed8}
+  </style>
+</head>
+<body>
+  <header>
+    <main style="padding:0;max-width:820px">
+      <h1>Terms of Use</h1>
+      <p class="meta">Growth Intelligence Platform | Effective ${EFFECTIVE_DATE}</p>
+      <span class="host">Applies to ${host}</span>
+    </main>
+  </header>
+  <main>
+    <section class="panel">
+      <p>
+        By accessing or executing workflows on the Growth Intelligence Platform, you agree
+        to these Terms of Use.
+      </p>
+
+      <h2>Acceptable Use And Governance</h2>
+      <p>
+        You agree to operate within assigned actor roles, tenant boundaries, endpoint policies,
+        registry constraints, and execution eligibility rules.
+      </p>
+
+      <h2>AI And Automated Execution</h2>
+      <p>
+        The platform uses AI resolvers and automation to generate plans, dispatch actions,
+        and execute governed workflows. You are responsible for reviewing, validating, and
+        authorizing automated changes where policy or law requires it.
+      </p>
+
+      <h2>Connected Systems</h2>
+      <p>
+        You represent that you have the necessary authorization for all external APIs,
+        repositories, hosting environments, analytics properties, documents, and workflow
+        systems connected to the platform.
+      </p>
+
+      <h2>Data And Privacy</h2>
+      <p>
+        Data handling is described in the <a href="/privacy-policy">Privacy Policy</a>.
+        You must not use the platform to access or process data you are not authorized to use.
+      </p>
+
+      <h2>Limitation Of Liability</h2>
+      <p>
+        The platform is provided to automate complex operational workflows. We do not guarantee
+        uninterrupted availability, zero-drift operations, or third-party API availability.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        For terms questions, contact the platform owner at
+        <a href="mailto:mad4b.digital@gmail.com">mad4b.digital@gmail.com</a>.
+      </p>
+    </section>
+  </main>
+  <footer>
+    Growth Intelligence Platform | <a href="/privacy-policy">Privacy Policy</a>
+  </footer>
+</body>
+</html>`;
+}
+
+function sendTermsOfUse(req, res) {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=300");
+  return res.status(200).send(termsOfUseHtml(req));
+}
+
 export function buildLegalRoutes(deps) {
   const router = Router();
 
@@ -128,33 +220,10 @@ export function buildLegalRoutes(deps) {
   router.get("/privacy", sendPrivacyPolicy);
   router.get("/privacy.html", sendPrivacyPolicy);
 
-  router.get("/terms-of-use", (req, res) => {
-    res.json({
-      ok: true,
-      title: "Terms of Use",
-      content: `
-# Terms of Use
-*Effective Date: ${new Date().toISOString().split('T')[0]}*
-
-By accessing or executing workflows on the Growth Intelligence Platform, you agree to these Terms of Use.
-
-## 1. Acceptable Use and Governance
-You agree to operate within your assigned actor roles and execution boundaries. You must strictly adhere to the HTTP Execution Governance policies, registry constraints, and endpoint execution eligibility rules defined in the system.
-
-## 2. AI and Automated Execution
-The platform utilizes AI resolvers to generate implementation plans and execute automated task manifests. You are responsible for reviewing, validating, and authorizing these automated changes where mandated by your organizational execution policies.
-
-## 3. Connected Systems
-You represent that you hold the necessary authorization for all external APIs, repositories (e.g., GitHub), and hosting environments (e.g., Hostinger, WordPress) connected to the platform. Bypassing transport governance, schema validations, or registry routing layers is strictly prohibited.
-
-## 4. Intellectual Property
-The Growth Intelligence Platform's architecture, AI resolvers, and operational codebase remain our exclusive intellectual property. All business assets, content, and data defined within your Brand Registry remain yours.
-
-## 5. Limitation of Liability
-The platform is provided to automate complex operational workflows. We make no guarantees regarding uninterrupted system availability or zero-drift operations. We are not liable for execution failures, third-party API rate limits, or consequences arising from misconfigured governance rules.
-      `.trim()
-    });
-  });
+  router.get("/terms-of-use", sendTermsOfUse);
+  router.get("/terms-of-use.html", sendTermsOfUse);
+  router.get("/terms", sendTermsOfUse);
+  router.get("/terms.html", sendTermsOfUse);
 
   return router;
 }

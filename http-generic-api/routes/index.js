@@ -42,6 +42,7 @@ import { buildOnboardingRoutes } from "./onboardingRoutes.js";
 import { buildConnectRoutes } from "./connectRoutes.js";
 
 export function registerRoutes(app, deps) {
+  app.use(buildLegalRoutes(deps));
   app.use(buildRootDiscoveryRoutes());
   app.use(buildConnectRoutes(deps));
   app.use("/auth", buildAuthRoutes(deps));
@@ -78,7 +79,6 @@ export function registerRoutes(app, deps) {
   app.use(buildConnectorRoutes(deps));
   app.use(buildBatchRoutes(deps));
   app.use(buildExecuteRoutes(deps));
-  app.use(buildLegalRoutes(deps));
   app.use(buildTenantCommercialRoutes(deps));
   app.use(buildDispatchRoutes(deps));
   app.use(buildLocalConnectorRoutes(deps));
