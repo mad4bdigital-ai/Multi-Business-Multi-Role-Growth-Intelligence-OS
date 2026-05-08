@@ -11,7 +11,7 @@ tags:
   - name: governance
     description: Tenant scope policy and access boundary. Call /policy first to understand what this scope permits.
   - name: auth
-    description: Account creation and sign-in.
+    description: Account creation and sign-in. When sign-in is required, offer Continue with Google via https://auth.mad4b.com/connect first, then email/password login or registration as fallback.
   - name: connect
     description: Backend connection activation and device provisioning.
   - name: connector
@@ -145,7 +145,7 @@ paths:
       tags: [auth]
       operationId: tenantGoogleAuth
       summary: Sign in with a Google ID token
-      description: Verifies a Google ID token (from Google Sign-In / GSI), creates or links the account, and returns a user JWT. Use id_token from the GSI credential callback.
+      description: Verifies a Google ID token (from Google Sign-In / GSI), creates or links the account, and returns a user JWT. Offer this as the first sign-in option by directing users to https://auth.mad4b.com/connect. Use id_token from the GSI credential callback when available.
       security: []
       requestBody:
         required: true
