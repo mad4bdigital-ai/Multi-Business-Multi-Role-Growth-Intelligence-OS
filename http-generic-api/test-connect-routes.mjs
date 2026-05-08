@@ -98,6 +98,11 @@ try {
   {
     const result = await getRaw(baseUrl, "/connect");
     assert("connect shell references app bundle", result.status === 200, `${result.status}`);
+    const html = result.body.toString("utf8");
+    assert("connect shell title matches OAuth app name", html.includes("<title>Growth Intelligence Platform · Connect</title>"));
+    assert("connect shell includes exact OAuth app name", html.includes("Growth Intelligence Platform"));
+    assert("connect shell links privacy policy", html.includes('href="/privacy-policy"'));
+    assert("connect shell links terms of use", html.includes('href="/terms-of-use"'));
   }
 
   section("auth openapi contract");

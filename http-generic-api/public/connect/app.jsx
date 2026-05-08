@@ -212,7 +212,17 @@ function App() {
           )}
         </main>
         <footer style={{ textAlign: 'center', padding: '20px 28px', fontSize: 11.5, color: 'var(--muted)', borderTop: '1px solid var(--line)', marginTop: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>
-          governed-registry execution system · Growth AI Intelligence — Human-Managed Platform · created by Essam Nagy
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, letterSpacing: 0, color: 'var(--ink)' }}>
+            Growth Intelligence Platform
+          </div>
+          <div style={{ marginTop: 6 }}>
+            <a className="wavy-link" href="/privacy-policy">Privacy Policy</a>
+            <span aria-hidden="true"> · </span>
+            <a className="wavy-link" href="/terms-of-use">Terms of Use</a>
+          </div>
+          <div style={{ marginTop: 6 }}>
+            governed-registry execution system · Human-Managed Platform · created by Essam Nagy
+          </div>
         </footer>
       </div>
       <EvidenceDrawer open={evidenceOpen} onClose={() => setEvidenceOpen(false)} log={log} style={t.evidence}/>

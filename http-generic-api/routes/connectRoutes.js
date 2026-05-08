@@ -81,14 +81,22 @@ function buildConnectHtml(googleClientId) {
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>MAD4B · /connect</title>
+  <title>Growth Intelligence Platform · Connect</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/connect/assets/tokens.css"/>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <footer style="font-family:Arial,sans-serif;font-size:13px;line-height:1.5;padding:20px;text-align:center;color:#3a3a3d">
+      <strong>Growth Intelligence Platform</strong>
+      <span aria-hidden="true"> · </span>
+      <a href="/privacy-policy">Privacy Policy</a>
+      <span aria-hidden="true"> · </span>
+      <a href="/terms-of-use">Terms of Use</a>
+    </footer>
+  </div>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
