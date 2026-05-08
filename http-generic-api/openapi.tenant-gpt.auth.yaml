@@ -3,7 +3,7 @@ info:
   title: Mad4B Growth Intelligence — Tenant AI
   version: 1.0.0
   summary: Governed tenant access to the Growth AI Intelligence-Human Managed Platform.
-  description: "Scoped tenant brain: sign in, activate your backend connection (managed or dedicated), provision your Cloudflare tunnel, and access governed multi-agent workflows. Multi-tenant, Human-Managed, registry-driven. Created by Essam Nagy (nagy.essam.website)."
+  description: 'Scoped tenant brain: sign in, activate your backend connection (managed or dedicated), provision your Cloudflare tunnel, and access governed multi-agent workflows. Multi-tenant, Human-Managed, registry-driven. Created by Essam Nagy (nagy.essam.website).'
 servers:
   - url: https://auth.mad4b.com
     description: Mad4B platform — auth subdomain
@@ -22,7 +22,7 @@ components:
   securitySchemes:
     userBearerAuth:
       type: oauth2
-      description: "Tenant GPT OAuth. ChatGPT obtains a per-user tenant JWT through the Growth Intelligence Platform popup; do not call OAuth token or Google ID-token endpoints as normal actions. The authorize URL may include safe activation hints such as screen_hint, activation_mode, device_id, workspace_name, and sign_in_options, but never secrets."
+      description: Tenant GPT OAuth. ChatGPT obtains a per-user tenant JWT through the Growth Intelligence Platform popup; do not call OAuth token or Google ID-token endpoints as normal actions. The authorize URL may include safe activation hints such as screen_hint, activation_mode, device_id, workspace_name, and sign_in_options, but never secrets.
       flows:
         authorizationCode:
           authorizationUrl: https://auth.mad4b.com/auth/oauth/authorize
@@ -33,15 +33,23 @@ components:
     AuthResult:
       type: object
       properties:
-        ok: { type: boolean }
-        user_id: { type: string }
-        email: { type: string }
-        display_name: { type: string }
-        tenant_id: { type: string }
-        token: { type: string }
+        ok:
+          type: boolean
+        user_id:
+          type: string
+        email:
+          type: string
+        display_name:
+          type: string
+        tenant_id:
+          type: string
+        token:
+          type: string
         memberships:
           type: array
-          items: { type: object, additionalProperties: true }
+          items:
+            type: object
+            additionalProperties: true
     Error:
       type: object
       properties:
@@ -51,19 +59,21 @@ components:
         error:
           type: object
           properties:
-            code: { type: string }
-            message: { type: string }
+            code:
+              type: string
+            message:
+              type: string
 security:
   - userBearerAuth:
       - tenant
 paths:
-
   /policy:
     get:
-      tags: [governance]
+      tags:
+        - governance
       operationId: tenantPolicy
       summary: Tenant scope governance policy
-      description: "Returns this tenant GPT's governance boundary: permitted operations, what requires platform admin, and the access model for managed vs dedicated modes. No auth required. Call this first to understand what is and is not available at tenant scope."
+      description: 'Returns this tenant GPT''s governance boundary: permitted operations, what requires platform admin, and the access model for managed vs dedicated modes. No auth required. Call this first to understand what is and is not available at tenant scope.'
       security: []
       responses:
         '200':
@@ -73,27 +83,36 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
-                  scope: { type: string, example: tenant }
+                  ok:
+                    type: boolean
+                  scope:
+                    type: string
+                    example: tenant
                   permitted_operations:
                     type: array
-                    items: { type: string }
+                    items:
+                      type: string
                     description: Operations this tenant GPT is authorised to perform.
                   platform_admin_required:
                     type: array
-                    items: { type: string }
-                    description: "Operations blocked at tenant scope — require platform admin principal: /admin/*, /activation/*, /dispatch."
+                    items:
+                      type: string
+                    description: 'Operations blocked at tenant scope — require platform admin principal: /admin/*, /activation/*, /dispatch.'
                   connection_modes:
                     type: array
-                    items: { type: string, enum: [managed, dedicated] }
-                    description: "managed: platform provisions infrastructure. dedicated: tenant supplies own credentials."
+                    items:
+                      type: string
+                      enum:
+                        - managed
+                        - dedicated
+                    description: 'managed: platform provisions infrastructure. dedicated: tenant supplies own credentials.'
                   access_model:
                     type: string
                     description: Description of the JWT-based tenant access model.
-
   /system/tools:
     get:
-      tags: [system-layer]
+      tags:
+        - system-layer
       operationId: tenantListSystemTools
       summary: List tenant-visible MCP-style system tools
       description: Lists OpenAPI-compatible system tools available to this tenant GPT through auth.mad4b.com. Tool calls are tenant-scoped by the OAuth bearer token.
@@ -105,16 +124,23 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
-                  protocol: { type: string, example: openapi-mcp-facade }
-                  principal: { type: object, additionalProperties: true }
+                  ok:
+                    type: boolean
+                  protocol:
+                    type: string
+                    example: openapi-mcp-facade
+                  principal:
+                    type: object
+                    additionalProperties: true
                   tools:
                     type: array
-                    items: { type: object, additionalProperties: true }
-
+                    items:
+                      type: object
+                      additionalProperties: true
   /system/tools/call:
     post:
-      tags: [system-layer]
+      tags:
+        - system-layer
       operationId: tenantCallSystemTool
       summary: Call a tenant-scoped MCP-style system tool
       description: Calls a fixed system-layer tool through principal-aware runtime validation. Tenant principals are always scoped to their own tenant_id.
@@ -125,11 +151,14 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [name]
+              required:
+                - name
               properties:
                 name:
                   type: string
-                  enum: [connector_registry_list, connector_registry_get]
+                  enum:
+                    - connector_registry_list
+                    - connector_registry_get
                 arguments:
                   type: object
                   additionalProperties: true
@@ -143,31 +172,49 @@ paths:
                 type: object
                 additionalProperties: true
                 properties:
-                  ok: { type: boolean }
-                  name: { type: string }
-                  result: { type: object, additionalProperties: true }
-        '400': { description: Invalid tool request }
-        '403': { description: Tenant scope violation }
-
+                  ok:
+                    type: boolean
+                  name:
+                    type: string
+                  result:
+                    type: object
+                    additionalProperties: true
+        '400':
+          description: Invalid tool request
+        '403':
+          description: Tenant scope violation
   /system/connectors:
     get:
-      tags: [system-layer]
+      tags:
+        - system-layer
       operationId: tenantListSystemConnectors
       summary: List connector systems for the authenticated tenant
       description: Lists connected_systems rows visible to the tenant principal. tenant_id is derived from the OAuth bearer token.
       parameters:
         - name: status
           in: query
-          schema: { type: string, enum: [active, pending, error, archived] }
+          schema:
+            type: string
+            enum:
+              - active
+              - pending
+              - error
+              - archived
         - name: connector_family
           in: query
-          schema: { type: string }
+          schema:
+            type: string
         - name: provider_family
           in: query
-          schema: { type: string }
+          schema:
+            type: string
         - name: limit
           in: query
-          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
       responses:
         '200':
           description: Tenant connector registry list
@@ -176,15 +223,19 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
-                  count: { type: integer }
+                  ok:
+                    type: boolean
+                  count:
+                    type: integer
                   connectors:
                     type: array
-                    items: { type: object, additionalProperties: true }
-
+                    items:
+                      type: object
+                      additionalProperties: true
   /system/connectors/{system_id}:
     get:
-      tags: [system-layer]
+      tags:
+        - system-layer
       operationId: tenantGetSystemConnector
       summary: Get one connector system for the authenticated tenant
       description: Reads a connected_systems row only if it belongs to the tenant principal.
@@ -192,7 +243,8 @@ paths:
         - name: system_id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Tenant connector registry record
@@ -201,14 +253,19 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
-                  connector: { type: object, additionalProperties: true }
-        '403': { description: Tenant scope violation }
-        '404': { description: Connector system not found }
-
+                  ok:
+                    type: boolean
+                  connector:
+                    type: object
+                    additionalProperties: true
+        '403':
+          description: Tenant scope violation
+        '404':
+          description: Connector system not found
   /connect/status:
     get:
-      tags: [connect]
+      tags:
+        - connect
       operationId: tenantConnectionStatus
       summary: Get authenticated tenant's connection state
       description: Returns the tenant's connection mode (managed/dedicated), active devices, and provisioning status. ChatGPT sends the tenant OAuth bearer token configured for this action.
@@ -220,59 +277,92 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
-                  user: { type: object, additionalProperties: true }
-                  tenant: { type: object, additionalProperties: true }
+                  ok:
+                    type: boolean
+                  user:
+                    type: object
+                    additionalProperties: true
+                  tenant:
+                    type: object
+                    additionalProperties: true
                   connection:
                     type: object
                     properties:
-                      mode: { type: string, enum: [managed, dedicated] }
-                      status: { type: string, enum: [active, pending, inactive] }
-                      cloudflare_mode: { type: string }
-                      google_auth_mode: { type: string }
+                      mode:
+                        type: string
+                        enum:
+                          - managed
+                          - dedicated
+                      status:
+                        type: string
+                        enum:
+                          - active
+                          - pending
+                          - inactive
+                      cloudflare_mode:
+                        type: string
+                      google_auth_mode:
+                        type: string
                       n8n_activation_mode:
                         type: string
-                        enum: [managed_main_server, self_hosted_local]
-                      device_count: { type: integer }
-                      activated_at: { type: string }
+                        enum:
+                          - managed_main_server
+                          - self_hosted_local
+                      device_count:
+                        type: integer
+                      activated_at:
+                        type: string
                   devices:
                     type: array
                     items:
                       type: object
                       properties:
-                        device_id: { type: string }
-                        tunnel_url: { type: string }
-                        is_enabled: { type: boolean }
-        '403': { description: User JWT required }
-
+                        device_id:
+                          type: string
+                        tunnel_url:
+                          type: string
+                        is_enabled:
+                          type: boolean
+        '403':
+          description: User JWT required
   /connect/activate:
     post:
-      tags: [connect]
+      tags:
+        - connect
       operationId: tenantConnectionActivate
       summary: Set tenant backend connection mode (managed or dedicated)
-      description: "Activates managed (platform provisions CF tunnel and uses its own Google SA) or dedicated (tenant supplies own CF/Hostinger credentials). Upserts tenant_backend_connections row. User JWT required."
+      description: Activates managed (platform provisions CF tunnel and uses its own Google SA) or dedicated (tenant supplies own CF/Hostinger credentials). Upserts tenant_backend_connections row. User JWT required.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [mode]
+              required:
+                - mode
               properties:
                 mode:
                   type: string
-                  enum: [managed, dedicated]
+                  enum:
+                    - managed
+                    - dedicated
                 cloudflare_mode:
                   type: string
-                  enum: [managed, dedicated]
+                  enum:
+                    - managed
+                    - dedicated
                   default: managed
                 google_auth_mode:
                   type: string
-                  enum: [managed, dedicated]
+                  enum:
+                    - managed
+                    - dedicated
                   default: managed
                 n8n_activation_mode:
                   type: string
-                  enum: [managed_main_server, self_hosted_local]
+                  enum:
+                    - managed_main_server
+                    - self_hosted_local
                   default: managed_main_server
                   description: managed_main_server uses n8n.mad4b.com; self_hosted_local provisions device-local n8n route.
                 cf_api_token:
@@ -292,25 +382,45 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
+                  ok:
+                    type: boolean
                   connection:
                     type: object
                     properties:
-                      mode: { type: string, enum: [managed, dedicated] }
-                      status: { type: string }
-                      cloudflare_mode: { type: string, enum: [managed, dedicated] }
-                      google_auth_mode: { type: string, enum: [managed, dedicated] }
+                      mode:
+                        type: string
+                        enum:
+                          - managed
+                          - dedicated
+                      status:
+                        type: string
+                      cloudflare_mode:
+                        type: string
+                        enum:
+                          - managed
+                          - dedicated
+                      google_auth_mode:
+                        type: string
+                        enum:
+                          - managed
+                          - dedicated
                       n8n_activation_mode:
                         type: string
-                        enum: [managed_main_server, self_hosted_local]
-                      device_count: { type: integer }
-                      activated_at: { type: string }
-                  notice: { type: string }
-        '403': { description: User JWT required }
-
+                        enum:
+                          - managed_main_server
+                          - self_hosted_local
+                      device_count:
+                        type: integer
+                      activated_at:
+                        type: string
+                  notice:
+                    type: string
+        '403':
+          description: User JWT required
   /connect/device-install:
     post:
-      tags: [connect]
+      tags:
+        - connect
       operationId: tenantDeviceInstall
       summary: Provision a local connector for the authenticated tenant's device
       description: Creates a connector config for the given device_id under the tenant. Returns tunnel_url, connector_secret, and install steps. User JWT required.
@@ -320,25 +430,36 @@ paths:
           application/json:
             schema:
               type: object
-              required: [device_id]
+              required:
+                - device_id
               properties:
                 device_id:
                   type: string
-                  description: "Stable machine identifier, e.g. mohammedlap or johns-pc."
+                  description: Stable machine identifier, e.g. mohammedlap or johns-pc.
                 hostname:
                   type: string
                   description: Optional full hostname under .connector.mad4b.com.
-                cloudflare_connection_id: { type: string }
-                hostinger_connection_id: { type: string }
+                cloudflare_connection_id:
+                  type: string
+                hostinger_connection_id:
+                  type: string
                 local_apps:
                   type: array
                   items:
                     type: object
                     properties:
-                      app_key: { type: string }
-                      path_prefix: { type: string }
-                      local_port: { type: integer }
-                      status: { type: string, enum: [planned, active, disabled] }
+                      app_key:
+                        type: string
+                      path_prefix:
+                        type: string
+                      local_port:
+                        type: integer
+                      status:
+                        type: string
+                        enum:
+                          - planned
+                          - active
+                          - disabled
       responses:
         '200':
           description: Connector install bundle
@@ -347,47 +468,82 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
-                  config_id: { type: string }
-                  device_id: { type: string }
-                  tunnel_url: { type: string }
-                  connector_secret: { type: string }
-                  cf_tunnel_id: { type: string }
-                  credential_source: { type: string }
-                  dns_record: { type: object, additionalProperties: true }
+                  ok:
+                    type: boolean
+                  config_id:
+                    type: string
+                  device_id:
+                    type: string
+                  tunnel_url:
+                    type: string
+                  connector_secret:
+                    type: string
+                  cf_tunnel_id:
+                    type: string
+                  credential_source:
+                    type: string
+                  dns_record:
+                    type: object
+                    additionalProperties: true
                   app_routes:
                     type: array
                     items:
                       type: object
                       properties:
-                        app_key: { type: string }
-                        route_mode: { type: string, enum: [host, path] }
-                        hostname: { type: string }
-                        path_prefix: { type: string, nullable: true }
-                        local_port: { type: integer }
-                        service_url: { type: string }
-                        public_url: { type: string }
-                        status: { type: string, enum: [planned, active, disabled] }
-                  installation: { type: object, additionalProperties: true }
-        '403': { description: User JWT required }
-
+                        app_key:
+                          type: string
+                        route_mode:
+                          type: string
+                          enum:
+                            - host
+                            - path
+                        hostname:
+                          type: string
+                        path_prefix:
+                          type: string
+                          nullable: true
+                        local_port:
+                          type: integer
+                        service_url:
+                          type: string
+                        public_url:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - planned
+                            - active
+                            - disabled
+                  installation:
+                    type: object
+                    additionalProperties: true
+        '403':
+          description: User JWT required
   /local-connector/install:
     post:
-      tags: [connector]
+      tags:
+        - connector
       operationId: tenantLocalConnectorInstall
       summary: Full local connector provisioning with Cloudflare tunnel and DNS
-      description: "Provisions a Cloudflare tunnel for the device, adds DNS CNAME, seeds DB config and shell allowlist. Returns install.bat for the device. Idempotent per user+device. Owner/admin uses env credentials; tenants use DB app connections (cloudflare_connection_id, hostinger_connection_id)."
+      description: Provisions a Cloudflare tunnel for the device, adds DNS CNAME, seeds DB config and shell allowlist. Returns install.bat for the device. Idempotent per user+device. Owner/admin uses env credentials; tenants use DB app connections (cloudflare_connection_id, hostinger_connection_id).
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [user_id, tenant_id, device_id]
+              required:
+                - user_id
+                - tenant_id
+                - device_id
               properties:
-                user_id: { type: string }
-                tenant_id: { type: string }
-                device_id: { type: string, description: Stable machine name. }
+                user_id:
+                  type: string
+                tenant_id:
+                  type: string
+                device_id:
+                  type: string
+                  description: Stable machine name.
                 cloudflare_connection_id:
                   type: string
                   description: App connection ID for dedicated CF credentials. Omit to use platform managed credentials.
@@ -403,10 +559,16 @@ paths:
                   items:
                     type: object
                     properties:
-                      alias: { type: string }
-                      cmd: { type: string }
-                      args: { type: array, items: { type: string } }
-                      description: { type: string }
+                      alias:
+                        type: string
+                      cmd:
+                        type: string
+                      args:
+                        type: array
+                        items:
+                          type: string
+                      description:
+                        type: string
       responses:
         '200':
           description: Install bundle with tunnel credentials and install.bat
@@ -415,17 +577,26 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
-                  config_id: { type: string }
-                  tunnel_url: { type: string }
-                  connector_secret: { type: string }
-                  cf_tunnel_id: { type: string }
-                  cloud_run_env: { type: object, additionalProperties: true }
-                  installation: { type: object, additionalProperties: true }
-
+                  ok:
+                    type: boolean
+                  config_id:
+                    type: string
+                  tunnel_url:
+                    type: string
+                  connector_secret:
+                    type: string
+                  cf_tunnel_id:
+                    type: string
+                  cloud_run_env:
+                    type: object
+                    additionalProperties: true
+                  installation:
+                    type: object
+                    additionalProperties: true
   /local-connector/install/status:
     get:
-      tags: [connector]
+      tags:
+        - connector
       operationId: tenantLocalConnectorStatus
       summary: Check local connector installation status for a device
       description: Returns config and shell allowlist for the given user+device. installed=false means /local-connector/install has not been called yet for this device.
@@ -433,15 +604,18 @@ paths:
         - name: user_id
           in: query
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: tenant_id
           in: query
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: device_id
           in: query
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Install status
@@ -450,14 +624,21 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
-                  installed: { type: boolean }
-                  config: { type: object, additionalProperties: true }
-                  aliases: { type: array, items: { type: object } }
-
+                  ok:
+                    type: boolean
+                  installed:
+                    type: boolean
+                  config:
+                    type: object
+                    additionalProperties: true
+                  aliases:
+                    type: array
+                    items:
+                      type: object
   /local-connector/health:
     get:
-      tags: [connector]
+      tags:
+        - connector
       operationId: tenantLocalConnectorHealth
       summary: Check local connector reachability via platform proxy
       description: Platform calls the device tunnel and returns health. Slower than calling the connector directly but works without knowing the device secret. Returns ok=false if unreachable.
@@ -465,15 +646,18 @@ paths:
         - name: user_id
           in: query
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: tenant_id
           in: query
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: device_id
           in: query
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Health result (ok=false if unreachable)
@@ -482,41 +666,57 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
-                  tunnel_url: { type: string }
-                  agent: { type: object, additionalProperties: true }
-                  error: { type: object, additionalProperties: true }
-
+                  ok:
+                    type: boolean
+                  tunnel_url:
+                    type: string
+                  agent:
+                    type: object
+                    additionalProperties: true
+                  error:
+                    type: object
+                    additionalProperties: true
   /app-connections:
     post:
-      tags: [credentials]
+      tags:
+        - credentials
       operationId: tenantSaveAppConnection
       summary: Save credentials for a third-party integration (Cloudflare, Hostinger)
-      description: "Stores encrypted API key credentials for cloudflare or hostinger. Returns connection_id used in /local-connector/install. auth_type must be api_key."
+      description: Stores encrypted API key credentials for cloudflare or hostinger. Returns connection_id used in /local-connector/install. auth_type must be api_key.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [user_id, tenant_id, app_key, auth_type, credentials]
+              required:
+                - user_id
+                - tenant_id
+                - app_key
+                - auth_type
+                - credentials
               properties:
-                user_id: { type: string }
-                tenant_id: { type: string }
+                user_id:
+                  type: string
+                tenant_id:
+                  type: string
                 app_key:
                   type: string
-                  enum: [cloudflare, hostinger]
-                  description: "cloudflare: tunnel provisioning. hostinger: DNS management."
+                  enum:
+                    - cloudflare
+                    - hostinger
+                  description: 'cloudflare: tunnel provisioning. hostinger: DNS management.'
                 auth_type:
                   type: string
-                  enum: [api_key]
+                  enum:
+                    - api_key
                 display_label:
                   type: string
                   description: Human-readable label for this connection.
                 credentials:
                   type: object
                   additionalProperties: true
-                  description: "cloudflare: {cloudflare_api_token, cloudflare_account_id}. hostinger: {hostinger_api_token}."
+                  description: 'cloudflare: {cloudflare_api_token, cloudflare_account_id}. hostinger: {hostinger_api_token}.'
       responses:
         '200':
           description: Connection created
@@ -525,8 +725,13 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
-                  connection_id: { type: string }
-                  app_key: { type: string }
-        '400': { description: Missing required fields }
-        '403': { description: Authentication required }
+                  ok:
+                    type: boolean
+                  connection_id:
+                    type: string
+                  app_key:
+                    type: string
+        '400':
+          description: Missing required fields
+        '403':
+          description: Authentication required

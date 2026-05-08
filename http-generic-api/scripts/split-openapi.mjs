@@ -5,6 +5,7 @@ import path from "path";
 const SOURCE_OPENAPI_FILE = "openapi.yaml";
 const OUTPUT_PREFIX = "openapi.custom-gpt";
 const AUTH_DISPATCHER_SCHEMA_FILE = `${OUTPUT_PREFIX}.auth-dispatcher.yaml`;
+const TENANT_AUTH_SCHEMA_FILE = "openapi.tenant-gpt.auth.yaml";
 const MAX_OPERATIONS_PER_SCHEMA = 29;
 const METHOD_NAMES = new Set(["get", "post", "put", "delete", "patch", "options", "head", "trace"]);
 const DEDICATED_SCOPE_TAGS = new Set(["admin-control"]);
@@ -373,6 +374,43 @@ function normalizeCustomGptDoc(scopedDoc) {
   normalizeCustomGptObjects(scopedDoc);
 }
 
+function normalizeTenantAuthDoc(sourceDoc, tenantDoc) {
+  const config = sourceDoc["x-tenant-gpt-auth"];
+  if (!config || typeof config !== "object") return null;
+
+  const schemeName = String(config.security_scheme_name || "userBearerAuth").trim();
+  if (!schemeName) {
+    throw new Error("x-tenant-gpt-auth.security_scheme_name is required.");
+  }
+  if (!config.security_scheme || typeof config.security_scheme !== "object") {
+    throw new Error("x-tenant-gpt-auth.security_scheme is required.");
+  }
+  if (!Array.isArray(config.security) || config.security.length === 0) {
+    throw new Error("x-tenant-gpt-auth.security must declare tenant action security.");
+  }
+
+  const normalizedDoc = clone(tenantDoc);
+  normalizedDoc.components = normalizedDoc.components || {};
+  normalizedDoc.components.securitySchemes = {
+    [schemeName]: clone(config.security_scheme)
+  };
+  normalizedDoc.security = clone(config.security);
+  return normalizedDoc;
+}
+
+function generateTenantAuthSchema(sourceDoc) {
+  const tenantPath = path.resolve(`./${TENANT_AUTH_SCHEMA_FILE}`);
+  if (!fs.existsSync(tenantPath)) return null;
+
+  const tenantDoc = yaml.load(fs.readFileSync(tenantPath, "utf8"));
+  const normalizedDoc = normalizeTenantAuthDoc(sourceDoc, tenantDoc);
+  if (!normalizedDoc) return null;
+
+  fs.writeFileSync(tenantPath, yaml.dump(normalizedDoc, { lineWidth: -1, noRefs: true }), "utf8");
+  console.log(`Generated ${tenantPath} (${countOperations(normalizedDoc.paths)} operations) -> ${normalizedDoc.servers?.[0]?.url || "tenant auth"}`);
+  return [TENANT_AUTH_SCHEMA_FILE, normalizedDoc];
+}
+
 function buildScopeDoc(doc, chunk, scope) {
   const scopedPaths = {};
 
@@ -394,6 +432,7 @@ function buildScopeDoc(doc, chunk, scope) {
       description: `${scope.title} custom domain`
     }
   ];
+  delete scopedDoc["x-tenant-gpt-auth"];
   scopedDoc.tags = collectTags(scopedPaths, scopedDoc.tags || []);
   scopedDoc.paths = scopedPaths;
   normalizeCustomGptDoc(scopedDoc);
@@ -516,6 +555,8 @@ function main() {
     fs.writeFileSync(dispatcherPath, dispatcherYaml, "utf8");
     console.log(`Generated ${dispatcherPath} (${countOperations(dispatcherDoc.paths)} operations) -> https://auth.mad4b.com`);
   }
+
+  generateTenantAuthSchema(doc);
 
   console.log(`\nSuccessfully generated ${generatedDocs.length} scoped Custom GPT schemas from ${SOURCE_OPENAPI_FILE}.`);
 }
