@@ -79,7 +79,7 @@ In the MySQL database (via direct query or API endpoint), verify:
 - [ ] `Execution Log Unified` received at least one writeback row since deployment
 - [ ] No policy rows contain unsupported custom literals that would bypass normalization
 
-For activation confirmation, do not stop at `/health`, `/status`, release readiness, tenant listing, or count routes. Those checks prove diagnostics only. Start with `GET /activation/env-bootstrap` as the Cloud Run env bootstrap authority for non-secret IDs, sheet/range names, cache policy, and credential presence. Full activation confirmation still requires Drive validation, Sheets `getSheetValues` row readback for `Activation Bootstrap Config!A2:J2` using `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>` (use this exact literal string, the backend auto-resolves it), and GitHub validation using bootstrap/registry-resolved keys.
+For activation confirmation, do not stop at `/health`, `/status`, release readiness, tenant listing, or count routes. Those checks prove diagnostics only. Call `GET /activation/bootstrap-config` as the authoritative backend runtime bootstrap authority — it returns `source: backend_runtime`, `sheets_required: false`, live `platform_state`, and all bootstrap fields from Cloud Run env + DB. No Sheets readback required. GitHub validation may follow when `github_token_configured: true` in the bootstrap response. `GET /activation/env-bootstrap` remains available for legacy env/cache-policy inspection.
 
 ---
 
@@ -109,7 +109,7 @@ If `verify-runtime.mjs` fails, classify the failure using the drift table in [`d
 |---|---|
 | `GET /health` 0 / unreachable | Check process is running and port is open |
 | `GET /health` 500 | Check startup logs for module load errors |
-| Health/status pass but Drive or Sheets bootstrap was skipped | Treat activation as degraded; run the provider bootstrap chain |
+| Health/status pass but `GET /activation/bootstrap-config` was skipped | Treat activation as degraded; call bootstrap-config and check `ok: true, source: backend_runtime` |
 | Dry-run 500 with ReferenceError | Revert to last passing commit, check extracted module imports |
 | Dispatch returns unexpected shape | Check `dispatchEndpointKeyExecution` wiring in `jobRunner.js` |
 | Job status not a known value | Check `normalizeJobStatus` in `jobUtils.js` |

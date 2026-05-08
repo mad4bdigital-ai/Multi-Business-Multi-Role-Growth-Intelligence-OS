@@ -475,6 +475,8 @@ export function buildActivationRoutes(deps) {
       ok: true,
       activation_layer: "env_bootstrap",
       source: "cloud_run_env",
+      sheets_required: false,
+      bootstrap_authority: "backend_runtime",
       bootstrap: {
         registry_spreadsheet_id: REGISTRY_SPREADSHEET_ID,
         activity_spreadsheet_id: ACTIVITY_SPREADSHEET_ID,
@@ -498,8 +500,69 @@ export function buildActivationRoutes(deps) {
         hostinger_cloud_plan_key_configured: Boolean(process.env.HOSTINGER_CLOUD_PLAN_01_API_KEY),
         connector_local_api_key_configured: Boolean(process.env.CONNECTOR_LOCAL_API_KEY),
       },
-      note: "Use this as the fast activation bootstrap from Cloud Run env. Sheets readback remains validation evidence, not the first configuration authority.",
+      note: "Sheets readback is no longer required. Use GET /activation/bootstrap-config for the authoritative runtime bootstrap row.",
     });
+  });
+
+  router.get("/activation/bootstrap-config", requireBackendApiKey, async (req, res) => {
+    try {
+      const pool = getPool();
+
+      // Pull live platform state from DB
+      const [[platform]] = await pool.query(
+        `SELECT
+           COUNT(DISTINCT t.tenant_id)                           AS tenant_count,
+           COUNT(DISTINCT m.membership_id)                       AS membership_count,
+           COUNT(DISTINCT tbc.connection_id)                     AS connection_count,
+           SUM(CASE WHEN tbc.status = 'active' THEN 1 ELSE 0 END) AS active_connections,
+           MAX(tbc.activated_at)                                 AS last_activation_at
+         FROM tenants t
+         LEFT JOIN memberships m ON m.tenant_id = t.tenant_id
+         LEFT JOIN tenant_backend_connections tbc ON tbc.tenant_id = t.tenant_id`
+      );
+
+      const [[deviceRow]] = await pool.query(
+        `SELECT COUNT(*) AS device_count,
+                SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END) AS enabled_devices
+         FROM local_connector_user_configs`
+      );
+
+      const bootstrapRow = {
+        system_name:        "MAD4B Growth Intelligence Platform",
+        api_base_url:       process.env.API_BASE_URL || "https://auth.mad4b.com",
+        environment:        process.env.NODE_ENV || "production",
+        registry_sheet_id:  REGISTRY_SPREADSHEET_ID || null,
+        activity_sheet_id:  ACTIVITY_SPREADSHEET_ID || null,
+        github_repo:        process.env.GITHUB_REPO || null,
+        cloudflare_zone:    process.env.CLOUDFLARE_ZONE_ID || null,
+        connector_url:      process.env.CONNECTOR_URL || "https://connector.mad4b.com",
+        bootstrap_version:  process.env.SERVICE_VERSION || "backend_runtime",
+        activated_at:       platform?.last_activation_at || null,
+      };
+
+      return res.status(200).json({
+        ok: true,
+        activation_layer: "bootstrap_config",
+        source: "backend_runtime",
+        sheets_required: false,
+        bootstrap_row: bootstrapRow,
+        platform_state: {
+          tenant_count:       Number(platform?.tenant_count || 0),
+          membership_count:   Number(platform?.membership_count || 0),
+          connection_count:   Number(platform?.connection_count || 0),
+          active_connections: Number(platform?.active_connections || 0),
+          device_count:       Number(deviceRow?.device_count || 0),
+          enabled_devices:    Number(deviceRow?.enabled_devices || 0),
+          last_activation_at: platform?.last_activation_at || null,
+        },
+        note: "Authoritative backend runtime bootstrap. Replaces Activation Bootstrap Config!A2:J2 Sheets readback. No Sheets validation required.",
+      });
+    } catch (err) {
+      return res.status(500).json({
+        ok: false,
+        error: { code: "bootstrap_config_failed", message: err.message },
+      });
+    }
   });
 
   router.get("/activation/session-context", requireBackendApiKey, async (req, res) => {

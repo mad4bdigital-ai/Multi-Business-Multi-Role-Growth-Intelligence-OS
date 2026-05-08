@@ -35,15 +35,11 @@ On every new GPT session, run hard activation once before normal platform work:
 2. Confirm the Custom GPT Action connection is signed in.
 3. Call `GET /activation/session-context` through the runtime action.
 4. Read `platform_access` from the response. If missing or stale, call `GET /activation/platform-access`.
-5. Run the Sheets bootstrap row through `POST /http-execute`:
-   - `parent_action_key=google_sheets_api`
-   - `endpoint_key=getSheetValues`
-   - `path_params.spreadsheetId=<activation_bootstrap_spreadsheet_id>`
-   - `query.range=Activation Bootstrap Config!A2:J2`
-6. Run Drive and GitHub validation only through registry/bootstrap-resolved authority.
+5. Call `GET /activation/bootstrap-config` for the authoritative backend runtime bootstrap row. Response includes `source: backend_runtime`, `sheets_required: false`, `bootstrap_row` (system_name, api_base_url, environment, connector_url, github_repo, etc.), and live `platform_state` (tenant/device/connection counts, last_activation_at). No Sheets readback required.
+6. Run GitHub validation only through registry/bootstrap-resolved authority when `github_token_configured: true` in the bootstrap response.
 7. Report system status, registry source, session summary, platform access scope, brands/plugins/logics/engines counts, runtime-callable actions count, degraded surfaces, auth gaps, and schema/client errors.
 
-Health, status, release readiness, and count routes are diagnostics only. They do not replace Drive, Sheets bootstrap, or GitHub validation.
+Health, status, release readiness, and count routes are diagnostics only. They do not replace `GET /activation/bootstrap-config` or GitHub validation.
 
 ## Agent Sides
 

@@ -50,12 +50,55 @@ security:
   - backendBearerAuth: []
 paths:
 
+  /activation/bootstrap-config:
+    get:
+      tags: [activation]
+      operationId: getActivationBootstrapConfig
+      summary: Get authoritative backend runtime bootstrap config
+      description: "Returns the full bootstrap row built from Cloud Run env and live DB state. Replaces Activation Bootstrap Config!A2:J2 Sheets readback. Call this instead of Sheets for activation contract validation. sheets_required is always false."
+      responses:
+        '200':
+          description: Backend runtime bootstrap config
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  activation_layer: { type: string }
+                  source: { type: string, example: backend_runtime }
+                  sheets_required: { type: boolean, example: false }
+                  bootstrap_row:
+                    type: object
+                    properties:
+                      system_name: { type: string }
+                      api_base_url: { type: string }
+                      environment: { type: string }
+                      registry_sheet_id: { type: string, nullable: true }
+                      activity_sheet_id: { type: string, nullable: true }
+                      github_repo: { type: string, nullable: true }
+                      cloudflare_zone: { type: string, nullable: true }
+                      connector_url: { type: string }
+                      bootstrap_version: { type: string }
+                      activated_at: { type: string, nullable: true }
+                  platform_state:
+                    type: object
+                    properties:
+                      tenant_count: { type: integer }
+                      membership_count: { type: integer }
+                      connection_count: { type: integer }
+                      active_connections: { type: integer }
+                      device_count: { type: integer }
+                      enabled_devices: { type: integer }
+                      last_activation_at: { type: string, nullable: true }
+                  note: { type: string }
+
   /activation/env-bootstrap:
     get:
       tags: [activation]
       operationId: getActivationEnvBootstrap
-      summary: Read activation bootstrap from Cloud Run env
-      description: Returns non-secret env bootstrap IDs, sheet/range names, cache policy, and credential presence flags. Use before provider validation.
+      summary: Read activation env flags and cache policy (legacy)
+      description: "Returns env bootstrap IDs, credential presence flags, and cache policy. sheets_required is false — use /activation/bootstrap-config for the authoritative runtime bootstrap row."
       responses:
         '200':
           description: Env bootstrap config
@@ -67,6 +110,8 @@ paths:
                   ok: { type: boolean }
                   activation_layer: { type: string }
                   source: { type: string }
+                  sheets_required: { type: boolean, example: false }
+                  bootstrap_authority: { type: string, example: backend_runtime }
                   bootstrap: { type: object, additionalProperties: true }
                   cache_policy: { type: object, additionalProperties: true }
                   env_presence: { type: object, additionalProperties: true }
