@@ -14,6 +14,15 @@ import jwt from "jsonwebtoken";
 
 const { buildAuthRoutes } = await import("./routes/authRoutes.js");
 
+const TENANT_SCOPE_LINKS = [
+  "https://auth.mad4b.com/scopes/tenant.links",
+  "https://auth.mad4b.com/scopes/tenant.status",
+  "https://auth.mad4b.com/scopes/tenant.activation",
+  "https://auth.mad4b.com/scopes/tenant.install",
+  "https://auth.mad4b.com/scopes/tenant.system-tools",
+];
+const TENANT_SCOPE = TENANT_SCOPE_LINKS.join(" ");
+
 let passed = 0;
 let failed = 0;
 
@@ -141,13 +150,14 @@ try {
   assert("token endpoint exchanges authorization code", exchange.status === 200, `${exchange.status}`);
   assert("token endpoint returns bearer token", exchange.body.token_type === "Bearer", JSON.stringify(exchange.body));
   assert("token endpoint mints a fresh access JWT", exchange.body.access_token !== userToken && typeof exchange.body.access_token === "string", JSON.stringify(exchange.body));
-  assert("token endpoint returns tenant scope", exchange.body.scope === "tenant", JSON.stringify(exchange.body));
+  assert("token endpoint returns linked tenant scopes", exchange.body.scope === TENANT_SCOPE, JSON.stringify(exchange.body));
   assert("token endpoint returns activation context", exchange.body.activation_context?.device_id === "tenant-pc", JSON.stringify(exchange.body));
   const accessPayload = jwt.verify(exchange.body.access_token, process.env.JWT_SECRET);
   assert("access JWT has platform issuer", accessPayload.iss === "https://auth.mad4b.com", JSON.stringify(accessPayload));
   assert("access JWT has tenant GPT audience", accessPayload.aud === "mad4b-tenant-gpt", JSON.stringify(accessPayload));
   assert("access JWT has tenant subject", accessPayload.sub === "tenant:tenant-1:user:user-1", JSON.stringify(accessPayload));
-  assert("access JWT carries tenant scope", accessPayload.scope === "tenant", JSON.stringify(accessPayload));
+  assert("access JWT carries linked tenant scopes", accessPayload.scope === TENANT_SCOPE, JSON.stringify(accessPayload));
+  assert("access JWT carries scope links array", TENANT_SCOPE_LINKS.every((scope) => accessPayload.scope_links?.includes(scope)), JSON.stringify(accessPayload));
   assert("access JWT carries tenant GPT purpose", accessPayload.purpose === "tenant_gpt_access", JSON.stringify(accessPayload));
 
   const mismatch = await postForm(baseUrl, "/auth/oauth/token", {

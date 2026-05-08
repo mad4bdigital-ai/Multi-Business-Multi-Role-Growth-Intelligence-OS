@@ -12,6 +12,14 @@ import { readFileSync } from "node:fs";
 import yaml from "js-yaml";
 import { buildConnectRoutes } from "./routes/connectRoutes.js";
 
+const TENANT_SCOPE_LINKS = [
+  "https://auth.mad4b.com/scopes/tenant.links",
+  "https://auth.mad4b.com/scopes/tenant.status",
+  "https://auth.mad4b.com/scopes/tenant.activation",
+  "https://auth.mad4b.com/scopes/tenant.install",
+  "https://auth.mad4b.com/scopes/tenant.system-tools",
+];
+
 let passed = 0;
 let failed = 0;
 
@@ -123,9 +131,10 @@ try {
     });
     assert("tenant GPT schema uses OAuth action auth", securityScheme?.type === "oauth2", JSON.stringify(securityScheme));
     assert("tenant GPT schema declares authorization code flow", Boolean(securityScheme?.flows?.authorizationCode), JSON.stringify(securityScheme));
-    assert("tenant GPT schema declares tenant scope", Boolean(securityScheme?.flows?.authorizationCode?.scopes?.tenant), JSON.stringify(securityScheme?.flows?.authorizationCode?.scopes));
-    assert("tenant GPT schema root security requires tenant scope", doc.security?.[0]?.userBearerAuth?.includes("tenant"), JSON.stringify(doc.security));
-    assert("tenant GPT schema embeds OAuth security on protected operations", protectedOperations.every(({ operation }) => operation.security?.[0]?.userBearerAuth?.includes("tenant")), JSON.stringify(protectedOperations.map(({ pathKey, method }) => `${method.toUpperCase()} ${pathKey}`)));
+    const scopeKeys = Object.keys(securityScheme?.flows?.authorizationCode?.scopes || {});
+    assert("tenant GPT schema declares linked tenant scopes", TENANT_SCOPE_LINKS.every((scope) => scopeKeys.includes(scope)), JSON.stringify(scopeKeys));
+    assert("tenant GPT schema root security requires linked tenant scopes", TENANT_SCOPE_LINKS.every((scope) => doc.security?.[0]?.userBearerAuth?.includes(scope)), JSON.stringify(doc.security));
+    assert("tenant GPT schema embeds OAuth security on protected operations", protectedOperations.every(({ operation }) => TENANT_SCOPE_LINKS.every((scope) => operation.security?.[0]?.userBearerAuth?.includes(scope))), JSON.stringify(protectedOperations.map(({ pathKey, method }) => `${method.toUpperCase()} ${pathKey}`)));
     assert("tenant GPT schema hides OAuth plumbing operations", !exposedPaths.some((path) => path.startsWith("/auth/")), exposedPaths.join(", "));
     assert("tenant GPT schema exposes system tools list", exposedPaths.includes("/system/tools"), exposedPaths.join(", "));
     assert("tenant GPT schema exposes system tools call", exposedPaths.includes("/system/tools/call"), exposedPaths.join(", "));

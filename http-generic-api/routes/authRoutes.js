@@ -19,6 +19,14 @@ const PLATFORM_JWT_CLIENT_MAX_TTL_SECONDS = 60 * 60;
 const VALID_SIGN_IN_OPTIONS = new Set(["google", "email", "register"]);
 const PLATFORM_JWT_ISSUER = process.env.PLATFORM_JWT_ISSUER || "https://auth.mad4b.com";
 const TENANT_GPT_JWT_AUDIENCE = process.env.TENANT_GPT_JWT_AUDIENCE || "mad4b-tenant-gpt";
+const TENANT_GPT_SCOPE_LINKS = [
+  "https://auth.mad4b.com/scopes/tenant.links",
+  "https://auth.mad4b.com/scopes/tenant.status",
+  "https://auth.mad4b.com/scopes/tenant.activation",
+  "https://auth.mad4b.com/scopes/tenant.install",
+  "https://auth.mad4b.com/scopes/tenant.system-tools",
+];
+const TENANT_GPT_SCOPE = TENANT_GPT_SCOPE_LINKS.join(" ");
 
 function cleanOption(value, allowed, fallback = null) {
   const normalized = String(value || "").trim().toLowerCase();
@@ -96,7 +104,8 @@ function issueTenantGptAccessToken(payload, { clientId = "chatgpt-action" } = {}
       user_id: userId,
       email,
       tenant_id: tenantId,
-      scope: "tenant",
+      scope: TENANT_GPT_SCOPE,
+      scope_links: TENANT_GPT_SCOPE_LINKS,
       purpose: "tenant_gpt_access",
       client_id: String(clientId || "chatgpt-action").trim() || "chatgpt-action",
     },
@@ -494,7 +503,7 @@ export function buildAuthRoutes(deps) {
         access_token: accessToken,
         token_type: "Bearer",
         expires_in: USER_TOKEN_TTL_SECONDS,
-        scope: "tenant",
+        scope: TENANT_GPT_SCOPE,
         activation_context: payload.activation_context || {},
       });
     } catch {

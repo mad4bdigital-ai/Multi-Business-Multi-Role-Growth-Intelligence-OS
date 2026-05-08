@@ -28,7 +28,11 @@ components:
           authorizationUrl: https://auth.mad4b.com/auth/oauth/authorize
           tokenUrl: https://auth.mad4b.com/auth/oauth/token
           scopes:
-            tenant: Access tenant-scoped Growth Intelligence links, connection status, activation, install bundles, and governed system tools for the signed-in user.
+            https://auth.mad4b.com/scopes/tenant.links: Access tenant-scoped Growth Intelligence links for the signed-in user.
+            https://auth.mad4b.com/scopes/tenant.status: Read tenant connection status for the signed-in user.
+            https://auth.mad4b.com/scopes/tenant.activation: Activate managed or dedicated tenant connection mode for the signed-in user.
+            https://auth.mad4b.com/scopes/tenant.install: Provision tenant local connector install bundles for the signed-in user.
+            https://auth.mad4b.com/scopes/tenant.system-tools: Use tenant-scoped governed system tools for the signed-in user.
   schemas:
     AuthResult:
       type: object
@@ -65,7 +69,11 @@ components:
               type: string
 security:
   - userBearerAuth:
-      - tenant
+      - https://auth.mad4b.com/scopes/tenant.links
+      - https://auth.mad4b.com/scopes/tenant.status
+      - https://auth.mad4b.com/scopes/tenant.activation
+      - https://auth.mad4b.com/scopes/tenant.install
+      - https://auth.mad4b.com/scopes/tenant.system-tools
 paths:
   /policy:
     get:
@@ -139,7 +147,11 @@ paths:
                       additionalProperties: true
       security:
         - userBearerAuth:
-            - tenant
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
   /system/tools/call:
     post:
       tags:
@@ -188,7 +200,11 @@ paths:
           description: Tenant scope violation
       security:
         - userBearerAuth:
-            - tenant
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
   /system/connectors:
     get:
       tags:
@@ -240,7 +256,11 @@ paths:
                       additionalProperties: true
       security:
         - userBearerAuth:
-            - tenant
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
   /system/connectors/{system_id}:
     get:
       tags:
@@ -273,7 +293,11 @@ paths:
           description: Connector system not found
       security:
         - userBearerAuth:
-            - tenant
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
   /connect/status:
     get:
       tags:
@@ -339,7 +363,11 @@ paths:
           description: User JWT required
       security:
         - userBearerAuth:
-            - tenant
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
   /connect/activate:
     post:
       tags:
@@ -434,7 +462,11 @@ paths:
           description: User JWT required
       security:
         - userBearerAuth:
-            - tenant
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
   /connect/device-install:
     post:
       tags:
@@ -539,7 +571,11 @@ paths:
           description: User JWT required
       security:
         - userBearerAuth:
-            - tenant
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
   /local-connector/install:
     post:
       tags:
@@ -616,7 +652,11 @@ paths:
                     additionalProperties: true
       security:
         - userBearerAuth:
-            - tenant
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
   /local-connector/install/status:
     get:
       tags:
@@ -661,7 +701,11 @@ paths:
                       type: object
       security:
         - userBearerAuth:
-            - tenant
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
   /local-connector/health:
     get:
       tags:
@@ -705,7 +749,11 @@ paths:
                     additionalProperties: true
       security:
         - userBearerAuth:
-            - tenant
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
   /app-connections:
     post:
       tags:
@@ -767,4 +815,8 @@ paths:
           description: Authentication required
       security:
         - userBearerAuth:
-            - tenant
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
