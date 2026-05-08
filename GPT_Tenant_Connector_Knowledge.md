@@ -24,7 +24,7 @@ The platform provisions everything:
 - Tenant receives a ready-to-run `install.bat`
 
 The tenant only needs to:
-1. Sign in at auth.mad4b.com/connect with Google OAuth, email/password, or new-account registration
+1. Sign in through the GPT Action OAuth popup with Google, or use auth.mad4b.com/connect as the web fallback
 2. Click Activate (managed)
 3. Enter their Device ID (machine hostname)
 4. Run the returned `install.bat` on their machine
@@ -42,10 +42,10 @@ The platform uses these credentials to provision the tunnel under the tenant's o
 
 URL: `https://auth.mad4b.com/connect`
 
-Primary sign-in option: **Continue with Google**. Email/password login and new-account registration are fallbacks.
+Primary sign-in option: **Continue with Google** through the GPT Action OAuth popup. `https://auth.mad4b.com/connect` is the web fallback. Email/password login and new-account registration are fallback account paths.
 
 Three sections:
-1. **Sign in / Sign up** — Google OAuth first, then email+password or new-account registration
+1. **Sign in / Sign up** — GPT Action OAuth popup first, then the web Google button, email+password, or new-account registration
 2. **Backend Connection Activation** — CF/Hostinger credentials for dedicated mode, Device ID
 3. **Local runtime** — shows install status once credentials are saved
 

@@ -1,4 +1,4 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { getPool } from "../db.js";
 import bcrypt from "bcrypt";
@@ -12,9 +12,192 @@ const JWT_SECRET = process.env.JWT_SECRET || "development_fallback_secret_only";
 // but validation logic will use it if provided.
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+const OAUTH_CODE_TTL_SECONDS = 5 * 60;
+const USER_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+function parseOAuthRedirectUri(redirectUri) {
+  try {
+    const url = new URL(String(redirectUri || ""));
+    if (!["https:", "http:"].includes(url.protocol)) return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+function appendOAuthParams(redirectUri, params) {
+  const url = parseOAuthRedirectUri(redirectUri);
+  if (!url) throw new Error("Invalid redirect_uri.");
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") {
+      url.searchParams.set(key, String(value));
+    }
+  }
+  return url.toString();
+}
+
+function buildOAuthAuthorizeHtml({ clientId, redirectUri, state }) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Growth Intelligence Platform - Google Sign-In</title>
+  <style>
+    body{font-family:Arial,sans-serif;margin:0;background:#f5f5f7;color:#1d1d1f;display:grid;min-height:100vh;place-items:center}
+    main{width:min(440px,calc(100vw - 32px));background:#fff;border:1px solid #e5e5ea;border-radius:12px;padding:28px;box-shadow:0 18px 60px rgba(0,0,0,.08)}
+    h1{font-size:22px;margin:0 0 8px}
+    p{font-size:14px;line-height:1.45;color:#3a3a3d}
+    .links{font-size:12px;margin-top:18px;color:#86868b}
+    .links a{color:#0058b8}
+    .error{margin-top:14px;color:#b3261e;font-size:13px;white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Growth Intelligence Platform</h1>
+    <p>Continue with Google to connect this GPT to your tenant workspace.</p>
+    <div id="gsi-btn-container"></div>
+    <div id="error" class="error" role="alert"></div>
+    <div class="links">
+      <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>
+      <span aria-hidden="true"> | </span>
+      <a href="/terms-of-use" target="_blank" rel="noopener">Terms of Use</a>
+    </div>
+  </main>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    const GOOGLE_CLIENT_ID = ${JSON.stringify(String(clientId || ""))};
+    const REDIRECT_URI = ${JSON.stringify(String(redirectUri || ""))};
+    const STATE = ${JSON.stringify(String(state || ""))};
+    const errorBox = document.getElementById("error");
+    function showError(message){ errorBox.textContent = message || "Sign-in failed."; }
+    function setup(){
+      if (!GOOGLE_CLIENT_ID) return showError("Google client ID is not configured.");
+      if (!REDIRECT_URI) return showError("OAuth redirect_uri is required.");
+      if (!window.google?.accounts?.id) return setTimeout(setup, 250);
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: async (response) => {
+          try {
+            const authRes = await fetch("/auth/google", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ id_token: response.credential })
+            });
+            const authData = await authRes.json();
+            if (!authRes.ok || !authData.token) throw new Error(authData?.error?.message || "Google sign-in failed.");
+            const codeRes = await fetch("/auth/oauth/code", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ token: authData.token, redirect_uri: REDIRECT_URI, state: STATE })
+            });
+            const codeData = await codeRes.json();
+            if (!codeRes.ok || !codeData.redirect_to) throw new Error(codeData?.error?.message || "Could not complete OAuth sign-in.");
+            window.location.assign(codeData.redirect_to);
+          } catch (err) {
+            showError(err.message);
+          }
+        }
+      });
+      window.google.accounts.id.renderButton(document.getElementById("gsi-btn-container"), {
+        theme: "outline",
+        size: "large",
+        width: 320,
+        text: "continue_with",
+        locale: "en"
+      });
+    }
+    setup();
+  </script>
+</body>
+</html>`;
+}
 
 export function buildAuthRoutes(deps) {
   const router = Router();
+
+  router.get("/oauth/authorize", (req, res) => {
+    const redirectUri = String(req.query.redirect_uri || "");
+    const state = String(req.query.state || "");
+
+    if (!parseOAuthRedirectUri(redirectUri)) {
+      return res.status(400).type("text/plain").send("OAuth redirect_uri must be a valid http or https URL.");
+    }
+
+    res.setHeader("cache-control", "no-store");
+    return res
+      .status(200)
+      .type("html")
+      .send(buildOAuthAuthorizeHtml({ clientId: GOOGLE_CLIENT_ID, redirectUri, state }));
+  });
+
+  router.post("/oauth/code", async (req, res) => {
+    try {
+      const { token, redirect_uri, state } = req.body || {};
+      if (!token || !redirect_uri) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "token and redirect_uri are required." } });
+      }
+      if (!parseOAuthRedirectUri(redirect_uri)) {
+        return res.status(400).json({ ok: false, error: { code: "invalid_redirect_uri", message: "redirect_uri must be a valid http or https URL." } });
+      }
+
+      const payload = jwt.verify(token, JWT_SECRET);
+      const code = jwt.sign(
+        {
+          purpose: "custom_gpt_oauth_code",
+          token,
+          user_id: payload.user_id,
+          email: payload.email,
+          tenant_id: payload.tenant_id || null,
+          redirect_uri,
+        },
+        JWT_SECRET,
+        { expiresIn: OAUTH_CODE_TTL_SECONDS, jwtid: randomUUID() }
+      );
+
+      return res.status(200).json({
+        ok: true,
+        code,
+        expires_in: OAUTH_CODE_TTL_SECONDS,
+        redirect_to: appendOAuthParams(redirect_uri, { code, state }),
+      });
+    } catch {
+      return res.status(401).json({ ok: false, error: { code: "invalid_token", message: "User token is invalid or expired." } });
+    }
+  });
+
+  router.post("/oauth/token", express.urlencoded({ extended: false }), async (req, res) => {
+    try {
+      const grantType = req.body?.grant_type;
+      const code = req.body?.code;
+      const redirectUri = req.body?.redirect_uri;
+
+      if (grantType !== "authorization_code") {
+        return res.status(400).json({ error: "unsupported_grant_type", error_description: "Only authorization_code is supported." });
+      }
+      if (!code) {
+        return res.status(400).json({ error: "invalid_request", error_description: "code is required." });
+      }
+
+      const payload = jwt.verify(code, JWT_SECRET);
+      if (payload.purpose !== "custom_gpt_oauth_code" || !payload.token) {
+        return res.status(400).json({ error: "invalid_grant", error_description: "Invalid OAuth code." });
+      }
+      if (redirectUri && redirectUri !== payload.redirect_uri) {
+        return res.status(400).json({ error: "invalid_grant", error_description: "redirect_uri does not match the issued code." });
+      }
+
+      return res.status(200).json({
+        access_token: payload.token,
+        token_type: "Bearer",
+        expires_in: USER_TOKEN_TTL_SECONDS,
+        scope: "tenant",
+      });
+    } catch {
+      return res.status(400).json({ error: "invalid_grant", error_description: "OAuth code is invalid or expired." });
+    }
+  });
 
   // ── POST /auth/register ─────────────────────────────────────────────────────
   router.post("/register", async (req, res) => {
