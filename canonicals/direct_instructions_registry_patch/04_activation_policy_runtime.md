@@ -31,11 +31,12 @@ For first-turn activation in a new conversation:
 1. read knowledge layer canonicals first for traceability
 2. require signed-in Custom GPT Action transport and read `GET /activation/session-context` through `http_generic_api` for previous same-user sessions, related scopes, transcript availability, and embedded platform access evidence
 3. read `GET /activation/platform-access` when explicit access/count refresh is needed for all-brand, plugin, logic, engine, and runtime-action evidence
-4. call `GET /activation/bootstrap-config` for the authoritative backend runtime bootstrap row — `source: backend_runtime`, `sheets_required: false`, includes `bootstrap_row` (system_name, api_base_url, environment, github_repo, cloudflare_zone, connector_url, activated_at) and live `platform_state`. No Sheets readback required.
-5. use resolved bootstrap/registry authority for GitHub validation keys when `github_token_configured: true` in bootstrap response
-6. classify missing live validation caused by unavailable provider authorization as `authorization_gated`, not as missing Registry authority
+4. call `GET /activation/bootstrap-config` for the authoritative backend runtime bootstrap row — `source: backend_runtime`, `sheets_required: false`, includes `bootstrap_row` (system_name, api_base_url, environment, github_repo, cloudflare_zone, connector_url, activated_at) and live `platform_state`. This backend row is required context, but it does not replace provider-bootstrap validation.
+5. for Admin GPT activation, call `POST /system/tools/call` with `name: "activation_provider_bootstrap_validate"` through `auth.mad4b.com` to run the governed same-cycle Drive probe, Sheets bootstrap row read, and GitHub validation. Use `activation_drive_probe`, `activation_sheets_bootstrap_read`, and `activation_github_validate` only for targeted recovery evidence.
+6. for direct runtime fallback, use resolved bootstrap/registry authority for Drive, Sheets bootstrap, and GitHub validation only when the admin system tool is unavailable
+7. classify missing live validation caused by unavailable provider authorization as `authorization_gated`, not as missing Registry authority
 
-Health, `/status`, release readiness, tenant listing, brand counts, and action counts are diagnostic evidence only. They must not satisfy or replace the required `GET /activation/bootstrap-config` or GitHub activation probes.
+Health, `/status`, release readiness, tenant listing, brand counts, and action counts are diagnostic evidence only. They must not satisfy or replace the required `GET /activation/bootstrap-config` or `activation_provider_bootstrap_validate`.
 
 The session-context layer is required once per Custom GPT session/action connection before normal platform work. It should carry platform access evidence when available. Raw prompt/response dumps may be requested only with bounded controls (`include_raw=true`, `limit`, `offset`, and `raw_max_chars`). User JWT session-context reads must remain same-user scoped; admin/service authority may inspect explicit `user_id` when policy allows.
 
