@@ -224,14 +224,16 @@ function TopBar({ session, tenant, onSwitchTenant, gptReady, onLaunchGpt, onSign
 }
 
 function Brandmark() {
+  // Asymmetric M4B mark — two bars + a coral square that "breaks" out
   return (
-    <img
-      src="/connect/assets/mad4b-logo-1080.png"
-      alt="MAD4B"
-      width="32"
-      height="32"
-      style={{ width: 32, height: 32, display: "block", objectFit: "contain" }}
-    />
+    <div style={{ position: "relative", width: 32, height: 32 }}>
+      <svg viewBox="0 0 32 32" width="32" height="32">
+        <rect x="2" y="6" width="6" height="20" rx="1" fill="var(--ink)"/>
+        <rect x="11" y="6" width="6" height="20" rx="1" fill="var(--ink)"/>
+        <rect x="20" y="11" width="6" height="15" rx="1" fill="var(--blue)"/>
+        <rect x="22" y="2" width="6" height="6" rx="1" fill="var(--coral)" style={{ animation: "breath 3s ease-in-out infinite" }}/>
+      </svg>
+    </div>
   );
 }
 
