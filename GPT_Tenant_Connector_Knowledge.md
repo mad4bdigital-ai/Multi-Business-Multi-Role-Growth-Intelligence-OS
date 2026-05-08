@@ -42,7 +42,7 @@ The platform uses these credentials to provision the tunnel under the tenant's o
 
 URL: `https://auth.mad4b.com/connect`
 
-Primary sign-in option: the GPT Action OAuth popup at `https://auth.mad4b.com/auth/oauth/authorize`. It presents Google first, and can also present existing-account and new-workspace options when `sign_in_options=google,email,register` is supplied. `https://auth.mad4b.com/connect` is the web fallback.
+Primary sign-in option: the GPT Action OAuth popup at `https://auth.mad4b.com/auth/oauth/authorize`, exchanging through `https://auth.mad4b.com/auth/oauth/token` with scope `tenant`. The Tenant Assistant action must be configured as OAuth so ChatGPT attaches the returned user JWT automatically; no-auth, API-key auth, or the admin backend key will produce `user_jwt_required` on `/connect/status`. The popup presents Google first, and can also present existing-account and new-workspace options when `sign_in_options=google,email,register` is supplied. `https://auth.mad4b.com/connect` is the web fallback.
 
 Safe activation redirect hints:
 - `screen_hint=google|signin|signup`
