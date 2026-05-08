@@ -326,6 +326,14 @@ export async function executeSafe(cmd, args, options = {}) {
 }
 
 async function executeDbControl(body = {}) {
+  const action = String(body.action || "run").trim().toLowerCase();
+  if (action !== "run") {
+    const err = new Error("Unsupported db action. Use run.");
+    err.status = 400;
+    err.code = "unsupported_db_action";
+    throw err;
+  }
+
   const sql = typeof body.sql === "string" ? body.sql.trim() : "";
   const params = Array.isArray(body.params) ? body.params : [];
 
@@ -344,6 +352,71 @@ async function executeDbControl(body = {}) {
     fields: Array.isArray(fields)
       ? fields.map((field) => ({ name: field.name, column_type: field.columnType }))
       : undefined
+  };
+}
+
+function looksLikeUuid(value) {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.trim());
+}
+
+async function linkSessionContinuity(body = {}) {
+  const userId = typeof body.user_id === "string" ? body.user_id.trim() : "";
+  const tenantId = typeof body.tenant_id === "string" ? body.tenant_id.trim() : "";
+  const scope = String(body.scope || "current_unlinked_sessions").trim().toLowerCase();
+
+  if (!looksLikeUuid(userId)) {
+    const err = new Error("user_id must be a UUID.");
+    err.status = 400;
+    err.code = "invalid_user_id";
+    throw err;
+  }
+  if (!looksLikeUuid(tenantId)) {
+    const err = new Error("tenant_id must be a UUID.");
+    err.status = 400;
+    err.code = "invalid_tenant_id";
+    throw err;
+  }
+  if (scope !== "current_unlinked_sessions" && scope !== "tenant_unlinked_sessions") {
+    const err = new Error("scope must be current_unlinked_sessions or tenant_unlinked_sessions.");
+    err.status = 400;
+    err.code = "invalid_scope";
+    throw err;
+  }
+
+  const pool = getPool();
+  const whereClause = scope === "tenant_unlinked_sessions"
+    ? "user_id IS NULL AND tenant_id = ?"
+    : "user_id IS NULL";
+  const whereParams = scope === "tenant_unlinked_sessions" ? [tenantId] : [];
+
+  const [[beforeRow]] = await pool.query(
+    `SELECT COUNT(*) AS count
+       FROM \`request_envelopes\`
+      WHERE ${whereClause}`,
+    whereParams
+  );
+
+  const [updateResult] = await pool.query(
+    `UPDATE \`request_envelopes\`
+        SET user_id = ?, tenant_id = COALESCE(tenant_id, ?)
+      WHERE ${whereClause}`,
+    [userId, tenantId, ...whereParams]
+  );
+
+  const [[afterRow]] = await pool.query(
+    `SELECT COUNT(*) AS count
+       FROM \`request_envelopes\`
+      WHERE ${whereClause}`,
+    whereParams
+  );
+
+  return {
+    user_id: userId,
+    tenant_id: tenantId,
+    scope,
+    matched_before: Number(beforeRow?.count || 0),
+    updated_rows: Number(updateResult?.affectedRows || 0),
+    remaining_unlinked: Number(afterRow?.count || 0)
   };
 }
 
@@ -576,6 +649,30 @@ export function buildAdminControlHandler() {
           ...(err.exitCode !== undefined ? { exit_code: err.exitCode } : {}),
           ...(err.stdout !== undefined ? { stdout: err.stdout } : {}),
           ...(err.stderr !== undefined ? { stderr: err.stderr } : {})
+        }
+      });
+    }
+  };
+}
+
+export function buildSessionContinuityHandler() {
+  return async function sessionContinuityHandler(req, res) {
+    try {
+      const result = await linkSessionContinuity(req.body || {});
+      writeAuditLogAsync({
+        action: "admin_control.session_continuity_link_user",
+        resource_type: "request_envelopes",
+        resource_id: result.user_id,
+        payload: result
+      });
+      return res.status(200).json({ ok: true, result });
+    } catch (err) {
+      const status = err.status || 500;
+      return res.status(status).json({
+        ok: false,
+        error: {
+          code: err.code || "session_continuity_link_failed",
+          message: err.message
         }
       });
     }

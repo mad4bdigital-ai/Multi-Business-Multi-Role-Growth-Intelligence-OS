@@ -24,7 +24,7 @@ import { buildConnectorRoutes } from "./connectorRoutes.js";
 import { buildBatchRoutes }     from "./batchRoutes.js";
 import { buildLegalRoutes } from "./legalRoutes.js";
 import { buildAuthRoutes } from "./authRoutes.js";
-import { buildAdminCliRoutes, buildAdminControlHandler, requireAdminPrincipal } from "./adminCliRoutes.js";
+import { buildAdminCliRoutes, buildAdminControlHandler, buildSessionContinuityHandler, requireAdminPrincipal } from "./adminCliRoutes.js";
 import { buildAgentRegistryRoutes } from "./agentRegistryRoutes.js";
 import { buildOutputSinkRoutes }    from "./outputSinkRoutes.js";
 import { buildRootDiscoveryRoutes } from "./rootDiscoveryRoutes.js";
@@ -84,5 +84,6 @@ export function registerRoutes(app, deps) {
   app.use(buildLocalConnectorRoutes(deps));
   app.use(buildLocalConnectorInstallRoutes(deps));
   app.post("/admin/control", deps.requireBackendApiKey, requireAdminPrincipal, buildAdminControlHandler());
+  app.post("/admin/session-continuity/link-user", deps.requireBackendApiKey, requireAdminPrincipal, buildSessionContinuityHandler());
   app.use("/admin/cli", buildAdminCliRoutes(deps));
 }

@@ -3294,9 +3294,9 @@ paths:
                   description: Positional SQL parameters for the db tool.
                 action:
                   type: string
-                  enum: [list, get, set, unset, status, authorize, launch]
+                  enum: [run, list, get, set, unset, status, authorize, launch]
                   default: list
-                  description: Runtime environment action for env, or status/authorize/list/launch for windows_app.
+                  description: Action selector. Use run for db and shell execution, list/get/set/unset for env, and status/authorize/list/launch for windows_app.
                 name:
                   type: string
                   description: Environment variable name for env get, set, or unset.
@@ -3390,6 +3390,59 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "500": { description: Hostinger API call failure, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
+  /admin/session-continuity/link-user:
+    post:
+      tags: [admin-control]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
+      operationId: linkSessionContinuityUser
+      summary: Link unassigned request envelopes to a user
+      description: Assigns user_id to unlinked request_envelopes rows and backfills tenant_id when null. Use this as a governed alternative to raw SQL for session continuity repair.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [user_id, tenant_id]
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+                tenant_id:
+                  type: string
+                  format: uuid
+                scope:
+                  type: string
+                  enum: [current_unlinked_sessions, tenant_unlinked_sessions]
+                  default: current_unlinked_sessions
+                  description: current_unlinked_sessions updates all rows with user_id null; tenant_unlinked_sessions limits updates to rows with matching tenant_id and user_id null.
+      responses:
+        "200":
+          description: Session continuity rows linked
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, result]
+                properties:
+                  ok: { type: boolean }
+                  result:
+                    type: object
+                    additionalProperties: false
+                    required: [user_id, tenant_id, scope, matched_before, updated_rows, remaining_unlinked]
+                    properties:
+                      user_id: { type: string, format: uuid }
+                      tenant_id: { type: string, format: uuid }
+                      scope: { type: string, enum: [current_unlinked_sessions, tenant_unlinked_sessions] }
+                      matched_before: { type: integer }
+                      updated_rows: { type: integer }
+                      remaining_unlinked: { type: integer }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { description: Session continuity linking failed, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
 
   /admin/schema-import/upload:
     post:
