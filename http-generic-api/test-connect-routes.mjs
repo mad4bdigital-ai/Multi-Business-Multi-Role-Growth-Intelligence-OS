@@ -108,7 +108,7 @@ try {
   section("auth openapi contract");
 
   {
-    const doc = yaml.load(readFileSync("openapi.custom-gpt.auth.yaml", "utf8"));
+    const doc = yaml.load(readFileSync("openapi.tenant-gpt.auth.yaml", "utf8"));
     const activateSchema = doc.paths?.["/connect/activate"]?.post?.requestBody?.content?.["application/json"]?.schema;
     const statusConnection = doc.paths?.["/connect/status"]?.get?.responses?.["200"]?.content?.["application/json"]?.schema?.properties?.connection;
     const deviceResponse = doc.paths?.["/connect/device-install"]?.post?.responses?.["200"]?.content?.["application/json"]?.schema;

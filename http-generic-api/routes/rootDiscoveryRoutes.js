@@ -51,10 +51,10 @@ const SCOPES_BY_HOST = {
   },
   "auth.mad4b.com": {
     scope: "auth-tenant",
-    schema_file: "openapi.custom-gpt.auth.yaml",
+    schema_file: "openapi.tenant-gpt.auth.yaml",
     primary_paths: ["/connect/status", "/connect/activate", "/connect/device-install"],
     schema_variants: {
-      tenant: "openapi.custom-gpt.auth.yaml",
+      tenant: "openapi.tenant-gpt.auth.yaml",
       admin: "openapi.custom-gpt.auth-dispatcher.yaml"
     }
   },
