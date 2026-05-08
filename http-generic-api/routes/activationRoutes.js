@@ -512,7 +512,7 @@ export function buildActivationRoutes(deps) {
       const [[platform]] = await pool.query(
         `SELECT
            COUNT(DISTINCT t.tenant_id)                           AS tenant_count,
-           COUNT(DISTINCT m.membership_id)                       AS membership_count,
+           COUNT(DISTINCT m.id)                                  AS membership_count,
            COUNT(DISTINCT tbc.connection_id)                     AS connection_count,
            SUM(CASE WHEN tbc.status = 'active' THEN 1 ELSE 0 END) AS active_connections,
            MAX(tbc.activated_at)                                 AS last_activation_at
