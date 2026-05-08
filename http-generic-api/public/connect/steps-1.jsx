@@ -152,10 +152,12 @@ function AuthStep({ onSignIn, error }) {
           {mode === "login" ? "Welcome back." : "Create your workspace."}
         </h2>
 
-        <button className="btn btn-ghost" style={{ width: "100%", height: 46, fontSize: 14.5 }} onClick={() => onSignIn({ provider: "google", email: "essam@northwind.coffee", name: "Essam Nagy" })}>
-          <Icon.google width={18} height={18}/>
-          Continue with Google
-        </button>
+        {/* GSI renders the real Google button here */}
+        <div id="gsi-btn-container" style={{ width: "100%", minHeight: 44, display: "flex", justifyContent: "center", alignItems: "center" }}/>
+        {/* Fallback shown only if GSI hasn't initialised yet */}
+        <noscript>
+          <p style={{ fontSize: 12, color: "var(--muted)", textAlign: "center" }}>Enable JavaScript to use Google Sign-In.</p>
+        </noscript>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "20px 0", color: "var(--muted)" }}>
           <span style={{ flex: 1, height: 1, background: "var(--line)" }}/>
