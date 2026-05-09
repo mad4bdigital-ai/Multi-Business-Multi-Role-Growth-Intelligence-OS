@@ -346,16 +346,24 @@ function normalizePlatformEndpointCallArgs(row, args = {}) {
     return args;
   }
 
-  return {
+  const payload = {
     parent_action_key: row.parent_action_key,
     endpoint_key: row.endpoint_key,
     path_params: args.path_params || args.path || {},
     query: args.query || {},
-    body: args.body || {},
     headers: args.headers || {},
     timeout_seconds: args.timeout_seconds || 30,
     readback: args.readback || { required: false, mode: "none" },
   };
+
+  const method = String(row.method || "").toUpperCase();
+  const hasBody = args.body && Object.keys(args.body).length > 0;
+
+  if (!["GET", "HEAD"].includes(method) && hasBody) {
+    payload.body = args.body;
+  }
+
+  return payload;
 }
 
 async function callPlatformEndpointToolIfAvailable(name, args = {}, auth = null, deps = {}) {
@@ -912,6 +920,9 @@ async function getConnectorRegistrySystem(systemId, auth = null) {
 }
 
 async function callSystemLayerTool(name, args = {}, auth = null, deps = {}) {
+  const platformEndpointTool = await callPlatformEndpointToolIfAvailable(name, args, auth, deps);
+  if (platformEndpointTool.handled) return platformEndpointTool.result;
+
   assertAdminToolAccess(name, auth);
   switch (name) {
     case "connector_registry_list":
@@ -1090,4 +1101,6 @@ export {
   getConnectorRegistrySystem,
   listConnectorRegistry,
 };
+
+
 
