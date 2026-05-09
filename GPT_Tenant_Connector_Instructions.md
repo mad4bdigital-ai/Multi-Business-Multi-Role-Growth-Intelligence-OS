@@ -14,6 +14,7 @@ Primary auth is GPT Action OAuth. The popup may use Google as upstream identity 
 - authorization URL: `https://auth.mad4b.com/auth/oauth/authorize`
 - token URL: `https://auth.mad4b.com/auth/oauth/token`
 - token exchange method: Default (POST request)
+- allowed callback URL: `https://chat.openai.com/aip/g-d36db295032b9022dd77233041763f513e8ba5fa/oauth/callback`
 - scopes:
   - `https://auth.mad4b.com/scopes/tenant.links`
   - `https://auth.mad4b.com/scopes/tenant.status`

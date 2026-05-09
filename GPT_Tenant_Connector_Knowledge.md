@@ -87,6 +87,7 @@ Tenant GPT Action OAuth preset:
 - Authorization URL: `https://auth.mad4b.com/auth/oauth/authorize`
 - Token URL: `https://auth.mad4b.com/auth/oauth/token`
 - Token Exchange Method: `Default (POST request)`
+- Allowed Callback URL: `https://chat.openai.com/aip/g-d36db295032b9022dd77233041763f513e8ba5fa/oauth/callback`
 - Scope links:
   - `https://auth.mad4b.com/scopes/tenant.links`
   - `https://auth.mad4b.com/scopes/tenant.status`

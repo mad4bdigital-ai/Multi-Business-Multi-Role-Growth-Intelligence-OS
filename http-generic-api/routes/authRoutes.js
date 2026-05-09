@@ -5,6 +5,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import {
+  TENANT_GPT_CALLBACK_URLS_TO_ALLOW,
   TENANT_GPT_OAUTH_CLIENT_ID,
   TENANT_GPT_SCOPE,
   TENANT_GPT_SCOPE_LINKS,
@@ -171,6 +172,18 @@ function parseOAuthRedirectUri(redirectUri) {
   } catch {
     return null;
   }
+}
+
+function isAllowedTenantGptRedirectUri(redirectUri) {
+  const url = parseOAuthRedirectUri(redirectUri);
+  if (!url) return false;
+
+  const normalized = url.toString();
+  if (TENANT_GPT_CALLBACK_URLS_TO_ALLOW.includes(normalized)) return true;
+
+  const isAllowedHost = url.hostname === "chat.openai.com" || url.hostname === "chatgpt.com";
+  const pathMatch = url.pathname.match(/^\/aip\/g-[a-z0-9]+\/oauth\/callback$/i);
+  return isAllowedHost && Boolean(pathMatch);
 }
 
 function appendOAuthParams(redirectUri, params) {
@@ -445,8 +458,8 @@ export function buildAuthRoutes(deps) {
     const state = String(req.query.state || "");
     const activationContext = parseActivationContext(req.query);
 
-    if (!parseOAuthRedirectUri(redirectUri)) {
-      return res.status(400).type("text/plain").send("OAuth redirect_uri must be a valid http or https URL.");
+    if (!isAllowedTenantGptRedirectUri(redirectUri)) {
+      return res.status(400).type("text/plain").send("OAuth redirect_uri is not allowed for the Tenant GPT client.");
     }
 
     res.setHeader("cache-control", "no-store");
@@ -465,8 +478,8 @@ export function buildAuthRoutes(deps) {
       if (!token || !redirect_uri) {
         return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "token and redirect_uri are required." } });
       }
-      if (!parseOAuthRedirectUri(redirect_uri)) {
-        return res.status(400).json({ ok: false, error: { code: "invalid_redirect_uri", message: "redirect_uri must be a valid http or https URL." } });
+      if (!isAllowedTenantGptRedirectUri(redirect_uri)) {
+        return res.status(400).json({ ok: false, error: { code: "invalid_redirect_uri", message: "redirect_uri is not allowed for the Tenant GPT client." } });
       }
 
       const payload = jwt.verify(token, JWT_SECRET);

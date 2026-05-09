@@ -1184,6 +1184,10 @@ x-tenant-gpt-auth:
     authorization_url: https://auth.mad4b.com/auth/oauth/authorize
     token_url: https://auth.mad4b.com/auth/oauth/token
     token_exchange_method: Default (POST request)
+    callback_urls_to_allow:
+      - https://chat.openai.com/aip/g-d36db295032b9022dd77233041763f513e8ba5fa/oauth/callback
+      - https://chat.openai.com/aip/{g-GPT-ID}/oauth/callback
+      - https://chatgpt.com/aip/{g-GPT-ID}/oauth/callback
     scope_links:
       - https://auth.mad4b.com/scopes/tenant.links
       - https://auth.mad4b.com/scopes/tenant.status

@@ -107,7 +107,7 @@ app.use("/auth", buildAuthRoutes({ getPool: () => oauthClientPool }));
 const { server, baseUrl } = await startServer(app);
 
 try {
-  const redirectUri = "https://chatgpt.com/aip/test-gpt/oauth/callback";
+  const redirectUri = "https://chat.openai.com/aip/g-d36db295032b9022dd77233041763f513e8ba5fa/oauth/callback";
   const state = "state-123";
   const encodedRedirect = encodeURIComponent(redirectUri);
 
@@ -131,6 +131,11 @@ try {
   {
     const result = await getText(baseUrl, "/auth/oauth/authorize?redirect_uri=file%3A%2F%2Fbad");
     assert("authorize rejects unsafe redirect scheme", result.status === 400, `${result.status}`);
+  }
+
+  {
+    const result = await getText(baseUrl, "/auth/oauth/authorize?redirect_uri=https%3A%2F%2Fevil.example%2Faip%2Fg-bad%2Foauth%2Fcallback");
+    assert("authorize rejects unapproved redirect host", result.status === 400, `${result.status}`);
   }
 
   section("code issuance and token exchange");

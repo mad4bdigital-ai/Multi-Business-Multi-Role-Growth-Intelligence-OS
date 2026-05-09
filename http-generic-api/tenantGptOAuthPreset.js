@@ -11,6 +11,12 @@ export const TENANT_GPT_SCOPE_LINKS = [
 
 export const TENANT_GPT_SCOPE = TENANT_GPT_SCOPE_LINKS.join(" ");
 
+export const TENANT_GPT_CALLBACK_URLS_TO_ALLOW = [
+  "https://chat.openai.com/aip/g-d36db295032b9022dd77233041763f513e8ba5fa/oauth/callback",
+  "https://chat.openai.com/aip/{g-GPT-ID}/oauth/callback",
+  "https://chatgpt.com/aip/{g-GPT-ID}/oauth/callback",
+];
+
 export function buildTenantGptOAuthPreset({
   baseUrl = "https://auth.mad4b.com",
   schemaUrl = "https://auth.mad4b.com/openapi.tenant-gpt.auth.yaml",
@@ -26,10 +32,7 @@ export function buildTenantGptOAuthPreset({
     scope: TENANT_GPT_SCOPE,
     scope_links: TENANT_GPT_SCOPE_LINKS,
     token_exchange_method: "default_post_request",
-    callback_urls_to_allow: [
-      "https://chat.openai.com/aip/{g-GPT-ID}/oauth/callback",
-      "https://chatgpt.com/aip/{g-GPT-ID}/oauth/callback",
-    ],
+    callback_urls_to_allow: TENANT_GPT_CALLBACK_URLS_TO_ALLOW,
     notes: [
       "Configure the Custom GPT Action Authentication Type as OAuth.",
       "Use the DB-backed client secret stored under platform_runtime_config config_key=tenant_gpt.oauth.client.",
