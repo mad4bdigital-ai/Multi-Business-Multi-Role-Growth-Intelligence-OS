@@ -18,7 +18,7 @@ const { privateKey } = crypto.generateKeyPairSync("rsa", {
   modulusLength: 2048,
 });
 
-const privateKeyPem = privateKey.export {
+const privateKeyPem = privateKey.export({
   type: "pkcs8",
   format: "pem",
 });
@@ -64,7 +64,7 @@ const token = await getGitHubAppInstallationToken({
     assert.equal(options.method, "POST", "installation token request is POST");
     assert.match(
       options.headers?.Authorization || "",
-      /^Bearer .+.\..+\..+/,
+      /^Bearer .+n.+n.+./
       "installation token request uses app JWT bearer"
     );
     return {
