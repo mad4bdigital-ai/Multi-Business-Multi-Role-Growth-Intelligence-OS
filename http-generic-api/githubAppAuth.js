@@ -18,24 +18,97 @@ function base64Url(input) {
     .replace(/\//g, "_");
 }
 
-export function decodeGitHubAppPrivateKey(value = "") {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-  if (raw.includes("BEGIN") && raw.includes("PRIVATE KEY")) return raw.replace(/\\n/g, "\n");
-
-  try {
-    const decoded = Buffer.from(raw, "base64").toString("utf8").trim();
-    if (decoded.includes("BEGIN") && decoded.includes("PRIVATE KEY")) {
-      return decoded.replace(/\\n/g, "\n");
-    }
-  } catch {
-    // Fall through to raw value.
-  }
-
-  return raw.replace(/\\n/g, "\n");
+function looksLikePem(value = "") {
+  return value.includes("-----BEGIN") && value.includes("PRIVATE KEY-----");
 }
 
-export function createGitHubAppJwt({ appId, privateKey, nowSeconds = Math.floor(Date.now() / 1000) }) {
+function normalizePemText(value = "") {
+  return String(value || "")
+    .trim()
+    .replace(/\\r\\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .replace(/\r\n/g, "\n");
+}
+
+function tryDecodeBase64(value = "") {
+  try {
+    const compact = String(value || "").replace(/\s+/g, "");
+    if (!compact) return "";
+    return Buffer.from(compact, "base64").toString("utf8").trim();
+  } catch {
+    return "";
+  }
+}
+
+function tryDecodeJsonWrappedSecret(value = "") {
+  try {
+    const parsed = JSON.parse(value);
+    if (typeof parsed === "string") return parsed;
+    if (parsed && typeof parsed === "object") {
+      return (
+        parsed.private_key ||
+        parsed.privateKey ||
+        parsed.pem ||
+        parsed.key ||
+        parsed.value ||
+        ""
+      );
+    }
+  } catch {
+    // Not JSON-wrapped.
+  }
+  return "";
+}
+
+function buildPemCandidates(value = "") {
+  const raw = String(value || "").trim();
+  const candidates = [];
+
+  const push = (candidate) => {
+    const normalized = normalizePemText(candidate);
+    if (normalized && !candidates.includes(normalized)) candidates.push(normalized);
+  };
+
+  push(raw);
+
+  const jsonCandidate = tryDecodeJsonWrappedSecret(raw);
+  if (jsonCandidate) push(jsonCandidate);
+
+  const decoded = tryDecodeBase64(raw);
+  if (decoded) {
+    push(decoded);
+
+    const decodedJsonCandidate = tryDecodeJsonWrappedSecret(decoded);
+    if (decodedJsonCandidate) push(decodedJsonCandidate);
+
+    const decodedTwice = tryDecodeBase64(decoded);
+    if (decodedTwice) push(decodedTwice);
+  }
+
+  return candidates;
+}
+
+export function decodeGitHubAppPrivateKey(value = "") {
+  const candidates = buildPemCandidates(value);
+  const pem = candidates.find(looksLikePem);
+  return pem || candidates[0] || "";
+}
+
+function createInvalidPrivateKeyError(cause) {
+  const err = new Error(
+    "GitHub App private key could not be parsed. Provide GITHUB_APP_PRIVATE_KEY_B64 as base64 of the full PEM private key, or as the raw PEM with newline escapes preserved."
+  );
+  err.code = "github_app_auth_invalid_private_key";
+  err.status = 500;
+  err.details = {
+    cause_code: cause?.code || "",
+    cause_message: cause?.message || "",
+    expected_prefixes: ["-----BEGIN RSA PRIVATE KEY-----", "-----BEGIN PRIVATE KEY-----"],
+  };
+  return err;
+}
+
+export function createGitHubAppJwt({appId, privateKey, nowSeconds = Math.floor(Date.now() / 1000)}) {
   const iss = String(appId || "").trim();
   const key = decodeGitHubAppPrivateKey(privateKey);
 
@@ -53,7 +126,7 @@ export function createGitHubAppJwt({ appId, privateKey, nowSeconds = Math.floor(
     throw err;
   }
 
-  const header = { alg: "RS256", typ: "JWT" };
+  const header = {alg: "RS256", typ: "JWT"};
   const payload = {
     iat: nowSeconds - 60,
     exp: nowSeconds + 540,
@@ -61,7 +134,14 @@ export function createGitHubAppJwt({ appId, privateKey, nowSeconds = Math.floor(
   };
 
   const signingInput = `${base64Url(JSON.stringify(header))}.${base64Url(JSON.stringify(payload))}`;
-  const signature = crypto.createSign("RSA-SHA256").update(signingInput).sign(key);
+
+  let signature;
+  try {
+    signature = crypto.createSign("RSA-SHA256").update(signingInput).sign(key);
+  } catch (error) {
+    throw createInvalidPrivateKeyError(error);
+  }
+
   return `${signingInput}.${base64Url(signature)}`;
 }
 
@@ -77,11 +157,12 @@ export function resolveGitHubAppConfig(action = {}) {
       "130821054",
     privateKey:
       envSecretFromReference(action.secret_store_ref) ||
-      String(process.env.GITHUB_APP_PRIVATE_KEY_B64 || "").trim(),
+      String(process.env.GITHUB_APP_PRIVATE_KEY_B64 || "").trim() ||
+      String(process.env.GITHUB_APP_PRIVATE_KEY || "").trim(),
   };
 }
 
-export async function getGitHubAppInstallationToken({ action = {}, fetchImpl = fetch } = {}) {
+export async function getGitHubAppInstallationToken({action = {}, fetchImpl = fetch} = {}) {
   const nowMs = Date.now();
   if (
     cachedInstallationToken?.token &&
@@ -91,7 +172,7 @@ export async function getGitHubAppInstallationToken({ action = {}, fetchImpl = f
     return cachedInstallationToken.token;
   }
 
-  const { appId, installationId, privateKey } = resolveGitHubAppConfig(action);
+  const {appId, installationId, privateKey} = resolveGitHubAppConfig(action);
   if (!installationId) {
     const err = new Error("Missing GitHub App installation id.");
     err.code = "github_app_auth_missing_installation_id";
@@ -99,12 +180,12 @@ export async function getGitHubAppInstallationToken({ action = {}, fetchImpl = f
     throw err;
   }
 
-  const jwt = createGitHubAppJwt({ appId, privateKey });
+  const jxt = createGitHubAppJwt({appId, privateKey});
   const response = await fetchImpl(`https://api.github.com/app/installations/${installationId}/access_tokens`, {
     method: "POST",
     headers: {
       Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${jwt}`,
+      Authorization: `Bearer ${jxt}`,
       "X-GitHub-Api-Version": "2022-11-28",
       "User-Agent": "mad4b-growth-os-github-app",
     },
@@ -115,7 +196,7 @@ export async function getGitHubAppInstallationToken({ action = {}, fetchImpl = f
     const err = new Error(`GitHub App installation token request failed with status ${response.status}.`);
     err.code = "github_app_installation_token_failed";
     err.status = 500;
-    err.details = { upstream_status: response.status, message: body?.message || "" };
+    err.details = {upstream_status: response.status, message: body?.message || ""};
     throw err;
   }
 
