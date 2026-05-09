@@ -10,7 +10,7 @@
 import express from "express";
 import { readFileSync } from "node:fs";
 import yaml from "js-yaml";
-import { buildConnectRoutes } from "./routes/connectRoutes.js";
+import { buildConnectRoutes } from "./routes/connectRoutes.js"; import { buildOnboardingRoutes } from "./routes/onboardingRoutes.js";
 
 const TENANT_SCOPE_LINKS = [
   "https://auth.mad4b.com/scopes/tenant.links",
@@ -108,7 +108,7 @@ try {
     assert("connect shell references app bundle", result.status === 200, `${result.status}`);
     const html = result.body.toString("utf8");
     assert("connect shell title matches OAuth app name", html.includes("<title>Growth Intelligence Platform · Connect</title>"));
-    assert("connect shell includes exact OAuth app name", html.includes("Growth Intelligence Platform"));
+    assert("connect shell includes exact OAuth app name", html.includes("Growth Intelligence Platform")); assert("connect shell is not legacy onboarding page", !html.includes("Mad4B Connector Setup"));
     assert("connect shell links privacy policy", html.includes('href="/privacy-policy"'));
     assert("connect shell links terms of use", html.includes('href="/terms-of-use"'));
   }
