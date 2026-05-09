@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { spawn } from "child_process";
 import { writeAuditLogAsync } from "../auditLogger.js";
 import { getPool } from "../db.js";
@@ -487,7 +487,7 @@ function buildShellAuthStatus(env = process.env) {
 
 async function executeShellControl(body = {}) {
   const action    = String(body.action || "list").trim().toLowerCase();
-  const alias     = String(body.alias  || "").trim().toLowerCase();
+  const alias     = String(body.alias || body.app_alias || body.name || (Array.isArray(body.args) ? body.args[0] : "")).trim().toLowerCase();
   const extraArgs = Array.isArray(body.extra_args) ? body.extra_args.map(String) : [];
 
   if (action === "status") return { action, ...buildShellAuthStatus() };
@@ -733,7 +733,7 @@ export function buildAdminCliRoutes(deps) {
 
   router.post("/control", requireBackendApiKey, requireAdminPrincipal, adminControlHandler);
 
-  // ── GET /admin/cli/dns — list DNS records for a domain ─────────────────────
+  // â”€â”€ GET /admin/cli/dns â€” list DNS records for a domain â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   router.get("/dns", requireBackendApiKey, requireAdminPrincipal, async (req, res) => {
     const domain = String(req.query.domain || "mad4b.com").trim();
     const keyRef = String(req.query.api_key_ref || "cloud_plan").trim();
@@ -745,7 +745,7 @@ export function buildAdminCliRoutes(deps) {
     }
   });
 
-  // ── POST /admin/cli/dns — upsert a DNS record ───────────────────────────────
+  // â”€â”€ POST /admin/cli/dns â€” upsert a DNS record â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   router.post("/dns", requireBackendApiKey, requireAdminPrincipal, async (req, res) => {
     const { domain = "mad4b.com", name, type, content, ttl = 300, api_key_ref = "cloud_plan" } = req.body || {};
     if (!name || !type || !content) {
@@ -765,7 +765,7 @@ export function buildAdminCliRoutes(deps) {
     }
   });
 
-  // ── DELETE /admin/cli/dns — delete a DNS record ─────────────────────────────
+  // â”€â”€ DELETE /admin/cli/dns â€” delete a DNS record â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   router.delete("/dns", requireBackendApiKey, requireAdminPrincipal, async (req, res) => {
     const { domain = "mad4b.com", name, type, api_key_ref = "cloud_plan" } = req.body || {};
     if (!name || !type) {
@@ -806,3 +806,5 @@ export function buildAdminCliRoutes(deps) {
 
   return router;
 }
+
+

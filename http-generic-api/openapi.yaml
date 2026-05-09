@@ -1,7 +1,7 @@
-openapi: 3.1.0
+﻿openapi: 3.1.0
 
 info:
-  title: Governed HTTP Client — AI Platform
+  title: Governed HTTP Client â€” AI Platform
   version: 3.0.0-platform
   summary: >
     Multi-tenant AI-native orchestration platform with governed execution, async jobs,
@@ -10,13 +10,13 @@ info:
   description: >
     OpenAPI schema for the Governed AI + Human Managed Platform backend.
     Covers three capability layers:
-    (1) Governed execution — /http-execute, /jobs/*, /governance/*, /ai/*
-    (2) Platform management — /tenants, /users, /plans, /subscriptions, /customers,
+    (1) Governed execution â€” /http-execute, /jobs/*, /governance/*, /ai/*
+    (2) Platform management â€” /tenants, /users, /plans, /subscriptions, /customers,
         /tickets, /connected-systems, /workspaces, /planner/*, /bootstrap/*,
         /logic-definitions, /logic-packs, /workflow-runs, /approval-holds,
         /telemetry/*, /usage/*, /audit-log, /incidents, /developer-apps,
         /api-credentials, /webhooks, /rate-limit-rules
-    (3) Release operations — /release/readiness, /release/readiness-history,
+    (3) Release operations â€” /release/readiness, /release/readiness-history,
         /release/entity-classification
     Platform endpoints accept admin/service authentication via BACKEND_API_KEY, or user authentication via a signed login JWT.
 
@@ -678,7 +678,7 @@ components:
         execution_guardrail:
           type: boolean
 
-    # ── AI resolver schemas ──────────────────────────────────────────────────
+    # â”€â”€ AI resolver schemas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     AiIntentMaturation:
       type: object
@@ -947,7 +947,7 @@ components:
         readiness:
           $ref: "#/components/schemas/AiRegistryReadinessDetail"
 
-    # ── Platform shared schemas ──────────────────────────────────────────────
+    # â”€â”€ Platform shared schemas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     OkResponse:
       type: object
@@ -1794,7 +1794,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  # ── Tenants ────────────────────────────────────────────────────────────────
+  # â”€â”€ Tenants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /tenants:
     post:
@@ -1884,7 +1884,7 @@ paths:
         "200": { description: Membership list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # ── Identity ───────────────────────────────────────────────────────────────
+  # â”€â”€ Identity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /users:
     post:
@@ -1999,7 +1999,7 @@ paths:
         "200": { description: Assistance role list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # ── Access Decision Engine ─────────────────────────────────────────────────
+  # â”€â”€ Access Decision Engine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /access/resolve:
     post:
@@ -2039,7 +2039,7 @@ paths:
         "200": { description: Envelope list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # ── Customers & Tickets ────────────────────────────────────────────────────
+  # â”€â”€ Customers & Tickets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /customers:
     post:
@@ -2176,7 +2176,7 @@ paths:
       tags: [customers]
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: closeTicket
-      summary: Close a ticket (soft delete — sets status=closed)
+      summary: Close a ticket (soft delete â€” sets status=closed)
       parameters:
         - { name: ticket_id, in: path, required: true, schema: { type: string } }
       responses:
@@ -2235,7 +2235,7 @@ paths:
         "200": { description: Ticket list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # ── Connected Systems & Workspaces ─────────────────────────────────────────
+  # â”€â”€ Connected Systems & Workspaces â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /connected-systems:
     post:
@@ -2330,7 +2330,7 @@ paths:
       tags: [connected-systems]
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: archiveConnectedSystem
-      summary: Archive a connected system (soft delete — sets status=archived)
+      summary: Archive a connected system (soft delete â€” sets status=archived)
       parameters:
         - { name: system_id, in: path, required: true, schema: { type: string } }
       responses:
@@ -2397,7 +2397,7 @@ paths:
         "200": { description: Workspace list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # ── Planner ────────────────────────────────────────────────────────────────
+  # â”€â”€ Planner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /planner/resolve-intent:
     post:
@@ -2478,7 +2478,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  # ── Bootstrap Readiness ────────────────────────────────────────────────────
+  # â”€â”€ Bootstrap Readiness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /bootstrap/readiness/{tenant_id}:
     get:
@@ -2567,7 +2567,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  # ── Logic Graph ────────────────────────────────────────────────────────────
+  # â”€â”€ Logic Graph â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /logic-definitions:
     post:
@@ -2735,7 +2735,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  # ── Workflow Orchestration ─────────────────────────────────────────────────
+  # â”€â”€ Workflow Orchestration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /workflow-runs:
     post:
@@ -2890,7 +2890,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  # ── Observability ──────────────────────────────────────────────────────────
+  # â”€â”€ Observability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /telemetry/spans:
     post:
@@ -2984,8 +2984,8 @@ paths:
       operationId: checkQuota
       summary: Check current quota usage against applicable limit
       description: >
-        Resolves the applicable quota rule in priority order: tenant override →
-        plan-level rule → global rule. Returns current usage, limit, and whether
+        Resolves the applicable quota rule in priority order: tenant override â†’
+        plan-level rule â†’ global rule. Returns current usage, limit, and whether
         the tenant is within quota.
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string } }
@@ -3011,7 +3011,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  # ── Security & Compliance ──────────────────────────────────────────────────
+  # â”€â”€ Security & Compliance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /audit-log:
     get:
@@ -3129,7 +3129,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  # ── Developer API ──────────────────────────────────────────────────────────
+  # â”€â”€ Developer API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /developer-apps:
     post:
@@ -3191,7 +3191,7 @@ paths:
                 scopes: { type: array, items: { type: string } }
       responses:
         "201":
-          description: API key generated (store immediately — not retrievable again)
+          description: API key generated (store immediately â€” not retrievable again)
           content:
             application/json:
               schema:
@@ -3201,7 +3201,7 @@ paths:
                 properties:
                   ok: { type: boolean }
                   credential_id: { type: string, format: uuid }
-                  api_key: { type: string, description: "Full key — store now, not retrievable again." }
+                  api_key: { type: string, description: "Full key â€” store now, not retrievable again." }
                   key_prefix: { type: string }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -3278,7 +3278,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # ── Release Readiness ──────────────────────────────────────────────────────
+  # â”€â”€ Release Readiness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /system/connectors:
     get:
@@ -3719,6 +3719,12 @@ paths:
                   type: boolean
                   default: false
                   description: Return unmasked environment values, including sensitive-looking names.
+                alias:
+                  type: string
+                  description: Shell command alias to run from ADMIN_SHELL_ALLOWLIST when tool=shell action=run.
+                name:
+                  type: string
+                  description: Fallback shell alias field for tool=shell action=run.
                 app_alias:
                   type: string
                   description: Allowlisted local Windows app alias for windows_app launch.
@@ -4295,7 +4301,7 @@ paths:
                         last_checked_at: { type: string, format: date-time }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # ── Connector Dispatch (Sprint 09) ────────────────────────────────────────
+  # â”€â”€ Connector Dispatch (Sprint 09) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /connector/dispatch:
     post:
@@ -4347,7 +4353,7 @@ paths:
                   result: { type: object, additionalProperties: true }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { description: Access denied — requires human approval, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "403": { description: Access denied â€” requires human approval, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /connector/dispatch/status/{run_id}:
@@ -4401,13 +4407,13 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  # â”€â”€ Status Page (public, no auth) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Status Page (public, no auth) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /status:
     get:
       tags: [health]
       operationId: getStatus
-      summary: Public system status JSON â€” component health and open incidents
+      summary: Public system status JSON Ã¢â‚¬â€ component health and open incidents
       description: >
         Returns live DB-backed component health (API, DB, tenant_management, identity,
         connector_execution, intent_resolution, observability, release_readiness),
@@ -4472,7 +4478,7 @@ paths:
                   count: { type: integer }
                   window_days: { type: integer }
 
-  # â”€â”€ Batch Dispatcher â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Batch Dispatcher Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /batch:
     post:
@@ -4526,7 +4532,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Tenants â€” single record â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Tenants Ã¢â‚¬â€ single record Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /tenants/{tenant_id}:
     get:
@@ -4566,14 +4572,14 @@ paths:
       tags: [tenants]
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: archiveTenant
-      summary: Archive a tenant (soft delete â€” sets status=archived)
+      summary: Archive a tenant (soft delete Ã¢â‚¬â€ sets status=archived)
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string } }
       responses:
         "200": { description: Archived, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Users â€” single record + CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Users Ã¢â‚¬â€ single record + CRUD Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /users/{user_id}:
     get:
@@ -4614,14 +4620,14 @@ paths:
       tags: [identity]
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: archiveUser
-      summary: Archive a user (soft delete â€” sets status=archived)
+      summary: Archive a user (soft delete Ã¢â‚¬â€ sets status=archived)
       parameters:
         - { name: user_id, in: path, required: true, schema: { type: string } }
       responses:
         "200": { description: Archived, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Entitlements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Entitlements Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /entitlements:
     post:
@@ -4707,7 +4713,7 @@ paths:
         "200": { description: Entitlement list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Customers â€” CRUD + list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Customers Ã¢â‚¬â€ CRUD + list Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /customers/{customer_id}:
     get:
@@ -4750,7 +4756,7 @@ paths:
       tags: [customers]
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: archiveCustomer
-      summary: Archive a customer (soft delete â€” sets status=archived)
+      summary: Archive a customer (soft delete Ã¢â‚¬â€ sets status=archived)
       parameters:
         - { name: customer_id, in: path, required: true, schema: { type: string } }
       responses:
@@ -4770,7 +4776,7 @@ paths:
         "200": { description: Customer list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Contacts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Contacts Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /contacts:
     post:
@@ -4847,7 +4853,7 @@ paths:
         "200": { description: Contact list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Threads â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Threads Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /threads:
     post:
@@ -4912,7 +4918,7 @@ paths:
       tags: [customers]
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: closeThread
-      summary: Close a thread (soft delete â€” sets status=closed)
+      summary: Close a thread (soft delete Ã¢â‚¬â€ sets status=closed)
       parameters:
         - { name: thread_id, in: path, required: true, schema: { type: string } }
       responses:
@@ -4933,7 +4939,7 @@ paths:
         "200": { description: Thread list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Connected Systems â€” status sub-route â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Connected Systems Ã¢â‚¬â€ status sub-route Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /connected-systems/{system_id}/status:
     patch:
@@ -4957,7 +4963,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Installations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Installations Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /installations:
     post:
@@ -5021,7 +5027,7 @@ paths:
       tags: [connected-systems]
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: deleteInstallation
-      summary: Delete an installation (hard delete â€” revokes access grant)
+      summary: Delete an installation (hard delete Ã¢â‚¬â€ revokes access grant)
       parameters:
         - { name: installation_id, in: path, required: true, schema: { type: string } }
       responses:
@@ -5042,7 +5048,7 @@ paths:
         "200": { description: Installation list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Permission Grants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Permission Grants Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /permission-grants:
     post:
@@ -5080,7 +5086,7 @@ paths:
         "200": { description: Grant list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Logic Definitions â€” single record + CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Logic Definitions Ã¢â‚¬â€ single record + CRUD Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /logic-definitions/{logic_id}:
     get:
@@ -5123,14 +5129,14 @@ paths:
       tags: [logic]
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: archiveLogicDefinition
-      summary: Archive a logic definition (soft delete â€” sets status=archived)
+      summary: Archive a logic definition (soft delete Ã¢â‚¬â€ sets status=archived)
       parameters:
         - { name: logic_id, in: path, required: true, schema: { type: string } }
       responses:
         "200": { description: Archived, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Logic Packs â€” PUT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Logic Packs Ã¢â‚¬â€ PUT Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /logic-packs/{pack_id}:
     put:
@@ -5159,7 +5165,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Tracking Workspaces â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Tracking Workspaces Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /tracking/workspaces:
     post:
@@ -5231,7 +5237,7 @@ paths:
         "200": { description: Workspace list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Tracking Events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Tracking Events Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /tracking/events:
     post:
@@ -5275,7 +5281,7 @@ paths:
         "200": { description: Event list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Reporting Views â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Reporting Views Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /reporting/views:
     post:
@@ -5350,21 +5356,21 @@ paths:
         "200": { description: View list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Developer Apps â€” DELETE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Developer Apps Ã¢â‚¬â€ DELETE Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /developer-apps/{app_id}:
     delete:
       tags: [developer-api]
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: archiveDeveloperApp
-      summary: Archive a developer app (soft delete â€” sets status=archived)
+      summary: Archive a developer app (soft delete Ã¢â‚¬â€ sets status=archived)
       parameters:
         - { name: app_id, in: path, required: true, schema: { type: string } }
       responses:
         "200": { description: Archived, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Webhooks â€” PUT + DELETE + list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Webhooks Ã¢â‚¬â€ PUT + DELETE + list Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /webhooks/{webhook_id}:
     put:
@@ -5412,7 +5418,7 @@ paths:
         "200": { description: Webhook list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Incidents â€” single record PUT + DELETE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Incidents Ã¢â‚¬â€ single record PUT + DELETE Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /incidents/{incident_id}:
     put:
@@ -5444,14 +5450,14 @@ paths:
       tags: [security]
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: closeIncident
-      summary: Close an incident (soft delete â€” sets status=closed and resolved_at=NOW())
+      summary: Close an incident (soft delete Ã¢â‚¬â€ sets status=closed and resolved_at=NOW())
       parameters:
         - { name: incident_id, in: path, required: true, schema: { type: string } }
       responses:
         "200": { description: Closed, content: { application/json: { schema: { $ref: "#/components/schemas/OkResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  # â”€â”€ Secret References â€” tenant list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Ã¢â€â‚¬Ã¢â€â‚¬ Secret References Ã¢â‚¬â€ tenant list Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   /tenants/{tenant_id}/secret-references:
     get:
@@ -5464,3 +5470,4 @@ paths:
       responses:
         "200": { description: Secret reference list, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformListResponse" } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
+
