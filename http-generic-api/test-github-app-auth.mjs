@@ -62,11 +62,15 @@ const token = await getGitHubAppInstallationToken({
       "installation token endpoint uses configured installation id"
     );
     assert.equal(options.method, "POST", "installation token request is POST");
-    assert.match(
-      options.headers?.Authorization || "",
-      /^Bearer .+n.+n.+./
-      "installation token request uses app JWT bearer"
+
+    const authHeader = options.headers?.Authorization || "";
+    assert.ok(authHeader.startsWith("Bearer "), "installation token request uses app JWT bearer");
+    assert.equal(
+      authHeader.slice("Bearer ".length).split(".").length,
+      3,
+      "installation token request bearer contains a JWT"
     );
+
     return {
       ok: true,
       status: 201,
