@@ -42,6 +42,10 @@ function cleanStringArray(value) {
   return [...new Set(raw.map((item) => String(item || "").trim()).filter(Boolean))];
 }
 
+function cleanObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
 export function buildPlatformCredentialClientConfigKey(config = {}) {
   const ownerType = cleanKey(config.owner_type, "platform");
   const ownerId = ownerType === "tenant" ? cleanKey(config.tenant_id, "unassigned").slice(0, 24) : "global";
@@ -91,14 +95,22 @@ export function normalizePlatformCredentialClientConfig(args = {}) {
     api_key: credentialType === "api_key"
       ? {
           key_secret_ref: cleanText(args.key_secret_ref, "", 255) || null,
+          key_hint: cleanText(args.key_hint, "", 64) || null,
           allowed_apis: cleanStringArray(args.allowed_apis),
-          restrictions: args.restrictions && typeof args.restrictions === "object" ? args.restrictions : {},
+          api_restrictions: cleanStringArray(args.api_restrictions || args.allowed_apis),
+          application_restrictions: cleanObject(args.application_restrictions),
+          restrictions: cleanObject(args.restrictions),
+          bound_service_account_ref: cleanText(args.bound_service_account_ref, "", 255) || null,
         }
       : undefined,
     oauth_client: credentialType === "oauth_client"
       ? {
+          client_type: cleanKey(args.client_type, "web"),
           client_id: cleanText(args.client_id, "", 255) || null,
           client_secret_ref: cleanText(args.client_secret_ref, "", 255) || null,
+          client_secret_hint: cleanText(args.client_secret_hint, "", 64) || null,
+          client_secret_status: cleanKey(args.client_secret_status, "enabled"),
+          authorized_javascript_origins: cleanStringArray(args.authorized_javascript_origins || args.javascript_origins),
           redirect_uris: cleanStringArray(args.redirect_uris || args.callback_urls_to_allow),
           scopes: cleanStringArray(args.scopes),
           token_exchange_method: cleanText(args.token_exchange_method, "default_post_request", 64),
@@ -107,8 +119,11 @@ export function normalizePlatformCredentialClientConfig(args = {}) {
     service_account: credentialType === "service_account"
       ? {
           service_account_email: cleanText(args.service_account_email, "", 255) || null,
+          service_account_unique_id: cleanText(args.service_account_unique_id, "", 128) || null,
           key_secret_ref: cleanText(args.key_secret_ref, "", 255) || null,
+          key_hint: cleanText(args.key_hint, "", 64) || null,
           roles: cleanStringArray(args.roles),
+          allowed_apis: cleanStringArray(args.allowed_apis),
         }
       : undefined,
     notes: cleanText(args.notes || args.note, "", 500) || null,

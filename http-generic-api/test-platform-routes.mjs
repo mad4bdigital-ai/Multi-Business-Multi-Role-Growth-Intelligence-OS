@@ -338,6 +338,10 @@ section("Admin system layer connector facade");
   ok("system tools exposes tenant GPT OAuth client upsert", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "tenant_gpt_oauth_client_upsert"));
   ok("system tools exposes credential client config upsert", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "credential_client_config_upsert"));
   ok("system tools exposes credential client config list", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "credential_client_config_list"));
+  const credentialTool = r.body.tools.find((tool) => tool.name === "credential_client_config_upsert");
+  ok("credential client config supports Google OAuth origins", Boolean(credentialTool?.inputSchema?.properties?.authorized_javascript_origins));
+  ok("credential client config supports API key app restrictions", Boolean(credentialTool?.inputSchema?.properties?.application_restrictions));
+  ok("credential client config supports service account unique id", Boolean(credentialTool?.inputSchema?.properties?.service_account_unique_id));
 }
 {
   const r = await post("/admin/system/tools/call", {});

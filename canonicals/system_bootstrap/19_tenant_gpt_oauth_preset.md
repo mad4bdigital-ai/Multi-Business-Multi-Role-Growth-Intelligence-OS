@@ -44,4 +44,6 @@ Use this registry for platform-controlled projects now and tenant-owned projects
 | `oauth_client` | User consent flows such as Custom GPT Actions OAuth | `client_secret_ref` only |
 | `service_account` | Server-to-server platform automation | `key_secret_ref` or runtime ADC reference only |
 
+The registry should preserve Google-console field shape where practical: API key records carry API restrictions and application restrictions, OAuth records carry client type, authorized JavaScript origins, redirect URIs, scopes, token exchange method, and secret status/hint, and service-account records carry email, unique ID, IAM roles, allowed APIs, and key/runtime ADC references.
+
 Do not store raw API keys, OAuth client secrets, or private keys in canonical files, GPT instructions, or OpenAPI extensions. Store only secret references and allowed callback/scope metadata in the DB source of truth.
