@@ -19,7 +19,8 @@ export function buildTenantGptOAuthPreset({
     auth_type: "OAuth",
     schema_url: schemaUrl,
     client_id: TENANT_GPT_OAUTH_CLIENT_ID,
-    client_secret: "<generate-and-store-in-the-GPT-builder>",
+    client_secret: "<stored-in-platform-runtime-config>",
+    client_secret_config_key: "tenant_gpt.oauth.client",
     authorization_url: `${baseUrl}/auth/oauth/authorize`,
     token_url: `${baseUrl}/auth/oauth/token`,
     scope: TENANT_GPT_SCOPE,
@@ -31,7 +32,8 @@ export function buildTenantGptOAuthPreset({
     ],
     notes: [
       "Configure the Custom GPT Action Authentication Type as OAuth.",
-      "OpenAI stores the client secret encrypted; keep one GPT-specific value per tenant assistant.",
+      "Use the DB-backed client secret stored under platform_runtime_config config_key=tenant_gpt.oauth.client.",
+      "The public preset endpoint does not reveal the raw client secret.",
       "ChatGPT sends the returned Mad4B tenant JWT as Authorization: Bearer <token> on action calls.",
     ],
   };

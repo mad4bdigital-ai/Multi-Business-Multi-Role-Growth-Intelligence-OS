@@ -10,7 +10,7 @@ Primary auth is GPT Action OAuth. The popup may use Google as upstream identity 
 - schema URL: `https://auth.mad4b.com/openapi.tenant-gpt.auth.yaml`
 - preset URL: `https://auth.mad4b.com/tenant-gpt/oauth-preset`
 - client ID: `mad4b-tenant-gpt`
-- client secret: generate and store one GPT-specific secret in the GPT Builder
+- client secret: use the DB-backed default stored under `platform_runtime_config.config_key = tenant_gpt.oauth.client`
 - authorization URL: `https://auth.mad4b.com/auth/oauth/authorize`
 - token URL: `https://auth.mad4b.com/auth/oauth/token`
 - token exchange method: Default (POST request)
@@ -21,7 +21,7 @@ Primary auth is GPT Action OAuth. The popup may use Google as upstream identity 
   - `https://auth.mad4b.com/scopes/tenant.install`
   - `https://auth.mad4b.com/scopes/tenant.system-tools`
 
-The imported tenant action must be configured as OAuth, not no-auth, not API key, and not the admin/backend bearer key. Do not ask users for a dedicated JWT; ChatGPT receives the JWT from `/auth/oauth/token`.
+The imported tenant action must be configured as OAuth, not no-auth, not API key, and not the admin/backend bearer key. The public preset endpoint does not reveal the raw client secret; platform admins seed or rotate it with `tenant_gpt_oauth_client_upsert`. Do not ask users for a dedicated JWT; ChatGPT receives the JWT from `/auth/oauth/token`.
 
 If `tenantConnectionStatus` or another tenant call returns `user_jwt_required`, stop tenant activation calls. Trigger the ChatGPT Action sign-in/connect flow. If the popup is unavailable, send the user to `https://auth.mad4b.com/connect`.
 

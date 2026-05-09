@@ -1179,7 +1179,8 @@ x-tenant-gpt-auth:
     authentication_type: OAuth
     schema_url: https://auth.mad4b.com/openapi.tenant-gpt.auth.yaml
     client_id: mad4b-tenant-gpt
-    client_secret: <generate-and-store-in-the-GPT-builder>
+    client_secret: <stored-in-platform-runtime-config>
+    client_secret_config_key: tenant_gpt.oauth.client
     authorization_url: https://auth.mad4b.com/auth/oauth/authorize
     token_url: https://auth.mad4b.com/auth/oauth/token
     token_exchange_method: Default (POST request)

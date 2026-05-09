@@ -10,7 +10,7 @@ The canonical Tenant GPT Action configuration is:
 | Schema URL | `https://auth.mad4b.com/openapi.tenant-gpt.auth.yaml` |
 | Preset URL | `https://auth.mad4b.com/tenant-gpt/oauth-preset` |
 | Client ID | `mad4b-tenant-gpt` |
-| Client Secret | Generate and store one GPT-specific secret in the GPT Builder |
+| Client Secret | Use the DB-backed default stored under `platform_runtime_config.config_key = tenant_gpt.oauth.client` |
 | Authorization URL | `https://auth.mad4b.com/auth/oauth/authorize` |
 | Token URL | `https://auth.mad4b.com/auth/oauth/token` |
 | Token Exchange Method | `Default (POST request)` |
@@ -27,6 +27,6 @@ https://auth.mad4b.com/scopes/tenant.system-tools
 
 If the GPT Builder presents a single Scope input, use the same links as one space-delimited value.
 
-OpenAI GPT Actions require the OAuth fields to be configured in the GPT Builder authentication panel. The OpenAPI schema can declare the OAuth security scheme and carry the preset as extension metadata, but it does not replace saving the Builder authentication fields. If the Tenant GPT calls `/connect/status` without a bearer token and receives `user_jwt_required`, treat the action as not signed in or not configured with OAuth.
+OpenAI GPT Actions require the OAuth fields to be configured in the GPT Builder authentication panel. The OpenAPI schema can declare the OAuth security scheme and carry the preset as extension metadata, but it does not replace saving the Builder authentication fields. The public preset endpoint intentionally redacts the raw client secret; platform admins seed or rotate it with the admin-only `tenant_gpt_oauth_client_upsert` system tool or `node scripts/upsert-tenant-gpt-oauth-client.mjs`. If the Tenant GPT calls `/connect/status` without a bearer token and receives `user_jwt_required`, treat the action as not signed in or not configured with OAuth.
 
 The popup may use Google as upstream identity proof, but `/auth/oauth/token` must mint a fresh Mad4B-signed tenant JWT for ChatGPT. ChatGPT then sends that JWT as `Authorization: Bearer <token>` on tenant action calls. The Tenant GPT must not ask users for passwords, OAuth codes, Google ID tokens, provider tokens, API keys, connector secrets, or registration credentials in chat.

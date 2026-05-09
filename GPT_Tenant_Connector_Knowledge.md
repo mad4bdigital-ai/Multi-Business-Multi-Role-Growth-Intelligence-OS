@@ -83,7 +83,7 @@ Tenant GPT Action OAuth preset:
 - Preset URL: `https://auth.mad4b.com/tenant-gpt/oauth-preset`
 - Authentication Type: `OAuth`
 - Client ID: `mad4b-tenant-gpt`
-- Client Secret: generate and store one GPT-specific secret in the GPT Builder
+- Client Secret: use the DB-backed default stored under `platform_runtime_config.config_key = tenant_gpt.oauth.client`
 - Authorization URL: `https://auth.mad4b.com/auth/oauth/authorize`
 - Token URL: `https://auth.mad4b.com/auth/oauth/token`
 - Token Exchange Method: `Default (POST request)`
@@ -94,7 +94,7 @@ Tenant GPT Action OAuth preset:
   - `https://auth.mad4b.com/scopes/tenant.install`
   - `https://auth.mad4b.com/scopes/tenant.system-tools`
 
-If the GPT Builder presents a single Scope input, paste the same links as one space-delimited value.
+If the GPT Builder presents a single Scope input, paste the same links as one space-delimited value. The public preset endpoint intentionally redacts the raw client secret; platform admins seed or rotate it with `tenant_gpt_oauth_client_upsert` or `node scripts/upsert-tenant-gpt-oauth-client.mjs`.
 
 Safe activation redirect hints:
 - `screen_hint=google|signin|signup`

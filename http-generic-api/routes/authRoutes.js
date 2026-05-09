@@ -9,6 +9,7 @@ import {
   TENANT_GPT_SCOPE,
   TENANT_GPT_SCOPE_LINKS,
 } from "../tenantGptOAuthPreset.js";
+import { validateTenantGptOAuthClientCredentials } from "../tenantGptOAuthClientConfig.js";
 
 // Default fallback secret for development if missing.
 const JWT_SECRET = process.env.JWT_SECRET || "development_fallback_secret_only";
@@ -181,6 +182,29 @@ function appendOAuthParams(redirectUri, params) {
     }
   }
   return url.toString();
+}
+
+function oauthClientCredentials(req) {
+  const auth = String(req.headers.authorization || "");
+  if (auth.toLowerCase().startsWith("basic ")) {
+    try {
+      const decoded = Buffer.from(auth.slice(6).trim(), "base64").toString("utf8");
+      const splitAt = decoded.indexOf(":");
+      if (splitAt >= 0) {
+        return {
+          client_id: decoded.slice(0, splitAt),
+          client_secret: decoded.slice(splitAt + 1),
+        };
+      }
+    } catch {
+      // Fall back to POST body credentials below.
+    }
+  }
+
+  return {
+    client_id: req.body?.client_id,
+    client_secret: req.body?.client_secret,
+  };
 }
 
 function buildOAuthAuthorizeHtml({ clientId, redirectUri, state, activationContext }) {
@@ -485,6 +509,17 @@ export function buildAuthRoutes(deps) {
         return res.status(400).json({ error: "invalid_request", error_description: "code is required." });
       }
 
+      const clientValidation = await validateTenantGptOAuthClientCredentials(
+        oauthClientCredentials(req),
+        { query: (sql, params) => resolvePool().query(sql, params) }
+      );
+      if (!clientValidation.ok) {
+        return res.status(clientValidation.status || 401).json({
+          error: clientValidation.error || "invalid_client",
+          error_description: clientValidation.message || "Invalid OAuth client credentials.",
+        });
+      }
+
       const payload = jwt.verify(code, JWT_SECRET);
       if (payload.purpose !== "custom_gpt_oauth_code" || !payload.token) {
         return res.status(400).json({ error: "invalid_grant", error_description: "Invalid OAuth code." });
@@ -494,7 +529,7 @@ export function buildAuthRoutes(deps) {
       }
 
       const signedInPayload = jwt.verify(payload.token, JWT_SECRET);
-      const accessToken = issueTenantGptAccessToken(signedInPayload, { clientId: req.body?.client_id });
+      const accessToken = issueTenantGptAccessToken(signedInPayload, { clientId: clientValidation.client_id });
 
       return res.status(200).json({
         access_token: accessToken,

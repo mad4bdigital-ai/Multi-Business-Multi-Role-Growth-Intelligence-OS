@@ -335,6 +335,7 @@ section("Admin system layer connector facade");
   ok("system tools exposes Sheets bootstrap read", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "activation_sheets_bootstrap_read"));
   ok("system tools exposes GitHub validation", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "activation_github_validate"));
   ok("system tools exposes bootstrap config upsert", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "activation_bootstrap_config_upsert"));
+  ok("system tools exposes tenant GPT OAuth client upsert", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "tenant_gpt_oauth_client_upsert"));
 }
 {
   const r = await post("/admin/system/tools/call", {});
@@ -351,6 +352,7 @@ section("Admin system layer connector facade");
   ok("shared system tools returns 200", r.status === 200, `got ${r.status}`);
   ok("shared system tools exposes MCP facade protocol", r.body.protocol === "openapi-mcp-facade", `got ${r.body.protocol}`);
   ok("shared system tools exposes provider bootstrap chain to admin", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "activation_provider_bootstrap_validate"));
+  ok("shared system tools exposes tenant GPT OAuth client upsert to admin", Array.isArray(r.body.tools) && r.body.tools.some((tool) => tool.name === "tenant_gpt_oauth_client_upsert"));
 }
 {
   const r = await post("/system/tools/call", {});

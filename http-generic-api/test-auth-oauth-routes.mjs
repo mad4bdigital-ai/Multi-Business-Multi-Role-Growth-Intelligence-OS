@@ -86,9 +86,23 @@ async function getText(baseUrl, path) {
   };
 }
 
+const oauthClientPool = {
+  async query(sql, params) {
+    if (sql.includes("FROM `platform_runtime_config`")) {
+      return [[{
+        config_json: JSON.stringify({
+          client_id: "mad4b-tenant-gpt",
+          client_secret: "test-client-secret",
+        }),
+      }]];
+    }
+    throw new Error(`Unexpected OAuth client query: ${sql} ${JSON.stringify(params)}`);
+  },
+};
+
 const app = express();
 app.use(express.json());
-app.use("/auth", buildAuthRoutes({}));
+app.use("/auth", buildAuthRoutes({ getPool: () => oauthClientPool }));
 
 const { server, baseUrl } = await startServer(app);
 
@@ -142,10 +156,22 @@ try {
   assert("code response preserves activation mode", codeResult.body.activation_context?.activation_mode === "dedicated", JSON.stringify(codeResult.body.activation_context));
   assert("code response preserves sign-in options", Array.isArray(codeResult.body.activation_context?.sign_in_options) && codeResult.body.activation_context.sign_in_options.includes("email"), JSON.stringify(codeResult.body.activation_context));
 
+  const invalidClient = await postForm(baseUrl, "/auth/oauth/token", {
+    grant_type: "authorization_code",
+    code: codeResult.body.code,
+    redirect_uri: redirectUri,
+    client_id: "mad4b-tenant-gpt",
+    client_secret: "wrong-secret",
+  });
+  assert("token endpoint rejects wrong OAuth client secret", invalidClient.status === 401, `${invalidClient.status}`);
+  assert("wrong OAuth client secret reports invalid_client", invalidClient.body.error === "invalid_client", JSON.stringify(invalidClient.body));
+
   const exchange = await postForm(baseUrl, "/auth/oauth/token", {
     grant_type: "authorization_code",
     code: codeResult.body.code,
     redirect_uri: redirectUri,
+    client_id: "mad4b-tenant-gpt",
+    client_secret: "test-client-secret",
   });
   assert("token endpoint exchanges authorization code", exchange.status === 200, `${exchange.status}`);
   assert("token endpoint returns bearer token", exchange.body.token_type === "Bearer", JSON.stringify(exchange.body));
@@ -164,6 +190,8 @@ try {
     grant_type: "authorization_code",
     code: codeResult.body.code,
     redirect_uri: "https://chatgpt.com/aip/other/oauth/callback",
+    client_id: "mad4b-tenant-gpt",
+    client_secret: "test-client-secret",
   });
   assert("token endpoint rejects redirect mismatch", mismatch.status === 400, `${mismatch.status}`);
   assert("redirect mismatch reports invalid_grant", mismatch.body.error === "invalid_grant", JSON.stringify(mismatch.body));

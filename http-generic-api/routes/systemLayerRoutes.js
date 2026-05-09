@@ -12,6 +12,7 @@ import {
   resolveActivationBootstrapConfig,
   validateActivationBootstrapConfig,
 } from "../activationBootstrapConfig.js";
+import { upsertTenantGptOAuthClientConfig } from "../tenantGptOAuthClientConfig.js";
 import { requireAdminPrincipal } from "./adminCliRoutes.js";
 
 const SYSTEM_LAYER_TOOLS = [
@@ -88,6 +89,21 @@ const SYSTEM_LAYER_TOOLS = [
         note: { type: "string" },
       },
       required: ["github_parent_action_key", "github_endpoint_key", "github_owner", "github_repo"],
+    },
+  },
+  {
+    name: "tenant_gpt_oauth_client_upsert",
+    description: "Admin-only DB runtime upsert for the default Custom GPT Tenant OAuth client secret.",
+    requires_admin: true,
+    inputSchema: {
+      type: "object",
+      properties: {
+        client_id: { type: "string", default: "mad4b-tenant-gpt" },
+        client_secret: { type: "string", description: "Optional explicit secret. If omitted, one is generated or the current one is retained." },
+        rotate: { type: "boolean", default: false },
+        note: { type: "string" },
+      },
+      required: [],
     },
   },
 ];
@@ -645,6 +661,8 @@ async function callSystemLayerTool(name, args = {}, auth = null, deps = {}) {
       return await activationProviderBootstrapValidate(args, deps);
     case "activation_bootstrap_config_upsert":
       return await activationBootstrapConfigUpsert(args);
+    case "tenant_gpt_oauth_client_upsert":
+      return await upsertTenantGptOAuthClientConfig(args);
     default: {
       const err = new Error(`Unknown system layer tool: ${name}`);
       err.status = 400;
