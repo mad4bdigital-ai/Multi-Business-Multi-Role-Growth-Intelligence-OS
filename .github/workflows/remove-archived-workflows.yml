@@ -1,2 +1,13 @@
-{"name":"Remove archived temporary workflows","on":{"push":{"branches":["main"],"paths":[".github/workflows/remove-archived-workflows.yml"]},"workflow_dispatch":{}},"permissions":{"contents":"write"},"jobs":{"cleanup":{"runs-on":"ubuntu-latest","steps":[{"uses":"actions/checkout@v4","with":{"persist-credentials":true}},{"name":"Remove archived temporary workflow files","run":"set -euo pipefail\ngit config user.name \"mad4b-platform-bot\"\ngit config user.email \"platform-bot@mad4b.com\"\ngit rm --ignore-unmatch \\\n  .github/workflows/add-connect-route-shadow-regression-strict.yml \\\n  .github/workflows/add-github-app-auth-test.yml \\n  .github/workflows/cleanup-connect-route-regression-final.yml \\n  .github/workflows/cleanup-connect-route-regression-json.yml \\\n  .github/workflows/cleanup-connect-route-regression-valid.yml \\n  .github/workflows/patch-connect-route-test-mount.yml \\\n  .github/workflows/remove-archived-workflows.yml
-if git diff --cached --quiet; then\n  echo \"No archived workflow files to remove.\"\n  exit 0\nfi\ngit commit -m \"chore: remove archived temporary workflows\"\ngit push"}]}}}
+name: Archived temporary workflow cleanup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Temporary cleanup workflow archived. No action performed."
