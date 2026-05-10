@@ -3,27 +3,39 @@ name: CI
 on:
   workflow_dispatch:
   push:
-    branches: [main]
   pull_request:
     branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   syntax:
     name: Syntax Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
+
       - name: Validate canonical source structure
         run: node validate-canonical-sources.mjs
+
       - name: Check canonical generated output
         run: node build-canonicals.mjs --check
+
       - name: Check canonical domain finder
         run: node --check find-canonical-domain.mjs
+
       - name: Validate memory schema refs
         run: node validate-memory-schema.mjs
+
+      - name: Check git diff hygiene
+        run: git diff --check
+
       - name: Check all JS modules
         working-directory: http-generic-api
         run: |
@@ -36,15 +48,18 @@ jobs:
     runs-on: ubuntu-latest
     needs: syntax
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: http-generic-api/package-lock.json
+
       - name: Install dependencies
         working-directory: http-generic-api
         run: npm ci
+
       - name: Run tests
         working-directory: http-generic-api
         run: npm test
@@ -54,18 +69,23 @@ jobs:
     runs-on: ubuntu-latest
     needs: syntax
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: package-lock.json
+
       - name: Install root dependencies
         run: npm ci
+
       - name: Typecheck execution resolver sources
         run: npm run typecheck
+
       - name: Run execution resolver unit tests
         run: npm test -- --runInBand
+
       - name: Guard resolver runtime surface
         run: |
           test -f src/services/execution/dispatchPlanStep.ts
@@ -79,23 +99,25 @@ jobs:
     runs-on: ubuntu-latest
     needs: syntax
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: http-generic-api/package-lock.json
+
       - name: Install dependencies
         working-directory: http-generic-api
         run: npm ci
+
       - name: Run canonical architecture validation
         working-directory: http-generic-api
         run: npm run validate
+
       - name: Check for inline function redefinitions in server.js
         working-directory: http-generic-api
         run: |
-          # Detect if any function name that exists in an extracted module is also defined inline in server.js.
-          # This catches the class of drift where a module is added but server.js is not updated.
           MODULES="normalization mutationGovernance governedChangeControl jobRunner jobUtils executionRouting auth"
           FAIL=0
           for mod in $MODULES; do
@@ -113,16 +135,13 @@ jobs:
             exit 1
           fi
           echo "No inline redefinition drift detected"
+
       - name: Check legacy execution snapshot isolation
         working-directory: http-generic-api
         run: |
           set +e
-          # Permitted consumers of execution.js:
-          #   execution.js itself, validate-architecture.mjs (reads the allowlist),
-          #   test-*.mjs files (test suite consumers), and one-off tooling scripts.
-          # Keep this aligned with EXECUTION_IMPORT_ALLOWLIST in validate-architecture.mjs.
-          # test-*.mjs is a wildcard so new test files never break this check.
-          MATCHES=$(grep -RInE 'from ["'\'']\./execution(\.js)?["'\'']|import\(["'\'']\./execution(\.js)?["'\'']\)|require\(["'\'']\./execution(\.js)?["'\'']\)' . \
+          MATCHES=
+$(grep -RInE 'from ["'\''"]\./execution(\.js)?["'\''"]|import\(["'\'"]\./execution(\.js)?["'\'"]\)|require\(["'\'"]\./execution(\.js)?["'\'"]\)' . \
             --include='*.js' --include='*.mjs' \
             --exclude='execution.js' \
             --exclude='validate-architecture.mjs' \
@@ -141,6 +160,7 @@ jobs:
             exit "$STATUS"
           fi
           echo "Legacy execution snapshot remains isolated"
+
       - name: Check server.js line count
         working-directory: http-generic-api
         run: |
@@ -151,6 +171,7 @@ jobs:
             exit 1
           fi
           echo "server.js size within threshold"
+
       - name: Check wordpress barrel export floor
         working-directory: http-generic-api
         run: |
