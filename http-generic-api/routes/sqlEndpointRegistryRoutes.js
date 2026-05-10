@@ -39,6 +39,15 @@ function requireNonEmpty(value, name) {
   return normalized;
 }
 
+function readEndpointIdentity(req) {
+  const parentActionKey = req.query.parent_action_key || req.query.action_key;
+  const endpointKey = req.query.endpoint_key || req.query.endpoint;
+  return {
+    parentActionKey: requireNonEmpty(parentActionKey, "parent_action_key"),
+    endpointKey: requireNonEmpty(endpointKey, "endpoint_key"),
+  };
+}
+
 export function buildSqlEndpointRegistryRoutes(deps = {}) {
   const router = express.Router();
   const requireBackendApiKey = deps.requireBackendApiKey || ((_req, _res, next) => next());
@@ -133,8 +142,7 @@ export function buildSqlEndpointRegistryRoutes(deps = {}) {
     async (req, res) => {
       try {
         const authority = assertSqlEndpointRegistryAuthority();
-        const parentActionKey = requireNonEmpty(req.query.parent_action_key, "parent_action_key");
-        const endpointKey = requireNonEmpty(req.query.endpoint_key, "endpoint_key");
+        const { parentActionKey, endpointKey } = readEndpointIdentity(req);
         const endpoint = await resolveEndpointSqlEmulated(parentActionKey, endpointKey);
 
         return res.json({
@@ -150,6 +158,47 @@ export function buildSqlEndpointRegistryRoutes(deps = {}) {
           ok: false,
           error: {
             code: error.code || "sql_endpoint_registry_resolve_failed",
+            message: error.message,
+            details: error.details || undefined,
+          },
+        });
+      }
+    },
+  );
+
+  router.get(
+    "/admin/sql/endpoint-registry/resolve-action",
+    requireBackendApiKey,
+    requireAdminPrincipal,
+    async (req, res) => {
+      try {
+        const authority = assertSqlEndpointRegistryAuthority();
+        const { parentActionKey, endpointKey } = readEndpointIdentity(req);
+        const endpoint = await resolveEndpointSqlEmulated(parentActionKey, endpointKey);
+
+        return res.json({
+          ok: true,
+          source: "sql_emulated_sheet",
+          action_key: parentActionKey,
+          endpoint_key: endpointKey,
+          authority,
+          resolved: {
+            parent_action_key: endpoint.parent_action_key,
+            endpoint_key: endpoint.endpoint_key,
+            method: endpoint.method,
+            provider_domain: endpoint.provider_domain,
+            endpoint_path_or_function: endpoint.endpoint_path_or_function,
+            status: endpoint.status,
+            execution_readiness: endpoint.execution_readiness,
+            execution_mode: endpoint.execution_mode,
+            admin_only: endpoint.admin_only,
+          },
+        });
+      } catch (error) {
+        return res.status(error.status || 500).json({
+          ok: false,
+          error: {
+            code: error.code || "sql_endpoint_registry_resolve_action_failed",
             message: error.message,
             details: error.details || undefined,
           },
