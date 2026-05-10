@@ -19,7 +19,7 @@ function base64Url(input) {
 }
 
 function looksLikePem(value = "") {
-  return value.includes("-----BEGIN") && value.includes("PRIVATE KEY-----");
+  return value.trim().startsWith("-----BEGIN") && value.includes("PRIVATE KEY-----");
 }
 
 function stripCommonEnvAssignment(value = "") {
