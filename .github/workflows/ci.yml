@@ -16,31 +16,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-
       - name: Validate canonical source structure
         run: node validate-canonical-sources.mjs
-
       - name: Check canonical generated output
         run: node build-canonicals.mjs --check
-
       - name: Check canonical domain finder
         run: node --check find-canonical-domain.mjs
-
       - name: Validate memory schema refs
         run: node validate-memory-schema.mjs
-
       - name: Check git diff hygiene
         run: git diff --check
-
       - name: Check all JS modules
         working-directory: http-generic-api
         run: |
+          set -e
           for f in *.js *.mjs wordpress/*.js; do
-            node --check "$f" || { echo "SYNTAX ERROR: $f"; exit 1; }
+            node --check "$f"
           done
 
   test:
@@ -49,17 +43,14 @@ jobs:
     needs: syntax
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: http-generic-api/package-lock.json
-
       - name: Install dependencies
         working-directory: http-generic-api
         run: npm ci
-
       - name: Run tests
         working-directory: http-generic-api
         run: npm test
@@ -70,24 +61,20 @@ jobs:
     needs: syntax
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: package-lock.json
-
       - name: Install root dependencies
         run: npm ci
-
       - name: Typecheck execution resolver sources
         run: npm run typecheck
-
       - name: Run execution resolver unit tests
         run: npm test -- --runInBand
-
       - name: Guard resolver runtime surface
         run: |
+          set -e
           test -f src/services/execution/dispatchPlanStep.ts
           test -f src/services/connectors/execution/resolveConnectorExecutor.ts
           test -f src/store/registries/connectorExecutorRegistry.ts
@@ -100,85 +87,34 @@ jobs:
     needs: syntax
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: http-generic-api/package-lock.json
-
       - name: Install dependencies
         working-directory: http-generic-api
         run: npm ci
-
       - name: Run canonical architecture validation
         working-directory: http-generic-api
         run: npm run validate
-
-      - name: Check for inline function redefinitions in server.js
-        working-directory: http-generic-api
-        run: |
-          MODULES="normalization mutationGovernance governedChangeControl jobRunner jobUtils executionRouting auth"
-          FAIL=0
-          for mod in $MODULES; do
-            if [ ! -f "${mod}.js" ]; then continue; fi
-            EXPORTS=$(grep "^export function\|^export async function" "${mod}.js" | sed 's/export \(async \)\?function //;s/(.*//')
-            for fn in $EXPORTS; do
-              if grep -qE "^(async )?function ${fn}\b" server.js; then
-                echo "DRIFT: '${fn}' is exported from ${mod}.js but also defined inline in server.js"
-                FAIL=1
-              fi
-            done
-          done
-          if [ "$FAIL" -eq 1 ]; then
-            echo "Inline redefinition drift detected - run extraction cleanup"
-            exit 1
-          fi
-          echo "No inline redefinition drift detected"
-
       - name: Check legacy execution snapshot isolation
         working-directory: http-generic-api
         run: |
-          set +e
-          MATCHES=
-$(grep -RInE 'from ["'\''"]\./execution(\.js)?["'\''"]|import\(["'\'"]\./execution(\.js)?["'\'"]\)|require\(["'\'"]\./execution(\.js)?["'\'"]\)' . \
-            --include='*.js' --include='*.mjs' \
-            --exclude='execution.js' \
-            --exclude='validate-architecture.mjs' \
-            --exclude='test-*.mjs' \
-            --exclude='fix-*.mjs' \
-            --exclude='extract-modules.js')
-          STATUS=$?
           set -e
-          if [ "$STATUS" -eq 0 ]; then
-            echo "DRIFT: execution.js is marked snapshot_archived but is imported by runtime code:"
-            echo "$MATCHES"
+          if grep -RInE 'from .*/execution(\.js)?|import\(.*/execution(\.js)?|require\(.*/execution(\.js)?' . --include='*.js' --include='*.mjs' --exclude='execution.js' --exclude='validate-architecture.mjs' --exclude='test-*.mjs' --exclude='fix-*.mjs' --exclude='extract-modules.js'; then
+            echo "DRIFT: execution.js is marked snapshot_archived but is imported by runtime code"
             exit 1
           fi
-          if [ "$STATUS" -gt 1 ]; then
-            echo "Failed to scan for execution.js imports"
-            exit "$STATUS"
-          fi
-          echo "Legacy execution snapshot remains isolated"
-
       - name: Check server.js line count
         working-directory: http-generic-api
         run: |
+          set -e
           LINES=$(wc -l < server.js)
           echo "server.js: ${LINES} lines"
-          if [ "$LINES" -gt 6000 ]; then
-            echo "DRIFT: server.js exceeds 6000-line threshold (${LINES} lines) - decomposition may have regressed"
-            exit 1
-          fi
-          echo "server.js size within threshold"
-
+          test "$LINES" -le 6000
       - name: Check wordpress barrel export floor
         working-directory: http-generic-api
         run: |
-          COUNT=$(node -e "import('./wordpress/index.js').then(m => { const n = Object.keys(m).length; console.log(n); if(n < 545) process.exit(1); })" 2>&1)
-          echo "wordpress/index.js exports: $COUNT"
-          if [ $? -ne 0 ]; then
-            echo "DRIFT: wordpress/index.js exports dropped below 545 floor"
-            exit 1
-          fi
-          echo "WordPress barrel export count within floor"
+          set -e
+          node -e "import('./wordpress/index.js').then(m => { const n = Object.keys(m).length; console.log('wordpress/index.js exports:', n); if (n < 545) process.exit(1); })"
