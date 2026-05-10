@@ -1,15 +1,13 @@
 import express from "express";
-import { getPool } from "../db.js";
-
-function normalizeLimit(value, fallback = 100) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
-  return Math.min(Math.trunc(parsed), 500);
-}
+import {
+  assertSqlEndpointRegistryAuthority,
+  describeEndpointRegistryLayer,
+  loadEndpointRegistrySqlEmulated,
+  resolveEndpointSqlEmulated,
+} from "../endpointRegistryAuthorityLayer.js";
 
 function compactEndpoint(row = {}) {
   return {
-    id: row.id,
     endpoint_id: row.endpoint_id,
     parent_action_key: row.parent_action_key,
     endpoint_key: row.endpoint_key,
@@ -27,7 +25,6 @@ function compactEndpoint(row = {}) {
     transport_required: row.transport_required,
     runtime_binding_profile: row.runtime_binding_profile,
     admin_only: row.admin_only,
-    updated_at: row.updated_at
   };
 }
 
@@ -48,53 +45,85 @@ export function buildSqlEndpointRegistryRoutes(deps = {}) {
   const requireAdminPrincipal = deps.requireAdminPrincipal || ((_req, _res, next) => next());
 
   router.get(
+    "/admin/sql/endpoint-registry/source-status",
+    requireBackendApiKey,
+    requireAdminPrincipal,
+    async (_req, res) => {
+      return res.json({
+        ok: true,
+        ...describeEndpointRegistryLayer(),
+      });
+    },
+  );
+
+  router.get(
     "/admin/sql/endpoint-registry/endpoints",
     requireBackendApiKey,
     requireAdminPrincipal,
     async (req, res) => {
       try {
-        const parentActionKey = String(req.query.parent_action_key || "").trim();
-        const endpointKey = String(req.query.endpoint_key || "").trim();
-        const status = String(req.query.status || "active").trim();
-        const limit = normalizeLimit(req.query.limit, 100);
-
-        const where = [];
-        const params = [];
-        if (parentActionKey) {
-          where.push("parent_action_key = ?");
-          params.push(parentActionKey);
-        }
-        if (endpointKey) {
-          where.push("endpoint_key = ?");
-          params.push(endpointKey);
-        }
-        if (status) {
-          where.push("status = ?");
-          params.push(status);
-        }
-
-        const [rows] = await getPool().query(
-          `SELECT * FROM endpoints ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY parent_action_key, endpoint_key LIMIT ?`,
-          [...params, limit]
-        );
+        const authority = assertSqlEndpointRegistryAuthority();
+        const rows = await loadEndpointRegistrySqlEmulated({
+          parent_action_key: req.query.parent_action_key,
+          endpoint_key: req.query.endpoint_key,
+          status: req.query.status || "active",
+          limit: req.query.limit,
+        });
 
         return res.json({
           ok: true,
-          source: "sql",
+          source: "sql_emulated_sheet",
           table: "endpoints",
+          authority,
           count: rows.length,
-          endpoints: rows.map(compactEndpoint)
+          endpoints: rows.map(compactEndpoint),
         });
       } catch (error) {
         return res.status(error.status || 500).json({
           ok: false,
           error: {
             code: error.code || "sql_endpoint_registry_list_failed",
-            message: error.message
-          }
+            message: error.message,
+            details: error.details || undefined,
+          },
         });
       }
-    }
+    },
+  );
+
+  router.get(
+    "/admin/sql/endpoint-registry/simulated-sheet-rows",
+    requireBackendApiKey,
+    requireAdminPrincipal,
+    async (req, res) => {
+      try {
+        const authority = assertSqlEndpointRegistryAuthority();
+        const rows = await loadEndpointRegistrySqlEmulated({
+          parent_action_key: req.query.parent_action_key,
+          endpoint_key: req.query.endpoint_key,
+          status: req.query.status || "active",
+          limit: req.query.limit,
+        });
+
+        return res.json({
+          ok: true,
+          source: "sql_emulated_sheet",
+          table: "endpoints",
+          authority,
+          count: rows.length,
+          rows,
+        });
+      } catch (error) {
+        return res.status(error.status || 500).json({
+          ok: false,
+          error: {
+            code: error.code || "sql_endpoint_registry_simulated_rows_failed",
+            message: error.message,
+            details: error.details || undefined,
+          },
+        });
+      }
+    },
   );
 
   router.get(
@@ -103,46 +132,30 @@ export function buildSqlEndpointRegistryRoutes(deps = {}) {
     requireAdminPrincipal,
     async (req, res) => {
       try {
+        const authority = assertSqlEndpointRegistryAuthority();
         const parentActionKey = requireNonEmpty(req.query.parent_action_key, "parent_action_key");
         const endpointKey = requireNonEmpty(req.query.endpoint_key, "endpoint_key");
-
-        const [rows] = await getPool().query(
-          `SELECT * FROM endpoints
-           WHERE parent_action_key = ?
-             AND endpoint_key = ?
-             AND status NOT IN ('deprecated', 'archived')
-           ORDER BY FIELD(status, 'active') DESC, id DESC
-           LIMIT 1`,
-          [parentActionKey, endpointKey]
-        );
-
-        if (!rows.length) {
-          return res.status(404).json({
-            ok: false,
-            source: "sql",
-            error: {
-              code: "endpoint_not_found",
-              message: `Endpoint not found in SQL endpoints table: ${parentActionKey}/${endpointKey}`
-            }
-          });
-        }
+        const endpoint = await resolveEndpointSqlEmulated(parentActionKey, endpointKey);
 
         return res.json({
           ok: true,
-          source: "sql",
+          source: "sql_emulated_sheet",
           table: "endpoints",
-          endpoint: compactEndpoint(rows[0])
+          authority,
+          endpoint: compactEndpoint(endpoint),
+          simulated_sheet_row: endpoint,
         });
       } catch (error) {
         return res.status(error.status || 500).json({
           ok: false,
           error: {
             code: error.code || "sql_endpoint_registry_resolve_failed",
-            message: error.message
-          }
+            message: error.message,
+            details: error.details || undefined,
+          },
         });
       }
-    }
+    },
   );
 
   return router;
