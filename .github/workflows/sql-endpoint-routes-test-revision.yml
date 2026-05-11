@@ -41,11 +41,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate config
+        env:
+          WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          DEPLOYER_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
         run: |
           set -euo pipefail
           test -n "$PROJECT_ID" || (echo "Set repository variable GCP_PROJECT_ID or pass project_id input." >&2; exit 1)
-          test -n "${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}" || (echo "Missing repository variable GCP_WORKLOAD_IDENTITY_PROVIDER." >&2; exit 1)
-          test -n "${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}" || (echo "Missing repository variable GCP_DEPLOYER_SERVICE_ACCOUNT." >&2; exit 1)
+          test -n "$WIF_PROVIDER" || (echo "Missing repository variable GCP_WORKLOAD_IDENTITY_PROVIDER." >&2; exit 1)
+          test -n "$DEPLOYER_SERVICE_ACCOUNT" || (echo "Missing repository variable GCP_DEPLOYER_SERVICE_ACCOUNT." >&2; exit 1)
           echo "Using project: $PROJECT_ID"
 
       - uses: actions/checkout@v4
@@ -64,12 +67,18 @@ jobs:
 
       - name: Create no-traffic revision and tag it
         id: rev
+        env:
+          SERVICE: ${{ inputs.service }}
+          REGION: ${{ inputs.region }}
+          TAG: ${{ inputs.tag_name }}
+          FLAG: ${{ inputs.enable_flag }}
         run: |
           set -euo pipefail
-          SERVICE="${{ inputs.service }}"
-          REGION="{{ inputs.region }}"
-          TAG="${{ inputs.tag_name }}"
-          FLAG="${{ inputs.enable_flag }}"
+
+          test -n "$SERVICE" || (echo "service input is required" >&2; exit 1)
+          test -n "$REGION" || (echo "region input is required" >&2; exit 1)
+          test -n "$TAG" || (echo "tag_name input is required" >&2; exit 1)
+          test -n "$FLAG" || (echo "enable_flag input is required" >&2; exit 1)
 
           gcloud config set project "$PROJECT_ID" --quiet
 
@@ -103,12 +112,12 @@ jobs:
             --region "$REGION" \
             --format 'value(status.url)')"
 
-          TAGGED_URL="$(URL="$URL" TAG="$TAG" node -e "const u=new URL(process.env.URL); u.hostname=process.env.TAG+'---'+u.hostname; console.log(u.toString().replace(/\\$/,''));")"
+          TAGGED_URL=b$URL" TAG="$TAG" node -e "const u=new URL(process.env.URL); u.hostname=process.env.TAG+'---'+u.hostname; console.log(u.toString().replace(/\/$/,''));")`
 
           echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
           echo "tagged_url=$TAGGED_URL" >> "$GITHUB_OUTPUT"
           echo "Revision: $REVISION"
-          echo "Tagged URL: $TAGGED_URL"
+          echo "Taged URL: $TAGGED_URL"
 
       - name: Smoke source-status
         env:
