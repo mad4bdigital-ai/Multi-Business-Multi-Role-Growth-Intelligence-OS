@@ -1,1 +1,1 @@
-trigger sql endpoint loader patch corrected yaml 2026-05-12T08:55:00Z
+trigger registrySheets sql loader wiring 2026-05-12T09:12:30Z
