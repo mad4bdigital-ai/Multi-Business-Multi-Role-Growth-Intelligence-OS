@@ -284,6 +284,15 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
   const endpointLocalSchemaContract = resolveEndpointLocalSchemaContract(endpoint, { jsonAssets: localSchemaJsonAssets });
   const schemaContract = endpointLocalSchemaContract ||
     await fetchSchemaContract(drive, action.openai_schema_file_id);
+  const schemaSource = schemaContract?.source ||
+    (endpointLocalSchemaContract ? "endpoint_local" : "action_openai_schema_file");
+  const schemaContractFileId = schemaContract?.fileId || action.openai_schema_file_id || "";
+  debugLog("SCHEMA_CONTRACT_SOURCE:", JSON.stringify({
+    source: schemaSource,
+    schema_name: schemaContract?.name || "",
+    schema_contract_file_id: schemaContractFileId,
+    action_openai_schema_file_id: action.openai_schema_file_id || ""
+  }));
   const schemaOperationInfo = await resolveSchemaOperation(schemaContract, resolvedMethodPath.method, schemaLookupPath);
   if (!schemaOperationInfo) {
     const err = new Error(`Method/path not found in authoritative schema for ${parent_action_key}.`);
@@ -340,6 +349,8 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
           request_schema_alignment_status: "degraded",
           errors: schemaValidationErrors,
           openai_schema_file_id: action.openai_schema_file_id,
+          schema_contract_file_id: schemaContractFileId,
+          schema_source: schemaSource,
           schema_name: schemaContract.name
         }
       }
@@ -473,6 +484,8 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
     governedExecutionContext,
     pathResolverLoad,
     schemaContract,
+    schemaSource,
+    schemaContractFileId,
     schemaOperationInfo,
     route_id,
     target_module,
