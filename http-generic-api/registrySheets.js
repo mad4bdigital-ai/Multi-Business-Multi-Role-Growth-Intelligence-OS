@@ -1,6 +1,11 @@
 import { cacheGet, cacheSet } from "./registryCache.js";
 import { READ_POLICIES } from "./registryReadPolicies.js";
 import { readTable as sqlReadTable } from "./sqlAdapter.js";
+import {
+  filterRowsByKeyFields,
+  readSqlRegistrySurface,
+  shouldReadRegistrySurfaceFromSql
+} from "./registrySource.js";
 const _DATA_SOURCE = (process.env.DATA_SOURCE || "sheets").trim().toLowerCase();
 
 function localFetchRange(sheets, spreadsheetId, range) {
@@ -288,7 +293,12 @@ export async function loadEndpointRegistry(sheets, deps = {}) {
     headerMap,
     registryError
   } = deps;
-  const values = await readRegistryTable(sheets, deps, {
+    if (shouldReadRegistrySurfaceFromSql("endpoints")) {
+    const rows = await readSqlRegistrySurface("endpoints");
+    return filterRowsByKeyFields(rows, "endpoints");
+  }
+
+const values = await readRegistryTable(sheets, deps, {
     spreadsheetId: REGISTRY_SPREADSHEET_ID,
     sheetName: ENDPOINT_REGISTRY_SHEET,
     columnEnd: "BA",
