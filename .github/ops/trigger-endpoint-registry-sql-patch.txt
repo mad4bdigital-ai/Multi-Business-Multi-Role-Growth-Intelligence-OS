@@ -1,1 +1,1 @@
-2026-05-12T12:25:00Z trigger registrySource adapter endpoint sql patch
+2026-05-12T15:40:07Z trigger direct main registrySource binding patch
