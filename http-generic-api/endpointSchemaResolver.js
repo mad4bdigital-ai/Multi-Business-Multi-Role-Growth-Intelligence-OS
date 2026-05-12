@@ -26,7 +26,7 @@ function normalizePath(value) {
   return path.startsWith("/") ? path : path ? `/${path}` : "";
 }
 
-function contractHavesRequiredFields(contract, endpoint = {}) {
+function contractHasRequiredFields(contract, endpoint = {}) {
   const operationId = String(
     contract?.operationId ||
       contract?.operation?.operationId ||
@@ -96,13 +96,13 @@ export function buildOpenApiContractFromEndpointContract(contract, endpoint = {}
       endpoint?.endpoint_key
   ).trim();
 
-  if (!contractHavesRequiredFields({ ...sourceContract, operationId, method: methodUpper, path }, endpoint)) {
+  if (!contractHasRequiredFields({ ...sourceContract, operationId, method: methodUpper, path }, endpoint)) {
     return null;
   }
 
   const operation = {
     operationId,
-    summary: sourceContract.summary || sourceContract.operation/?summary || operationId,
+    summary: sourceContract.summary || sourceContract.operation?.summary || operationId,
     description: sourceContract.description || sourceContract.operation?.description,
     parameters: openApiParametersFrom(sourceContract),
     requestBody: openApiRequestBodyFrom(sourceContract),
@@ -138,7 +138,7 @@ export function buildOpenApiContractFromEndpointContract(contract, endpoint = {}
 }
 
 export function readEndpointSchemaJsonContract(endpoint) {
-  const parsed = parseJsonIfNeded(endpoint?.schema_json);
+  const parsed = parseJsonIfNeeded(endpoint?.schema_json);
   if (!parsed) return null;
   return buildOpenApiContractFromEndpointContract(parsed, endpoint, {
     source: "endpoint.schema_json",
