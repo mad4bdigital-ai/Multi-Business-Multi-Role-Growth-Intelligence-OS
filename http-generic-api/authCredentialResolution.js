@@ -21,7 +21,6 @@ function resolveActionSecret(action) {
     return "";
   }
 
-  // Unrecognised storage mode — fall back to the raw field with a warning.
   if (action.api_key_value) {
     console.warn(
       `[authCredential] action "${action.action_key}" uses unrecognised storage mode "${storageMode}". ` +
@@ -32,14 +31,16 @@ function resolveActionSecret(action) {
 }
 
 export function resolveWpAppPassword(brand = {}) {
-  // Prefer env var keyed by target_key: <TARGET_KEY_UPPER>_APP_PASSWORD
   const targetKey = String(brand?.target_key || "").trim();
   if (targetKey) {
-    const envKey = targetKey.toUpperCase().replace(/[^A-Z0-9]/g, "_").replace(/_+/g, "_") + "_APP_PASSWORD";
+    const envKey = targetKey
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "_")
+      .replace(/_+/g, "_") + "_APP_PASSWORD";
     const fromEnv = String(process.env[envKey] || "").trim();
     if (fromEnv) return fromEnv;
   }
-  // Warn if falling back to embedded value (should be NULL after sanitize-credentials runs)
+
   const embedded = String(brand?.application_password || "").trim();
   if (embedded) {
     console.warn(
@@ -90,15 +91,14 @@ async function _buildAuthContract({
 
   if (mode === "google_oauth2") {
     contract.header_name = "Authorization";
-    contract.secret = await getGoogleAccessToken();
+    contract.secret = await getGoogleAccessToken({ action, brand, targetKey });
     return contract;
   }
 
   if (mode === "google_ads_oauth2") {
     contract.header_name = "Authorization";
-    contract.secret = await getGoogleAccessToken();
-    // Google Ads API requires two additional headers on every request.
-    // GOOGLEADS_LOGIN_CUSTOMER_ID is optional — only needed for MCC sub-account calls.
+    contract.secret = await getGoogleAccessToken({ action, brand, targetKey });
+
     const devToken = String(process.env.GOOGLEADS_DEVELOPER_TOKEN || "").trim();
     const customerId = String(process.env.GOOGLEADS_LOGIN_CUSTOMER_ID || "").trim();
     contract.custom_headers = {};
@@ -234,7 +234,6 @@ export function getAdditionalStaticAuthHeaders(action = {}, authContract = {}) {
   const headerName = String(action.api_key_header_name || "").trim();
   if (!headerName || headerName.toLowerCase() === "authorization") return {};
 
-  // Resolve via storage-mode-aware helper — never read raw api_key_value directly
   const headerValue = resolveActionSecret(action);
   if (!headerValue) return {};
 
@@ -246,6 +245,7 @@ export function enforceSupportedAuthMode(policies, mode) {
     .split("|")
     .map(v => v.trim())
     .filter(Boolean);
+
   if (!supported.includes(mode)) {
     const err = new Error(`Resolved auth mode is unsupported by policy: ${mode}`);
     err.code = "unsupported_auth_mode";
