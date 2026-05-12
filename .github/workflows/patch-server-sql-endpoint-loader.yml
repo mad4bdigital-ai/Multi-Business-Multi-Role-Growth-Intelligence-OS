@@ -1,88 +1,13 @@
-name: Patch server SQL Endpoint Registry Override
+name: Archived one-off patch workflow
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".github/ops/trigger-server-sql-endpoint-loader-patch.txt"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  patch:
+  archived:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Apply tiny server.js SQL endpoint-registry override
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          path = Path("http-generic-api/server.js")
-          text = path.read_text(encoding="utf-8")
-
-          marker = "SERVER_ENDPOINT_REGISTRY_SQL_OVERRIDE"
-
-          if "sqlEndpointRegistryLoader.js" not in text:
-              import_block = re.match(r"(?s)((?:import[\s\S]*?;\s*)+)", text)
-              if not import_block:
-                  raise SystemExit("top-level import block not found in server.js")
-              loader_import = (
-                  'import { loadSqlEndpointRegistry, shouldReadEndpointRegistryFromSql } '
-                  'from "./sqlEndpointRegistryLoader.js";\n'
-              )
-              text = text[:import_block.end()] + loader_import + text[import_block.end():]
-
-          old_alias = "loadEndpointRegistry as loadEndpointRegistryCore"
-          new_alias = "loadEndpointRegistry as loadEndpointRegistryFromSheetsCore"
-          if old_alias in text:
-              text = text.replace(old_alias, new_alias, 1)
-          elif new_alias not in text:
-              raise SystemExit("expected loadEndpointRegistry alias not found in server.js")
-
-          if marker not in text:
-              import_block = re.match(r"(?s)((?:import[\s\S]*?;\s*)+)", text)
-              if not import_block:
-                  raise SystemExit("top-level import block not found after import rewrite")
-              wrapper = '''
-// SERVER_ENDPOINT_REGISTRY_SQL_OVERRIDE
-async function loadEndpointRegistryCore(...args) {
-  if (shouldReadEndpointRegistryFromSql()) {
-    const rows = await loadSqlEndpointRegistry();
-    console.log("ENDPOINT_REGISTRY_SOURCE: sql");
-    console.log("ENDPOINT_REGISTRY_SQL_ROW_COUNT:", String(rows.length));
-    return rows.filter(row => row.endpoint_key);
-  }
-
-  return loadEndpointRegistryFromSheetsCore(...args);
-}
-
-'''
-              text = text[:import_block.end()] + wrapper + text[import_block.end():]
-
-          path.write_text(text, encoding="utf-8")
-          PY
-
-      - name: Validate patch
-        run: |
-          grep -q "SERVER_ENDPOINT_REGISTRY_SQL_OVERRIDE" http-generic-api/server.js
-          grep -q "loadEndpointRegistryFromSheetsCore" http-generic-api/server.js
-          grep -q "sqlEndpointRegistryLoader.js" http-generic-api/server.js
-          node --check http-generic-api/sqlEndpointRegistryLoader.js
-          node --check http-generic-api/server.js
-
-      - name: Commit changes
-        run: |
-          if git diff --quiet; then
-            echo "No changes to commit."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add http-generic-api/server.js http-generic-api/sqlEndpointRegistryLoader.js
-          git commit -m "fix: wire endpoint registry SQL loader in server"
-          git push
+      - run: echo "Archived one-off workflow; no automatic trigger."
