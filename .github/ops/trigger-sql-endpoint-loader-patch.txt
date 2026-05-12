@@ -1,0 +1,1 @@
+trigger sql endpoint loader patch 2026-05-12T08:44:40.551009Z
