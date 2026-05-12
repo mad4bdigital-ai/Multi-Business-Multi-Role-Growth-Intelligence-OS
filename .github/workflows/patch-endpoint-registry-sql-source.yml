@@ -12,7 +12,6 @@ permissions:
 
 jobs:
   patch:
-    if: contains(github.event.head_commit.message, 'ops: trigger endpoint registry sql source patch run')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,47 +20,39 @@ jobs:
         run: |
           set -euo pipefail
           node <<'NODE'
-          const fs = require('fs');
-          const path = 'http-generic-api/registrySheets.js';
-          let src = fs.readFileSync(path, 'utf8');
+          const fs = require("fs");
+          const file = "http-generic-api/registrySheets.js";
+          let src = fs.readFileSync(file, "utf8");
 
           const oldSource = 'const _DATA_SOURCE = (process.env.DATA_SOURCE || "sheets").trim().toLowerCase();';
-          const newSource = `const _DATA_SOURCE = (process.env.DATA_SOURCE || "sheets").trim().toLowerCase();
-const _ENDPOINT_REGISTRY_SOURCE = (process.env.ENDPOINT_REGISTRY_SOURCE || "sql").trim().toLowerCase();
-const _LEGACY_SHEET_ENDPOINT_REGISTRY_ENABLED = String(process.env.LEGACY_SHEET_ENDPOINT_REGISTRY_ENABLED || "false").trim().toLowerCase() === "true";
+          const newSource = [
+            oldSource,
+            'const _ENDPOINT_REGISTRY_SOURCE = (process.env.ENDPOINT_REGISTRY_SOURCE || "sql").trim().toLowerCase();',
+            'const _LEGACY_SHEET_ENDPOINT_REGISTRY_ENABLED = String(process.env.LEGACY_SHEET_ENDPOINT_REGISTRY_ENABLED || "false").trim().toLowerCase() === "true";',
+            '',
+            'function shouldReadEndpointRegistryFromSql() {',
+            '  return _ENDPOINT_REGISTRY_SOURCE !== "sheets" || !_LEGACY_SHEET_ENDPOINT_REGISTRY_ENABLED;',
+            '}'
+          ].join("\n");
 
-function shouldReadEndpointRegistryFromSql() {
-  return _ENDPOINT_REGISTRY_SOURCE !== "sheets" || !_LEGACY_SHEET_ENDPOINT_REGISTRY_ENABLED;
-}`;
-
-          if (!src.includes('const _ENDPOINT_REGISTRY_SOURCE')) {
+          if (!src.includes("const _ENDPOINT_REGISTRY_SOURCE")) {
             if (!src.includes(oldSource)) {
-              throw new Error('Could not find DATA_SOURCE declaration to patch');
+              throw new Error("Could not find DATA_SOURCE declaration to patch");
             }
             src = src.replace(oldSource, newSource);
           }
 
-          const marker = `} = deps;
-  const values = await readRegistryTable(sheets, deps, {
-    spreadsheetId: REGISTRY_SPREADSHEET_ID,`;
-          const insert = `} = deps;
+          const oldBlock = 'export async function loadEndpointRegistry(sheets, deps = {}) { const { ENDPOINT_REGISTRY_SHEET, REGISTRY_SPREADSHEET_ID, debugLog, getCell, headerMap, registryError } = deps; const values = await readRegistryTable(sheets, deps, { spreadsheetId: REGISTRY_SPREADSHEET_ID, sheetName: ENDPOINT_REGISTRY_SHEET, columnEnd: "BA", dataEndRow: 2000 });';
+          const newBlock = 'export async function loadEndpointRegistry(sheets, deps = {}) { const { ENDPOINT_REGISTRY_SHEET, REGISTRY_SPREADSHEET_ID, debugLog, getCell, headerMap, registryError } = deps; if (shouldReadEndpointRegistryFromSql()) { const rows = await sqlReadTable("API Actions Endpoint Registry"); return rows.filter(row => row.endpoint_key); } const values = await readRegistryTable(sheets, deps, { spreadsheetId: REGISTRY_SPREADSHEET_ID, sheetName: ENDPOINT_REGISTRY_SHEET, columnEnd: "BA", dataEndRow: 2000 });';
 
-  if (shouldReadEndpointRegistryFromSql()) {
-    const rows = await sqlReadTable("API Actions Endpoint Registry");
-    return rows.filter(r => r.endpoint_key);
-  }
-
-  const values = await readRegistryTable(sheets, deps, {
-    spreadsheetId: REGISTRY_SPREADSHEET_ID,`;
-
-          if (!src.includes('shouldReadEndpointRegistryFromSql()) {\n    const rows = await sqlReadTable("API Actions Endpoint Registry")')) {
-            if (!src.includes(marker)) {
-              throw new Error('Could not find loadEndpointRegistry Sheets read marker to patch');
+          if (!src.includes('shouldReadEndpointRegistryFromSql()) { const rows = await sqlReadTable("API Actions Endpoint Registry")')) {
+            if (!src.includes(oldBlock)) {
+              throw new Error("Could not find loadEndpointRegistry Sheets read block to patch");
             }
-            src = src.replace(marker, insert);
+            src = src.replace(oldBlock, newBlock);
           }
 
-          fs.writeFileSync(path, src);
+          fs.writeFileSync(file, src);
           NODE
 
       - name: Validate patch
