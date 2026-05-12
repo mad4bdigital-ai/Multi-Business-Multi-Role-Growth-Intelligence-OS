@@ -16,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Wire SQL endpoint loader in server.js
+      - name: Apply tiny server.js SQL endpoint-registry override
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -25,25 +25,27 @@ jobs:
           path = Path("http-generic-api/server.js")
           text = path.read_text(encoding="utf-8")
 
+          marker = "SERVER_ENDPOINT_REGISTRY_SQL_OVERRIDE"
+
           if "sqlEndpointRegistryLoader.js" not in text:
-              import_block = re.match(r'(?s)((?:import[\s\S]*?;\s*)+)', text)
+              import_block = re.match(r"(?s)((?:import[\s\S]*?;\s*)+)", text)
               if not import_block:
                   raise SystemExit("top-level import block not found in server.js")
               loader_import = (
                   'import { loadSqlEndpointRegistry, shouldReadEndpointRegistryFromSql } '
-                  'from "./sqlEndpointRegistryLoader.js"; '
+                  'from "./sqlEndpointRegistryLoader.js";\n'
               )
               text = text[:import_block.end()] + loader_import + text[import_block.end():]
 
-          exact = "loadEndpointRegistry as loadEndpointRegistryCore"
-          if exact in text:
-              text = text.replace(exact, "loadEndpointRegistry as loadEndpointRegistryFromSheetsCore", 1)
-          elif "loadEndpointRegistryFromSheetsCore" not in text:
-              raise SystemExit("expected loadEndpointRegistry registrySheets import alias not found")
+          old_alias = "loadEndpointRegistry as loadEndpointRegistryCore"
+          new_alias = "loadEndpointRegistry as loadEndpointRegistryFromSheetsCore"
+          if old_alias in text:
+              text = text.replace(old_alias, new_alias, 1)
+          elif new_alias not in text:
+              raise SystemExit("expected loadEndpointRegistry alias not found in server.js")
 
-          marker = "SERVER_ENDPOINT_REGISTRY_SQL_OVERRIDE"
           if marker not in text:
-              import_block = re.match(r'(?s)((?:import[\s\S]*?;\s*)+)', text)
+              import_block = re.match(r"(?s)((?:import[\s\S]*?;\s*)+)", text)
               if not import_block:
                   raise SystemExit("top-level import block not found after import rewrite")
               wrapper = '''
@@ -58,19 +60,20 @@ async function loadEndpointRegistryCore(...args) {
 
   return loadEndpointRegistryFromSheetsCore(...args);
 }
+
 '''
               text = text[:import_block.end()] + wrapper + text[import_block.end():]
 
           path.write_text(text, encoding="utf-8")
           PY
 
-      - name: Validate syntax and patch markers
+      - name: Validate patch
         run: |
           grep -q "SERVER_ENDPOINT_REGISTRY_SQL_OVERRIDE" http-generic-api/server.js
           grep -q "loadEndpointRegistryFromSheetsCore" http-generic-api/server.js
           grep -q "sqlEndpointRegistryLoader.js" http-generic-api/server.js
-          node --check http-generic-api/server.js
           node --check http-generic-api/sqlEndpointRegistryLoader.js
+          node --check http-generic-api/server.js
 
       - name: Commit changes
         run: |
