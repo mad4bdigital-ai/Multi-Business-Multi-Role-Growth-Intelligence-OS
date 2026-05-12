@@ -1,6 +1,7 @@
 import { enforceBrandLiveMutationPreflight } from "./brandLiveMutationPreflight.js";
 import { buildGovernedExecutionContext } from "./governedContextResolution.js";
 import { loadPathResolverRowsForRequest } from "./pathResolverRowsLoader.js";
+import { resolveEndpointLocalSchemaContract } from "./endpointSchemaResolver.js";
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -278,7 +279,11 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
       ? String(endpoint.endpoint_path_or_function || "").trim() || resolvedMethodPath.path
       : resolvedMethodPath.path;
 
-  const schemaContract = await fetchSchemaContract(drive, action.openai_schema_file_id);
+  const localSchemaJsonAssets = (deps && Array.isArray(deps.jsonAssets)) ? deps.jsonAssets :
+    ((deps && Array.isArray(deps.registryJsonAssets)) ? deps.registryJsonAssets : []);
+  const endpointLocalSchemaContract = resolveEndpointLocalSchemaContract(endpoint, { jsonAssets: localSchemaJsonAssets });
+  const schemaContract = endpointLocalSchemaContract ||
+    await fetchSchemaContract(drive, action.openai_schema_file_id);
   const schemaOperationInfo = await resolveSchemaOperation(schemaContract, resolvedMethodPath.method, schemaLookupPath);
   if (!schemaOperationInfo) {
     const err = new Error(`Method/path not found in authoritative schema for ${parent_action_key}.`);
