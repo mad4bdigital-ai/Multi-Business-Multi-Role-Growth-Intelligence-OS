@@ -1,89 +1,13 @@
-name: SQL Endpoint Registry Routes Rollback
+name: Archived one-off patch workflow
 
 on:
   workflow_dispatch:
-    inputs:
-      project_id:
-        description: "Google Cloud project ID. Defaults to repository variable GCP_PROJECT_ID."
-        required: false
-        default: ""
-        type: string
-      service:
-        description: "Cloud Run service"
-        required: false
-        default: "http-generic-api"
-        type: string
-      region:
-        description: "Cloud Run region"
-        required: false
-        default: "europe-west1"
-        type: string
-      revision:
-        description: "Safe baseline revision to roll back to 100% traffic"
-        required: true
-        default: "http-generic-api-00528-qtz"
-        type: string
 
 permissions:
   contents: read
-  id-token: write
-
-env:
-  PROJECT_ID: ${{ inputs.project_id || the vars.GCP_PROJECT_ID }}
 
 jobs:
-  rollback:
+  archived:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate config
-        env:
-          WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          DEPLOYER_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
-          REVISION: ${{ inputs.revision }}
-        run: |
-          set -euo pipefail
-          test -n "$PROJECT_ID" || (echo "Set repository variable GCP_PROJECT_ID or pass project_id input." >&2; exit 1)
-          test -n "$WIF_PROVIDER" || (echo "Missing repository variable GCP_WORKLOAD_IDENTITY_PROVIDER." >&2; exit 1)
-          test -n "$DEPLOYER_SERVICE_ACCOUNT" || (echo "Missing repository variable GCP_DEPLOYER_SERVICE_ACCOUNT." >&2; exit 1)
-          test -n "$REVISION" || (echo "revision input is required." >&2; exit 1)
-          echo "Using project: $PROJECT_ID"
-          echo "Rolling back to revision: $REVISION"
-
-      - uses: actions/checkout@v4
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
-          project_id: ${{ env.PROJECT_ID }}
-
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ env.PROJECT_ID }}
-
-      - name: Roll back to baseline revision
-        env:
-          SERVICE: ${{ inputs.service }}
-          REGION: ${{ inputs.region }}
-         REVISION: ${{ inputs.revision }}
-        run: |
-          set -euo pipefail
-          gcloud config set project "$PROJECT_ID" --quiet
-
-          gcloud run services update-traffic "$SERVICE" \
-            --project "$PROJECT_ID" \
-            --region "$REGION" \
-            --to-revisions "$REVISION=100" \
-            --quiet
-
-          gcloud run services describe "$SERVICE" \
-            --project "$PROJECT_ID" \
-            --region "$REGION" \
-            --format "yaml(status.url,status.traffic)"
-
-      - name: Result
-        run: |
-          echo "Rollback to baseline revision completed."
-          echo "Revision: ${{ inputs.revision }}"
+      - run: echo "Archived one-off workflow; no automatic trigger."
