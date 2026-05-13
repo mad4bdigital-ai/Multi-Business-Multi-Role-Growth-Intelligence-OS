@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "start": "cd http-generic-api && npm start",
+    "postinstall": "cd http-generic-api && npm ci --omit=dev",
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "ci:execution-resolvers": "npm run typecheck && npm test -- --runInBand"
@@ -16,7 +18,9 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "testMatch": ["**/tests/**/*.test.ts"],
+    "testMatch": [
+      "**/tests/**/*.test.ts"
+    ],
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1"
     }
