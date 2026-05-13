@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { readFileSync } from "node:fs";
+import { createSign } from "node:crypto";
 import { findGoogleUserAppConnection, markUserAppConnectionUsed, normalizeEmailKey, parseOauthConfigRef } from "./userAppConnectionCredentials.js";
 
 const GOOGLE_WORKSPACE_SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/documents", "https://www.googleapis.com/auth/drive"];
@@ -147,7 +148,6 @@ async function getMemberScopedToken(options = {}) {
 }
 
 async function saJsonToAccessToken(saJson, scopes) {
-  const { createSign } = await import("node:crypto");
   const now = Math.floor(Date.now() / 1000);
   const tokenUri = saJson.token_uri || "https://oauth2.googleapis.com/token";
   const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT", kid: saJson.private_key_id })).toString("base64url");
