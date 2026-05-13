@@ -232,7 +232,9 @@ async function fetchGlobalGoogleToken() {
       warned = true;
       const sourceSummary = getGoogleAuthCredentialSourcesForEnv(process.env).join(", ") || "none";
       const errDetail = last?.response?.data ? ` GCP response: ${JSON.stringify(last.response.data)}` : (last?.cause?.message ? ` Cause: ${last.cause.message}` : "");
+      const errDump = last ? JSON.stringify(last, Object.getOwnPropertyNames(last)).substring(0, 600) : "";
       console.warn("[googleAuth] Could not obtain a Google access token." + (last?.message ? ` Last error: ${last.message}` : "") + errDetail + ` Sources attempted: ${sourceSummary}`);
+      if (errDump) console.warn("[googleAuth] Error dump:", errDump);
     }
     return "";
   } finally {
