@@ -72,7 +72,9 @@ function envMemberCredentials(email = "") {
 export function getGoogleAuthCredentialSourcesForEnv(env = process.env) {
   const sources = [];
   const authMode = normalizeAuthMode(env.GOOGLE_AUTH_MODE);
-  const hasExplicitServiceAccount = Boolean(env.GOOGLE_APPLICATION_CREDENTIALS || parseSaJson(env.GOOGLE_SA_JSON));
+  const hasExplicitServiceAccount = Boolean(
+    env.GOOGLE_APPLICATION_CREDENTIALS || env.GOOGLE_CREDENTIALS_PATH || parseSaJson(env.GOOGLE_SA_JSON)
+  );
   const hasRefreshToken = Boolean(env.GOOGLE_REFRESH_TOKEN);
 
   if (authMode === "refresh_token") {
@@ -128,7 +130,7 @@ async function fetchGlobalGoogleToken() {
   if (fetchingGlobal) return "";
   fetchingGlobal = true;
   try {
-    const credFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    const credFile = process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GOOGLE_CREDENTIALS_PATH;
     const saJson = parseSaJson(process.env.GOOGLE_SA_JSON);
     const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
     const attempts = [];
