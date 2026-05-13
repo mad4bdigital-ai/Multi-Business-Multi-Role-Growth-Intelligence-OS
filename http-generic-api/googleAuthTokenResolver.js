@@ -162,7 +162,7 @@ function diagnoseSaJson(saJson, credFile) {
     console.warn(`[googleAuth] SA JSON missing required fields: ${missing.join(", ")}. Present: ${present.join(", ")}`);
   } else {
     const hasRealNewlines = typeof saJson.private_key === "string" && saJson.private_key.includes("\n");
-    console.log(`[googleAuth] SA JSON structure OK. client_email=${saJson.client_email} key_newlines=${hasRealNewlines}`);
+    console.log(`[googleAuth] SA JSON structure OK. client_email=${saJson.client_email} private_key_id=${saJson.private_key_id} key_newlines=${hasRealNewlines}`);
   }
 }
 
