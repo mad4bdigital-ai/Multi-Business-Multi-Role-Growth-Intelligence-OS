@@ -598,6 +598,9 @@ async function activationDriveProbe() {
       sample_count: Array.isArray(response.data?.files) ? response.data.files.length : 0,
     };
   } catch (err) {
+    const httpStatus = err?.code || err?.status || err?.response?.status;
+    const apiMsg = err?.response?.data?.error?.message || err?.response?.data?.error_description || "";
+    console.error(`[driveProbe] FAILED — status=${httpStatus} code=${err?.code} msg="${err?.message}"${apiMsg ? ` api="${apiMsg}"` : ""}`);
     return { provider: "google_drive", ...providerProbeError(err) };
   }
 }
@@ -750,11 +753,13 @@ async function activationGithubValidate(args = {}, bootstrapRow = {}, deps = {})
 async function activationProviderBootstrapValidate(args = {}, deps = {}) {
   let bootstrapRow = null;
   let sheetsDiagnostic = null;
+  let driveDiagnostic = null;
   const runtimeBootstrap = await resolveActivationBootstrapConfig();
 
   const result = await runGovernedActivation({
     attemptDrive: async () => {
       const probe = await activationDriveProbe();
+      driveDiagnostic = { ok: probe.ok, code: probe.code || null, message: probe.message || null, status: probe.status || null, auth_failed: probe.auth_failed || false };
       return { ok: probe.ok, auth_failed: probe.auth_failed };
     },
     attemptSheets: async () => {
@@ -796,6 +801,7 @@ async function activationProviderBootstrapValidate(args = {}, deps = {}) {
     activation_layer: "provider_bootstrap_system_tool",
     bootstrap_source: runtimeBootstrap.ok ? runtimeBootstrap.source : "unresolved",
     sheets_required: false,
+    drive_diagnostic: driveDiagnostic || { attempted: false },
     sheets_diagnostic: sheetsDiagnostic
       ? {
           attempted: true,
