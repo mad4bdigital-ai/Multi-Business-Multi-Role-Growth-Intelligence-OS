@@ -18,10 +18,12 @@ export function getPool() {
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       waitForConnections: true,
-      connectionLimit: 10,
+      connectionLimit: Number(process.env.DB_CONNECTION_LIMIT) || 5,
       queueLimit: 0,
-      connectTimeout: Number(process.env.DB_CONNECT_TIMEOUT_MS) || 5000,
+      connectTimeout: Number(process.env.DB_CONNECT_TIMEOUT_MS) || 10000,
       timezone: "Z",
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 10000,
     });
   }
   return pool;
