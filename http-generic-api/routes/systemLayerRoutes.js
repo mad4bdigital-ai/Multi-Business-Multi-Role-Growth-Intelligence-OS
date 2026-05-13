@@ -570,15 +570,27 @@ async function activationBootstrapConfigUpsert(args = {}) {
   };
 }
 
+const PROBE_TIMEOUT_MS = 15000;
+
+function withProbeTimeout(promise, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(Object.assign(new Error(`${label} probe timed out after ${PROBE_TIMEOUT_MS}ms`), { code: "probe_timeout" })), PROBE_TIMEOUT_MS))
+  ]);
+}
+
 async function activationDriveProbe() {
   try {
     const { drive } = await getGoogleClientsForSpreadsheet(ACTIVATION_BOOTSTRAP_SPREADSHEET_ID);
-    const response = await drive.files.list({
-      pageSize: 1,
-      fields: "files(id,name,mimeType),nextPageToken",
-      supportsAllDrives: true,
-      includeItemsFromAllDrives: true,
-    });
+    const response = await withProbeTimeout(
+      drive.files.list({
+        pageSize: 1,
+        fields: "files(id,name,mimeType),nextPageToken",
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+      }),
+      "Drive"
+    );
     return {
       ok: true,
       provider: "google_drive",
@@ -593,10 +605,13 @@ async function activationDriveProbe() {
 async function activationSheetsBootstrapRead() {
   try {
     const { sheets, spreadsheetId } = await getGoogleClientsForSpreadsheet(ACTIVATION_BOOTSTRAP_SPREADSHEET_ID);
-    const metadata = await sheets.spreadsheets.get({
-      spreadsheetId,
-      fields: "spreadsheetId,properties.title,sheets.properties.title",
-    });
+    const metadata = await withProbeTimeout(
+      sheets.spreadsheets.get({
+        spreadsheetId,
+        fields: "spreadsheetId,properties.title,sheets.properties.title",
+      }),
+      "Sheets metadata"
+    );
     const sheetExists = (metadata.data?.sheets || []).some(
       (sheet) => String(sheet?.properties?.title || "").trim() === ACTIVATION_BOOTSTRAP_CONFIG_SHEET
     );
@@ -610,10 +625,13 @@ async function activationSheetsBootstrapRead() {
       };
     }
 
-    const values = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: ACTIVATION_BOOTSTRAP_CONFIG_RANGE,
-    });
+    const values = await withProbeTimeout(
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: ACTIVATION_BOOTSTRAP_CONFIG_RANGE,
+      }),
+      "Sheets values"
+    );
     const row = bootstrapRowObject(values.data?.values || []);
     return {
       ok: true,
