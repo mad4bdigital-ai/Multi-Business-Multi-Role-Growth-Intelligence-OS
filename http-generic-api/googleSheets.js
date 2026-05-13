@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { getGoogleAccessToken } from "./googleAuthTokenResolver.js";
 import { REGISTRY_SPREADSHEET_ID } from "./config.js";
 import { headerMap } from "./sheetHelpers.js";
 import { READ_POLICIES } from "./registryReadPolicies.js";
@@ -16,6 +17,7 @@ function requireEnv(name) {
 
 // --- Singleton & Caching (PR-1) ---
 let globalClientsPromise = null;
+let _clientsToken = null;
 
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 const DEFAULT_CHUNK_ROW_COUNT = 50;
@@ -166,21 +168,22 @@ function sheetRange(sheetName, a1Tail) {
 // --- Exported Methods ---
 
 export async function getGoogleClients() {
+  requireEnv("REGISTRY_SPREADSHEET_ID");
+  const token = await getGoogleAccessToken();
+  if (!token) throw Object.assign(new Error("Google access token unavailable — check SA credentials."), { code: "google_token_missing", status: 500 });
+  if (token !== _clientsToken) {
+    _clientsToken = token;
+    globalClientsPromise = null;
+  }
   if (!globalClientsPromise) {
-    globalClientsPromise = (async () => {
-      requireEnv("REGISTRY_SPREADSHEET_ID");
-      const auth = new google.auth.GoogleAuth({
-        scopes: [
-          "https://www.googleapis.com/auth/spreadsheets",
-          "https://www.googleapis.com/auth/drive"
-        ]
-      });
-      const client = await auth.getClient();
+    globalClientsPromise = Promise.resolve().then(() => {
+      const auth = new google.auth.OAuth2();
+      auth.setCredentials({ access_token: token });
       return {
-        sheets: google.sheets({ version: "v4", auth: client }),
-        drive: google.drive({ version: "v3", auth: client })
+        sheets: google.sheets({ version: "v4", auth }),
+        drive: google.drive({ version: "v3", auth })
       };
-    })();
+    });
   }
   return await globalClientsPromise;
 }
