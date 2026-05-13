@@ -1,1 +1,0 @@
-{"name":"Archived temporary connect cleanup workflow","on":{"workflow_dispatch":{}},"permissions":{"contents":"read"},"jobs":{"noop":{"runs-on":"ubuntu-latest","steps":[{"run":"echo 'Temporary workflow archived. No action performed.'"}]}}}

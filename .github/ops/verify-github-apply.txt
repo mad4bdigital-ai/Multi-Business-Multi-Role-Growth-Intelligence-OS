@@ -1,1 +1,0 @@
-verify github apply endpoint authenticated 2026-05-12T22:27:00Z

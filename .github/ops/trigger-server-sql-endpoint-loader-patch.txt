@@ -1,1 +1,0 @@
-trigger tiny server sql endpoint registry override 2026-05-12T10:22:40Z
