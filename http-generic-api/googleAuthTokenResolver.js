@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { findGoogleUserAppConnection, markUserAppConnectionUsed, normalizeEmailKey, parseOauthConfigRef } from "./userAppConnectionCredentials.js";
 
 const GOOGLE_WORKSPACE_SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/documents", "https://www.googleapis.com/auth/drive"];
-const GOOGLE_SCOPES = [...GOOGLE_WORKSPACE_SCOPES, "https://www.googleapis.com/auth/analytics.readonly", "https://www.googleapis.com/auth/analytics", "https://www.googleapis.com/auth/analytics.edit", "https://www.googleapis.com/auth/analytics.manage.users", "https://www.googleapis.com/auth/analytics.manage.users.readonly", "https://www.googleapis.com/auth/analytics.provision", "https://www.googleapis.com/auth/doubleclicksearch", "https://www.googleapis.com/auth/webmasters", "https://www.googleapis.com/auth/tagmanager.readonly", "https://www.googleapis.com/auth/tagmanager.edit.containers", "https://www.googleapis.com/auth/tagmanager.edit.containers.readonly", "https://www.googleapis.com/auth/tagmanager.manage.accounts", "https://www.googleapis.com/auth/tagmanager.manage.users", "https://www.googleapis.com/auth/tagmanager.delete.containers", "https://www.googleapis.com/auth/tagmanager.edit.containerversions", "https://www.googleapis.com/auth/tagmanager.publish", "https://www.googleapis.com/auth/adwords", "https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/cloud-platform.read-only", "https://www.googleapis.com/auth/cloudplatformprojects", "https://www.googleapis.com/auth/cloudplatformprojects.readonly"];
+
 const cache = new Map();
 let fetchingGlobal = false, warned = false, logged = false;
 
@@ -186,7 +186,7 @@ async function fetchGlobalGoogleToken() {
         attempts.push({
           source: "explicit service account",
           run: async () => saJson
-            ? saJsonToAccessToken(saJson, GOOGLE_SCOPES)
+            ? saJsonToAccessToken(saJson, GOOGLE_WORKSPACE_SCOPES)
             : (() => { throw new Error("No SA JSON loaded and no keyFilename fallback."); })()
         });
       }
