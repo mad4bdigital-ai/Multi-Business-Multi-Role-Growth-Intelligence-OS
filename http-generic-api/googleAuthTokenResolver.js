@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { readFileSync } from "node:fs";
 import { findGoogleUserAppConnection, markUserAppConnectionUsed, normalizeEmailKey, parseOauthConfigRef } from "./userAppConnectionCredentials.js";
 
 const GOOGLE_WORKSPACE_SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/documents", "https://www.googleapis.com/auth/drive"];
@@ -10,11 +11,30 @@ function normalizeAuthMode(value = "") {
   return String(value || "").trim().toLowerCase();
 }
 
+function normalizeSaCredentials(obj) {
+  if (!obj || typeof obj !== "object") return obj;
+  if (typeof obj.private_key === "string" && !obj.private_key.includes("\n")) {
+    return { ...obj, private_key: obj.private_key.replace(/\\n/g, "\n") };
+  }
+  return obj;
+}
+
 function parseSaJson(raw) {
   if (!raw) return null;
   try {
     const s = raw.trim();
-    return JSON.parse(s.startsWith("{") ? s : Buffer.from(s, "base64").toString("utf8"));
+    const parsed = JSON.parse(s.startsWith("{") ? s : Buffer.from(s, "base64").toString("utf8"));
+    return normalizeSaCredentials(parsed);
+  } catch {
+    return null;
+  }
+}
+
+function loadSaFile(filePath) {
+  if (!filePath) return null;
+  try {
+    const raw = readFileSync(filePath, "utf8");
+    return normalizeSaCredentials(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -131,7 +151,7 @@ async function fetchGlobalGoogleToken() {
   fetchingGlobal = true;
   try {
     const credFile = process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GOOGLE_CREDENTIALS_PATH;
-    const saJson = parseSaJson(process.env.GOOGLE_SA_JSON);
+    const saJson = parseSaJson(process.env.GOOGLE_SA_JSON) || loadSaFile(credFile);
     const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
     const attempts = [];
 
