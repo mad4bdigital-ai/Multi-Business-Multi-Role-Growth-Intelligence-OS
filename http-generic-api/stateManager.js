@@ -238,11 +238,16 @@ export function createStateManager(config) {
 
   async function readGovernedSheetRecords(sheetName, spreadsheetId = REGISTRY_SPREADSHEET_ID) {
     const dsMode = (process.env.DATA_SOURCE || "sheets").toLowerCase();
-    if (dsMode !== "sheets") {
+    if (dsMode === "sql") {
+      const rows = await sqlAdapter.readTable(sheetName);
+      const header = rows.length > 0 ? Object.keys(rows[0]) : [];
+      return { header, rows, map: headerMap(header, sheetName) };
+    }
+    if (dsMode === "dual") {
       try {
         const rows = await sqlAdapter.readTable(sheetName);
         if (rows.length > 0) {
-          const header = rows.length > 0 ? Object.keys(rows[0]) : [];
+          const header = Object.keys(rows[0]);
           return { header, rows, map: headerMap(header, sheetName) };
         }
       } catch (err) {

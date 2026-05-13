@@ -22,15 +22,15 @@ export function init({ readSheets, appendSheets, updateSheets, deleteSheets }) {
 // ── Reads ─────────────────────────────────────────────────────────────────────
 export async function readTable(sheetName, opts = {}) {
   if (MODE === "sheets") return _readSheets(sheetName, opts);
+  if (MODE === "sql") return sql.readTable(sheetName);
 
+  // dual: SQL primary, Sheets fallback
   try {
     const rows = await sql.readTable(sheetName);
     if (rows.length > 0) return rows;
-    // SQL empty (pre-seed) → fall through to Sheets
   } catch (err) {
     _warn("readTable", sheetName, err);
   }
-
   return _readSheets(sheetName, opts);
 }
 
@@ -39,7 +39,9 @@ export async function findRows(sheetName, col, value) {
     const all = await _readSheets(sheetName, {});
     return all.filter((r) => r[col] === value);
   }
+  if (MODE === "sql") return sql.findRows(sheetName, col, value);
 
+  // dual: SQL primary, Sheets fallback
   try {
     return await sql.findRows(sheetName, col, value);
   } catch (err) {
