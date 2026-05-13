@@ -231,7 +231,8 @@ async function fetchGlobalGoogleToken() {
     if (!warned) {
       warned = true;
       const sourceSummary = getGoogleAuthCredentialSourcesForEnv(process.env).join(", ") || "none";
-      console.warn("[googleAuth] Could not obtain a Google access token." + (last?.message ? ` Last error: ${last.message}` : "") + ` Sources attempted: ${sourceSummary}`);
+      const errDetail = last?.response?.data ? ` GCP response: ${JSON.stringify(last.response.data)}` : (last?.cause?.message ? ` Cause: ${last.cause.message}` : "");
+      console.warn("[googleAuth] Could not obtain a Google access token." + (last?.message ? ` Last error: ${last.message}` : "") + errDetail + ` Sources attempted: ${sourceSummary}`);
     }
     return "";
   } finally {
