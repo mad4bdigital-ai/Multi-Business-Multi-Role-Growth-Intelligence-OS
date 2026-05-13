@@ -18,6 +18,18 @@ export const REGISTRY_SURFACES = Object.freeze({
     sqlTableName: "Execution Policy Registry",
     legacySheetEnv: "EXECUTION_POLICY_SHEET",
     keyFields: Object.freeze(["policy_group", "policy_key"])
+  }),
+  brands: Object.freeze({
+    surfaceKey: "brands",
+    sqlTableName: "Brand Registry",
+    legacySheetEnv: "BRAND_REGISTRY_SHEET",
+    keyFields: Object.freeze(["brand_name", "target_key"])
+  }),
+  hostingAccounts: Object.freeze({
+    surfaceKey: "hosting_accounts",
+    sqlTableName: "Hosting Account Registry",
+    legacySheetEnv: "HOSTING_ACCOUNT_REGISTRY_SHEET",
+    keyFields: Object.freeze(["hosting_account_key"])
   })
 });
 

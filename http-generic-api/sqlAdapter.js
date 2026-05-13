@@ -348,6 +348,15 @@ export async function readTable(sheetName) {
   );
 }
 
+// Returns rows with raw snake_case SQL column names — no sheet-name reverse-mapping.
+export async function readTableDirect(sheetName) {
+  const table = resolveTable(sheetName);
+  const [rows] = await getPool().query(
+    `SELECT * FROM \`${table}\` ORDER BY id`
+  );
+  return rows.map(({ id, created_at, updated_at, ...rest }) => rest);
+}
+
 export async function appendRow(sheetName, rowObject) {
   const table = resolveTable(sheetName);
   const { sqlCols, vals } = sheetRowToSqlPairs(table, rowObject);

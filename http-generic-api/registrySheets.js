@@ -1,6 +1,6 @@
 import { cacheGet, cacheSet } from "./registryCache.js";
 import { READ_POLICIES } from "./registryReadPolicies.js";
-import { readTable as sqlReadTable } from "./sqlAdapter.js";
+import { readTable as sqlReadTable, readTableDirect as sqlReadTableDirect } from "./sqlAdapter.js";
 import {
   filterRowsByKeyFields,
   readSqlRegistrySurface,
@@ -114,6 +114,39 @@ export async function getRegistrySurfaceCatalogRowBySurfaceId(surfaceId = "", de
 }
 
 export async function loadBrandRegistry(sheets, deps = {}) {
+  if (_DATA_SOURCE !== "sheets") {
+    const rows = await sqlReadTableDirect("Brand Registry");
+    return rows
+      .map(r => ({
+        brand_name: r.brand_name || "",
+        normalized_brand_name: r.normalized_brand_name || "",
+        brand_domain: r.brand_domain || "",
+        target_key: r.target_key || "",
+        site_aliases_json: r.site_aliases_json || "",
+        base_url: r.base_url || "",
+        transport_action_key: r.transport_action_key || "",
+        auth_type: r.auth_type || "",
+        credential_resolution: r.credential_resolution || "",
+        username: r.username || "",
+        application_password: r.application_password || "",
+        default_headers_json: r.default_headers_json || "",
+        write_allowed: r.write_allowed || "",
+        destructive_allowed: r.destructive_allowed || "",
+        transport_enabled: r.transport_enabled || "",
+        target_resolution_mode: r.target_resolution_mode || "",
+        hosting_provider: r.hosting_provider || "",
+        hosting_account_key: r.hosting_account_key || "",
+        hostinger_api_target_key: r.hostinger_api_target_key || "",
+        server_environment_label: r.server_environment_label || "",
+        server_environment_type: r.server_environment_type || "",
+        server_region_or_datacenter: r.server_region_or_datacenter || "",
+        server_primary_domain: r.server_primary_domain || "",
+        server_panel_reference: r.server_panel_reference || "",
+        hosting_account_registry_ref: r.hosting_account_registry_ref || "",
+      }))
+      .filter(row => row.brand_name || row.target_key || row.base_url);
+  }
+
   const {
     BRAND_REGISTRY_SHEET,
     REGISTRY_SPREADSHEET_ID,
@@ -164,6 +197,47 @@ export async function loadBrandRegistry(sheets, deps = {}) {
 }
 
 export async function loadHostingAccountRegistry(sheets, deps = {}) {
+  if (_DATA_SOURCE !== "sheets") {
+    const rows = await sqlReadTableDirect("Hosting Account Registry");
+    return rows
+      .map(r => ({
+        hosting_account_key: r.hosting_account_key || "",
+        hosting_provider: r.hosting_provider || "",
+        account_identifier: r.account_identifier || "",
+        api_auth_mode: r.api_auth_mode || "",
+        api_key_reference: r.api_key_reference || "",
+        api_key_storage_mode: r.api_key_storage_mode || "",
+        plan_label: r.plan_label || "",
+        plan_type: r.plan_type || "",
+        account_scope_notes: r.account_scope_notes || "",
+        status: r.status || "",
+        last_reviewed_at: r.last_reviewed_at || "",
+        brand_sites_json: r.brand_sites_json || "",
+        resolver_target_keys_json: r.resolver_target_keys_json || "",
+        auth_validation_status: r.auth_validation_status || "",
+        endpoint_binding_status: r.endpoint_binding_status || "",
+        resolver_execution_ready: r.resolver_execution_ready || "",
+        last_runtime_check_at: r.last_runtime_check_at || "",
+        server_environment_type: r.server_environment_type || "",
+        server_panel_reference: r.server_panel_reference || "",
+        ssh_available: r.ssh_available || "",
+        ssh_enabled: r.ssh_enabled || "",
+        ssh_source: r.ssh_source || "",
+        ssh_host: r.ssh_host || "",
+        ssh_port: r.ssh_port || "",
+        ssh_username: r.ssh_username || "",
+        ssh_auth_mode: r.ssh_auth_mode || "",
+        ssh_credential_reference: r.ssh_credential_reference || "",
+        ssh_runtime_notes: r.ssh_runtime_notes || "",
+        account_mode: r.account_mode || "",
+        shared_access_enabled: r.shared_access_enabled || "",
+        sftp_available: r.sftp_available || "",
+        wp_cli_available: r.wp_cli_available || "",
+        last_validated_at: r.last_validated_at || "",
+      }))
+      .filter(row => row.hosting_account_key);
+  }
+
   const {
     HOSTING_ACCOUNT_REGISTRY_COLUMNS,
     HOSTING_ACCOUNT_REGISTRY_SHEET,
