@@ -144,7 +144,7 @@ export async function performUniversalServerWriteback(input = {}, deps = {}) {
       )
     );
 
-  if (oversized) {
+  if (shouldPersistJsonAsset) {
     const artifact = await persistOversizedArtifactImpl({
       brand_name: input.brand_name,
       target_key: input.target_key,
@@ -175,6 +175,7 @@ export async function performUniversalServerWriteback(input = {}, deps = {}) {
         captured_at: completed_at,
         job_id: input.job_id,
         oversized,
+        drive_stored: true,
         response_body: extractedJsonAssetBody,
         cpt_slug: input.cpt_slug || "",
         asset_type: input.asset_type || assetHome.asset_class,

@@ -488,8 +488,9 @@ export function toJsonAssetRegistryRow(args = {}) {
       : "raw_sync_response_body";
   const asset_type = String(args.asset_type || inferred_asset_type).trim();
   const oversized = !!args.oversized;
+  const driveStored = oversized || !!args.drive_stored;
   const payloadBody = extractJsonAssetPayloadBody(args);
-  const embeddedPayload = oversized
+  const embeddedPayload = driveStored
     ? ""
     : JSON.stringify(payloadBody ?? null);
   const assetHome = assertJsonAssetWriteAllowed({
@@ -506,19 +507,19 @@ export function toJsonAssetRegistryRow(args = {}) {
     asset_type,
     cpt_slug: args.cpt_slug || "",
     mapping_status: "captured_unreduced",
-    mapping_version: oversized
+    mapping_version: driveStored
       ? "response_body_artifact_v2"
       : "response_body_embedded_v2",
     storage_format: "json",
-    google_drive_link: oversized ? args.google_drive_link : "",
+    google_drive_link: driveStored ? args.google_drive_link : "",
     source_mode: "server_writeback_artifact",
-    source_asset_ref: oversized ? args.drive_file_id : "",
+    source_asset_ref: driveStored ? args.drive_file_id : "",
     json_payload: embeddedPayload,
-    transport_status: oversized ? "captured_external" : "captured_embedded",
+    transport_status: driveStored ? "drive_stored" : "captured_embedded",
     validation_status: "pending",
     last_validated_at: args.captured_at,
-    notes: oversized
-      ? `Oversized derived JSON artifact captured for execution_trace_id=${args.execution_trace_id}; authoritative_home=${assetHome.authoritative_home}`
+    notes: driveStored
+      ? `Drive artifact captured for execution_trace_id=${args.execution_trace_id}; authoritative_home=${assetHome.authoritative_home}`
       : `Embedded derived JSON artifact captured for execution_trace_id=${args.execution_trace_id}; authoritative_home=${assetHome.authoritative_home}`,
     active_status: "TRUE"
   };
@@ -905,7 +906,7 @@ export async function performUniversalServerWriteback(input = {}) {
       )
     );
 
-  if (oversized) {
+  if (shouldPersistJsonAsset) {
     const artifact = await persistOversizedArtifact({
       brand_name: input.brand_name,
       target_key: input.target_key,
@@ -936,6 +937,7 @@ export async function performUniversalServerWriteback(input = {}) {
         captured_at: completed_at,
         job_id: input.job_id,
         oversized,
+        drive_stored: true,
         response_body: extractedJsonAssetBody,
         cpt_slug: input.cpt_slug || "",
         asset_type: input.asset_type || assetHome.asset_class,
