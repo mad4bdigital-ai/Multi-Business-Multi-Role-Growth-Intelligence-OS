@@ -44,13 +44,13 @@ export function buildGptSessionRoutes(deps) {
       }
 
       const [[{ max_idx }]] = await pool.query(
-        "SELECT COALESCE(MAX(turn_index), -1) AS max_idx FROM `session_turns` WHERE session_id = ?",
+        "SELECT COALESCE(MAX(turn_index), -1) AS max_idx FROM `gpt_session_turns` WHERE session_id = ?",
         [session.session_id]
       );
       const turnIndex = Number(max_idx) + 1;
 
       await pool.query(
-        `INSERT INTO \`session_turns\` (session_id, turn_index, role, content, action_key, created_at)
+        `INSERT INTO \`gpt_session_turns\` (session_id, turn_index, role, content, action_key, created_at)
          VALUES (?, ?, ?, ?, ?, NOW())`,
         [session.session_id, turnIndex, role, content, action_key]
       );
