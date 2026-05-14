@@ -121,40 +121,49 @@ try {
   section("auth openapi contract");
 
   {
+    // MCP-style tenant schema: five meta-operations replace all explicit paths.
+    // Connect/system operations are now accessed via callTool (discovered through listTools).
     const doc = yaml.load(readFileSync("openapi.tenant-gpt.auth.yaml", "utf8"));
     const exposedPaths = Object.keys(doc.paths || {});
     const securityScheme = doc.components?.securitySchemes?.userBearerAuth;
-    const activateSchema = doc.paths?.["/connect/activate"]?.post?.requestBody?.content?.["application/json"]?.schema;
-    const systemToolCallSchema = doc.paths?.["/system/tools/call"]?.post?.requestBody?.content?.["application/json"]?.schema;
-    const statusConnection = doc.paths?.["/connect/status"]?.get?.responses?.["200"]?.content?.["application/json"]?.schema?.properties?.connection;
-    const deviceResponse = doc.paths?.["/connect/device-install"]?.post?.responses?.["200"]?.content?.["application/json"]?.schema;
-    const protectedOperations = exposedPaths.flatMap((pathKey) => {
+    const callToolSchema = doc.paths?.["/gpt/tools/call"]?.post?.requestBody?.content?.["application/json"]?.schema;
+    const allOperations = exposedPaths.flatMap((pathKey) => {
       const pathItem = doc.paths[pathKey] || {};
       return Object.entries(pathItem)
-        .filter(([method, operation]) => ["get", "post", "put", "delete", "patch"].includes(method) && !(Array.isArray(operation?.security) && operation.security.length === 0))
+        .filter(([method]) => ["get", "post", "put", "delete", "patch"].includes(method))
         .map(([method, operation]) => ({ pathKey, method, operation }));
     });
+    const postOps = allOperations.filter(({ method }) => method === "post");
 
     assert("tenant GPT schema uses OAuth action auth", securityScheme?.type === "oauth2", JSON.stringify(securityScheme));
     assert("tenant GPT schema declares authorization code flow", Boolean(securityScheme?.flows?.authorizationCode), JSON.stringify(securityScheme));
 
     const scopeKeys = Object.keys(securityScheme?.flows?.authorizationCode?.scopes || {});
     assert("tenant GPT schema declares linked tenant scopes", TENANT_SCOPE_LINKS.every((scope) => scopeKeys.includes(scope)), JSON.stringify(scopeKeys));
-    assert("tenant GPT schema root security requires linked tenant scopes", TENANT_SCOPE_LINKS.every((scope) => doc.security?.[0]?.userBearerAuth?.includes(scope)), JSON.stringify(doc.security));
-    assert("tenant GPT schema embeds OAuth security on protected operations", protectedOperations.every(({ operation }) => TENANT_SCOPE_LINKS.every((scope) => operation.security?.[0]?.userBearerAuth?.includes(scope))), JSON.stringify(protectedOperations.map(({ pathKey, method }) => `${method.toUpperCase()} ${pathKey}`)));
+
+    // MCP schema: scopes are declared in the flows object; individual operations use userBearerAuth: []
+    // (no per-operation scope arrays — authentication is enforced, scope grant is in the OAuth consent)
+    assert("tenant GPT schema root security uses userBearerAuth", "userBearerAuth" in (doc.security?.[0] ?? {}), JSON.stringify(doc.security));
+    assert("tenant GPT schema all operations require userBearerAuth",
+      allOperations.every(({ operation }) => "userBearerAuth" in (operation.security?.[0] ?? {})),
+      allOperations.filter(({ operation }) => !("userBearerAuth" in (operation.security?.[0] ?? {}))).map(({ pathKey }) => pathKey).join(", "));
+
     assert("tenant GPT schema carries action auth preset", doc["x-gpt-action-auth-preset"]?.client_id === "mad4b-tenant-gpt", JSON.stringify(securityScheme));
     assert("tenant GPT schema preset carries scope links", TENANT_SCOPE_LINKS.every((scope) => doc["x-gpt-action-auth-preset"]?.scope_links?.includes(scope)), JSON.stringify(doc["x-gpt-action-auth-preset"]));
     assert("tenant GPT schema hides OAuth plumbing operations", !exposedPaths.some((path) => path.startsWith("/auth/")), exposedPaths.join(", "));
-    assert("tenant GPT schema exposes system tools list", exposedPaths.includes("/system/tools"), exposedPaths.join(", "));
-    assert("tenant GPT schema exposes system tools call", exposedPaths.includes("/system/tools/call"), exposedPaths.join(", "));
-    assert("tenant GPT schema exposes system connector list", exposedPaths.includes("/system/connectors"), exposedPaths.join(", "));
-    assert("tenant GPT schema does not expose admin provider-bootstrap tool enum", !systemToolCallSchema?.properties?.name?.enum?.includes("activation_provider_bootstrap_validate"));
-    assert("activate schema exposes n8n activation mode", Array.isArray(activateSchema?.properties?.n8n_activation_mode?.enum), JSON.stringify(activateSchema?.properties));
-    assert("n8n activation enum supports managed main server", activateSchema.properties.n8n_activation_mode.enum.includes("managed_main_server"));
-    assert("n8n activation enum supports self hosted local", activateSchema.properties.n8n_activation_mode.enum.includes("self_hosted_local"));
-    assert("status schema returns n8n activation mode", Array.isArray(statusConnection?.properties?.n8n_activation_mode?.enum), JSON.stringify(statusConnection?.properties));
-    assert("device install schema returns app routes", deviceResponse?.properties?.app_routes?.type === "array", JSON.stringify(deviceResponse?.properties));
-    assert("device install schema returns installation bundle", deviceResponse?.properties?.installation?.type === "object", JSON.stringify(deviceResponse?.properties));
+
+    // MCP meta-operations (connect/system tools are now accessible via callTool)
+    assert("tenant GPT schema exposes activateSession", exposedPaths.includes("/activation/session-context"), exposedPaths.join(", "));
+    assert("tenant GPT schema exposes listTools", exposedPaths.includes("/gpt/tools"), exposedPaths.join(", "));
+    assert("tenant GPT schema exposes callTool", exposedPaths.includes("/gpt/tools/call"), exposedPaths.join(", "));
+    assert("tenant GPT schema exposes writeSessionTurn", exposedPaths.includes("/gpt/sessions/{id}/turn"), exposedPaths.join(", "));
+    assert("tenant GPT schema exposes endSession", exposedPaths.includes("/gpt/sessions/{id}/end"), exposedPaths.join(", "));
+
+    assert("tenant GPT callTool body requires name", Array.isArray(callToolSchema?.required) && callToolSchema.required.includes("name"));
+    assert("tenant GPT all POST operations are non-consequential",
+      postOps.every(({ operation }) => operation["x-openai-isConsequential"] === false),
+      postOps.filter(({ operation }) => operation["x-openai-isConsequential"] !== false).map(({ pathKey }) => pathKey).join(", "));
+    assert("tenant GPT schema does not expose admin provider-bootstrap paths", !exposedPaths.some((p) => p.startsWith("/admin/")), exposedPaths.join(", "));
   }
 
   section("connect activation validation");

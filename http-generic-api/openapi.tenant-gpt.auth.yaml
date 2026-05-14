@@ -73,6 +73,8 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+security:
+  - userBearerAuth: []
 paths:
   /activation/session-context:
     get:
