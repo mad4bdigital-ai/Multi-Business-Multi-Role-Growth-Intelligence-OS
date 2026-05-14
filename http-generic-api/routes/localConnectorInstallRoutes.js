@@ -726,8 +726,15 @@ export function buildLocalConnectorInstallRoutes(deps) {
         custom_aliases = [],
         reprovision = false,
       } = req.body || {};
-      if (!user_id || !tenant_id || !device_id) {
-        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "user_id, tenant_id, device_id required." } });
+
+      // user_id and tenant_id are optional in the body when a user JWT is present —
+      // resolveRequestedLocalPrincipal reads them from the token.
+      const isUserAuth = req.auth?.mode === "user_jwt" || req.auth?.mode === "api_credential";
+      if (!device_id) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "device_id is required." } });
+      }
+      if (!isUserAuth && (!user_id || !tenant_id)) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "user_id and tenant_id are required for admin/service calls." } });
       }
 
       const pool = getPool();
@@ -878,8 +885,12 @@ export function buildLocalConnectorInstallRoutes(deps) {
   router.get("/local-connector/install/status", requireBackendApiKey, async (req, res) => {
     try {
       const { user_id, tenant_id, device_id } = req.query;
-      if (!user_id || !tenant_id || !device_id) {
-        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "user_id, tenant_id, device_id required." } });
+      const isUserAuthStatus = req.auth?.mode === "user_jwt" || req.auth?.mode === "api_credential";
+      if (!device_id) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "device_id is required." } });
+      }
+      if (!isUserAuthStatus && (!user_id || !tenant_id)) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "user_id and tenant_id are required for admin/service calls." } });
       }
       const principal = await resolveRequestedLocalPrincipal(req, { user_id, tenant_id });
       const [[config]] = await getPool().query(
@@ -903,8 +914,12 @@ export function buildLocalConnectorInstallRoutes(deps) {
   router.delete("/local-connector/uninstall", requireBackendApiKey, async (req, res) => {
     try {
       const { user_id, tenant_id, device_id } = req.body || {};
-      if (!user_id || !tenant_id || !device_id) {
-        return res.status(400).json({ ok: false, error: { code: "missing_fields" } });
+      const isUserAuthUninstall = req.auth?.mode === "user_jwt" || req.auth?.mode === "api_credential";
+      if (!device_id) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "device_id is required." } });
+      }
+      if (!isUserAuthUninstall && (!user_id || !tenant_id)) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "user_id and tenant_id are required for admin/service calls." } });
       }
       const principal = await resolveRequestedLocalPrincipal(req, { user_id, tenant_id });
       const [result] = await getPool().query(
