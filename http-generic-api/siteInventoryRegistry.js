@@ -5,6 +5,9 @@ import {
 } from "./config.js";
 import { fetchRange } from "./googleSheets.js";
 import { headerMap, getCell } from "./sheetHelpers.js";
+import { readTableDirect as sqlReadTableDirect } from "./sqlAdapter.js";
+
+const _DATA_SOURCE = String(process.env.DATA_SOURCE || "").trim().toLowerCase() || "sheets";
 
 function registrySchemaError(sheetName, col) {
   const err = new Error(`${sheetName} missing required column: ${col}`);
@@ -48,6 +51,22 @@ function validateColumns(map, columns, sheetName) {
 }
 
 export async function loadSiteRuntimeInventoryRegistry(sheets) {
+  if (_DATA_SOURCE !== "sheets") {
+    const rows = await sqlReadTableDirect("Site Runtime Inventory Registry");
+    return rows.map(r => ({
+      target_key: r.target_key || "",
+      brand_name: r.brand_name || "",
+      brand_domain: r.brand_domain || "",
+      base_url: r.base_url || "",
+      site_type: r.site_type || "",
+      supported_cpts: r.supported_cpts || "",
+      supported_taxonomies: r.supported_taxonomies || "",
+      generated_endpoint_support: r.generated_endpoint_support || "",
+      runtime_validation_status: r.runtime_validation_status || "",
+      last_runtime_validated_at: r.last_runtime_validated_at || "",
+      active_status: r.active_status || ""
+    })).filter(r => r.target_key || r.brand_domain || r.base_url);
+  }
   const values = await fetchRange(sheets, `'${SITE_RUNTIME_INVENTORY_REGISTRY_SHEET}'!A1:Z2000`);
   if (!values.length) throw registryEmptyError("Site Runtime Inventory Registry");
   const map = headerMap(values[0], SITE_RUNTIME_INVENTORY_REGISTRY_SHEET);
@@ -68,6 +87,23 @@ export async function loadSiteRuntimeInventoryRegistry(sheets) {
 }
 
 export async function loadSiteSettingsInventoryRegistry(sheets) {
+  if (_DATA_SOURCE !== "sheets") {
+    const rows = await sqlReadTableDirect("Site Settings Inventory Registry");
+    return rows.map(r => ({
+      target_key: r.target_key || "",
+      brand_name: r.brand_name || "",
+      brand_domain: r.brand_domain || "",
+      base_url: r.base_url || "",
+      site_type: r.site_type || "",
+      permalink_structure: r.permalink_structure || "",
+      timezone_string: r.timezone_string || "",
+      site_language: r.site_language || "",
+      active_theme: r.active_theme || "",
+      settings_validation_status: r.settings_validation_status || "",
+      last_settings_validated_at: r.last_settings_validated_at || "",
+      active_status: r.active_status || ""
+    })).filter(r => r.target_key || r.brand_domain || r.base_url);
+  }
   const values = await fetchRange(sheets, `'${SITE_SETTINGS_INVENTORY_REGISTRY_SHEET}'!A1:Z2000`);
   if (!values.length) throw registryEmptyError("Site Settings Inventory Registry");
   const map = headerMap(values[0], SITE_SETTINGS_INVENTORY_REGISTRY_SHEET);
@@ -89,6 +125,23 @@ export async function loadSiteSettingsInventoryRegistry(sheets) {
 }
 
 export async function loadPluginInventoryRegistry(sheets) {
+  if (_DATA_SOURCE !== "sheets") {
+    const rows = await sqlReadTableDirect("Plugin Inventory Registry");
+    return rows.map(r => ({
+      target_key: r.target_key || "",
+      brand_name: r.brand_name || "",
+      brand_domain: r.brand_domain || "",
+      base_url: r.base_url || "",
+      site_type: r.site_type || "",
+      active_plugins: r.active_plugins || "",
+      plugin_versions_json: r.plugin_versions_json || "",
+      plugin_owned_tables: r.plugin_owned_tables || "",
+      plugin_owned_entities: r.plugin_owned_entities || "",
+      plugin_validation_status: r.plugin_validation_status || "",
+      last_plugin_validated_at: r.last_plugin_validated_at || "",
+      active_status: r.active_status || ""
+    })).filter(r => r.target_key || r.brand_domain || r.base_url);
+  }
   const values = await fetchRange(sheets, `'${PLUGIN_INVENTORY_REGISTRY_SHEET}'!A1:Z2000`);
   if (!values.length) throw registryEmptyError("Plugin Inventory Registry");
   const map = headerMap(values[0], PLUGIN_INVENTORY_REGISTRY_SHEET);

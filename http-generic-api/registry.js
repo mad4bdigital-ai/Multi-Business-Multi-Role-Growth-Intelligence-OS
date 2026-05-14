@@ -13,6 +13,9 @@ import {
   SERVICE_VERSION, GITHUB_API_BASE_URL, GITHUB_TOKEN, GITHUB_BLOB_CHUNK_MAX_LENGTH,
   DEFAULT_JOB_MAX_ATTEMPTS, JOB_WEBHOOK_TIMEOUT_MS, JOB_RETRY_DELAYS_MS
 } from "./config.js";
+import { readTableDirect as sqlReadTableDirect } from "./sqlAdapter.js";
+
+const _DATA_SOURCE = String(process.env.DATA_SOURCE || "").trim().toLowerCase() || "sheets";
 
 export function toValuesApiRange(sheetName, a1Tail) {
   return `${String(sheetName || "").trim()}!${a1Tail}`;
@@ -321,6 +324,13 @@ export async function loadExecutionPolicies(sheets) {
 }
 
 export async function readExecutionPolicyRegistryLive() {
+  if (_DATA_SOURCE !== "sheets") {
+    const cols = ["policy_group", "policy_key", "policy_value", "active", "execution_scope", "affects_layer", "blocking", "notes"];
+    const sqlRows = await sqlReadTableDirect("Execution Policy Registry");
+    const header = cols;
+    const rows = sqlRows.map(r => cols.map(c => String(r[c] ?? "")));
+    return { header, rows, map: headerMap(header, EXECUTION_POLICY_SHEET) };
+  }
   const { sheets } = await getGoogleClientsForSpreadsheet(REGISTRY_SPREADSHEET_ID);
   const values = await fetchRange(
     sheets,
@@ -1677,6 +1687,22 @@ export async function ensureSiteMigrationRouteWorkflowRows() {
 }
 
 export async function loadSiteRuntimeInventoryRegistry(sheets) {
+  if (_DATA_SOURCE !== "sheets") {
+    const rows = await sqlReadTableDirect("Site Runtime Inventory Registry");
+    return rows.map(r => ({
+      target_key: r.target_key || "",
+      brand_name: r.brand_name || "",
+      brand_domain: r.brand_domain || "",
+      base_url: r.base_url || "",
+      site_type: r.site_type || "",
+      supported_cpts: r.supported_cpts || "",
+      supported_taxonomies: r.supported_taxonomies || "",
+      generated_endpoint_support: r.generated_endpoint_support || "",
+      runtime_validation_status: r.runtime_validation_status || "",
+      last_runtime_validated_at: r.last_runtime_validated_at || "",
+      active_status: r.active_status || ""
+    })).filter(r => r.target_key || r.brand_domain || r.base_url);
+  }
   const values = await fetchRange(
     sheets,
     `'${SITE_RUNTIME_INVENTORY_REGISTRY_SHEET}'!A1:Z2000`
@@ -1711,6 +1737,23 @@ export async function loadSiteRuntimeInventoryRegistry(sheets) {
 }
 
 export async function loadSiteSettingsInventoryRegistry(sheets) {
+  if (_DATA_SOURCE !== "sheets") {
+    const rows = await sqlReadTableDirect("Site Settings Inventory Registry");
+    return rows.map(r => ({
+      target_key: r.target_key || "",
+      brand_name: r.brand_name || "",
+      brand_domain: r.brand_domain || "",
+      base_url: r.base_url || "",
+      site_type: r.site_type || "",
+      permalink_structure: r.permalink_structure || "",
+      timezone_string: r.timezone_string || "",
+      site_language: r.site_language || "",
+      active_theme: r.active_theme || "",
+      settings_validation_status: r.settings_validation_status || "",
+      last_settings_validated_at: r.last_settings_validated_at || "",
+      active_status: r.active_status || ""
+    })).filter(r => r.target_key || r.brand_domain || r.base_url);
+  }
   const values = await fetchRange(
     sheets,
     `'${SITE_SETTINGS_INVENTORY_REGISTRY_SHEET}'!A1:Z2000`
@@ -1746,6 +1789,23 @@ export async function loadSiteSettingsInventoryRegistry(sheets) {
 }
 
 export async function loadPluginInventoryRegistry(sheets) {
+  if (_DATA_SOURCE !== "sheets") {
+    const rows = await sqlReadTableDirect("Plugin Inventory Registry");
+    return rows.map(r => ({
+      target_key: r.target_key || "",
+      brand_name: r.brand_name || "",
+      brand_domain: r.brand_domain || "",
+      base_url: r.base_url || "",
+      site_type: r.site_type || "",
+      active_plugins: r.active_plugins || "",
+      plugin_versions_json: r.plugin_versions_json || "",
+      plugin_owned_tables: r.plugin_owned_tables || "",
+      plugin_owned_entities: r.plugin_owned_entities || "",
+      plugin_validation_status: r.plugin_validation_status || "",
+      last_plugin_validated_at: r.last_plugin_validated_at || "",
+      active_status: r.active_status || ""
+    })).filter(r => r.target_key || r.brand_domain || r.base_url);
+  }
   const values = await fetchRange(
     sheets,
     `'${PLUGIN_INVENTORY_REGISTRY_SHEET}'!A1:Z2000`
