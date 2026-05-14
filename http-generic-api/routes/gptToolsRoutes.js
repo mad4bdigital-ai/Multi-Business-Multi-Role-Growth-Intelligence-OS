@@ -49,7 +49,7 @@ async function fetchTools(callerType) {
 async function dispatchTool(callerType, toolKey, args, req) {
   const table = TOOLS_TABLE[callerType] || TOOLS_TABLE.tenant;
   const [rows] = await getPool().query(
-    `SELECT http_method, http_path, path_param_keys
+    `SELECT http_method, http_path, path_param_keys, fixed_body
      FROM \`${table}\`
      WHERE tool_key = ? AND is_enabled = 1
      LIMIT 1`,
@@ -62,6 +62,7 @@ async function dispatchTool(callerType, toolKey, args, req) {
 
   const { http_method: method, http_path: pathTemplate } = rows[0];
   const pathParamKeys = parseJson(rows[0].path_param_keys) || [];
+  const fixedBody = parseJson(rows[0].fixed_body) || {};
   const remaining = { ...args };
 
   // Substitute path parameters
@@ -99,7 +100,8 @@ async function dispatchTool(callerType, toolKey, args, req) {
       : "";
     url += qs;
   } else {
-    fetchOpts.body = JSON.stringify(remaining);
+    // fixed_body provides defaults (e.g. sub-tool name); caller arguments take priority
+    fetchOpts.body = JSON.stringify({ ...fixedBody, ...remaining });
   }
 
   const response = await fetch(url, fetchOpts);

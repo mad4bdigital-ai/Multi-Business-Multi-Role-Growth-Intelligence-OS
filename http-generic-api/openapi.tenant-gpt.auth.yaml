@@ -134,6 +134,7 @@ paths:
 
   /gpt/tools/call:
     post:
+      x-openai-isConsequential: false
       tags: [tools]
       operationId: callTool
       summary: Execute any platform tool by name
@@ -177,6 +178,7 @@ paths:
 
   /gpt/sessions/{id}/turn:
     post:
+      x-openai-isConsequential: false
       tags: [session]
       operationId: writeSessionTurn
       summary: Record a conversation turn (user, assistant, or tool message)
@@ -224,6 +226,7 @@ paths:
 
   /gpt/sessions/{id}/end:
     post:
+      x-openai-isConsequential: false
       tags: [session]
       operationId: endSession
       summary: Close the session and archive conversation to Google Drive
