@@ -16,6 +16,8 @@ tags:
     description: Backend connection activation and device provisioning.
   - name: connector
     description: Local connector install, status, and health.
+  - name: device-runtime
+    description: Direct device operations proxied through the platform — shell commands, file access, and URL fetch. Requires an installed connector.
   - name: credentials
     description: Secure credential storage for dedicated connection mode.
 components:
@@ -788,6 +790,212 @@ paths:
             - https://auth.mad4b.com/scopes/tenant.activation
             - https://auth.mad4b.com/scopes/tenant.install
             - https://auth.mad4b.com/scopes/tenant.system-tools
+  /connector/{device_id}/policy:
+    get:
+      tags: [device-runtime]
+      operationId: devicePolicy
+      summary: Device runtime governance policy
+      description: "Returns the device's governance boundary: shell enabled state, permitted aliases, accessible file paths, and restricted operations. Call before any device operation. No auth required on the device side."
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Device governance policy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  shell_enabled: { type: boolean }
+                  permitted_aliases: { type: array, items: { type: string } }
+                  permitted_paths: { type: array, items: { type: string } }
+                  restricted_operations: { type: array, items: { type: string } }
+        '404': { description: Device not found or connector not installed }
+      security:
+        - userBearerAuth: []
+
+  /connector/{device_id}/health:
+    get:
+      tags: [device-runtime]
+      operationId: deviceHealth
+      summary: Check if the device connector agent is running
+      description: "Proxies a health check directly to the device tunnel. Returns uptime, hostname, and platform. Use this to confirm the agent is running before shell or file operations."
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Health result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  hostname: { type: string }
+                  platform: { type: string }
+                  uptime: { type: number }
+        '404': { description: Device not found }
+        '502': { description: Device unreachable }
+      security:
+        - userBearerAuth: []
+
+  /connector/{device_id}/shell:
+    post:
+      tags: [device-runtime]
+      operationId: deviceShell
+      summary: Run an allowlisted shell command on the device
+      description: "Executes commands from the device shell allowlist. Use action=list to see available aliases, action=run with an alias to execute. Only aliases pre-approved in the allowlist are permitted."
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [status, list, run]
+                alias:
+                  type: string
+                  description: Shell alias to run (from allowlist). Required for action=run.
+                extra_args:
+                  type: array
+                  items: { type: string }
+                  description: Extra args appended to the command. Only if the alias permits allow_extra_args=true.
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+      responses:
+        '200':
+          description: Shell result or alias listing
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                properties:
+                  ok: { type: boolean }
+                  stdout: { type: string }
+                  stderr: { type: string }
+                  exit_code: { type: integer }
+                  aliases: { type: array, items: { type: object } }
+        '403': { description: Alias not in allowlist }
+        '404': { description: Device not found }
+        '502': { description: Device unreachable }
+      security:
+        - userBearerAuth: []
+
+  /connector/{device_id}/files:
+    post:
+      tags: [device-runtime]
+      operationId: deviceFiles
+      summary: Read or write allowlisted files on the device
+      description: "File access restricted to paths in the device file allowlist. Use action=list to see permitted paths, action=read to retrieve content, action=write to write content."
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [list, read, write]
+                path:
+                  type: string
+                  description: Absolute file path — must be in the file access allowlist.
+                content:
+                  type: string
+                  description: File content for write action.
+      responses:
+        '200':
+          description: File operation result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                properties:
+                  ok: { type: boolean }
+                  path: { type: string }
+                  content: { type: string }
+                  written: { type: boolean }
+                  paths: { type: array, items: { type: string } }
+        '403': { description: Path not in allowlist }
+        '404': { description: Device not found }
+        '502': { description: Device unreachable }
+      security:
+        - userBearerAuth: []
+
+  /connector/{device_id}/fetch-upload:
+    post:
+      tags: [device-runtime]
+      operationId: deviceFetchUpload
+      summary: Fetch a URL from the device and push content to platform uploads
+      description: "Device fetches the URL and forwards content to the platform upload system. Returns upload_id. Use for URLs requiring local network access or when the platform cannot reach the URL directly."
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, upload_type]
+              properties:
+                url:
+                  type: string
+                  description: URL to fetch from the device.
+                upload_type:
+                  type: string
+                  enum: [schema, skill, knowledge, repo_link, asset]
+                filename:
+                  type: string
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+                  default: 30000
+      responses:
+        '200':
+          description: Content fetched and upload record created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  upload_id: { type: string }
+                  fetched_url: { type: string }
+                  status: { type: string }
+        '404': { description: Device not found }
+        '502': { description: Fetch failed or device unreachable }
+      security:
+        - userBearerAuth: []
+
 x-gpt-action-auth-preset:
   authentication_type: OAuth
   schema_url: https://auth.mad4b.com/openapi.tenant-gpt.auth.yaml
