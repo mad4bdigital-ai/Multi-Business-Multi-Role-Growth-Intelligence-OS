@@ -96,6 +96,19 @@ const oauthClientPool = {
         }),
       }]];
     }
+    if (sql.includes("FROM `users`")) {
+      const lookup = params[0];
+      if (lookup === "user-1" || lookup === "user@example.com") {
+        return [[{ user_id: "user-1", email: "user@example.com", display_name: "User One", status: "active" }]];
+      }
+      return [[]];
+    }
+    if (sql.includes("FROM `memberships`")) {
+      if (params[0] === "user-1") {
+        return [[{ tenant_id: "tenant-1", role: "owner", status: "active", tenant_display_name: "Tenant One" }]];
+      }
+      return [[]];
+    }
     throw new Error(`Unexpected OAuth client query: ${sql} ${JSON.stringify(params)}`);
   },
 };
