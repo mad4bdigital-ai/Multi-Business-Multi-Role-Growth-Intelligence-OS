@@ -290,6 +290,12 @@ async function publishTunnelIngress(accountId, tunnelId, hostname, serviceUrl = 
   }, cfToken);
 }
 
+async function publishPrivateTunnelIngress(accountId, tunnelId, serviceUrl = `http://localhost:${CONNECTOR_PORT}`, cfToken = null) {
+  return cfRequest("PUT", `/accounts/${accountId}/cfd_tunnel/${tunnelId}/configurations`, {
+    config: { ingress: [{ service: serviceUrl }] },
+  }, cfToken);
+}
+
 async function publishTunnelIngressRoutes(accountId, tunnelId, routes = [], cfToken = null) {
   const existingIngress = await readTunnelIngress(accountId, tunnelId, cfToken);
   return cfRequest("PUT", `/accounts/${accountId}/cfd_tunnel/${tunnelId}/configurations`, {
@@ -588,16 +594,13 @@ export async function provisionLocalConnectorInstall(req, body = {}) {
   let tunnelToken = existing?.cf_token || null;
   let tunnelUrl = existing?.tunnel_url || null;
   let connectorSecret = existing?.connector_secret || null;
-  let dnsRecordName = tunnelUrl ? new URL(tunnelUrl).hostname.slice(0, -`.${DNS_DOMAIN}`.length) : null;
 
   if (!existing || reprovision) {
-    const route = buildUserDeviceRoute({ userId: resolvedUserId, deviceId: device_id, requestedHostname: hostname });
     const tunnelName = `${safeDnsLabel(resolvedUserId, "user")}-${safeDnsLabel(device_id, "device")}-connector`.slice(0, 128);
     const provisioned = await provisionTunnel(accountId, tunnelName, provisioningCredentials.cloudflareToken);
     tunnelId = provisioned.tunnelId;
     tunnelToken = provisioned.token;
-    tunnelUrl = `https://${route.hostname}`;
-    dnsRecordName = route.recordName;
+    tunnelUrl = `https://${tunnelId}.cfargotunnel.com`;
     connectorSecret = randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "");
 
     await pool.query(
@@ -613,6 +616,7 @@ export async function provisionLocalConnectorInstall(req, body = {}) {
          is_enabled = 1`,
       [configId, resolvedUserId, resolvedTenantId, device_id, tunnelUrl, connectorSecret, tunnelId, tunnelName, tunnelToken]
     );
+    await publishPrivateTunnelIngress(accountId, tunnelId, `http://localhost:${CONNECTOR_PORT}`, provisioningCredentials.cloudflareToken);
   }
 
   const [[cfgRow]] = await pool.query(
@@ -620,17 +624,6 @@ export async function provisionLocalConnectorInstall(req, body = {}) {
     [resolvedUserId, resolvedTenantId, device_id]
   );
   const finalConfigId = cfgRow.config_id;
-  const hostnameForRoutes = new URL(tunnelUrl).hostname;
-  const localAppRoutes = buildDefaultLocalAppRoutes({ hostname: hostnameForRoutes, localApps: local_apps });
-  await seedLocalAppRoutes(pool, finalConfigId, localAppRoutes);
-  if (tunnelId && dnsRecordName) {
-    await publishTunnelIngressRoutes(accountId, tunnelId, toCloudflareIngressRoutes(localAppRoutes), provisioningCredentials.cloudflareToken);
-    try {
-      await upsertHostingerCname(dnsRecordName, tunnelId, provisioningCredentials.hostingerToken);
-    } catch (dnsErr) {
-      console.warn("[install] DNS warning:", dnsErr.message);
-    }
-  }
 
   const allAliases = [...DEFAULT_WINDOWS_ALIASES, ...custom_aliases];
   for (const entry of allAliases) {
@@ -656,12 +649,6 @@ export async function provisionLocalConnectorInstall(req, body = {}) {
     connector_secret: connectorSecret,
     cf_tunnel_id: tunnelId,
     credential_source: provisioningCredentials.source,
-    dns_record: {
-      domain: DNS_DOMAIN,
-      name: dnsRecordName,
-      type: "CNAME",
-      content: tunnelId ? `${tunnelId}.cfargotunnel.com.` : null,
-    },
     app_routes: await loadLocalAppRoutes(pool, finalConfigId),
     installation: {
       aliases: allAliases.map((a) => a.alias),
@@ -679,6 +666,12 @@ export async function provisionLocalConnectorInstall(req, body = {}) {
         start_command: "start-connector.bat",
         tunnel_command: `cloudflared service install ${tunnelToken}`,
       },
+      steps: [
+        "1. Put server.mjs and install-local-connector.ps1 in the local-connector folder.",
+        "2. Run install-local-connector.ps1 as Administrator — writes .env, installs cloudflared, starts server.mjs.",
+        "3. On later boots run start-connector.bat or configure it as a Windows startup task.",
+        `4. Test: GET /local-connector/health?user_id=${resolvedUserId}&tenant_id=${resolvedTenantId}&device_id=${device_id}`,
+      ],
     },
   };
 }
@@ -722,44 +715,21 @@ export function buildLocalConnectorInstallRoutes(deps) {
       let configId, tunnelId, tunnelToken, tunnelUrl, connectorSecret, dnsRecordName;
 
       if (existing && !reprovision) {
-        // Return existing install bundle without re-provisioning
         configId = existing.config_id;
         tunnelId = existing.cf_tunnel_id;
         tunnelToken = existing.cf_token;
         tunnelUrl = existing.tunnel_url;
         connectorSecret = existing.connector_secret;
-        dnsRecordName = tunnelUrl ? new URL(tunnelUrl).hostname.slice(0, -`.${DNS_DOMAIN}`.length) : null;
-        if (tunnelId && tunnelUrl && dnsRecordName) {
-          const existingHostname = new URL(tunnelUrl).hostname;
-          await publishTunnelIngress(accountId, tunnelId, existingHostname, `http://localhost:${CONNECTOR_PORT}`, provisioningCredentials.cloudflareToken);
-          try {
-            await upsertHostingerCname(dnsRecordName, tunnelId, provisioningCredentials.hostingerToken);
-          } catch (dnsErr) {
-            console.warn("[install] DNS warning:", dnsErr.message);
-          }
-        }
       } else {
-        // Provision a new Cloudflare tunnel
-        const route = buildUserDeviceRoute({ userId: resolvedUserId, deviceId: device_id, requestedHostname: hostname });
         const tunnelName = `${safeDnsLabel(resolvedUserId, "user")}-${safeDnsLabel(device_id, "device")}-connector`.slice(0, 128);
         const { tunnelId: newTunnelId, token } = await provisionTunnel(accountId, tunnelName, provisioningCredentials.cloudflareToken);
-        await publishTunnelIngress(accountId, newTunnelId, route.hostname, `http://localhost:${CONNECTOR_PORT}`, provisioningCredentials.cloudflareToken);
-
-        // Add CNAME via Hostinger
-        try {
-          await upsertHostingerCname(route.recordName, newTunnelId, provisioningCredentials.hostingerToken);
-        } catch (dnsErr) {
-          // Non-fatal if CNAME already exists — log and continue
-          console.warn("[install] DNS warning:", dnsErr.message);
-        }
+        await publishPrivateTunnelIngress(accountId, newTunnelId, `http://localhost:${CONNECTOR_PORT}`, provisioningCredentials.cloudflareToken);
 
         tunnelId = newTunnelId;
         tunnelToken = token;
-        tunnelUrl = `https://${route.hostname}`;
-        dnsRecordName = route.recordName;
+        tunnelUrl = `https://${newTunnelId}.cfargotunnel.com`;
         connectorSecret = randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "");
-        const newConfigId = existing?.config_id || randomUUID();
-        configId = newConfigId;
+        configId = existing?.config_id || randomUUID();
 
         await pool.query(
           `INSERT INTO \`local_connector_user_configs\`
@@ -832,20 +802,14 @@ export function buildLocalConnectorInstallRoutes(deps) {
         config_id: finalConfigId,
         device_id,
         tunnel_url: tunnelUrl,
-        dns_record: {
-          domain: DNS_DOMAIN,
-          name: dnsRecordName,
-          type: "CNAME",
-          content: tunnelId ? `${tunnelId}.cfargotunnel.com.` : null,
-        },
         connector_secret: connectorSecret,
         cf_tunnel_id: tunnelId,
         credential_source: provisioningCredentials.source,
-        app_routes: await loadLocalAppRoutes(pool, finalConfigId),
-        cloud_run_env: {
+        server_env: {
           CONNECTOR_LOCAL_API_KEY: connectorSecret,
-          instruction: `gcloud run services update http-generic-api --region=europe-west1 --update-env-vars="CONNECTOR_LOCAL_API_KEY=${connectorSecret}"`,
+          instruction: `Set CONNECTOR_LOCAL_API_KEY=${connectorSecret} in hPanel environment variables for the connector.mad4b.com Node.js app.`,
         },
+        app_routes: await loadLocalAppRoutes(pool, finalConfigId),
         installation: {
           aliases: allAliases.map((a) => a.alias),
           install_bat: installScript,
@@ -863,10 +827,10 @@ export function buildLocalConnectorInstallRoutes(deps) {
             tunnel_command: `cloudflared service install ${tunnelToken}`,
           },
           steps: [
-            "1. Put server.mjs and install-local-connector.ps1 in the user's local-connector folder.",
-            "2. Run install-local-connector.ps1 as Administrator. It writes .env, installs cloudflared, and starts server.mjs.",
-            "3. On later boots, run start-connector.bat or configure it as a Windows startup task.",
-            `4. Confirm DNS CNAME ${dnsRecordName}.${DNS_DOMAIN} -> ${tunnelId}.cfargotunnel.com.`,
+            "1. Put server.mjs and install-local-connector.ps1 in the local-connector folder.",
+            "2. Run install-local-connector.ps1 as Administrator — writes .env, installs cloudflared, starts server.mjs.",
+            "3. On later boots run start-connector.bat or configure it as a Windows startup task.",
+            `4. Set CONNECTOR_LOCAL_API_KEY=${connectorSecret} in hPanel env vars for connector.mad4b.com.`,
             `5. Test: GET /local-connector/health?user_id=${user_id}&tenant_id=${tenant_id}&device_id=${device_id}`,
           ],
         },

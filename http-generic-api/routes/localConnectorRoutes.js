@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { getPool } from "../db.js";
 
 export function buildLocalConnectorRoutes(deps) {
   const { requireBackendApiKey, localConnectorOrchestrator } = deps;
@@ -46,6 +47,25 @@ export function buildLocalConnectorRoutes(deps) {
       return res.status(result.ok ? 200 : 400).json(result);
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "file_write_failed", message: err.message } });
+    }
+  });
+
+  router.get("/local-connector/devices", requireBackendApiKey, async (req, res) => {
+    try {
+      const { user_id, tenant_id } = req.query;
+      if (!user_id || !tenant_id) {
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "user_id, tenant_id required." } });
+      }
+      const [rows] = await getPool().query(
+        `SELECT config_id, device_id, tunnel_url, cf_tunnel_id, cf_tunnel_name, is_enabled, created_at, updated_at
+         FROM \`local_connector_user_configs\`
+         WHERE user_id = ? AND tenant_id = ?
+         ORDER BY created_at DESC`,
+        [user_id, tenant_id]
+      );
+      return res.status(200).json({ ok: true, devices: rows, count: rows.length });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "devices_read_failed", message: err.message } });
     }
   });
 
