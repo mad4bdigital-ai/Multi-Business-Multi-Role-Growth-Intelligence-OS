@@ -191,6 +191,18 @@ export async function validateTenantGptOAuthClientCredentials(credentials = {}, 
     };
   }
 
+  // Reject token exchange when running in compatibility mode (no secret configured).
+  // Set TENANT_GPT_OAUTH_CLIENT_SECRET env var or seed platform_runtime_config to enable.
+  if (resolved.source === "default_unconfigured") {
+    return {
+      ok: false,
+      status: 401,
+      error: "invalid_client",
+      message: "OAuth client secret is not configured. Set TENANT_GPT_OAUTH_CLIENT_SECRET or run migration 045 to seed the config.",
+      source: resolved.source,
+    };
+  }
+
   const config = resolved.config;
   const clientId = cleanClientId(credentials.client_id);
   const clientSecret = cleanSecret(credentials.client_secret);

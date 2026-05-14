@@ -30,12 +30,12 @@ function sanitizeEmail(email = "") {
 async function resolveUser({ user_id = "", email = "" } = {}) {
   const pool = getPool();
   if (user_id) {
-    const [rows] = await pool.query("SELECT user_id, email, tenant_id FROM users WHERE CAST(user_id AS CHAR)=CAST(? AS CHAR) LIMIT 1", [user_id]);
+    const [rows] = await pool.query("SELECT user_id, email FROM users WHERE CAST(user_id AS CHAR)=CAST(? AS CHAR) LIMIT 1", [user_id]);
     return rows?.[0] || null;
   }
   const normalizedEmail = sanitizeEmail(email);
   if (!normalizedEmail) return null;
-  const [rows] = await pool.query("SELECT user_id, email, tenant_id FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1", [normalizedEmail]);
+  const [rows] = await pool.query("SELECT user_id, email FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1", [normalizedEmail]);
   return rows?.[0] || null;
 }
 
@@ -55,7 +55,7 @@ async function upsertConnection({ user, body }) {
     source: "admin_member_google_oauth_connection"
   };
   const encrypted = buildEncryptedCredentialsForStorage(credentials);
-  const tenantId = String(body.tenant_id || user.tenant_id || "").trim();
+  const tenantId = String(body.tenant_id || "").trim();
   const now = new Date();
   const tokenExpiresAt = body.token_expires_at ? new Date(body.token_expires_at) : null;
 

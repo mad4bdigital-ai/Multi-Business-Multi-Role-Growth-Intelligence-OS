@@ -29,6 +29,22 @@ const VALID_SIGN_IN_OPTIONS = new Set(["google", "email", "register"]);
 const PLATFORM_JWT_ISSUER = process.env.PLATFORM_JWT_ISSUER || "https://auth.mad4b.com";
 const TENANT_GPT_JWT_AUDIENCE = process.env.TENANT_GPT_JWT_AUDIENCE || "mad4b-tenant-gpt";
 
+// Single-use OAuth code tracking: jti → expiry ms. Lazily cleaned.
+const _usedOAuthCodeJtis = new Map();
+function _markOAuthCodeUsed(jti, expSecs) {
+  _usedOAuthCodeJtis.set(jti, expSecs * 1000);
+  if (_usedOAuthCodeJtis.size > 1000) {
+    const now = Date.now();
+    for (const [k, e] of _usedOAuthCodeJtis) {
+      if (e <= now) _usedOAuthCodeJtis.delete(k);
+    }
+  }
+}
+function _isOAuthCodeUsed(jti) {
+  const exp = _usedOAuthCodeJtis.get(jti);
+  return exp !== undefined && exp > Date.now();
+}
+
 function cleanOption(value, allowed, fallback = null) {
   const normalized = String(value || "").trim().toLowerCase();
   return allowed.has(normalized) ? normalized : fallback;
@@ -498,10 +514,12 @@ export function buildAuthRoutes(deps) {
       }
 
       const payload = jwt.verify(token, JWT_SECRET);
+      if (!payload.user_id) {
+        return res.status(400).json({ ok: false, error: { code: "invalid_token", message: "User token is missing user_id." } });
+      }
       const code = jwt.sign(
         {
           purpose: "custom_gpt_oauth_code",
-          token,
           user_id: payload.user_id,
           email: payload.email,
           tenant_id: payload.tenant_id || null,
@@ -548,23 +566,43 @@ export function buildAuthRoutes(deps) {
         });
       }
 
-      const payload = jwt.verify(code, JWT_SECRET);
-      if (payload.purpose !== "custom_gpt_oauth_code" || !payload.token) {
+      const codePayload = jwt.verify(code, JWT_SECRET);
+      if (codePayload.purpose !== "custom_gpt_oauth_code" || !codePayload.user_id) {
         return res.status(400).json({ error: "invalid_grant", error_description: "Invalid OAuth code." });
       }
-      if (redirectUri && redirectUri !== payload.redirect_uri) {
+      if (redirectUri && redirectUri !== codePayload.redirect_uri) {
         return res.status(400).json({ error: "invalid_grant", error_description: "redirect_uri does not match the issued code." });
       }
+      if (_isOAuthCodeUsed(codePayload.jti)) {
+        return res.status(400).json({ error: "invalid_grant", error_description: "OAuth code has already been used." });
+      }
+      _markOAuthCodeUsed(codePayload.jti, codePayload.exp);
 
-      const signedInPayload = jwt.verify(payload.token, JWT_SECRET);
-      const accessToken = issueTenantGptAccessToken(signedInPayload, { clientId: clientValidation.client_id });
+      const pool = resolvePool();
+      const [userRows] = await pool.query(
+        `SELECT user_id, email, display_name, status FROM \`users\` WHERE user_id = ? LIMIT 1`,
+        [codePayload.user_id]
+      );
+      const tokenUser = userRows[0];
+      if (!tokenUser || tokenUser.status !== "active") {
+        return res.status(400).json({ error: "invalid_grant", error_description: "User account is no longer active." });
+      }
+      const [memRows] = await pool.query(
+        `SELECT m.tenant_id FROM \`memberships\` m WHERE m.user_id = ? AND m.status = 'active' ORDER BY m.granted_at ASC LIMIT 1`,
+        [codePayload.user_id]
+      );
+      const tenantId = codePayload.tenant_id || memRows[0]?.tenant_id || null;
+      const accessToken = issueTenantGptAccessToken(
+        { user_id: tokenUser.user_id, email: tokenUser.email, tenant_id: tenantId },
+        { clientId: clientValidation.client_id }
+      );
 
       return res.status(200).json({
         access_token: accessToken,
         token_type: "Bearer",
         expires_in: USER_TOKEN_TTL_SECONDS,
         scope: TENANT_GPT_SCOPE,
-        activation_context: payload.activation_context || {},
+        activation_context: codePayload.activation_context || {},
       });
     } catch {
       return res.status(400).json({ error: "invalid_grant", error_description: "OAuth code is invalid or expired." });
@@ -741,11 +779,22 @@ export function buildAuthRoutes(deps) {
           if (userRows.length) {
             user_id = userRows[0].user_id;
           } else {
-            // Create a new user
+            // Brand new user — create user, tenant, and owner membership in one transaction.
             user_id = randomUUID();
+            const newTenantId = randomUUID();
+            const tenantName = `${display_name || email}'s workspace`;
             await connection.query(
               `INSERT INTO \`users\` (user_id, email, display_name, status) VALUES (?, ?, ?, ?)`,
               [user_id, email, display_name, "active"]
+            );
+            await connection.query(
+              `INSERT INTO \`tenants\` (tenant_id, tenant_type, display_name, status, metadata_json)
+               VALUES (?, 'managed_client_account', ?, 'active', ?)`,
+              [newTenantId, tenantName, JSON.stringify({ source: "google_signup" })]
+            );
+            await connection.query(
+              `INSERT INTO \`memberships\` (user_id, tenant_id, role, status) VALUES (?, ?, 'owner', 'active')`,
+              [user_id, newTenantId]
             );
           }
 
