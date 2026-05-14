@@ -342,6 +342,10 @@ async function callRuntimeEndpointViaFacade(payload, deps = {}) {
   throw err;
 }
 
+// Hostinger shared hosting proxy drops idle TCP connections at ~30s.
+// Cap all platform endpoint tool calls to 25s so we always respond before that.
+const PLATFORM_TOOL_MAX_TIMEOUT_SECONDS = 25;
+
 function normalizePlatformEndpointCallArgs(row, args = {}) {
   if (row.tool_name === "runtime_endpoint_call") {
     return args;
@@ -353,7 +357,10 @@ function normalizePlatformEndpointCallArgs(row, args = {}) {
     path_params: args.path_params || args.path || {},
     query: args.query || {},
     headers: args.headers || {},
-    timeout_seconds: args.timeout_seconds || 30,
+    timeout_seconds: Math.min(
+      Number(args.timeout_seconds) || PLATFORM_TOOL_MAX_TIMEOUT_SECONDS,
+      PLATFORM_TOOL_MAX_TIMEOUT_SECONDS
+    ),
     readback: args.readback || { required: false, mode: "none" },
   };
 
@@ -1032,7 +1039,19 @@ export function buildSystemLayerRoutes(deps) {
       if (!name) {
         return res.status(400).json({ ok: false, error: { code: "missing_tool_name", message: "name is required." } });
       }
-      const result = await callSystemLayerTool(name, args, req.auth, { executionFacade });
+      const timeoutMs = (PLATFORM_TOOL_MAX_TIMEOUT_SECONDS + 2) * 1000;
+      const deadline = new Promise((_, reject) =>
+        setTimeout(() => {
+          const e = new Error(`System tool call timed out after ${PLATFORM_TOOL_MAX_TIMEOUT_SECONDS + 2}s`);
+          e.status = 504;
+          e.code = "system_tool_timeout";
+          reject(e);
+        }, timeoutMs)
+      );
+      const result = await Promise.race([
+        callSystemLayerTool(name, args, req.auth, { executionFacade }),
+        deadline
+      ]);
       return res.status(200).json({ ok: true, name, result });
     } catch (err) {
       return sendError(res, err, "system_tool_call_failed");
@@ -1089,7 +1108,19 @@ export function buildSystemLayerRoutes(deps) {
       if (!name) {
         return res.status(400).json({ ok: false, error: { code: "missing_tool_name", message: "name is required." } });
       }
-      const result = await callSystemLayerTool(name, args, req.auth, { executionFacade });
+      const timeoutMs = (PLATFORM_TOOL_MAX_TIMEOUT_SECONDS + 2) * 1000;
+      const deadline = new Promise((_, reject) =>
+        setTimeout(() => {
+          const e = new Error(`System tool call timed out after ${PLATFORM_TOOL_MAX_TIMEOUT_SECONDS + 2}s`);
+          e.status = 504;
+          e.code = "system_tool_timeout";
+          reject(e);
+        }, timeoutMs)
+      );
+      const result = await Promise.race([
+        callSystemLayerTool(name, args, req.auth, { executionFacade }),
+        deadline
+      ]);
       return res.status(200).json({ ok: true, name, result });
     } catch (err) {
       return sendError(res, err, "system_tool_call_failed");
