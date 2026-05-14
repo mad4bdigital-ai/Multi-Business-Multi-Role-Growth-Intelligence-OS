@@ -1,0 +1,135 @@
+-- Sprint 46: Seed app_integrations catalog rows for all live Google services.
+-- Only google_drive existed before. Eight more services are active in code.
+
+INSERT IGNORE INTO `app_integrations`
+  (`app_key`, `display_name`, `description`, `auth_type`,
+   `oauth_authorize_url`, `oauth_token_url`, `oauth_revoke_url`, `oauth_scopes_default`,
+   `icon_url`, `docs_url`, `category`, `default_action_grants`, `status`)
+VALUES
+
+  -- google_cloud: service-account / member OAuth — default fallback in credential lookups.
+  -- Used by memberGoogleOAuthRoutes and userAppConnectionCredentials searches.
+  ('google_cloud', 'Google Cloud',
+   'Platform-level Google Cloud / Workspace access via service account or member OAuth.',
+   'oauth2',
+   'https://accounts.google.com/o/oauth2/v2/auth',
+   'https://oauth2.googleapis.com/token',
+   'https://oauth2.googleapis.com/revoke',
+   'https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/documents',
+   NULL,
+   'https://cloud.google.com/docs',
+   'custom',
+   '[{"action_key":"sheets.read","auto_approve":true},{"action_key":"sheets.write","auto_approve":false},{"action_key":"drive.read","auto_approve":true}]',
+   'active'),
+
+  -- google_sheets: internal Sheets data source (service account, heavy registry usage).
+  ('google_sheets', 'Google Sheets',
+   'Read and write Google Sheets for registry data, activity logs, and platform outputs.',
+   'oauth2',
+   'https://accounts.google.com/o/oauth2/v2/auth',
+   'https://oauth2.googleapis.com/token',
+   'https://oauth2.googleapis.com/revoke',
+   'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly',
+   'https://ssl.gstatic.com/images/branding/product/1x/sheets_2020q4_32dp.png',
+   'https://developers.google.com/sheets/api/guides/concepts',
+   'productivity',
+   '[{"action_key":"read_sheet","auto_approve":true},{"action_key":"append_rows","auto_approve":false},{"action_key":"update_cells","auto_approve":false}]',
+   'active'),
+
+  -- google_docs: Workspace Docs (platform internal, GOOGLE_WORKSPACE_SCOPES).
+  ('google_docs', 'Google Docs',
+   'Read and write Google Docs for platform artifact storage and document generation.',
+   'oauth2',
+   'https://accounts.google.com/o/oauth2/v2/auth',
+   'https://oauth2.googleapis.com/token',
+   'https://oauth2.googleapis.com/revoke',
+   'https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.file',
+   'https://ssl.gstatic.com/images/branding/product/1x/docs_2020q4_32dp.png',
+   'https://developers.google.com/docs/api/guides/concepts',
+   'productivity',
+   '[{"action_key":"read_document","auto_approve":true},{"action_key":"create_document","auto_approve":false}]',
+   'active'),
+
+  -- google_ads: Google Ads API with developer-token injection.
+  ('google_ads', 'Google Ads',
+   'Manage and report on Google Ads campaigns via the Google Ads API.',
+   'oauth2',
+   'https://accounts.google.com/o/oauth2/v2/auth',
+   'https://oauth2.googleapis.com/token',
+   'https://oauth2.googleapis.com/revoke',
+   'https://www.googleapis.com/auth/adwords',
+   'https://ssl.gstatic.com/images/branding/product/1x/google_ads_48dp.png',
+   'https://developers.google.com/google-ads/api/docs/start',
+   'crm',
+   '[{"action_key":"list_campaigns","auto_approve":true},{"action_key":"get_report","auto_approve":true}]',
+   'active'),
+
+  -- search_ads_360: Search Ads 360 / DoubleClick Search.
+  ('search_ads_360', 'Search Ads 360',
+   'Access Search Ads 360 (DoubleClick Search) campaign data and reports.',
+   'oauth2',
+   'https://accounts.google.com/o/oauth2/v2/auth',
+   'https://oauth2.googleapis.com/token',
+   'https://oauth2.googleapis.com/revoke',
+   'https://www.googleapis.com/auth/doubleclicksearch',
+   NULL,
+   'https://developers.google.com/search-ads/v2/reference',
+   'crm',
+   '[{"action_key":"get_report","auto_approve":true}]',
+   'active'),
+
+  -- google_search_console: Search Console (webmasters).
+  ('google_search_console', 'Google Search Console',
+   'Query Search Console performance data, sitemaps, and URL inspection.',
+   'oauth2',
+   'https://accounts.google.com/o/oauth2/v2/auth',
+   'https://oauth2.googleapis.com/token',
+   'https://oauth2.googleapis.com/revoke',
+   'https://www.googleapis.com/auth/webmasters.readonly',
+   NULL,
+   'https://developers.google.com/webmaster-tools/search-console-api-original/v3/how-tos/search_analytics',
+   'productivity',
+   '[{"action_key":"query_search_analytics","auto_approve":true},{"action_key":"list_sites","auto_approve":true}]',
+   'active'),
+
+  -- google_analytics: GA4 Data API (read-only reporting).
+  ('google_analytics', 'Google Analytics',
+   'Run reports and access GA4 property data via the Analytics Data API.',
+   'oauth2',
+   'https://accounts.google.com/o/oauth2/v2/auth',
+   'https://oauth2.googleapis.com/token',
+   'https://oauth2.googleapis.com/revoke',
+   'https://www.googleapis.com/auth/analytics.readonly',
+   'https://ssl.gstatic.com/images/branding/product/1x/analytics_32dp.png',
+   'https://developers.google.com/analytics/devguides/reporting/data/v1',
+   'productivity',
+   '[{"action_key":"run_report","auto_approve":true},{"action_key":"get_metadata","auto_approve":true}]',
+   'active'),
+
+  -- google_analytics_admin: GA4 Admin API (property/account management).
+  ('google_analytics_admin', 'Google Analytics Admin',
+   'Manage GA4 properties, accounts, and data streams via the Analytics Admin API.',
+   'oauth2',
+   'https://accounts.google.com/o/oauth2/v2/auth',
+   'https://oauth2.googleapis.com/token',
+   'https://oauth2.googleapis.com/revoke',
+   'https://www.googleapis.com/auth/analytics.edit',
+   NULL,
+   'https://developers.google.com/analytics/devguides/config/admin/v1',
+   'productivity',
+   '[{"action_key":"list_properties","auto_approve":true}]',
+   'beta'),
+
+  -- google_tag_manager: Tag Manager read/edit.
+  ('google_tag_manager', 'Google Tag Manager',
+   'Read and publish Google Tag Manager containers, tags, triggers, and variables.',
+   'oauth2',
+   'https://accounts.google.com/o/oauth2/v2/auth',
+   'https://oauth2.googleapis.com/token',
+   'https://oauth2.googleapis.com/revoke',
+   'https://www.googleapis.com/auth/tagmanager.readonly https://www.googleapis.com/auth/tagmanager.edit.containers',
+   NULL,
+   'https://developers.google.com/tag-platform/tag-manager/api/v2',
+   'productivity',
+   '[{"action_key":"list_containers","auto_approve":true},{"action_key":"get_workspace","auto_approve":true}]',
+   'beta');
