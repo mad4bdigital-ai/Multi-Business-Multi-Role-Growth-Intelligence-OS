@@ -996,6 +996,158 @@ paths:
       security:
         - userBearerAuth: []
 
+  /connector/{device_id}/github:
+    post:
+      tags: [device-runtime]
+      operationId: connectorProxyGithub
+      summary: Run a gh CLI command on the connected device
+      description: Proxies a GitHub CLI call through the platform to the named device tunnel. The device is resolved from the caller's identity — no credentials needed. Pass args as an array or string.
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [args]
+              properties:
+                args:
+                  oneOf:
+                    - type: array
+                      items: { type: string }
+                    - type: string
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+                  default: 120000
+      responses:
+        '200':
+          description: CLI output
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  stdout: { type: string }
+                  stderr: { type: string }
+                  exit_code: { type: integer }
+        '401': { description: Unauthorized }
+        '404': { description: Device not found }
+        '502': { description: Proxy or device error }
+      security:
+        - userBearerAuth: []
+
+  /connector/{device_id}/gcloud:
+    post:
+      tags: [device-runtime]
+      operationId: connectorProxyGcloud
+      summary: Run a gcloud CLI command on the connected device
+      description: Proxies a gcloud call through the platform to the named device tunnel. Use for restarting Cloud Run services, reading logs, or triggering redeployments from the device.
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [args]
+              properties:
+                args:
+                  oneOf:
+                    - type: array
+                      items: { type: string }
+                    - type: string
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+                  default: 120000
+      responses:
+        '200':
+          description: CLI output
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  stdout: { type: string }
+                  stderr: { type: string }
+                  exit_code: { type: integer }
+        '401': { description: Unauthorized }
+        '404': { description: Device not found }
+        '502': { description: Proxy or device error }
+      security:
+        - userBearerAuth: []
+
+  /connector/{device_id}/shell-fetch-upload:
+    post:
+      tags: [device-runtime]
+      operationId: connectorProxyShellFetchUpload
+      summary: Download a URL via curl on the connected device and push to platform uploads
+      description: Proxies a curl-based fetch-upload call through the platform to the named device. Use when /connector/{device_id}/fetch-upload fails or when curl-specific flags are needed.
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, upload_type]
+              properties:
+                url:
+                  type: string
+                  description: URL to download via curl. Must not contain shell metacharacters.
+                upload_type:
+                  type: string
+                  enum: [schema, skill, knowledge, repo_link, asset]
+                filename:
+                  type: string
+                uploaded_by:
+                  type: string
+                metadata:
+                  type: object
+                  additionalProperties: true
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+                  default: 60000
+      responses:
+        '200':
+          description: File downloaded and upload record created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  upload_id: { type: string }
+                  via: { type: string }
+        '401': { description: Unauthorized }
+        '400': { description: URL contains unsafe characters }
+        '404': { description: Device not found }
+        '502': { description: Proxy or device error }
+      security:
+        - userBearerAuth: []
+
 x-gpt-action-auth-preset:
   authentication_type: OAuth
   schema_url: https://auth.mad4b.com/openapi.tenant-gpt.auth.yaml

@@ -14,6 +14,8 @@ tags:
     description: Personal administrator control surface for CLI, database, and runtime environment operations.
   - name: system-layer
     description: MCP-style governed system layer backed by connector registries, principal context, and runtime validation.
+  - name: device-runtime
+    description: Platform-proxied device runtime operations — shell, files, GitHub CLI, gcloud CLI, and fetch-upload routed through auth.mad4b.com to the user's registered device tunnel. Admin callers pass user_id as a query param or body field.
 components:
   securitySchemes:
     backendBearerAuth:
@@ -2848,3 +2850,401 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /connector/{device_id}/policy:
+    get:
+      tags: [device-runtime]
+      operationId: connectorProxyPolicy
+      summary: Device runtime governance policy
+      description: "Returns the device's governance boundary: shell enabled state, permitted aliases, accessible file paths, and restricted operations. Call before any device operation. Admin callers (backend_api_key) must pass user_id as a query param."
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Required for admin/backend_api_key callers. User JWT callers are resolved automatically.
+      responses:
+        '200':
+          description: Device governance policy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  shell_enabled: { type: boolean }
+                  permitted_aliases: { type: array, items: { type: string } }
+                  permitted_paths: { type: array, items: { type: string } }
+                  restricted_operations: { type: array, items: { type: string } }
+        '401': { description: Unauthorized }
+        '404': { description: Device not found or connector not installed }
+      security:
+        - backendBearerAuth: []
+
+  /connector/{device_id}/health:
+    get:
+      tags: [device-runtime]
+      operationId: connectorProxyHealth
+      summary: Check if the device connector agent is running
+      description: "Proxies a health check directly to the device tunnel. Returns uptime, hostname, and platform. Use this to confirm the agent is running before shell or file operations. Admin callers (backend_api_key) must pass user_id as a query param."
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Required for admin/backend_api_key callers. User JWT callers are resolved automatically.
+      responses:
+        '200':
+          description: Health result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  hostname: { type: string }
+                  platform: { type: string }
+                  uptime: { type: number }
+        '401': { description: Unauthorized }
+        '404': { description: Device not found }
+        '502': { description: Device unreachable }
+      security:
+        - backendBearerAuth: []
+
+  /connector/{device_id}/shell:
+    post:
+      tags: [device-runtime]
+      operationId: connectorProxyShell
+      summary: Run an allowlisted shell command on the device
+      description: "Executes commands from the device shell allowlist. Use action=list to see available aliases, action=run with an alias to execute. Only aliases pre-approved in the allowlist are permitted. Admin callers (backend_api_key) must pass user_id as a query param."
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [status, list, run]
+                alias:
+                  type: string
+                  description: Shell alias to run (from allowlist). Required for action=run.
+                extra_args:
+                  type: array
+                  items: { type: string }
+                  description: Extra args appended to the command. Only if the alias permits allow_extra_args=true.
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+                user_id:
+                  type: string
+                  description: Required for admin/backend_api_key callers. User JWT callers are resolved automatically.
+      responses:
+        '200':
+          description: Shell result or alias listing
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                properties:
+                  ok: { type: boolean }
+                  stdout: { type: string }
+                  stderr: { type: string }
+                  exit_code: { type: integer }
+                  aliases: { type: array, items: { type: object } }
+        '401': { description: Unauthorized }
+        '403': { description: Alias not in allowlist }
+        '404': { description: Device not found }
+        '502': { description: Device unreachable }
+      security:
+        - backendBearerAuth: []
+
+  /connector/{device_id}/files:
+    post:
+      tags: [device-runtime]
+      operationId: connectorProxyFiles
+      summary: Read or write allowlisted files on the device
+      description: "File access restricted to paths in the device file allowlist. Use action=list to see permitted paths, action=read to retrieve content, action=write to write content. Admin callers (backend_api_key) must pass user_id as a query param."
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [list, read, write]
+                path:
+                  type: string
+                  description: Absolute file path — must be in the file access allowlist.
+                content:
+                  type: string
+                  description: File content for write action.
+                user_id:
+                  type: string
+                  description: Required for admin/backend_api_key callers. User JWT callers are resolved automatically.
+      responses:
+        '200':
+          description: File operation result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                properties:
+                  ok: { type: boolean }
+                  path: { type: string }
+                  content: { type: string }
+                  written: { type: boolean }
+                  paths: { type: array, items: { type: string } }
+        '401': { description: Unauthorized }
+        '403': { description: Path not in allowlist }
+        '404': { description: Device not found }
+        '502': { description: Device unreachable }
+      security:
+        - backendBearerAuth: []
+
+  /connector/{device_id}/fetch-upload:
+    post:
+      tags: [device-runtime]
+      operationId: connectorProxyFetchUpload
+      summary: Fetch a URL from the device and push content to platform uploads
+      description: "Device fetches the URL and forwards content to the platform upload system. Returns upload_id. Use for URLs requiring local network access or when the platform cannot reach the URL directly. Admin callers (backend_api_key) must pass user_id as a query param."
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, upload_type]
+              properties:
+                url:
+                  type: string
+                  description: URL to fetch from the device.
+                upload_type:
+                  type: string
+                  enum: [schema, skill, knowledge, repo_link, asset]
+                filename:
+                  type: string
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+                  default: 30000
+                user_id:
+                  type: string
+                  description: Required for admin/backend_api_key callers. User JWT callers are resolved automatically.
+      responses:
+        '200':
+          description: Content fetched and upload record created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  upload_id: { type: string }
+                  fetched_url: { type: string }
+                  status: { type: string }
+        '401': { description: Unauthorized }
+        '404': { description: Device not found }
+        '502': { description: Fetch failed or device unreachable }
+      security:
+        - backendBearerAuth: []
+
+  /connector/{device_id}/github:
+    post:
+      tags: [device-runtime]
+      operationId: connectorProxyGithub
+      summary: Run a gh CLI command on the connected device
+      description: Proxies a GitHub CLI call through the platform to the named device tunnel. The device is resolved from the caller's identity — no credentials needed. Pass args as an array or string. Admin callers (backend_api_key) must pass user_id as a query param.
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [args]
+              properties:
+                args:
+                  oneOf:
+                    - type: array
+                      items: { type: string }
+                    - type: string
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+                  default: 120000
+                user_id:
+                  type: string
+                  description: Required for admin/backend_api_key callers. User JWT callers are resolved automatically.
+      responses:
+        '200':
+          description: CLI output
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  stdout: { type: string }
+                  stderr: { type: string }
+                  exit_code: { type: integer }
+        '401': { description: Unauthorized }
+        '404': { description: Device not found }
+        '502': { description: Proxy or device error }
+      security:
+        - backendBearerAuth: []
+
+  /connector/{device_id}/gcloud:
+    post:
+      tags: [device-runtime]
+      operationId: connectorProxyGcloud
+      summary: Run a gcloud CLI command on the connected device
+      description: Proxies a gcloud call through the platform to the named device tunnel. Use for restarting Cloud Run services, reading logs, or triggering redeployments from the device. Admin callers (backend_api_key) must pass user_id as a query param.
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [args]
+              properties:
+                args:
+                  oneOf:
+                    - type: array
+                      items: { type: string }
+                    - type: string
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+                  default: 120000
+                user_id:
+                  type: string
+                  description: Required for admin/backend_api_key callers. User JWT callers are resolved automatically.
+      responses:
+        '200':
+          description: CLI output
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  stdout: { type: string }
+                  stderr: { type: string }
+                  exit_code: { type: integer }
+        '401': { description: Unauthorized }
+        '404': { description: Device not found }
+        '502': { description: Proxy or device error }
+      security:
+        - backendBearerAuth: []
+
+  /connector/{device_id}/shell-fetch-upload:
+    post:
+      tags: [device-runtime]
+      operationId: connectorProxyShellFetchUpload
+      summary: Download a URL via curl on the connected device and push to platform uploads
+      description: Proxies a curl-based fetch-upload call through the platform to the named device. Use when /connector/{device_id}/fetch-upload fails or when curl-specific flags are needed. Admin callers (backend_api_key) must pass user_id as a query param.
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, upload_type]
+              properties:
+                url:
+                  type: string
+                  description: URL to download via curl. Must not contain shell metacharacters.
+                upload_type:
+                  type: string
+                  enum: [schema, skill, knowledge, repo_link, asset]
+                filename:
+                  type: string
+                uploaded_by:
+                  type: string
+                metadata:
+                  type: object
+                  additionalProperties: true
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+                  default: 60000
+                user_id:
+                  type: string
+                  description: Required for admin/backend_api_key callers. User JWT callers are resolved automatically.
+      responses:
+        '200':
+          description: File downloaded and upload record created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  upload_id: { type: string }
+                  via: { type: string }
+        '401': { description: Unauthorized }
+        '400': { description: URL contains unsafe characters }
+        '404': { description: Device not found }
+        '502': { description: Proxy or device error }
+      security:
+        - backendBearerAuth: []

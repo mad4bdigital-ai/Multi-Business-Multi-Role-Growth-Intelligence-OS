@@ -14,9 +14,13 @@ async function resolveDeviceTunnel(userId, deviceId) {
 
 async function proxyToDevice(req, res, deviceId, targetPath) {
   const isUserAuth = req.auth?.mode === "user_jwt" || req.auth?.mode === "api_credential";
-  const userId = isUserAuth ? req.auth.user_id : null;
+  const isAdmin = req.auth?.mode === "backend_api_key" || req.auth?.is_admin === true;
+  let userId = isUserAuth ? req.auth.user_id : null;
+  if (!userId && isAdmin) {
+    userId = (req.query.user_id || req.body?.user_id || "").trim() || null;
+  }
   if (!userId) {
-    return res.status(401).json({ ok: false, error: { code: "user_identity_required", message: "Sign-in required to access device." } });
+    return res.status(401).json({ ok: false, error: { code: "user_identity_required", message: "Sign-in or pass user_id for admin callers." } });
   }
 
   const device = await resolveDeviceTunnel(userId, deviceId);
@@ -94,6 +98,33 @@ export function buildConnectorProxyRoutes(deps) {
   router.post("/connector/:device_id/fetch-upload", requireBackendApiKey, async (req, res) => {
     try {
       await proxyToDevice(req, res, req.params.device_id, "/fetch-upload");
+    } catch (err) {
+      res.status(502).json({ ok: false, error: { code: "proxy_failed", message: err.message } });
+    }
+  });
+
+  // ── POST /connector/:device_id/github ─────────────────────────────────────
+  router.post("/connector/:device_id/github", requireBackendApiKey, async (req, res) => {
+    try {
+      await proxyToDevice(req, res, req.params.device_id, "/github");
+    } catch (err) {
+      res.status(502).json({ ok: false, error: { code: "proxy_failed", message: err.message } });
+    }
+  });
+
+  // ── POST /connector/:device_id/gcloud ─────────────────────────────────────
+  router.post("/connector/:device_id/gcloud", requireBackendApiKey, async (req, res) => {
+    try {
+      await proxyToDevice(req, res, req.params.device_id, "/gcloud");
+    } catch (err) {
+      res.status(502).json({ ok: false, error: { code: "proxy_failed", message: err.message } });
+    }
+  });
+
+  // ── POST /connector/:device_id/shell-fetch-upload ─────────────────────────
+  router.post("/connector/:device_id/shell-fetch-upload", requireBackendApiKey, async (req, res) => {
+    try {
+      await proxyToDevice(req, res, req.params.device_id, "/shell-fetch-upload");
     } catch (err) {
       res.status(502).json({ ok: false, error: { code: "proxy_failed", message: err.message } });
     }
