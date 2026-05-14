@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Governed HTTP Client â€” AI Platform - Auth Dispatcher Admin Control Actions
+  title: Governed HTTP Client - AI Platform - Auth Dispatcher Admin Control Actions
   version: 3.0.0-platform
   summary: Custom GPT action schema for activation, admin control, and system layer via auth dispatcher.
   description: Single-host Custom GPT action schema generated from openapi.yaml. Exposes activation, admin-control, and system-layer routes via auth.mad4b.com.
