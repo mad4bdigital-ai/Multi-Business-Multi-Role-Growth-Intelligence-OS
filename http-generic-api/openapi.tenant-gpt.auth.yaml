@@ -1,1179 +1,93 @@
 openapi: 3.1.0
 info:
-  title: Mad4B Growth Intelligence — Tenant AI
-  version: 1.0.0
-  summary: Governed tenant access to the Growth AI Intelligence-Human Managed Platform.
-  description: 'Scoped tenant brain: sign in, activate your backend connection (managed or dedicated), provision your Cloudflare tunnel, and access governed multi-agent workflows. Multi-tenant, Human-Managed, registry-driven. Created by Essam Nagy (nagy.essam.website).'
+  title: Mad4B Growth Intelligence - Tenant AI - MCP Actions
+  version: 2.0.0-mcp
+  summary: Tenant GPT schema. Five meta-operations; all platform tools discovered via listTools and called via callTool.
+  description: |
+    MCP-style tenant action schema. Workflow: 1) activateSession at conversation start to get session_id and platform context. 2) listTools to discover available operations for this tenant. 3) callTool to execute any operation by name. 4) writeSessionTurn after each exchange. 5) endSession when the conversation is complete. Created by Essam Nagy (nagy.essam.website).
 servers:
   - url: https://auth.mad4b.com
     description: Mad4B platform — auth subdomain
-tags:
-  - name: governance
-    description: Tenant scope policy and access boundary. Call /policy first to understand what this scope permits.
-  - name: system-layer
-    description: MCP-style tenant-scoped tool discovery and connector registry calls.
-  - name: connect
-    description: Backend connection activation and device provisioning.
-  - name: connector
-    description: Local connector install, status, and health.
-  - name: device-runtime
-    description: Direct device operations proxied through the platform — shell commands, file access, and URL fetch. Requires an installed connector.
-  - name: credentials
-    description: Secure credential storage for dedicated connection mode.
-  - name: activation
-    description: Once-per-session activation probe that opens a new conversation session and returns context and scope.
-  - name: gpt-sessions
-    description: GPT conversation session lifecycle - write per-turn messages and close sessions with Drive archival.
 components:
   securitySchemes:
     userBearerAuth:
       type: oauth2
-      description: Tenant GPT OAuth. ChatGPT signs in through the Growth Intelligence Platform popup, then /auth/oauth/token mints a fresh Mad4B tenant access JWT with issuer, audience, subject, scope, user_id, and tenant_id claims. Google Sign-In is only an upstream identity proof inside the popup; do not call OAuth token or Google ID-token endpoints as normal actions. The authorize URL may include safe activation hints such as screen_hint, activation_mode, device_id, workspace_name, and sign_in_options, but never secrets.
+      description: Tenant GPT OAuth. ChatGPT signs in through the Growth Intelligence Platform popup, then /auth/oauth/token mints a fresh Mad4B tenant access JWT. Google Sign-In is only an upstream identity proof inside the popup; do not call OAuth token or Google ID-token endpoints as normal actions.
       flows:
         authorizationCode:
           authorizationUrl: https://auth.mad4b.com/auth/oauth/authorize
           tokenUrl: https://auth.mad4b.com/auth/oauth/token
           scopes:
-            https://auth.mad4b.com/scopes/tenant.links: Access tenant-scoped Growth Intelligence links for the signed-in user.
-            https://auth.mad4b.com/scopes/tenant.status: Read tenant connection status for the signed-in user.
-            https://auth.mad4b.com/scopes/tenant.activation: Activate managed or dedicated tenant connection mode for the signed-in user.
-            https://auth.mad4b.com/scopes/tenant.install: Provision tenant local connector install bundles for the signed-in user.
-            https://auth.mad4b.com/scopes/tenant.system-tools: Use tenant-scoped governed system tools for the signed-in user.
+            https://auth.mad4b.com/scopes/tenant.links: Access tenant-scoped Growth Intelligence links.
+            https://auth.mad4b.com/scopes/tenant.status: Read tenant connection status.
+            https://auth.mad4b.com/scopes/tenant.activation: Activate managed or dedicated tenant connection.
+            https://auth.mad4b.com/scopes/tenant.install: Provision tenant local connector install bundles.
+            https://auth.mad4b.com/scopes/tenant.system-tools: Use tenant-scoped governed system tools.
   schemas:
-    AuthResult:
+    ToolItem:
       type: object
+      additionalProperties: true
       properties:
-        ok:
-          type: boolean
-        user_id:
+        name:
           type: string
-        email:
+          description: Tool key — pass this as name to callTool.
+        displayName:
           type: string
-        display_name:
+        description:
           type: string
-        tenant_id:
+        method:
           type: string
-        token:
+        path:
           type: string
-        memberships:
+        tags:
           type: array
           items:
-            type: object
-            additionalProperties: true
-    Error:
+            type: string
+        inputSchema:
+          type: object
+          additionalProperties: true
+          nullable: true
+    GptSession:
+      type: object
+      additionalProperties: true
+      properties:
+        session_id: { type: string }
+        session_status: { type: string }
+        turn_count: { type: integer }
+        started_at: { type: string }
+        ended_at: { type: string, nullable: true }
+        drive_export_url: { type: string, nullable: true }
+    ErrorResponse:
       type: object
       properties:
-        ok:
-          type: boolean
-          example: false
+        ok: { type: boolean }
         error:
           type: object
           properties:
-            code:
-              type: string
-            message:
-              type: string
-security:
-  - userBearerAuth:
-      - https://auth.mad4b.com/scopes/tenant.links
-      - https://auth.mad4b.com/scopes/tenant.status
-      - https://auth.mad4b.com/scopes/tenant.activation
-      - https://auth.mad4b.com/scopes/tenant.install
-      - https://auth.mad4b.com/scopes/tenant.system-tools
+            code: { type: string }
+            message: { type: string }
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
 paths:
-  /policy:
-    get:
-      tags:
-        - governance
-      operationId: tenantPolicy
-      summary: Tenant scope governance policy
-      description: 'Returns this tenant GPT''s governance boundary: permitted operations, what requires platform admin, and the access model for managed vs dedicated modes. No auth required. Call this first to understand what is and is not available at tenant scope.'
-      security: []
-      responses:
-        '200':
-          description: Tenant governance policy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  scope:
-                    type: string
-                    example: tenant
-                  permitted_operations:
-                    type: array
-                    items:
-                      type: string
-                    description: Operations this tenant GPT is authorised to perform.
-                  platform_admin_required:
-                    type: array
-                    items:
-                      type: string
-                    description: 'Operations blocked at tenant scope — require platform admin principal: /admin/*, /activation/*, /dispatch.'
-                  connection_modes:
-                    type: array
-                    items:
-                      type: string
-                      enum:
-                        - managed
-                        - dedicated
-                    description: 'managed: platform provisions infrastructure. dedicated: tenant supplies own credentials.'
-                  access_model:
-                    type: string
-                    description: Description of the JWT-based tenant access model.
-  /system/tools:
-    get:
-      tags:
-        - system-layer
-      operationId: tenantListSystemTools
-      summary: List tenant-visible MCP-style system tools
-      description: Lists OpenAPI-compatible system tools available to this tenant GPT through auth.mad4b.com. Tool calls are tenant-scoped by the OAuth bearer token.
-      responses:
-        '200':
-          description: Tenant-visible system tools
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  protocol:
-                    type: string
-                    example: openapi-mcp-facade
-                  principal:
-                    type: object
-                    additionalProperties: true
-                  tools:
-                    type: array
-                    items:
-                      type: object
-                      additionalProperties: true
-      security:
-        - userBearerAuth:
-            - https://auth.mad4b.com/scopes/tenant.links
-            - https://auth.mad4b.com/scopes/tenant.status
-            - https://auth.mad4b.com/scopes/tenant.activation
-            - https://auth.mad4b.com/scopes/tenant.install
-            - https://auth.mad4b.com/scopes/tenant.system-tools
-  /system/tools/call:
-    post:
-      tags:
-        - system-layer
-      operationId: tenantCallSystemTool
-      summary: Call a tenant-scoped MCP-style system tool
-      description: Calls a fixed system-layer tool through principal-aware runtime validation. Tenant principals are always scoped to their own tenant_id.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required:
-                - name
-              properties:
-                name:
-                  type: string
-                  enum:
-                    - connector_registry_list
-                    - connector_registry_get
-                arguments:
-                  type: object
-                  additionalProperties: true
-                  description: Tool arguments. For connector_registry_get, include system_id.
-      responses:
-        '200':
-          description: System tool result
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-                properties:
-                  ok:
-                    type: boolean
-                  name:
-                    type: string
-                  result:
-                    type: object
-                    additionalProperties: true
-        '400':
-          description: Invalid tool request
-        '403':
-          description: Tenant scope violation
-      security:
-        - userBearerAuth:
-            - https://auth.mad4b.com/scopes/tenant.links
-            - https://auth.mad4b.com/scopes/tenant.status
-            - https://auth.mad4b.com/scopes/tenant.activation
-            - https://auth.mad4b.com/scopes/tenant.install
-            - https://auth.mad4b.com/scopes/tenant.system-tools
-  /system/connectors:
-    get:
-      tags:
-        - system-layer
-      operationId: tenantListSystemConnectors
-      summary: List connector systems for the authenticated tenant
-      description: Lists connected_systems rows visible to the tenant principal. tenant_id is derived from the OAuth bearer token.
-      parameters:
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum:
-              - active
-              - pending
-              - error
-              - archived
-        - name: connector_family
-          in: query
-          schema:
-            type: string
-        - name: provider_family
-          in: query
-          schema:
-            type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 200
-            default: 50
-      responses:
-        '200':
-          description: Tenant connector registry list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  count:
-                    type: integer
-                  connectors:
-                    type: array
-                    items:
-                      type: object
-                      additionalProperties: true
-      security:
-        - userBearerAuth:
-            - https://auth.mad4b.com/scopes/tenant.links
-            - https://auth.mad4b.com/scopes/tenant.status
-            - https://auth.mad4b.com/scopes/tenant.activation
-            - https://auth.mad4b.com/scopes/tenant.install
-            - https://auth.mad4b.com/scopes/tenant.system-tools
-  /system/connectors/{system_id}:
-    get:
-      tags:
-        - system-layer
-      operationId: tenantGetSystemConnector
-      summary: Get one connector system for the authenticated tenant
-      description: Reads a connected_systems row only if it belongs to the tenant principal.
-      parameters:
-        - name: system_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Tenant connector registry record
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  connector:
-                    type: object
-                    additionalProperties: true
-        '403':
-          description: Tenant scope violation
-        '404':
-          description: Connector system not found
-      security:
-        - userBearerAuth:
-            - https://auth.mad4b.com/scopes/tenant.links
-            - https://auth.mad4b.com/scopes/tenant.status
-            - https://auth.mad4b.com/scopes/tenant.activation
-            - https://auth.mad4b.com/scopes/tenant.install
-            - https://auth.mad4b.com/scopes/tenant.system-tools
-  /connect/status:
-    get:
-      tags:
-        - connect
-      operationId: tenantConnectionStatus
-      summary: Get authenticated tenant's connection state
-      description: Returns the tenant's connection mode (managed/dedicated), active devices, and provisioning status. ChatGPT sends the tenant OAuth bearer token configured for this action.
-      responses:
-        '200':
-          description: Connection status
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  user:
-                    type: object
-                    additionalProperties: true
-                  tenant:
-                    type: object
-                    additionalProperties: true
-                  connection:
-                    type: object
-                    properties:
-                      mode:
-                        type: string
-                        enum:
-                          - managed
-                          - dedicated
-                      status:
-                        type: string
-                        enum:
-                          - active
-                          - pending
-                          - inactive
-                      cloudflare_mode:
-                        type: string
-                      google_auth_mode:
-                        type: string
-                      n8n_activation_mode:
-                        type: string
-                        enum:
-                          - managed_main_server
-                          - self_hosted_local
-                      device_count:
-                        type: integer
-                      activated_at:
-                        type: string
-                  devices:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        device_id:
-                          type: string
-                        tunnel_url:
-                          type: string
-                        is_enabled:
-                          type: boolean
-        '403':
-          description: User JWT required
-      security:
-        - userBearerAuth:
-            - https://auth.mad4b.com/scopes/tenant.links
-            - https://auth.mad4b.com/scopes/tenant.status
-            - https://auth.mad4b.com/scopes/tenant.activation
-            - https://auth.mad4b.com/scopes/tenant.install
-            - https://auth.mad4b.com/scopes/tenant.system-tools
-  /connect/activate:
-    post:
-      tags:
-        - connect
-      operationId: tenantConnectionActivate
-      summary: Set tenant backend connection mode (managed or dedicated)
-      description: Activates managed (platform provisions CF tunnel and uses its own Google SA) or dedicated (tenant supplies own CF/Hostinger credentials). Upserts tenant_backend_connections row. User JWT required.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - mode
-              properties:
-                mode:
-                  type: string
-                  enum:
-                    - managed
-                    - dedicated
-                cloudflare_mode:
-                  type: string
-                  enum:
-                    - managed
-                    - dedicated
-                  default: managed
-                google_auth_mode:
-                  type: string
-                  enum:
-                    - managed
-                    - dedicated
-                  default: managed
-                n8n_activation_mode:
-                  type: string
-                  enum:
-                    - managed_main_server
-                    - self_hosted_local
-                  default: managed_main_server
-                  description: managed_main_server uses n8n.mad4b.com; self_hosted_local provisions device-local n8n route.
-                cf_api_token:
-                  type: string
-                  description: Dedicated mode only — Cloudflare API token for tunnel provisioning.
-                cf_account_id:
-                  type: string
-                  description: Dedicated mode only — Cloudflare account ID.
-                hostinger_api_key:
-                  type: string
-                  description: Dedicated mode only — Hostinger DNS API key.
-      responses:
-        '200':
-          description: Activation result
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  connection:
-                    type: object
-                    properties:
-                      mode:
-                        type: string
-                        enum:
-                          - managed
-                          - dedicated
-                      status:
-                        type: string
-                      cloudflare_mode:
-                        type: string
-                        enum:
-                          - managed
-                          - dedicated
-                      google_auth_mode:
-                        type: string
-                        enum:
-                          - managed
-                          - dedicated
-                      n8n_activation_mode:
-                        type: string
-                        enum:
-                          - managed_main_server
-                          - self_hosted_local
-                      device_count:
-                        type: integer
-                      activated_at:
-                        type: string
-                  notice:
-                    type: string
-        '403':
-          description: User JWT required
-      security:
-        - userBearerAuth:
-            - https://auth.mad4b.com/scopes/tenant.links
-            - https://auth.mad4b.com/scopes/tenant.status
-            - https://auth.mad4b.com/scopes/tenant.activation
-            - https://auth.mad4b.com/scopes/tenant.install
-            - https://auth.mad4b.com/scopes/tenant.system-tools
-  /connect/device-install:
-    post:
-      tags:
-        - connect
-      operationId: tenantDeviceInstall
-      summary: Provision a local connector for the authenticated tenant's device
-      description: Creates a connector config for the given device_id under the tenant. Returns tunnel_url, connector_secret, and install steps. User JWT required.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - device_id
-              properties:
-                device_id:
-                  type: string
-                  description: Stable machine identifier, e.g. mohammedlap or johns-pc.
-                hostname:
-                  type: string
-                  description: Optional full hostname under .connector.mad4b.com.
-                cloudflare_connection_id:
-                  type: string
-                hostinger_connection_id:
-                  type: string
-                local_apps:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      app_key:
-                        type: string
-                      path_prefix:
-                        type: string
-                      local_port:
-                        type: integer
-                      status:
-                        type: string
-                        enum:
-                          - planned
-                          - active
-                          - disabled
-      responses:
-        '200':
-          description: Connector install bundle
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  config_id:
-                    type: string
-                  device_id:
-                    type: string
-                  tunnel_url:
-                    type: string
-                  connector_secret:
-                    type: string
-                  cf_tunnel_id:
-                    type: string
-                  credential_source:
-                    type: string
-                  dns_record:
-                    type: object
-                    additionalProperties: true
-                  app_routes:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        app_key:
-                          type: string
-                        route_mode:
-                          type: string
-                          enum:
-                            - host
-                            - path
-                        hostname:
-                          type: string
-                        path_prefix:
-                          type: string
-                          nullable: true
-                        local_port:
-                          type: integer
-                        service_url:
-                          type: string
-                        public_url:
-                          type: string
-                        status:
-                          type: string
-                          enum:
-                            - planned
-                            - active
-                            - disabled
-                  installation:
-                    type: object
-                    additionalProperties: true
-        '403':
-          description: User JWT required
-      security:
-        - userBearerAuth:
-            - https://auth.mad4b.com/scopes/tenant.links
-            - https://auth.mad4b.com/scopes/tenant.status
-            - https://auth.mad4b.com/scopes/tenant.activation
-            - https://auth.mad4b.com/scopes/tenant.install
-            - https://auth.mad4b.com/scopes/tenant.system-tools
-  /local-connector/install:
-    post:
-      tags:
-        - connector
-      operationId: tenantLocalConnectorInstall
-      summary: Full local connector provisioning with Cloudflare tunnel and DNS
-      description: "Provisions a Cloudflare tunnel for the signed-in user's device. Only device_id is required — user_id and tenant_id are resolved automatically from the Bearer token. Idempotent: calling again for the same device returns the existing config without touching Cloudflare."
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - device_id
-              properties:
-                device_id:
-                  type: string
-                  description: "Stable machine name chosen by the user (e.g. 'my-laptop', 'home-pc'). Must be unique per user."
-                reprovision:
-                  type: boolean
-                  default: false
-                  description: "Set true only if the user explicitly asks to reset/rotate their connector. Not needed for first-time install."
-                custom_aliases:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      alias:
-                        type: string
-                      cmd:
-                        type: string
-                      args:
-                        type: array
-                        items:
-                          type: string
-                      description:
-                        type: string
-      responses:
-        '200':
-          description: Install bundle with tunnel credentials and install.bat
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  config_id:
-                    type: string
-                  tunnel_url:
-                    type: string
-                  connector_secret:
-                    type: string
-                  cf_tunnel_id:
-                    type: string
-                  cloud_run_env:
-                    type: object
-                    additionalProperties: true
-                  installation:
-                    type: object
-                    additionalProperties: true
-      security:
-        - userBearerAuth:
-            - https://auth.mad4b.com/scopes/tenant.links
-            - https://auth.mad4b.com/scopes/tenant.status
-            - https://auth.mad4b.com/scopes/tenant.activation
-            - https://auth.mad4b.com/scopes/tenant.install
-            - https://auth.mad4b.com/scopes/tenant.system-tools
-  /local-connector/install/status:
-    get:
-      tags:
-        - connector
-      operationId: tenantLocalConnectorStatus
-      summary: Check local connector installation status for a device
-      description: "Returns config and shell allowlist for the signed-in user's device. Only device_id is required — user identity is resolved from the Bearer token. installed=false means /local-connector/install has not been called yet."
-      parameters:
-        - name: device_id
-          in: query
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Install status
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  installed:
-                    type: boolean
-                  config:
-                    type: object
-                    additionalProperties: true
-                  aliases:
-                    type: array
-                    items:
-                      type: object
-      security:
-        - userBearerAuth:
-            - https://auth.mad4b.com/scopes/tenant.links
-            - https://auth.mad4b.com/scopes/tenant.status
-            - https://auth.mad4b.com/scopes/tenant.activation
-            - https://auth.mad4b.com/scopes/tenant.install
-            - https://auth.mad4b.com/scopes/tenant.system-tools
-  /local-connector/health:
-    get:
-      tags:
-        - connector
-      operationId: tenantLocalConnectorHealth
-      summary: Check local connector reachability via platform proxy
-      description: "Platform proxies a health call to the device tunnel and returns reachability. Only device_id is required — user identity resolved from the Bearer token. Returns ok=false and reachable=false if the device agent is not running."
-      parameters:
-        - name: device_id
-          in: query
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Health result (ok=false if unreachable)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  tunnel_url:
-                    type: string
-                  agent:
-                    type: object
-                    additionalProperties: true
-                  error:
-                    type: object
-                    additionalProperties: true
-      security:
-        - userBearerAuth:
-            - https://auth.mad4b.com/scopes/tenant.links
-            - https://auth.mad4b.com/scopes/tenant.status
-            - https://auth.mad4b.com/scopes/tenant.activation
-            - https://auth.mad4b.com/scopes/tenant.install
-            - https://auth.mad4b.com/scopes/tenant.system-tools
-  /app-connections:
-    post:
-      tags:
-        - credentials
-      operationId: tenantSaveAppConnection
-      summary: Save credentials for a third-party integration (Cloudflare, Hostinger)
-      description: Stores encrypted API key credentials for cloudflare or hostinger. Returns connection_id used in /local-connector/install. auth_type must be api_key.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - user_id
-                - tenant_id
-                - app_key
-                - auth_type
-                - credentials
-              properties:
-                user_id:
-                  type: string
-                tenant_id:
-                  type: string
-                app_key:
-                  type: string
-                  enum:
-                    - cloudflare
-                    - hostinger
-                  description: 'cloudflare: tunnel provisioning. hostinger: DNS management.'
-                auth_type:
-                  type: string
-                  enum:
-                    - api_key
-                display_label:
-                  type: string
-                  description: Human-readable label for this connection.
-                credentials:
-                  type: object
-                  additionalProperties: true
-                  description: 'cloudflare: {cloudflare_api_token, cloudflare_account_id}. hostinger: {hostinger_api_token}.'
-      responses:
-        '200':
-          description: Connection created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  connection_id:
-                    type: string
-                  app_key:
-                    type: string
-        '400':
-          description: Missing required fields
-        '403':
-          description: Authentication required
-      security:
-        - userBearerAuth:
-            - https://auth.mad4b.com/scopes/tenant.links
-            - https://auth.mad4b.com/scopes/tenant.status
-            - https://auth.mad4b.com/scopes/tenant.activation
-            - https://auth.mad4b.com/scopes/tenant.install
-            - https://auth.mad4b.com/scopes/tenant.system-tools
-  /connector/{device_id}/policy:
-    get:
-      tags: [device-runtime]
-      operationId: devicePolicy
-      summary: Device runtime governance policy
-      description: "Returns the device's governance boundary: shell enabled state, permitted aliases, accessible file paths, and restricted operations. Call before any device operation. No auth required on the device side."
-      parameters:
-        - name: device_id
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        '200':
-          description: Device governance policy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok: { type: boolean }
-                  shell_enabled: { type: boolean }
-                  permitted_aliases: { type: array, items: { type: string } }
-                  permitted_paths: { type: array, items: { type: string } }
-                  restricted_operations: { type: array, items: { type: string } }
-        '404': { description: Device not found or connector not installed }
-      security:
-        - userBearerAuth: []
-
-  /connector/{device_id}/health:
-    get:
-      tags: [device-runtime]
-      operationId: deviceHealth
-      summary: Check if the device connector agent is running
-      description: "Proxies a health check directly to the device tunnel. Returns uptime, hostname, and platform. Use this to confirm the agent is running before shell or file operations."
-      parameters:
-        - name: device_id
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        '200':
-          description: Health result
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok: { type: boolean }
-                  hostname: { type: string }
-                  platform: { type: string }
-                  uptime: { type: number }
-        '404': { description: Device not found }
-        '502': { description: Device unreachable }
-      security:
-        - userBearerAuth: []
-
-  /connector/{device_id}/shell:
-    post:
-      tags: [device-runtime]
-      operationId: deviceShell
-      summary: Run an allowlisted shell command on the device
-      description: "Executes commands from the device shell allowlist. Use action=list to see available aliases, action=run with an alias to execute. Only aliases pre-approved in the allowlist are permitted."
-      parameters:
-        - name: device_id
-          in: path
-          required: true
-          schema: { type: string }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [action]
-              properties:
-                action:
-                  type: string
-                  enum: [status, list, run]
-                alias:
-                  type: string
-                  description: Shell alias to run (from allowlist). Required for action=run.
-                extra_args:
-                  type: array
-                  items: { type: string }
-                  description: Extra args appended to the command. Only if the alias permits allow_extra_args=true.
-                timeout_ms:
-                  type: integer
-                  minimum: 1000
-                  maximum: 600000
-      responses:
-        '200':
-          description: Shell result or alias listing
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-                properties:
-                  ok: { type: boolean }
-                  stdout: { type: string }
-                  stderr: { type: string }
-                  exit_code: { type: integer }
-                  aliases: { type: array, items: { type: object } }
-        '403': { description: Alias not in allowlist }
-        '404': { description: Device not found }
-        '502': { description: Device unreachable }
-      security:
-        - userBearerAuth: []
-
-  /connector/{device_id}/files:
-    post:
-      tags: [device-runtime]
-      operationId: deviceFiles
-      summary: Read or write allowlisted files on the device
-      description: "File access restricted to paths in the device file allowlist. Use action=list to see permitted paths, action=read to retrieve content, action=write to write content."
-      parameters:
-        - name: device_id
-          in: path
-          required: true
-          schema: { type: string }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [action]
-              properties:
-                action:
-                  type: string
-                  enum: [list, read, write]
-                path:
-                  type: string
-                  description: Absolute file path — must be in the file access allowlist.
-                content:
-                  type: string
-                  description: File content for write action.
-      responses:
-        '200':
-          description: File operation result
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-                properties:
-                  ok: { type: boolean }
-                  path: { type: string }
-                  content: { type: string }
-                  written: { type: boolean }
-                  paths: { type: array, items: { type: string } }
-        '403': { description: Path not in allowlist }
-        '404': { description: Device not found }
-        '502': { description: Device unreachable }
-      security:
-        - userBearerAuth: []
-
-  /connector/{device_id}/fetch-upload:
-    post:
-      tags: [device-runtime]
-      operationId: deviceFetchUpload
-      summary: Fetch a URL from the device and push content to platform uploads
-      description: "Device fetches the URL and forwards content to the platform upload system. Returns upload_id. Use for URLs requiring local network access or when the platform cannot reach the URL directly."
-      parameters:
-        - name: device_id
-          in: path
-          required: true
-          schema: { type: string }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [url, upload_type]
-              properties:
-                url:
-                  type: string
-                  description: URL to fetch from the device.
-                upload_type:
-                  type: string
-                  enum: [schema, skill, knowledge, repo_link, asset]
-                filename:
-                  type: string
-                timeout_ms:
-                  type: integer
-                  minimum: 1000
-                  maximum: 600000
-                  default: 30000
-      responses:
-        '200':
-          description: Content fetched and upload record created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok: { type: boolean }
-                  upload_id: { type: string }
-                  fetched_url: { type: string }
-                  status: { type: string }
-        '404': { description: Device not found }
-        '502': { description: Fetch failed or device unreachable }
-      security:
-        - userBearerAuth: []
-
-  /connector/{device_id}/github:
-    post:
-      tags: [device-runtime]
-      operationId: connectorProxyGithub
-      summary: Run a gh CLI command on the connected device
-      description: Proxies a GitHub CLI call through the platform to the named device tunnel. The device is resolved from the caller's identity — no credentials needed. Pass args as an array or string.
-      parameters:
-        - name: device_id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [args]
-              properties:
-                args:
-                  oneOf:
-                    - type: array
-                      items: { type: string }
-                    - type: string
-                timeout_ms:
-                  type: integer
-                  minimum: 1000
-                  maximum: 600000
-                  default: 120000
-      responses:
-        '200':
-          description: CLI output
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok: { type: boolean }
-                  stdout: { type: string }
-                  stderr: { type: string }
-                  exit_code: { type: integer }
-        '401': { description: Unauthorized }
-        '404': { description: Device not found }
-        '502': { description: Proxy or device error }
-      security:
-        - userBearerAuth: []
-
-  /connector/{device_id}/gcloud:
-    post:
-      tags: [device-runtime]
-      operationId: connectorProxyGcloud
-      summary: Run a gcloud CLI command on the connected device
-      description: Proxies a gcloud call through the platform to the named device tunnel. Use for restarting Cloud Run services, reading logs, or triggering redeployments from the device.
-      parameters:
-        - name: device_id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [args]
-              properties:
-                args:
-                  oneOf:
-                    - type: array
-                      items: { type: string }
-                    - type: string
-                timeout_ms:
-                  type: integer
-                  minimum: 1000
-                  maximum: 600000
-                  default: 120000
-      responses:
-        '200':
-          description: CLI output
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok: { type: boolean }
-                  stdout: { type: string }
-                  stderr: { type: string }
-                  exit_code: { type: integer }
-        '401': { description: Unauthorized }
-        '404': { description: Device not found }
-        '502': { description: Proxy or device error }
-      security:
-        - userBearerAuth: []
-
-  /connector/{device_id}/shell-fetch-upload:
-    post:
-      tags: [device-runtime]
-      operationId: connectorProxyShellFetchUpload
-      summary: Download a URL via curl on the connected device and push to platform uploads
-      description: Proxies a curl-based fetch-upload call through the platform to the named device. Use when /connector/{device_id}/fetch-upload fails or when curl-specific flags are needed.
-      parameters:
-        - name: device_id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [url, upload_type]
-              properties:
-                url:
-                  type: string
-                  description: URL to download via curl. Must not contain shell metacharacters.
-                upload_type:
-                  type: string
-                  enum: [schema, skill, knowledge, repo_link, asset]
-                filename:
-                  type: string
-                uploaded_by:
-                  type: string
-                metadata:
-                  type: object
-                  additionalProperties: true
-                timeout_ms:
-                  type: integer
-                  minimum: 1000
-                  maximum: 600000
-                  default: 60000
-      responses:
-        '200':
-          description: File downloaded and upload record created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok: { type: boolean }
-                  upload_id: { type: string }
-                  via: { type: string }
-        '401': { description: Unauthorized }
-        '400': { description: URL contains unsafe characters }
-        '404': { description: Device not found }
-        '502': { description: Proxy or device error }
-      security:
-        - userBearerAuth: []
   /activation/session-context:
     get:
-      tags:
-        - activation
-      operationId: getActivationSessionContext
-      summary: Open a new conversation session and read scope context
-      description: Opens a new GPT session for this conversation (closing any previously open ones) and returns the session_id plus platform scope context. Call once at the start of every GPT conversation. Use the returned session_id for all /gpt/sessions/{id}/turn and /gpt/sessions/{id}/end calls.
+      tags: [session]
+      operationId: activateSession
+      summary: Open conversation session and load tenant platform context
+      description: |
+        Call once at the start of every conversation. Auto-closes any previously open sessions for this user, opens a new one, and returns session_id plus platform context (scope, recent sessions). Use session_id for all subsequent writeSessionTurn and endSession calls.
       parameters:
         - name: limit
           in: query
-          schema:
-            type: integer
-            default: 20
-            maximum: 50
-          description: Number of recent history rows to return.
-        - name: offset
-          in: query
-          schema:
-            type: integer
-            default: 0
+          schema: { type: integer, default: 20, maximum: 50 }
       responses:
         '200':
-          description: Session opened and scope context returned
+          description: Session opened
           content:
             application/json:
               schema:
@@ -1184,30 +98,98 @@ paths:
                   ok: { type: boolean }
                   session_id:
                     type: string
-                    description: Newly opened session ID. Pass to /gpt/sessions/{id}/turn and /gpt/sessions/{id}/end.
-                  closed_sessions:
-                    type: integer
+                    description: Use this in /gpt/sessions/{id}/turn and /gpt/sessions/{id}/end.
+                  closed_sessions: { type: integer }
                   gpt_sessions:
                     type: array
-                    items:
-                      type: object
-                      additionalProperties: true
-        '401': { description: Unauthorized }
+                    items: { $ref: '#/components/schemas/GptSession' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
       security:
         - userBearerAuth: []
+
+  /gpt/tools:
+    get:
+      tags: [tools]
+      operationId: listTools
+      summary: List all available platform tools for this tenant
+      description: |
+        Returns the full catalog of platform operations available to this tenant from the DB tool registry. Each tool has a name (pass to callTool), description, and inputSchema. Call this to discover what operations are available before using callTool.
+      responses:
+        '200':
+          description: Tool catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, tools]
+                properties:
+                  ok: { type: boolean }
+                  caller_type: { type: string }
+                  count: { type: integer }
+                  tools:
+                    type: array
+                    items: { $ref: '#/components/schemas/ToolItem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+      security:
+        - userBearerAuth: []
+
+  /gpt/tools/call:
+    post:
+      tags: [tools]
+      operationId: callTool
+      summary: Execute any platform tool by name
+      description: |
+        Executes a tool from the tenant registry. Use listTools first to discover available tool names and required arguments. Arguments are forwarded to the underlying API — path params are substituted, GET requests use query string, POST uses request body. Returns the raw upstream response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  description: Tool name from listTools (e.g. connector_shell, connect_status).
+                arguments:
+                  type: object
+                  additionalProperties: true
+                  description: Arguments matching the tool inputSchema.
+      responses:
+        '200':
+          description: Upstream tool response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Missing name or path parameter
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: Tool not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      security:
+        - userBearerAuth: []
+
   /gpt/sessions/{id}/turn:
     post:
-      tags:
-        - gpt-sessions
-      operationId: writeGptSessionTurn
+      tags: [session]
+      operationId: writeSessionTurn
       summary: Record a conversation turn (user, assistant, or tool message)
-      description: Appends a message turn to the active session. Call after every user or assistant exchange. Use role=user for the human message, role=assistant for the GPT reply, role=tool for tool-call results.
+      description: |
+        Persists a message turn to the active session. Call after every user or assistant exchange. role=user for human input, role=assistant for GPT reply, role=tool for tool-call results.
       parameters:
         - name: id
           in: path
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+          description: session_id from activateSession.
       requestBody:
         required: true
         content:
@@ -1236,24 +218,25 @@ paths:
                   session_id: { type: string }
                   turn_index: { type: integer }
         '400': { description: Missing fields }
-        '401': { description: Unauthorized }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { description: Session not found }
-        '409': { description: Session is closed }
+        '409': { description: Session already closed }
       security:
         - userBearerAuth: []
+
   /gpt/sessions/{id}/end:
     post:
-      tags:
-        - gpt-sessions
-      operationId: endGptSession
+      tags: [session]
+      operationId: endSession
       summary: Close the session and archive conversation to Google Drive
-      description: Marks the session completed, optionally saves a summary, and exports the full conversation JSON to Drive with hierarchical filing (year-month/day/user_time_id.json). Call at end of conversation.
+      description: |
+        Marks the session completed and exports the full conversation JSON to Drive with hierarchical filing (year-month/day/user_time_id.json). Returns the Drive link. Call when the conversation is ending.
       parameters:
         - name: id
           in: path
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+          description: session_id from activateSession.
       requestBody:
         required: false
         content:
@@ -1281,7 +264,7 @@ paths:
                     properties:
                       drive_file_id: { type: string }
                       drive_web_url: { type: string }
-        '401': { description: Unauthorized }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { description: Session not found }
         '409': { description: Session already ended }
       security:
