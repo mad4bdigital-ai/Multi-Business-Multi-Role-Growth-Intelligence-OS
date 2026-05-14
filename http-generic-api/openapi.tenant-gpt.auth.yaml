@@ -79,8 +79,7 @@ paths:
       tags: [session]
       operationId: activateSession
       summary: Open conversation session and load tenant platform context
-      description: |
-        Call once at the start of every conversation. Auto-closes any previously open sessions for this user, opens a new one, and returns session_id plus platform context (scope, recent sessions). Use session_id for all subsequent writeSessionTurn and endSession calls.
+      description: "Call once at conversation start. Auto-closes previous open sessions, opens a new one, returns session_id plus platform context (scope, recent sessions). Use session_id for writeSessionTurn and endSession calls."
       parameters:
         - name: limit
           in: query
@@ -138,8 +137,7 @@ paths:
       tags: [tools]
       operationId: callTool
       summary: Execute any platform tool by name
-      description: |
-        Executes a tool from the tenant registry. Use listTools first to discover available tool names and required arguments. Arguments are forwarded to the underlying API — path params are substituted, GET requests use query string, POST uses request body. Returns the raw upstream response.
+      description: "Executes a tool from the tenant registry. Use listTools first to get tool names and required arguments. Path params are substituted automatically; GET uses query string, POST uses request body. Returns the raw upstream response."
       requestBody:
         required: true
         content:

@@ -73,8 +73,7 @@ paths:
       tags: [session]
       operationId: activateSession
       summary: Open conversation session and load platform context
-      description: |
-        Call once at the start of every conversation. Auto-closes any previously open sessions for this principal, opens a new one, and returns: session_id (required for all other session calls), gpt_sessions (recent history), platform_access counts, and related scopes. Pass user_id and/or tenant_id to scope context for a specific user.
+      description: "Call once at conversation start. Auto-closes previous open sessions, opens a new one, and returns session_id (use in turn/end calls), gpt_sessions, platform_access counts, and related scopes. Pass user_id/tenant_id to scope to a specific user."
       parameters:
         - name: user_id
           in: query
@@ -145,8 +144,7 @@ paths:
       tags: [tools]
       operationId: callTool
       summary: Execute any platform tool by name
-      description: |
-        Executes a tool from the registry. Use listTools first to get available tool names and their required arguments. Arguments are forwarded to the underlying API endpoint — path params are substituted automatically, GET requests use query string, POST/PUT/PATCH use request body. Returns the raw upstream response.
+      description: "Executes a tool from the registry. Use listTools first to get tool names and required arguments. Path params are substituted automatically; GET uses query string, POST/PUT/PATCH uses request body. Returns the raw upstream response."
       requestBody:
         required: true
         content:
