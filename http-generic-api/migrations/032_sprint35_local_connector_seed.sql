@@ -3,8 +3,8 @@
 -- ── Add connector_secret column for per-device auth ───────────────────────────
 
 ALTER TABLE `local_connector_user_configs`
-  ADD COLUMN `connector_secret` VARCHAR(256) NULL
-    COMMENT 'Shared secret: Cloud Run sends it as Bearer token, local server validates it';
+  ADD COLUMN IF NOT EXISTS `connector_secret` VARCHAR(256) NULL
+    COMMENT 'Shared secret — Cloud Run sends it as Bearer token, local server validates it';
 
 -- ── Seed: Nagy admin (mohammedlap) connected via connector.mad4b.com ───────────────
 

@@ -1,5 +1,5 @@
 -- Sprint 30b: Store session raw dump in Drive (one file per session).
--- DB keeps only structured query fields; content lives in Drive.
+-- DB keeps only structured query fields. Content lives in Drive.
 
 ALTER TABLE `customer_sessions`
   ADD COLUMN IF NOT EXISTS `raw_drive_id`  VARCHAR(255)  NULL COMMENT 'Drive file ID of the full raw session dump'

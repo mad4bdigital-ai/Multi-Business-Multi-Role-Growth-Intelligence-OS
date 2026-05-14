@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS `local_connector_shell_allowlists` (
   `id`                INT UNSIGNED  NOT NULL AUTO_INCREMENT,
   `config_id`         VARCHAR(36)   NOT NULL,
   `alias`             VARCHAR(128)  NOT NULL COMMENT 'Short name used by agents: e.g. git_status',
-  `command_template`  VARCHAR(1024) NOT NULL COMMENT 'Shell template; {args} is substituted with extra_args',
+  `command_template`  VARCHAR(1024) NOT NULL COMMENT 'Shell template — {args} is substituted with extra_args',
   `allow_extra_args`  TINYINT(1)    NOT NULL DEFAULT 0 COMMENT 'Whether the agent may pass additional arguments',
   `description`       VARCHAR(512)  NULL,
   `created_at`        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,

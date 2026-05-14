@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS `credit_ledger` (
   KEY `idx_type` (`ledger_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ── Usage limits (per-tenant overrides; NULL = inherit plan / unlimited) ──────
+-- ── Usage limits (per-tenant overrides — NULL = inherit plan / unlimited) ──────
 
 CREATE TABLE IF NOT EXISTS `usage_limits` (
   `id`                       INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS `usage_limits` (
   `monthly_uploads`          SMALLINT UNSIGNED NULL,
   `max_drive_bytes`          BIGINT UNSIGNED   NULL,
   `max_seats`                SMALLINT UNSIGNED NULL,
-  `credit_limit`             DECIMAL(14,4) NULL COMMENT 'NULL = unlimited; hard stop when balance hits 0',
+  `credit_limit`             DECIMAL(14,4) NULL COMMENT 'NULL = unlimited — hard stop when balance hits 0',
   `overage_allowed`          TINYINT(1)    NOT NULL DEFAULT 0,
   `overage_rate_per_unit`    DECIMAL(10,6) NULL COMMENT 'USD per credit unit if overage allowed',
   `updated_at`               DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
