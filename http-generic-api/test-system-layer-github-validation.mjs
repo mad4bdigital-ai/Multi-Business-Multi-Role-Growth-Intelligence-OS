@@ -89,4 +89,49 @@ const { activationGithubValidate } = await import("./routes/systemLayerRoutes.js
   assert.equal(called, false);
 }
 
+{
+  const result = await activationGithubValidate(
+    {},
+    {
+      github_parent_action_key: "github_api_mcp",
+      github_endpoint_key: "github_get_repository",
+      github_owner: "mad4bdigital-ai",
+      github_repo: "multi-business-multi-role-growth-intelligence-os",
+      github_branch: "main",
+    },
+    {
+      executionFacade: {
+        execute: async () => ({
+          status: 500,
+          body: {
+            ok: false,
+            error: {
+              code: "github_app_auth_invalid_private_key",
+              message: "GitHub App private key could not be parsed.",
+              status: 500,
+              details: {
+                cause_code: "ERR_OSSL_PEM_NO_START_LINE",
+                cause_message: "error detail without key material",
+                expected_prefixes: ["-----BEGIN RSA PRIVATE KEY-----"],
+                key_shape: {
+                  raw_length: 9,
+                  normalized_length: 9,
+                  starts_with_pem_header: false,
+                  looks_like_pem: false,
+                },
+              },
+            },
+          },
+        }),
+      },
+    }
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "github_app_auth_invalid_private_key");
+  assert.equal(result.details?.cause_code, "ERR_OSSL_PEM_NO_START_LINE");
+  assert.equal(result.details?.key_shape?.starts_with_pem_header, false);
+  assert.equal(result.details?.cause_message, undefined, "provider result omits low-level message text");
+}
+
 console.log("[PASS] system layer GitHub activation validation target safety");

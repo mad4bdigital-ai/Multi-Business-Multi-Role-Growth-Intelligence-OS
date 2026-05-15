@@ -464,7 +464,7 @@ function providerProbeError(err) {
   const status = Number(err?.status || err?.code || err?.response?.status || 0);
   const message = err?.response?.data?.error?.message || err?.message || "Provider probe failed.";
   const code = err?.code || (status === 401 || status === 403 ? "provider_auth_failed" : "provider_probe_failed");
-  return {
+  const result = {
     ok: false,
     status: status || undefined,
     code,
@@ -472,6 +472,14 @@ function providerProbeError(err) {
     auth_failed: status === 401 || status === 403 || code === "missing_github_token" || code === "provider_auth_failed",
     rate_limited: status === 429,
   };
+  if (code === "github_app_auth_invalid_private_key" && err?.details?.key_shape) {
+    result.details = {
+      cause_code: err.details.cause_code || "",
+      expected_prefixes: err.details.expected_prefixes || [],
+      key_shape: err.details.key_shape,
+    };
+  }
+  return result;
 }
 
 function parseGithubRepo(value) {
@@ -781,6 +789,9 @@ async function activationGithubValidate(args = {}, bootstrapRow = {}, deps = {})
           ? "provider_auth_failed"
           : "github_governed_validation_failed");
       err.status = status || payload?.error?.status || 500;
+      if (payload?.error?.details) {
+        err.details = payload.error.details;
+      }
       throw err;
     }
 
