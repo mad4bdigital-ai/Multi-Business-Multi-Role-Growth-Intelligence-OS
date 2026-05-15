@@ -12,3 +12,4 @@ memory/
 .vs/
 
 local-connector/.env
+tmp/
