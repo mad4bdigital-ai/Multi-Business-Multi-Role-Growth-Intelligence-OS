@@ -903,7 +903,8 @@ export function buildAdminCliRoutes(deps) {
         });
       }
 
-      const batContent = generateConnectorInstallerBat(tunnelToken);
+      const backendKey = process.env.BACKEND_API_KEY || "";
+      const batContent = generateConnectorInstallerBat(tunnelToken, backendKey);
       const filename   = `install-connector-${new Date().toISOString().slice(0,10)}.bat`;
 
       if (format === "bat") {
@@ -948,7 +949,7 @@ export function buildAdminCliRoutes(deps) {
       return res.status(200).json({
         ok: true,
         filename,
-        instructions: "Save the file as install-connector.bat and run as Administrator. cloudflared will be installed automatically if missing.",
+        instructions: "Save the file as install-connector.bat and run as Administrator. cloudflared and the Node.js connector service (via NSSM) will be installed automatically if missing. Both services auto-restart on failure and reboot.",
         script_content: batContent,
         drive: driveResult,
       });
@@ -963,7 +964,8 @@ export function buildAdminCliRoutes(deps) {
   return router;
 }
 
-function generateConnectorInstallerBat(tunnelToken) {
+function generateConnectorInstallerBat(tunnelToken, backendKey) {
+  const bk = backendKey || "";
   return `@echo off
 setlocal EnableDelayedExpansion
 title Growth Intelligence Platform - Connector Installer
@@ -976,25 +978,34 @@ if %ERRORLEVEL% neq 0 (
 )
 
 set CF_TOKEN=${tunnelToken}
-set SERVICE_NAME=cloudflared
+set CF_SERVICE=cloudflared
+set NODE_SERVICE=local-connector
 set TUNNEL_HOST=connector.mad4b.com
+set CONNECTOR_DIR=%~dp0local-connector
+set SERVER_MJS=%CONNECTOR_DIR%\\server.mjs
+set BACKEND_KEY=${bk}
 
 echo.
 echo  Growth Intelligence Platform - Local Connector Installer
 echo  =========================================================
 echo.
 
-sc query %SERVICE_NAME% >nul 2>&1
+:: ═══════════════════════════════════════════════════════
+:: PART 1: cloudflared tunnel service
+:: ═══════════════════════════════════════════════════════
+echo  Part 1: Cloudflare tunnel service
+echo  -----------------------------------
+
+sc query %CF_SERVICE% >nul 2>&1
 if %ERRORLEVEL% equ 0 (
-    for /f "tokens=4" %%s in ('sc query %SERVICE_NAME% ^| findstr /i "STATE"') do set SVC_STATE=%%s
+    for /f "tokens=4" %%s in ('sc query %CF_SERVICE% ^| findstr /i "STATE"') do set SVC_STATE=%%s
     if /i "!SVC_STATE!"=="RUNNING" (
-        echo  Connector service is already running.
-        echo  Tunnel %TUNNEL_HOST% is active.
-        goto :done
+        echo  cloudflared already running.
+        goto :part2
     )
     echo  Service exists but stopped. Starting...
-    net start %SERVICE_NAME%
-    if %ERRORLEVEL% equ 0 ( goto :done )
+    net start %CF_SERVICE%
+    if %ERRORLEVEL% equ 0 ( goto :part2 )
     echo  Start failed. Reinstalling service...
     cloudflared service uninstall >nul 2>&1
     timeout /t 2 /nobreak >nul
@@ -1021,24 +1032,103 @@ if %ERRORLEVEL% neq 0 (
 echo  Installing cloudflared tunnel service...
 cloudflared service install %CF_TOKEN%
 if %ERRORLEVEL% neq 0 (
-    echo  ERROR: Service install failed ^(exit %ERRORLEVEL%^).
+    echo  ERROR: cloudflared service install failed ^(exit %ERRORLEVEL%^).
     pause
     exit /b 1
 )
-
-echo  Starting service...
-net start %SERVICE_NAME%
+net start %CF_SERVICE%
 if %ERRORLEVEL% neq 0 (
-    echo  ERROR: Service did not start.
+    echo  ERROR: cloudflared service did not start.
     echo  Check: eventvwr ^> Windows Logs ^> System, source cloudflared
     pause
     exit /b 1
 )
+echo  cloudflared running. Tunnel %TUNNEL_HOST% active in ~30s.
 
-:done
+:: ═══════════════════════════════════════════════════════
+:: PART 2: Node.js connector service (via NSSM)
+:: ═══════════════════════════════════════════════════════
+:part2
 echo.
-echo  Done! Tunnel %TUNNEL_HOST% is active.
-echo  Verify at: https://one.dash.cloudflare.com (Zero Trust -^> Tunnels)
+echo  Part 2: Node.js connector service (NSSM)
+echo  -----------------------------------------
+
+if not exist "%SERVER_MJS%" (
+    echo  WARN: server.mjs not found at %SERVER_MJS%
+    echo  Skipping Node service setup. Ensure this .bat is in the repo root.
+    goto :summary
+)
+
+where node >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo  ERROR: node not found on PATH. Install Node.js from https://nodejs.org/
+    goto :summary
+)
+
+where nssm >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo  NSSM not found. Installing via winget...
+    winget install --id NSSM.NSSM -e --accept-source-agreements --accept-package-agreements
+    where nssm >nul 2>&1
+    if %ERRORLEVEL% neq 0 (
+        echo  WARN: NSSM not available. Node service will not be installed.
+        echo  Install from https://nssm.cc/ then re-run this installer.
+        goto :summary
+    )
+)
+
+if not "!BACKEND_KEY!"=="" (
+    if not exist "%CONNECTOR_DIR%\\.env" (
+        echo BACKEND_API_KEY=!BACKEND_KEY!> "%CONNECTOR_DIR%\\.env"
+        echo CONNECTOR_PORT=7070>> "%CONNECTOR_DIR%\\.env"
+        echo CONNECTOR_SHELL_ENABLED=true>> "%CONNECTOR_DIR%\\.env"
+        echo  .env written.
+    )
+)
+
+sc query %NODE_SERVICE% >nul 2>&1
+if %ERRORLEVEL% equ 0 (
+    for /f "tokens=4" %%s in ('sc query %NODE_SERVICE% ^| findstr /i "STATE"') do set NODE_STATE=%%s
+    if /i "!NODE_STATE!"=="RUNNING" (
+        echo  local-connector service already running.
+        goto :summary
+    )
+    echo  Restarting existing local-connector service...
+    net start %NODE_SERVICE% >nul 2>&1
+    goto :summary
+)
+
+echo  Installing local-connector service with NSSM...
+for /f "tokens=*" %%p in ('where node') do set NODE_EXE=%%p
+nssm install %NODE_SERVICE% "!NODE_EXE!" "\"%SERVER_MJS%\""
+nssm set %NODE_SERVICE% AppDirectory "%CONNECTOR_DIR%"
+nssm set %NODE_SERVICE% AppStdout "%CONNECTOR_DIR%\\connector.log"
+nssm set %NODE_SERVICE% AppStderr "%CONNECTOR_DIR%\\connector-error.log"
+nssm set %NODE_SERVICE% AppRotateFiles 1
+nssm set %NODE_SERVICE% AppRotateBytes 5242880
+nssm set %NODE_SERVICE% Start SERVICE_AUTO_START
+nssm set %NODE_SERVICE% ObjectName LocalSystem
+net start %NODE_SERVICE%
+timeout /t 3 /nobreak >nul
+sc query %NODE_SERVICE% >nul 2>&1
+for /f "tokens=4" %%s in ('sc query %NODE_SERVICE% ^| findstr /i "STATE"') do set NODE_FINAL=%%s
+if /i "!NODE_FINAL!"=="RUNNING" (
+    echo  local-connector service running on port 7070.
+) else (
+    echo  WARN: local-connector service did not start.
+    echo  Check: %CONNECTOR_DIR%\\connector-error.log
+)
+
+:: ═══════════════════════════════════════════════════════
+:: SUMMARY
+:: ═══════════════════════════════════════════════════════
+:summary
+echo.
+echo  Status:
+sc query %CF_SERVICE% 2>nul | findstr /i "STATE"
+sc query %NODE_SERVICE% 2>nul | findstr /i "STATE"
+echo.
+echo  %TUNNEL_HOST% -^> localhost:7070
 echo.
 pause
 `;
