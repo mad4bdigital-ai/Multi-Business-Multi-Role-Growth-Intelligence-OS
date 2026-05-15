@@ -1,10 +1,10 @@
 import * as sql from "./sqlAdapter.js";
 
 // DATA_SOURCE controls routing:
-//   sheets → Google Sheets only        (current default — zero behaviour change)
+//   sql    → SQL reads, async Sheets mirror on writes (default)
 //   dual   → SQL primary, Sheets fallback on reads + async mirror on writes
-//   sql    → SQL reads, async Sheets mirror on writes (Sheets stays human-readable)
-const MODE = (process.env.DATA_SOURCE || "sheets").trim().toLowerCase();
+//   sheets → Google Sheets only (legacy fallback)
+const MODE = (process.env.DATA_SOURCE || "sql").trim().toLowerCase();
 
 // ── Sheets passthrough (injected by server.js via init()) ─────────────────────
 let _readSheets  = null;
