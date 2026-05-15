@@ -4410,7 +4410,7 @@ paths:
 
   /admin/schema-import/rollback:
     post:
-      tags: [admin-control]
+      tags: [admin-import]
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: rollbackSchemaImport
       summary: Restore endpoint schemas to a previous import job's snapshot
@@ -4483,7 +4483,7 @@ paths:
 
   /admin/schema-import/jobs/{job_id}:
     get:
-      tags: [admin-control]
+      tags: [admin-import]
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: getSchemaImportJob
       summary: Get a single schema import job including endpoint snapshots
