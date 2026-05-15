@@ -216,6 +216,8 @@ section("dispatcher contracts");
     adminOps.some((op) => op.pathKey === "/gpt/tools" && op.method === "get"));
   assert("admin dispatcher includes GPT tool call route",
     adminOps.some((op) => op.pathKey === "/gpt/tools/call" && op.method === "post"));
+  assert("admin dispatcher hides direct admin control route",
+    !adminOps.some((op) => op.operation.operationId === "executeAdminControl"));
 
   const tenantPostOps = collectOperations(tenantDoc).filter((op) => op.method === "post");
   assert("tenant dispatcher POST operations are non-consequential",

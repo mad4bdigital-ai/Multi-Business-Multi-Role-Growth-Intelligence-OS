@@ -3773,7 +3773,7 @@ paths:
 
   /admin/control:
     post:
-      tags: [admin-control]
+      tags: [admin-internal]
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: executeAdminControl
       summary: Execute personal admin control operation
@@ -3782,7 +3782,9 @@ paths:
         remote database SQL control through the configured application pool, and
         local runtime environment inspection or mutation, plus disabled-by-default
         allowlisted local Windows app launch. This endpoint is intended only for the
-        owner's private admin GPT and requires backend API key auth.
+        owner's private admin surface and requires backend API key auth. Custom GPT
+        schemas should call this through /gpt/tools/call using the admin_control tool
+        so read-only diagnostics do not cross an OpenAI approval boundary.
       requestBody:
         required: true
         content:
