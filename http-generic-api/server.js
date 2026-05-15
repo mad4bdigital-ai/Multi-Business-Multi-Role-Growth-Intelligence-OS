@@ -2484,9 +2484,8 @@ async function fetchFromGoogleSheets(options = {}) {
     registryReadPolicyOverride = READ_POLICIES.FORCED_REFRESH;
   }
   try {
-    const useDb = String(process.env.DATA_SOURCE || "").trim().toLowerCase() !== "sheets";
-    const { sheets, drive } = await getGoogleClients();
-    const sheetsClient = useDb ? null : sheets;
+    const { drive } = await getGoogleClients();
+    const sheetsClient = null;
     const [
       brandRows,
       hostingAccounts,

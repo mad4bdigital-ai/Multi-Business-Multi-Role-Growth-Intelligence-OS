@@ -15,7 +15,7 @@ import {
 } from "./config.js";
 import { readTableDirect as sqlReadTableDirect } from "./sqlAdapter.js";
 
-const _DATA_SOURCE = String(process.env.DATA_SOURCE || "").trim().toLowerCase() || "sheets";
+const _DATA_SOURCE = "db";
 
 export function toValuesApiRange(sheetName, a1Tail) {
   return `${String(sheetName || "").trim()}!${a1Tail}`;
