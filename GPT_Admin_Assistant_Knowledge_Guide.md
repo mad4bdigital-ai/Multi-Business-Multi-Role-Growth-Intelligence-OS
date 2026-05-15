@@ -15,7 +15,8 @@ Use this guide together with:
 1. `Top Level Instructions.md`
 2. `AI_Agent_Knowledge_Guide.md`
 3. `http-generic-api/openapi.yaml`
-4. `http-generic-api/openapi.custom-gpt.*.yaml`
+4. `http-generic-api/openapi.custom-gpt.auth-dispatcher.yaml` (platform connector — 5 ops)
+5. `http-generic-api/openapi.gpt-action.local-connector.yaml` (local connector — 10 ops)
 
 ## GPT Action Auth
 
@@ -35,15 +36,15 @@ On every new GPT session, run hard activation once before normal platform work:
 
 1. Announce: `Connecting to Growth Intelligence Platform...`
 2. Confirm the Custom GPT Action connection is signed in.
-3. Call `GET /activation/session-context` through the auth-dispatcher platform action.
-4. Read `platform_access` from the response. If missing or stale, call `GET /activation/platform-access`.
-5. Call `GET /activation/bootstrap-config` for the authoritative backend runtime bootstrap row. Response includes `source: backend_runtime`, `sheets_required: false`, `bootstrap_row` (system_name, api_base_url, environment, connector_url, github_repo, etc.), and live `platform_state` (tenant/device/connection counts, last_activation_at). This backend row is required context, but it does not replace the provider-bootstrap validation tool.
-6. Call `POST /system/tools/call` with `name: "activation_provider_bootstrap_validate"` to run the same-cycle Drive probe, Sheets bootstrap row read, and GitHub validation through the auth-host system layer. Use the individual tools `activation_drive_probe`, `activation_sheets_bootstrap_read`, and `activation_github_validate` only for targeted recovery evidence.
+3. Call `activateSession` (`GET /activation/session-context`). This opens a new session (auto-closing any previous open session), returns `session_id` for use in all subsequent `writeSessionTurn` and `endSession` calls, plus `gpt_sessions`, `platform_access` counts, and related scopes.
+4. Save `session_id` from the response. All turn writes and session-end calls require it.
+5. Read `platform_access` from the response. If missing or stale, call `callTool` with `name: "activation_platform_access"` via the tool registry.
+6. Call `callTool` with `name: "activation_provider_bootstrap_validate"` to run the same-cycle Drive probe, Sheets bootstrap row read, and GitHub validation through the auth-host system layer. Use the individual tools `activation_drive_probe`, `activation_sheets_bootstrap_read`, and `activation_github_validate` only for targeted recovery evidence.
 7. Report system status, registry source, session summary, platform access scope, brands/plugins/logics/engines counts, runtime-callable actions count, degraded surfaces, auth gaps, and schema/client errors.
 
-Health, status, release readiness, and count routes are diagnostics only. They do not replace `GET /activation/bootstrap-config` or `activation_provider_bootstrap_validate`.
+Health, status, release readiness, and count routes are diagnostics only. They do not replace `activateSession` or `activation_provider_bootstrap_validate`.
 
-Correction for future runs: do not query `activation_bootstrap_config` directly. Hard activation provider probes must go through `POST /system/tools/call` with `name: "activation_provider_bootstrap_validate"`. Bootstrap repair must go through `POST /system/tools/call` with `name: "activation_bootstrap_config_upsert"`. Do not use the direct `/admin/control` DB surface when a governed system tool exists.
+Correction for future runs: do not query `activation_bootstrap_config` directly. Hard activation provider probes must go through `callTool` with `name: "activation_provider_bootstrap_validate"`. Bootstrap repair must go through `callTool` with `name: "activation_bootstrap_config_upsert"`. Do not use the direct `/admin/control` DB surface when a governed tool exists in the registry.
 
 ## Agent Sides
 
@@ -162,51 +163,51 @@ The Admin Assistant uses exactly **two** action connectors. Custom GPT is limite
 
 | Connector | File | Server URL | Ops | Purpose |
 |---|---|---:|---:|---|
-| **Platform** | `http-generic-api/openapi.custom-gpt.auth-dispatcher.yaml` | `https://auth.mad4b.com` | 19 | Hard activation, MCP-like `/system/*` discovery/calls, platform JWT client, admin registry tools, admin control, schema import, and session continuity |
-| **Local** | `http-generic-api/openapi.custom-gpt.connector.yaml` | `https://connector.mad4b.com` | 7 | Standalone local execution bridge for break-glass shell/file/GitHub/gcloud on mohammedlap via Cloudflare Tunnel |
+| **Platform** | `http-generic-api/openapi.custom-gpt.auth-dispatcher.yaml` | `https://auth.mad4b.com` | 5 | Five MCP-style meta-ops: open session, list tools, call any tool, write turn, end session |
+| **Local** | `http-generic-api/openapi.gpt-action.local-connector.yaml` | `https://connector.mad4b.com` | 10 | Standalone local execution bridge for break-glass shell/file/GitHub/gcloud/PS/Win/n8n on mohammedlap via Cloudflare Tunnel |
 
 `auth.mad4b.com` is the governed control plane and must be the first choice for admin work. The local connector is a standalone plugin/action because it touches the local environment; call it only after the platform action indicates local execution is needed, or when the cloud control plane is unavailable and break-glass recovery is explicitly required. If `connect.mad4b.com` is used as the connector-facing host alias, it must follow the same local-connector contract as `connector.mad4b.com`.
 
-### Platform connector â€” operations
+### Platform connector — operations
+
+The auth-dispatcher is now a 5-op MCP-style schema (v4.0.0-mcp). All platform capabilities beyond these five meta-ops are accessed through the tool registry via `listTools` + `callTool`.
 
 | Operation | Path | Use |
 |---|---|---|
-| `getActivationSessionContext` | `GET /activation/session-context` | Load session context and embedded platform access |
-| `getActivationPlatformAccess` | `GET /activation/platform-access` | Refresh access scope, counts, and degraded surfaces |
-| `listSystemTools` | `GET /system/tools` | List MCP-like governed system tools available to the current principal |
-| `callSystemTool` | `POST /system/tools/call` | Call fixed DB-backed system tools and admin-only provider-bootstrap probes through runtime/principal validation |
-| `listSystemConnectors` | `GET /system/connectors` | Inspect connected systems through principal-aware scoping |
-| `getSystemConnector` | `GET /system/connectors/{system_id}` | Inspect one connected system and installations through principal-aware scoping |
-| `listAdminSystemTools` | `GET /admin/system/tools` | List admin-only system-layer tools |
-| `callAdminSystemTool` | `POST /admin/system/tools/call` | Call admin-only system-layer tools |
-| `schemaImportUpload` | `POST /admin/schema-import/upload` | Import JSON/YAML schema or repo URL into the platform |
-| `schemaImportRollback` | `POST /admin/schema-import/rollback` | Rollback the last schema import job |
-| `issuePlatformJwtClientToken` | `POST /auth/platform-jwt/issue` | Admin-only short-lived user JWT issuer for governed tenant `/connect/*` calls |
-| `executeAdminControl` | `POST /admin/control` | Root-level admin CLI/control for env, db, GitHub, gcloud, Hostinger, and allowlisted local app operations; do not use for activation bootstrap when `/system/tools/call` provides a governed tool |
+| `activateSession` | `GET /activation/session-context` | Open session (auto-closes prior open session), return `session_id` + `platform_access` + `gpt_sessions`. Call once per conversation. |
+| `listTools` | `GET /gpt/tools` | Discover all available platform tools from the DB registry. Returns tool names, descriptions, methods, paths, and inputSchemas. |
+| `callTool` | `POST /gpt/tools/call` | Execute any registered tool by name. Pass `name` (from `listTools`) and `arguments`. Path params substituted automatically. Returns raw upstream response. |
+| `writeSessionTurn` | `POST /gpt/sessions/{id}/turn` | Persist a conversation turn (user, assistant, or tool). Requires `session_id` from `activateSession`. Call after every exchange. |
+| `endSession` | `POST /gpt/sessions/{id}/end` | Close session, optionally save summary, export full conversation JSON to Drive. Returns Drive link. |
 
-### Platform connector - system-layer routing
+### Platform connector — tool registry routing
 
-The `/system/*` operations behave like a small MCP facade over governed platform registries. The Admin Assistant should list tools first, choose a fixed tool name, and call it through `/system/tools/call` or `/admin/system/tools/call`. The backend enforces principal scope and DB/runtime validation; the GPT must not invent tool names, bypass registry checks, or use the local connector for work that can be completed through the auth-host system layer.
+All platform capabilities beyond the five meta-ops are reached through `listTools` → `callTool`. The backend enforces principal scope and DB/runtime validation; the GPT must not invent tool names, bypass registry checks, or use the local connector for work that can be completed through the auth-host system layer.
 
-Admin-only activation tools exposed through `/system/tools/call`:
-- `activation_provider_bootstrap_validate` - runs the hard activation provider chain: Drive probe, Sheets bootstrap row read, and GitHub validation.
-- `activation_drive_probe` - checks Google Drive transport for targeted recovery.
-- `activation_sheets_bootstrap_read` - reads the configured Activation Bootstrap Config row for targeted recovery.
-- `activation_github_validate` - validates GitHub using the bootstrap-resolved repository binding, with optional `github_owner`, `github_repo`, and `github_branch` arguments. The `github_api_mcp` action should use `api_key_mode=github_app` with `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_ID`, and `GITHUB_APP_PRIVATE_KEY`; PAT-based `GITHUB_TOKEN` is not the activation authority. If DB bootstrap is unavailable, the server-env fallback may use `ACTIVATION_GITHUB_REPOSITORY=owner/repo` plus `ACTIVATION_GITHUB_BRANCH`, or the split `ACTIVATION_GITHUB_OWNER` and `ACTIVATION_GITHUB_REPO` fields.
-- `activation_bootstrap_config_upsert` - writes the GitHub activation binding into DB runtime config so activation can recover without a Cloud Run env update.
+**Workflow:**
+1. Call `listTools` to get the current tool catalog (name, description, inputSchema).
+2. Pick the tool name that matches the task.
+3. Call `callTool` with `{ name, arguments }`.
+
+Admin-only activation tools accessible via `callTool`:
+- `activation_provider_bootstrap_validate` — full hard activation provider chain: Drive probe, Sheets bootstrap row read, and GitHub validation.
+- `activation_drive_probe` — checks Google Drive transport for targeted recovery.
+- `activation_sheets_bootstrap_read` — reads the Activation Bootstrap Config row for targeted recovery.
+- `activation_github_validate` — validates GitHub using the bootstrap-resolved repository binding. Optional args: `github_owner`, `github_repo`, `github_branch`. The `github_api_mcp` action uses `api_key_mode=github_app` with `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_ID`, and `GITHUB_APP_PRIVATE_KEY` (raw PEM). PAT-based `GITHUB_TOKEN` is not the activation authority. DB-unavailable fallback: `ACTIVATION_GITHUB_REPOSITORY=owner/repo` + `ACTIVATION_GITHUB_BRANCH`, or split `ACTIVATION_GITHUB_OWNER` + `ACTIVATION_GITHUB_REPO`.
+- `activation_bootstrap_config_upsert` — writes the GitHub activation binding into DB runtime config so activation can recover without a Cloud Run env update.
 
 Activation bootstrap recovery when Cloud Run cannot run `gcloud`:
 1. Do not retry `gcloud run services update` from Cloud Run when the error is `spawn gcloud ENOENT`.
-2. Call `/system/tools/call` or `/admin/system/tools/call` with `name: "activation_bootstrap_config_upsert"` and `arguments: { "github_parent_action_key": "github_api_mcp", "github_endpoint_key": "github_get_repository", "github_owner": "mad4bdigital-ai", "github_repo": "multi-business-multi-role-growth-intelligence-os", "github_branch": "main" }`.
-3. Then call `activation_provider_bootstrap_validate`.
+2. Call `callTool` with `name: "activation_bootstrap_config_upsert"` and `arguments: { "github_parent_action_key": "github_api_mcp", "github_endpoint_key": "github_get_repository", "github_owner": "mad4bdigital-ai", "github_repo": "multi-business-multi-role-growth-intelligence-os", "github_branch": "main" }`.
+3. Then call `callTool` with `name: "activation_provider_bootstrap_validate"`.
 4. Use the local connector `/gcloud` path only if a deployment or revision-level change is still required after DB runtime config validates.
 
-Do not query a table named `activation_bootstrap_config`; that table is not part of the activation contract. The governed repair tool owns the DB/runtime details and currently writes the `activation.bootstrap.github` config under the backend runtime config authority.
+Do not query a table named `activation_bootstrap_config`; that table is not part of the activation contract. The governed repair tool owns the DB/runtime details.
 
 **When to use the auth-host system layer vs local connector directly:**
-- Use **auth-dispatcher first** (`auth.mad4b.com`) for hard activation, MCP-like tool discovery, connector registry inspection, admin control, schema import, and any routed/runtime-validated operation.
+- Use **auth-dispatcher first** (`auth.mad4b.com`) for hard activation, tool discovery, connector registry inspection, admin control, schema import, and any routed/runtime-validated operation.
 - Use **local connector directly** (`connector.mad4b.com`, or `connect.mad4b.com` if configured as the connector host alias) only for local-machine break-glass recovery, local shell/file/GitHub/gcloud checks, or local health validation that cannot be routed through the cloud control plane.
-- Use `https://auth.mad4b.com/connect` for **self-serve onboarding** - signup/signin, DB credential capture, new-device install bundle, and the Custom GPT redirect.
+- Use `https://auth.mad4b.com/connect` for **self-serve onboarding** — signup/signin, DB credential capture, new-device install bundle, and the Custom GPT redirect.
 
 ### Legacy scoped action files (still available â€” do not add to GPT)
 
@@ -226,20 +227,20 @@ These scoped files remain in the repo for specific direct use cases but are not 
 
 ## Runtime Scope
 
-Use `openapi.custom-gpt.runtime.yaml` only for direct runtime clients outside the Admin GPT's two-action setup. In the Admin Assistant, activation is exposed through `openapi.custom-gpt.auth-dispatcher.yaml` on `auth.mad4b.com`.
+Use `openapi.custom-gpt.runtime.yaml` only for direct runtime clients outside the Admin GPT's two-action setup. In the Admin Assistant, session management and platform tool calls are exposed through `openapi.custom-gpt.auth-dispatcher.yaml` on `auth.mad4b.com` via `activateSession` / `listTools` / `callTool`.
 
 Key operations and functional use:
 
-- `getActivationSessionContext`: admin and customer activation continuity; previous same-user sessions, related scopes, transcript availability, and embedded `platform_access`
-- `getActivationPlatformAccess`: admin access/count refresh for all-brand scope, brands, plugins, logics, engines, and runtime-callable actions
-- `executeHttpRequest`: governed provider call through registry `parent_action_key` and `endpoint_key`; use for direct runtime clients outside the Admin GPT two-action setup. In the Admin Assistant, hard activation provider probes go through `activation_provider_bootstrap_validate` on `/system/tools/call`.
-- `batchDispatch`: bounded multi-request dispatch for low-risk grouped diagnostics; not a bypass for auth or mutation policy
-- `createJob`, `getJob`, `getJobResult`: async governed execution for longer work
-- `generateImplementationPlan`, `generateTaskManifest`: AI resolver chain for implementation planning
-- `getAiRegistryReadiness`: route/workflow AI readiness evidence
-- Tenant operations: admin or customer tenant state depending on auth; create, list, read, replace, archive, memberships, relationships
+- `getActivationSessionContext`: for direct runtime clients — admin and customer activation continuity; previous same-user sessions, related scopes, transcript availability, and embedded `platform_access`. In the Admin GPT, use `activateSession` instead.
+- `getActivationPlatformAccess`: admin access/count refresh for all-brand scope, brands, plugins, logics, engines, and runtime-callable actions. In the Admin GPT, use `callTool` with `name: "activation_platform_access"` instead.
+- `executeHttpRequest`: governed provider call through registry `parent_action_key` and `endpoint_key`; use for direct runtime clients outside the Admin GPT two-action setup. In the Admin Assistant, hard activation provider probes go through `callTool` with `name: "activation_provider_bootstrap_validate"`.
+- `batchDispatch`: bounded multi-request dispatch for low-risk grouped diagnostics; not a bypass for auth or mutation policy.
+- `createJob`, `getJob`, `getJobResult`: async governed execution for longer work.
+- `generateImplementationPlan`, `generateTaskManifest`: AI resolver chain for implementation planning.
+- `getAiRegistryReadiness`: route/workflow AI readiness evidence.
+- Tenant operations: admin or customer tenant state depending on auth; create, list, read, replace, archive, memberships, relationships.
 
-Provider calls must go through the active governed surface for the client: Admin GPT uses auth-host `/system/tools/call` for hard activation probes; direct runtime clients use `executeHttpRequest`. Do not invent provider URLs or action keys.
+Provider calls must go through the active governed surface for the client: Admin GPT uses `callTool` for activation probes; direct runtime clients use `executeHttpRequest`. Do not invent provider URLs or action keys.
 
 ## Identity Scope
 
@@ -286,7 +287,7 @@ Functional use:
 - Connector dispatch/history/status: operational execution tracking; not raw provider transport
 - Bootstrap readiness and onboarding states: setup diagnostics
 
-Use this scope for platform connectivity and execution planning. For Admin GPT activation probes, use auth-host `/system/tools/call`; for direct runtime clients, use runtime `executeHttpRequest`.
+Use this scope for platform connectivity and execution planning. For Admin GPT activation probes, use `callTool` (auth-dispatcher); for direct runtime clients, use runtime `executeHttpRequest`.
 
 ## Logic Scope
 
@@ -344,11 +345,11 @@ When connecting a user's Make.com account, decide first which type of work is ne
 
 ## Admin CLI Scope
 
-Use `openapi.custom-gpt.admin-cli.yaml` only for high-risk platform-owner work.
+Use `openapi.custom-gpt.admin-cli.yaml` only for direct admin CLI clients. In the two-connector Admin GPT, admin control is reached via `callTool` with the registered tool name (e.g. `admin_control`) — use `listTools` to discover the current registry entry.
 
 Operations:
 
-- `executeAdminControl`: raw admin control dispatcher â€” tool routing by `tool` field
+- `executeAdminControl`: raw admin control dispatcher — tool routing by `tool` field
 - `executeHostingerApiCall`: direct Hostinger REST API proxy (`POST /admin/cli/hostinger`)
 
 ### Tool routing inside executeAdminControl
@@ -381,11 +382,25 @@ Functional use:
 
 Release readiness is diagnostic evidence; it does not replace hard activation provider probes.
 
+## GPT Session Lifecycle
+
+Every Admin GPT conversation must follow the session lifecycle to persist turns and archive the conversation to Drive.
+
+**Required pattern per conversation:**
+
+1. **Open** — `activateSession` at conversation start. Save `session_id`.
+2. **Record** — `writeSessionTurn` after each user message and assistant reply. Pass `role=user` for human input, `role=assistant` for GPT reply, `role=tool` for tool-call results (`action_key` = tool name).
+3. **Close** — `endSession` when the conversation ends or the user says goodbye. Optionally pass a `summary` paragraph and `user_email` to share the Drive file.
+
+`endSession` exports the full conversation JSON to `SESSIONS_DRIVE_FOLDER/{year-month}/{day}/{userSlug}_{HH-MM-SS}_{shortId}.json` and returns the Drive web URL. Sessions with `originator=gpt_action` use the hierarchical folder path; other originators get a flat filename.
+
+Do not skip `writeSessionTurn` or `endSession`. Skipping turns leaves the session incomplete; skipping end leaves it open and blocks the next `activateSession` auto-close from generating a Drive archive.
+
 ## Local Connector Scope
 
-Use `openapi.custom-gpt.connector.yaml` for break-glass operations or real-time direct device ops when the primary Cloud Run API is unavailable or when lower-latency direct access is preferred.
+Use `http-generic-api/openapi.gpt-action.local-connector.yaml` for break-glass operations or real-time direct device ops when the primary Cloud Run API is unavailable or when lower-latency direct access is preferred.
 
-The connector runs on the admin's local Windows machine (`mohammedlap`) and is reachable via Cloudflare Tunnel at `connector.mad4b.com`. It binds only to `127.0.0.1` â€” Cloudflare Tunnel is the sole internet entry point. Auth: `Authorization: Bearer <BACKEND_API_KEY>`. `/health` is unauthenticated.
+The connector runs on the admin’s local Windows machine (`mohammedlap`) and is reachable via Cloudflare Tunnel at `connector.mad4b.com`. It binds only to `127.0.0.1` — Cloudflare Tunnel is the sole internet entry point. Auth: `Authorization: Bearer <BACKEND_API_KEY>`. `/health` is unauthenticated.
 
 **Device:** mohammedlap | **Tunnel:** 95e4ba8c-782b-4819-9f80-04af4457ce73 | **Port:** 7070
 
@@ -394,16 +409,19 @@ Key operations:
 - `connectorHealth` (`GET /health`): alive check; no auth required; returns hostname, platform, uptime. Call first before any recovery op.
 - `connectorGithub` (`POST /github`): run `gh` CLI on the Windows machine; use for recovery commits, workflow status, deployment triggers when Cloud Run is down.
 - `connectorGcloud` (`POST /gcloud`): run `gcloud` CLI; use for restarting Cloud Run, reading deployment logs, triggering redeployments.
-- `connectorShell` (`POST /shell`): run an allowlisted alias (`action: "list"` to discover, `action: "run"` to execute). Default aliases: `node_ver`, `git_status`, `list_processes`, `disk_usage`, `n8n_health`.
+- `connectorShell` (`POST /shell`): run an allowlisted shell alias (`action: “list”` to discover, `action: “run”` to execute). Default aliases: `node_ver`, `git_status`, `list_processes`, `disk_usage`, `n8n_health`.
 - `connectorFiles` (`POST /files`): read or write files from `CONNECTOR_FILE_PATHS`; actions `list`, `read`, `write`.
 - `connectorFetchUpload` (`POST /fetch-upload`): fetch a URL and upload to Cloud Run storage.
 - `connectorShellFetchUpload` (`POST /shell-fetch-upload`): run a shell alias and upload the output.
+- `connectorPs` (`POST /ps`): execute a PowerShell script on the local Windows device; script must be in the PS allowlist.
+- `connectorWin` (`POST /win`): control Windows UI and apps; launch allowlisted apps, click, type, screenshot, or inspect the Windows desktop.
+- `connectorN8n` (`POST /n8n`): interact with the local n8n instance (localhost:5678); list, trigger, or inspect workflows without going through the Cloud Run API.
 
-When to use: Cloud Run is down, deployment rollback needed, recovery commit to push, n8n/local services to check.
+When to use: Cloud Run is down, deployment rollback needed, recovery commit to push, n8n/local services to check, Windows UI automation needed.
 
-When not to use: Cloud Run is healthy â€” prefer `/dispatch` for governed device ops with audit trail. Never use as a general-purpose shell.
+When not to use: Cloud Run is healthy — prefer `/dispatch` for governed device ops with audit trail. Never use as a general-purpose shell.
 
-Also routes n8n at `n8n.mad4b.com â†’ localhost:5678` via the same Cloudflare tunnel.
+Also routes n8n at `n8n.mad4b.com → localhost:5678` via the same Cloudflare tunnel.
 
 ## Privacy Policy URLs
 
