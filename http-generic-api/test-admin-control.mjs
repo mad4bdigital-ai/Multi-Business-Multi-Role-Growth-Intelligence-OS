@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { handleEnvControl, handleWindowsAppControl, parseArgs, requireAdminPrincipal } from "./routes/adminCliRoutes.js";
+import { inspectRepoReadOnly } from "./routes/gptToolsRoutes.js";
 
 let passed = 0;
 let failed = 0;
@@ -30,6 +31,19 @@ try {
   assert("local connector JSON responses expose sanitized Drive handoff status",
     adminCliSource.includes("drive_upload_status") && adminCliSource.includes("sanitizeDriveUploadError"),
     "responses should distinguish uploaded, failed, and unconfigured Drive handoffs without exposing installer content");
+
+  const repoList = await inspectRepoReadOnly({ action: "list", path: "http-generic-api", max_entries: 200 });
+  assert("repo inspect can list repo files read-only", repoList.entries.some((entry) => entry.path === "http-generic-api/package.json"), JSON.stringify(repoList));
+  const repoRead = await inspectRepoReadOnly({ action: "read", path: "http-generic-api/package.json", max_chars: 4000 });
+  assert("repo inspect can read allowlisted text files", repoRead.content.includes("\"scripts\""), repoRead.content.slice(0, 200));
+  const repoSearch = await inspectRepoReadOnly({ action: "search", path: "http-generic-api/routes", query: "buildGptToolsRoutes", max_entries: 5 });
+  assert("repo inspect can search repository text", repoSearch.matches.some((match) => match.path.endsWith("gptToolsRoutes.js")), JSON.stringify(repoSearch));
+  try {
+    await inspectRepoReadOnly({ action: "read", path: "secrets/example.env" });
+    assert("repo inspect blocks secret paths", false);
+  } catch (error) {
+    assert("repo inspect blocks secret paths", ["repo_path_blocked", "repo_file_blocked"].includes(error.code), error.message);
+  }
 
   assert("parseArgs preserves array entries", JSON.stringify(parseArgs(["a", "b c"])) === JSON.stringify(["a", "b c"]));
   assert("parseArgs splits simple strings", JSON.stringify(parseArgs("repo list")) === JSON.stringify(["repo", "list"]));

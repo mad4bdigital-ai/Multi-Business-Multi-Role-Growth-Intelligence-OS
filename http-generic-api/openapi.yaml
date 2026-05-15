@@ -3753,7 +3753,7 @@ paths:
               properties:
                 name:
                   type: string
-                  description: Tool key from listAdminTools, e.g. admin_control, admin_cloudflare, local_connector_self_repair.
+                  description: Tool key from listAdminTools, e.g. repo_inspect, admin_control, admin_cloudflare, local_connector_self_repair.
                 tool_args:
                   type: object
                   additionalProperties: true
