@@ -18,19 +18,31 @@ Managed n8n is centralized on GCloud at `n8n.mad4b.com`. Local/self-hosted n8n s
 
 ## Setup
 
-1. **Install cloudflared**
-   Download the Windows installer from https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/ and ensure `cloudflared` is on your PATH.
+### Option A — GPT-assisted (recommended)
 
-2. **Authenticate the tunnel** (one-time, if not already done)
-   ```
-   cloudflared tunnel login
-   ```
+The admin GPT can generate a pre-filled installer and hand you a Drive download link:
 
-3. **Copy and fill the env file**
+1. Open the admin GPT and activate a session.
+2. Ask: *"Generate the local connector installer"*
+3. GPT calls `local_connector_install_bundle` → generates `install-connector-<date>.bat` with the tunnel token pre-filled → uploads to Google Drive → returns a download link.
+4. Download the `.bat` file, right-click → **Run as administrator**.
+5. The script installs cloudflared via winget if missing, registers the service with the embedded token, and starts it. `connector.mad4b.com` is live within ~30 seconds.
+
+### Option B — Manual
+
+1. **Install cloudflared** (if not already on PATH):
    ```
-   copy .env.example .env
+   winget install --id Cloudflare.cloudflared
    ```
-   Open `.env` and set `BACKEND_API_KEY` to the same value used by the Cloud Run API.
+   Or download from https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+
+2. **Get the tunnel token** from Cloudflare Zero Trust dashboard → Networks → Tunnels → find `connector.mad4b.com` → Configure → copy the token.
+
+3. **Install the cloudflared service** (run PowerShell as Administrator from the repo root):
+   ```powershell
+   .\install-local-connector.ps1 -TunnelToken "eyJh..."
+   ```
+   This installs and starts cloudflared as a Windows service. The tunnel is live immediately and restarts automatically on reboot.
 
 4. **Test locally**
    ```
@@ -38,18 +50,28 @@ Managed n8n is centralized on GCloud at `n8n.mad4b.com`. Local/self-hosted n8n s
    ```
    Visit `http://127.0.0.1:7070/` — you should see a JSON health response. Default port is 7070; set `CONNECTOR_PORT` in `.env` to override.
 
-5. **Install as a Windows service** (run PowerShell as Administrator)
-   ```
-   .\install-service.ps1
-   ```
-   This registers cloudflared as an auto-start Windows service pointing at `cloudflared-config.yml`. The connector at `connector.mad4b.com` will be live immediately and will restart automatically on reboot.
-
-6. **(Optional) Run the Node server as a service**
+5. **(Optional) Run the Node server as a service**
    Use [NSSM](https://nssm.cc/) or Windows Task Scheduler to keep `node server.mjs` running. Example with NSSM:
    ```
    nssm install local-connector "node" "D:\Nagy\Multi-Business-Multi-Role-Growth-Intelligence-OS\local-connector\server.mjs"
    nssm start local-connector
    ```
+
+### Diagnosing tunnel errors
+
+Cloudflare error **1033** means cloudflared is configured but not running. Fix:
+```powershell
+# Check service status
+Get-Service cloudflared
+
+# Start if stopped
+Start-Service cloudflared
+
+# View recent errors
+Get-EventLog -LogName System -Source cloudflared -Newest 10
+
+# Or ask GPT: "check cloudflare tunnel status" → calls cloudflare_tunnel_status tool
+```
 
 ---
 

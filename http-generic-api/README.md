@@ -47,6 +47,34 @@ Policy-enforced HTTP executor with governed agent execution runtime.
 
 Test suite: 394 assertions across 21 test files (`npm test`). Architecture checks: 173 checks (`npm run validate`).
 
+## Data source mode
+
+`DATA_SOURCE` controls where the platform reads and writes registry data:
+
+| Value | Behaviour |
+|---|---|
+| `sql` (default) | All reads/writes go to MySQL. Sheets I/O is skipped entirely — no Drive or Sheets calls are made during execution, writeback, or activation. Set this on Hostinger. |
+| `dual` | SQL primary. Falls back to Sheets on read failure. Writes go to SQL then mirror async to Sheets. |
+| `sheets` | Legacy Sheets-only mode. Do not use in production. |
+
+When `DATA_SOURCE=sql`, the following are no-ops and will not block activation or execution even if the referenced spreadsheet IDs are deleted or inaccessible:
+- `assertGovernedSinkSheetsExist`
+- `writeExecutionLogUnifiedRow`
+- `persistOversizedArtifactImpl`
+
+## Running migrations
+
+```bash
+# Run all migrations (safe — most use IF NOT EXISTS / ON DUPLICATE KEY UPDATE)
+node migrate-platform-tables.mjs
+
+# Run a single migration by prefix (avoids re-running destructive DROP TABLE steps)
+node migrate-platform-tables.mjs --only 051
+
+# Dry-run: print SQL only, no DB writes
+node migrate-platform-tables.mjs --dry-run
+```
+
 ## Required env
 - `REGISTRY_SPREADSHEET_ID`
 - **Agent execution:**
@@ -62,6 +90,17 @@ Test suite: 394 assertions across 21 test files (`npm test`). Architecture check
   - `GOOGLE_CLIENT_SECRET`
   - `GOOGLE_REFRESH_TOKEN` — generate via `node generate-google-refresh-token.mjs`
   - `GOOGLE_APPLICATION_CREDENTIALS` or `GOOGLE_SA_JSON` — optional explicit service-account credentials for local/non-Cloud Run execution.
+- **Data source:**
+  - `DATA_SOURCE` — `sql` (default) / `dual` / `sheets`
+  - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` — MySQL connection (required when `DATA_SOURCE=sql` or `dual`)
+- **Cloudflare (admin CLI + local connector installer):**
+  - `CLOUDFLARE_API_TOKEN` — Cloudflare API token; enables `POST /admin/cli/cloudflare` and `admin_cloudflare` GPT tool
+  - `CLOUDFLARE_ACCOUNT_ID` — Cloudflare account ID; used by tunnel diagnostic tools
+  - `CLOUDFLARE_ZONE_ID` — Cloudflare zone ID for DNS operations via `/admin/cli/dns`
+  - `CLOUDFLARE_TUNNEL_TOKEN` — Tunnel token embedded into the generated Windows `.bat` installer via `GET /admin/cli/local-connector/install-bundle`
+- **Hostinger:**
+  - `HOSTINGER_CLOUD_PLAN_01_API_KEY` — Hostinger API key; enables `POST /admin/cli/hostinger` and `admin_hostinger` GPT tool
+  - `HOSTINGER_SHARED_MANAGER_01_API_KEY` — optional second key (pass `api_key_ref: "shared_manager"`)
 - optional:
   - `BRAND_REGISTRY_SHEET`
   - `ACTIONS_REGISTRY_SHEET`
@@ -79,6 +118,34 @@ Test suite: 394 assertions across 21 test files (`npm test`). Architecture check
   - `JOB_STATE_FILE` (default: `./data/http-job-state.json`)
   - `JOB_STATE_FLUSH_DEBOUNCE_MS` (default: `250`)
   - `hostinger_cloud_plan_01` (must match `ref:secret:hostinger_cloud_plan_01` in Hosting Account Registry)
+
+## Admin CLI routes (`/admin/cli/*`)
+
+All routes require `Authorization: Bearer <BACKEND_API_KEY>` + admin principal.
+
+| Route | Purpose |
+|---|---|
+| `POST /admin/cli/hostinger` | Forward any call to the Hostinger REST API |
+| `POST /admin/cli/cloudflare` | Forward any call to the Cloudflare REST API (tunnels, DNS, zones) |
+| `GET /admin/cli/local-connector/install-bundle` | Generate a pre-filled Windows `.bat` installer with `CLOUDFLARE_TUNNEL_TOKEN` embedded; uploads to Google Drive and returns a shareable download link |
+| `GET /admin/cli/dns` | List DNS records for a domain (via Hostinger DNS API) |
+| `POST /admin/cli/dns` | Upsert a DNS record |
+| `DELETE /admin/cli/dns` | Delete a DNS record |
+
+The `POST /admin/control` endpoint also accepts `tool=cloudflare` alongside `github`, `gcloud`, `db`, `env`, `shell`, `hostinger`, `windows_app`.
+
+## GPT tool registry (`admin_platform_endpoint_tools`)
+
+The admin GPT discovers all platform operations via `GET /gpt/tools` and executes them via `POST /gpt/tools/call`. Key self-repair tools seeded by migrations 047–052:
+
+| Tool key | Action |
+|---|---|
+| `admin_cloudflare` | Call any Cloudflare API path |
+| `cloudflare_tunnel_status` | List Cloudflare tunnels to diagnose 1033 errors |
+| `admin_hostinger` | Call any Hostinger API path |
+| `admin_connector_activate` | Flip a connector `status` from `pending` to `active` |
+| `local_connector_install_bundle` | Generate + upload the Windows `.bat` installer |
+| `platform_self_repair_diagnose` | Run bootstrap config check as repair triage |
 
 ## Endpoints
 - `POST /http-execute` (existing sync execution)

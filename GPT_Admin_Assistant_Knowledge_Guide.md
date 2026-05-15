@@ -117,6 +117,58 @@ The safe customer flow is:
 
 If the customer connector is missing, disabled, not on Windows, not allowlisted, or not scoped to the signed-in user, return `authorization_gated` or `blocked_local_runtime`. Do not fall back to admin CLI or backend API key.
 
+## Self-Repair Capabilities
+
+The admin GPT can autonomously diagnose and repair connected systems using the following tools from the registry. Call `listTools` and filter by tag `admin` or `cloudflare` to see all of them.
+
+### Cloudflare
+
+| Tool | What it does |
+|---|---|
+| `admin_cloudflare` | Forward any call to the Cloudflare REST API. Pass `path` (e.g. `/client/v4/accounts/{account_id}/tunnels`), `method`, optional `request_body` and `params`. |
+| `cloudflare_tunnel_status` | List active tunnels to diagnose 1033 errors on `connector.mad4b.com`. |
+
+Use `admin_cloudflare` with `path=/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/tunnels` to see tunnel health. A tunnel showing `status: inactive` confirms cloudflared is not running on the Windows host.
+
+### Local connector installer
+
+| Tool | What it does |
+|---|---|
+| `local_connector_install_bundle` | Generate a pre-filled Windows `.bat` installer with the tunnel token embedded. Uploads to Google Drive. Returns `drive.drive_link` (direct download) and `script_content`. |
+
+Workflow when `connector.mad4b.com` is unreachable:
+1. Call `cloudflare_tunnel_status` → confirm tunnel is inactive.
+2. Call `local_connector_install_bundle` → get Drive download link.
+3. Tell user: *"Download `install-connector-<date>.bat` from [link] and run as Administrator."*
+4. User runs it → cloudflared installs and starts → tunnel is live within 30 seconds.
+
+No manual token lookup needed. The server reads `CLOUDFLARE_TUNNEL_TOKEN` from env and embeds it automatically.
+
+### Hostinger
+
+| Tool | What it does |
+|---|---|
+| `admin_hostinger` | Forward any call to the Hostinger REST API. Pass `path` (e.g. `/api/vps/v1/virtual-machines`), `method`, `request_body`. |
+
+Use for VPS health checks, DNS record management, and subscription/billing queries.
+
+### Connector registry
+
+| Tool | What it does |
+|---|---|
+| `admin_system_connectors_list` | List all connected systems and their status (`active`/`pending`/`disabled`). |
+| `admin_connector_activate` | Set a connector status to `active`. Pass `system_key` (from connectors list) and `status`. |
+
+Use `admin_system_connectors_list` first to find the `system_key`, then call `admin_connector_activate` to promote a `pending` connector to `active`.
+
+### Repair triage
+
+Call `platform_self_repair_diagnose` to run a bootstrap config check — returns GitHub binding, tenant/membership counts, and device counts. Use this as the starting point for any degraded activation.
+
+### Data source mode
+
+The platform runs in `DATA_SOURCE=sql` mode on Hostinger. In this mode, all Sheets/Drive I/O is skipped during execution and writeback — no Google Sheets calls are made even if Sheets env vars are present. Activation passes Drive and Sheets steps as `skipped/ok` and proceeds to GitHub validation. Do not attempt to repair `ACTIVITY_SPREADSHEET_ID` or `EXECUTION_LOG_UNIFIED_SPREADSHEET_ID` in SQL mode — they are unused.
+
 ## Native Browser Plugin Tier
 
 Browser automation should be added as native platform plugins, not as direct GPT access to package APIs.
