@@ -4,7 +4,9 @@ import {
   buildEnvelopeTranscript,
   capLimit,
   normalizeOffset,
-  resolveSessionContextSubject
+  resolveSessionContextSubject,
+  SESSION_CONTEXT_DEFAULT_LIMIT,
+  SESSION_CONTEXT_MAX_LIMIT
 } from "./routes/activationRoutes.js";
 
 {
@@ -39,6 +41,8 @@ import {
 assert.equal(capLimit(undefined), 50);
 assert.equal(capLimit(500), 200);
 assert.equal(capLimit(25), 25);
+assert.equal(capLimit(undefined, SESSION_CONTEXT_DEFAULT_LIMIT, SESSION_CONTEXT_MAX_LIMIT), 10);
+assert.equal(capLimit(500, SESSION_CONTEXT_DEFAULT_LIMIT, SESSION_CONTEXT_MAX_LIMIT), 50);
 assert.equal(normalizeOffset(undefined), 0);
 assert.equal(normalizeOffset(-1), 0);
 assert.equal(normalizeOffset(40), 40);

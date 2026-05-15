@@ -961,6 +961,8 @@ export function buildAdminCliRoutes(deps) {
 
       // Upload to Drive so GPT can share a link
       let driveResult = null;
+      let driveUploadStatus = typeof deps.getGoogleClients === "function" ? "attempted" : "not_configured";
+      let driveError = null;
       if (typeof deps.getGoogleClients === "function") {
         try {
           const { drive } = await deps.getGoogleClients();
@@ -981,15 +983,24 @@ export function buildAdminCliRoutes(deps) {
             };
           }
         } catch (driveErr) {
+          driveUploadStatus = "failed";
+          driveError = sanitizeDriveUploadError(driveErr);
           console.warn("[install-bundle] Drive upload failed:", driveErr.message);
         }
       }
+      if (driveResult) driveUploadStatus = "uploaded";
 
       writeAuditLogAsync({
         action: "admin_cli.local_connector_install_bundle",
         resource_type: "install_bundle",
         resource_id: filename,
-        payload: { drive_uploaded: !!driveResult, config_source: configSource, device_id: resolvedDevice, user_id: userId },
+        payload: {
+          drive_uploaded: !!driveResult,
+          drive_upload_status: driveUploadStatus,
+          config_source: configSource,
+          device_id: resolvedDevice,
+          user_id: userId
+        },
       });
 
       return res.status(200).json({
@@ -1002,6 +1013,8 @@ export function buildAdminCliRoutes(deps) {
           : "Drive upload was unavailable. Use the direct admin-only format=bat download path outside Custom GPT to retrieve the installer, then run it as Administrator from the repo root.",
         script_content_omitted: true,
         script_content_reason: "installer contains live tunnel and backend credentials",
+        drive_upload_status: driveUploadStatus,
+        drive_error: driveError,
         drive: driveResult,
       });
     } catch (err) {
@@ -1097,6 +1110,8 @@ export function buildAdminCliRoutes(deps) {
       const batContent = generateConnectorInstallerBat(tunnelToken, backendKey);
       const filename   = `repair-connector-${deviceId}-${new Date().toISOString().slice(0,10)}.bat`;
       let driveResult  = null;
+      let driveUploadStatus = typeof deps.getGoogleClients === "function" ? "attempted" : "not_configured";
+      let driveError = null;
       if (typeof deps.getGoogleClients === "function") {
         try {
           const { drive } = await deps.getGoogleClients();
@@ -1117,15 +1132,25 @@ export function buildAdminCliRoutes(deps) {
             };
           }
         } catch (driveErr) {
+          driveUploadStatus = "failed";
+          driveError = sanitizeDriveUploadError(driveErr);
           console.warn("[self-repair] Drive upload failed:", driveErr.message);
         }
       }
+      if (driveResult) driveUploadStatus = "uploaded";
 
       writeAuditLogAsync({
         action: "admin_cli.local_connector_self_repair",
         resource_type: "install_bundle",
         resource_id: filename,
-        payload: { user_id: userId, device_id: deviceId, tunnel_status: tunnelStatus, config_source: configSource },
+        payload: {
+          user_id: userId,
+          device_id: deviceId,
+          tunnel_status: tunnelStatus,
+          config_source: configSource,
+          drive_uploaded: !!driveResult,
+          drive_upload_status: driveUploadStatus
+        },
       });
 
       return res.status(200).json({
@@ -1142,6 +1167,8 @@ export function buildAdminCliRoutes(deps) {
           action: "Run the installer as Administrator on the Windows device. It installs cloudflared and the Node.js connector as auto-restart Windows services (via NSSM).",
           filename,
           drive: driveResult,
+          drive_upload_status: driveUploadStatus,
+          drive_error: driveError,
           script_content_omitted: true,
           script_content_reason: "installer contains live tunnel and backend credentials",
         },
@@ -1155,6 +1182,16 @@ export function buildAdminCliRoutes(deps) {
   });
 
   return router;
+}
+
+function sanitizeDriveUploadError(err) {
+  const status = err?.response?.status || err?.status || err?.code || null;
+  const message = String(err?.message || "Drive upload failed").slice(0, 300);
+  return {
+    code: "drive_upload_failed",
+    ...(status ? { status } : {}),
+    message,
+  };
 }
 
 function generateConnectorInstallerBat(tunnelToken, backendKey) {
@@ -1326,4 +1363,3 @@ echo.
 pause
 `;
 }
-

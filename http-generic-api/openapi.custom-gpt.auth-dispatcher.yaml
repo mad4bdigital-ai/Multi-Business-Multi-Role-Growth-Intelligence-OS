@@ -1315,9 +1315,9 @@ paths:
           in: query
           schema:
             type: integer
-            default: 50
-            maximum: 200
-          description: Number of previous session/history rows to return per page.
+            default: 10
+            maximum: 50
+          description: Number of previous session/history rows to return per page. Keep small for GPT activation probes.
         - name: offset
           in: query
           schema:
@@ -2209,16 +2209,31 @@ paths:
                 properties:
                   ok:
                     type: boolean
+                  drive_upload_status:
+                    type: string
+                    enum:
+                      - uploaded
+                      - failed
+                      - not_configured
+                      - attempted
+                  drive_error:
+                    oneOf:
+                      - type: object
+                        additionalProperties: true
+                        properties: {}
+                      - type: 'null'
                   drive:
-                    type: object
-                    additionalProperties: true
-                    properties:
-                      file_id:
-                        type: string
-                      drive_link:
-                        type: string
-                      filename:
-                        type: string
+                    oneOf:
+                      - type: object
+                        additionalProperties: true
+                        properties:
+                          file_id:
+                            type: string
+                          drive_link:
+                            type: string
+                          filename:
+                            type: string
+                      - type: 'null'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
@@ -2283,22 +2298,38 @@ paths:
                         enum:
                           - db
                           - env
+                          - env_fallback
                   repair:
                     type: object
                     additionalProperties: true
                     properties:
                       action:
                         type: string
+                      drive_upload_status:
+                        type: string
+                        enum:
+                          - uploaded
+                          - failed
+                          - not_configured
+                          - attempted
+                      drive_error:
+                        oneOf:
+                          - type: object
+                            additionalProperties: true
+                            properties: {}
+                          - type: 'null'
                       drive:
-                        type: object
-                        additionalProperties: true
-                        properties:
-                          file_id:
-                            type: string
-                          drive_link:
-                            type: string
-                          filename:
-                            type: string
+                        oneOf:
+                          - type: object
+                            additionalProperties: true
+                            properties:
+                              file_id:
+                                type: string
+                              drive_link:
+                                type: string
+                              filename:
+                                type: string
+                          - type: 'null'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':

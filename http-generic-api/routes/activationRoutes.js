@@ -19,6 +19,9 @@ export function capLimit(value, fallback = 50, max = 200) {
   return Math.min(Math.floor(parsed), max);
 }
 
+export const SESSION_CONTEXT_DEFAULT_LIMIT = 10;
+export const SESSION_CONTEXT_MAX_LIMIT = 50;
+
 export function normalizeOffset(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) return 0;
@@ -335,7 +338,7 @@ export async function buildActivationSessionContext(req) {
 
   const { session_id: newSessionId, closed_sessions } = await autoOpenGptSession(pool, subject);
 
-  const limit = capLimit(req.query.limit);
+  const limit = capLimit(req.query.limit, SESSION_CONTEXT_DEFAULT_LIMIT, SESSION_CONTEXT_MAX_LIMIT);
   const offset = normalizeOffset(req.query.offset);
   const includeRaw = asBoolean(req.query.include_raw);
   const rawMaxChars = capLimit(req.query.raw_max_chars, 4000, 20000);
@@ -468,7 +471,7 @@ export async function buildActivationSessionContext(req) {
     session_history: sessionHistory,
     related_scopes: [...scopeSet].sort(),
     history: {
-      session_envelopes: sessionHistory,
+      session_envelopes_count: sessionHistory.length,
       audit_events: audit.rows,
       transcript_events: executionTranscript.rows.map((row) => ({
         id: row.id,

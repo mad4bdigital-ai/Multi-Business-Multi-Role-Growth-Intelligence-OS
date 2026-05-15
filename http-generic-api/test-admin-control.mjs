@@ -27,6 +27,9 @@ try {
   assert("local connector JSON responses explain omitted installer secrets",
     adminCliSource.includes("script_content_omitted: true"),
     "responses should make the omission explicit");
+  assert("local connector JSON responses expose sanitized Drive handoff status",
+    adminCliSource.includes("drive_upload_status") && adminCliSource.includes("sanitizeDriveUploadError"),
+    "responses should distinguish uploaded, failed, and unconfigured Drive handoffs without exposing installer content");
 
   assert("parseArgs preserves array entries", JSON.stringify(parseArgs(["a", "b c"])) === JSON.stringify(["a", "b c"]));
   assert("parseArgs splits simple strings", JSON.stringify(parseArgs("repo list")) === JSON.stringify(["repo", "list"]));
