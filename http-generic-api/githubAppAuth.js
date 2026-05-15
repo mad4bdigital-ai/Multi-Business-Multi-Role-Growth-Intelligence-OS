@@ -35,7 +35,8 @@ function normalizePemText(value = "") {
     .replace(/^['"]|['"]$/g, "")
     .replace(/\\r\\n/g, "\n")
     .replace(/\\n/g, "\n")
-    .replace(/\r\n/g, "\n");
+    .replace(/\r\n/g, "\n")
+    .trim(); // second trim: newline expansion can leave leading/trailing whitespace
 }
 
 function tryDecodeBase64(value = "") {
@@ -99,7 +100,7 @@ function buildPemCandidates(value = "") {
 export function decodeGitHubAppPrivateKey(value = "") {
   const candidates = buildPemCandidates(value);
   const pem = candidates.find(looksLikePem);
-  return pem || candidates[0] || "";
+  return (pem || candidates[0] || "").trim();
 }
 
 function privateKeyShapeDetails(value = "") {

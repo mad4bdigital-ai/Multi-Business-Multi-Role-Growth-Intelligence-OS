@@ -25,6 +25,7 @@ import {
   upsertGoogleAuthPlatformConfig,
 } from "../googleAuthPlatformConfig.js";
 import { requireAdminPrincipal } from "./adminCliRoutes.js";
+import { decodeGitHubAppPrivateKey, resolveGitHubAppConfig } from "../githubAppAuth.js";
 
 const SYSTEM_LAYER_TOOLS = [
   {
@@ -82,6 +83,12 @@ const SYSTEM_LAYER_TOOLS = [
   {
     name: "activation_provider_bootstrap_validate",
     description: "Admin-only same-cycle Drive, Sheets bootstrap, and GitHub activation validation chain.",
+    requires_admin: true,
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
+  {
+    name: "github_app_key_diagnostics",
+    description: "Admin-only: returns the key-shape diagnostic of GITHUB_APP_PRIVATE_KEY without signing. Safe to call when activation_github_validate fails with invalid_private_key.",
     requires_admin: true,
     inputSchema: { type: "object", properties: {}, required: [] },
   },
@@ -1038,6 +1045,26 @@ async function callSystemLayerTool(name, args = {}, auth = null, deps = {}) {
         runtimeBootstrap.ok ? bootstrapConfigToRunnerRow(runtimeBootstrap.config) : {},
         deps
       );
+    }
+    case "github_app_key_diagnostics": {
+      const { privateKey } = resolveGitHubAppConfig({});
+      const decoded = decodeGitHubAppPrivateKey(privateKey);
+      const firstLine = decoded.split("\n")[0] || "";
+      return {
+        ok: true,
+        configured: Boolean(privateKey),
+        raw_length: privateKey.length,
+        decoded_length: decoded.length,
+        decoded_first_line: firstLine.slice(0, 40) || "(empty)",
+        starts_with_pem_header: decoded.startsWith("-----BEGIN"),
+        has_private_key_header: decoded.includes("PRIVATE KEY-----"),
+        looks_like_pem: decoded.startsWith("-----BEGIN") && decoded.includes("PRIVATE KEY-----"),
+        has_actual_newlines: privateKey.includes("\n") || privateKey.includes("\r"),
+        has_escaped_newlines: privateKey.includes("\\n") || privateKey.includes("\\r\\n"),
+        recommended_fix: decoded.startsWith("-----BEGIN") && decoded.includes("PRIVATE KEY-----")
+          ? "PEM structure detected — if signing still fails, try re-setting GITHUB_APP_PRIVATE_KEY as the base64 of the PEM file."
+          : "PEM header not found after decoding. Re-set GITHUB_APP_PRIVATE_KEY as the base64 of the raw PEM file (cat key.pem | base64 -w0).",
+      };
     }
     case "activation_provider_bootstrap_validate":
       return await activationProviderBootstrapValidate(args, deps);
