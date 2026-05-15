@@ -1,5 +1,6 @@
 // Auto-extracted from server.js — do not edit manually, use domain logic here.
 import { google } from "googleapis";
+import { DATA_SOURCE_MODE } from "./dataSource.js";
 
 export function assertExecutionLogRowIsSpillSafe(row) {
   const rowText = JSON.stringify(row);
@@ -957,7 +958,7 @@ export async function verifyJsonAssetAppendReadback(
 
 
 export async function writeExecutionLogUnifiedRow(row) {
-  if (!EXECUTION_LOG_UNIFIED_SPREADSHEET_ID) return null;
+  if (DATA_SOURCE_MODE === "sql") return null;
 
   const { sheets } = await getGoogleClients();
 

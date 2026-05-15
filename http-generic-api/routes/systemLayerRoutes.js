@@ -26,6 +26,7 @@ import {
 } from "../googleAuthPlatformConfig.js";
 import { requireAdminPrincipal } from "./adminCliRoutes.js";
 import { decodeGitHubAppPrivateKey, resolveGitHubAppConfig } from "../githubAppAuth.js";
+import { DATA_SOURCE_MODE } from "../dataSource.js";
 
 const SYSTEM_LAYER_TOOLS = [
   {
@@ -835,6 +836,10 @@ async function activationProviderBootstrapValidate(args = {}, deps = {}) {
       return { ok: probe.ok, auth_failed: probe.auth_failed };
     },
     attemptSheets: async () => {
+      if (DATA_SOURCE_MODE === "sql") {
+        sheetsDiagnostic = { skipped: true, diagnostic_only: true, reason: "sql_mode" };
+        return { ok: true };
+      }
       const probe = await activationSheetsBootstrapRead();
       sheetsDiagnostic = probe;
       return { ok: probe.ok, auth_failed: probe.auth_failed, rate_limited: probe.rate_limited };

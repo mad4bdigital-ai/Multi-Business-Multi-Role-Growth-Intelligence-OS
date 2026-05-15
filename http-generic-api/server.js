@@ -1,6 +1,7 @@
 import * as authService from './authService.js';
 import { createLocalConnectorOrchestrator } from "./services/localConnectorOrchestrator.js";
 import { createStateManager } from "./stateManager.js";
+import { DATA_SOURCE_MODE } from "./dataSource.js";
 
 import express from "express";
 import * as sqlAdapter from "./sqlAdapter.js";
@@ -1479,7 +1480,7 @@ async function performUniversalServerWriteback(input = {}) {
       assertGovernedSinkSheetsExist,
       toExecutionLogUnifiedRow,
       assertExecutionLogRowIsSpillSafe: assertExecutionLogRowIsSpillSafeCore,
-      writeExecutionLogUnifiedRow: (row) => writeExecutionLogUnifiedRowCore(
+      writeExecutionLogUnifiedRow: (row) => DATA_SOURCE_MODE === "sql" ? Promise.resolve(null) : writeExecutionLogUnifiedRowCore(
         row,
         {
           getGoogleClients,
@@ -1809,6 +1810,7 @@ async function getGoogleClientsForSpreadsheet(id) { return getGoogleClientsForSp
 async function assertSheetExistsInSpreadsheet(spreadsheetId, sheetName) { return assertSheetExistsInSpreadsheetBase(spreadsheetId, sheetName); }
 
 async function assertGovernedSinkSheetsExist() {
+  if (DATA_SOURCE_MODE === "sql") return { executionLogTitles: [], jsonAssetTitles: [] };
   const executionLogTitles = await assertSheetExistsInSpreadsheet(
     EXECUTION_LOG_UNIFIED_SPREADSHEET_ID,
     EXECUTION_LOG_UNIFIED_SHEET
