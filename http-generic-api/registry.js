@@ -15,7 +15,7 @@ import {
 } from "./config.js";
 import { readTableDirect as sqlReadTableDirect } from "./sqlAdapter.js";
 
-const _DATA_SOURCE = "db";
+const DATA_SOURCE = "sql";
 
 export function toValuesApiRange(sheetName, a1Tail) {
   return `${String(sheetName || "").trim()}!${a1Tail}`;
@@ -133,7 +133,7 @@ export async function getCanonicalSurfaceMetadata(surfaceId = "", fallback = {})
 }
 
 export async function loadBrandRegistry(sheets) {
-  if (_DATA_SOURCE !== "sheets") {
+  if (DATA_SOURCE !== "sheets") {
     const rows = await sqlReadTableDirect("Brand Registry");
     return rows.map(r => ({
       brand_name: r.brand_name || "",
@@ -203,7 +203,7 @@ export async function loadBrandRegistry(sheets) {
 }
 
 export async function loadHostingAccountRegistry(sheets) {
-  if (_DATA_SOURCE !== "sheets") {
+  if (DATA_SOURCE !== "sheets") {
     const rows = await sqlReadTableDirect("Hosting Account Registry");
     return rows.map(r => ({
       hosting_account_key: r.hosting_account_key || "",
@@ -301,7 +301,7 @@ export async function loadHostingAccountRegistry(sheets) {
 }
 
 export async function loadActionsRegistry(sheets) {
-  if (_DATA_SOURCE !== "sheets") {
+  if (DATA_SOURCE !== "sheets") {
     const rows = await sqlReadTableDirect("Actions Registry");
     return rows.map(r => ({
       action_key: r.action_key || "",
@@ -349,7 +349,7 @@ export async function loadActionsRegistry(sheets) {
 }
 
 export async function loadEndpointRegistry(sheets) {
-  if (_DATA_SOURCE !== "sheets") {
+  if (DATA_SOURCE !== "sheets") {
     const rows = await sqlReadTableDirect("API Actions Endpoint Registry");
     return rows.map(r => ({
       endpoint_id: r.endpoint_id || "",
@@ -433,7 +433,7 @@ export async function loadEndpointRegistry(sheets) {
 }
 
 export async function loadExecutionPolicies(sheets) {
-  if (_DATA_SOURCE !== "sheets") {
+  if (DATA_SOURCE !== "sheets") {
     const rows = await sqlReadTableDirect("Execution Policy Registry");
     return rows.map(r => ({
       policy_group: r.policy_group || "",
@@ -464,7 +464,7 @@ export async function loadExecutionPolicies(sheets) {
 }
 
 export async function readExecutionPolicyRegistryLive() {
-  if (_DATA_SOURCE !== "sheets") {
+  if (DATA_SOURCE !== "sheets") {
     const cols = ["policy_group", "policy_key", "policy_value", "active", "execution_scope", "affects_layer", "blocking", "notes"];
     const sqlRows = await sqlReadTableDirect("Execution Policy Registry");
     const header = cols;
@@ -1827,7 +1827,7 @@ export async function ensureSiteMigrationRouteWorkflowRows() {
 }
 
 export async function loadSiteRuntimeInventoryRegistry(sheets) {
-  if (_DATA_SOURCE !== "sheets") {
+  if (DATA_SOURCE !== "sheets") {
     const rows = await sqlReadTableDirect("Site Runtime Inventory Registry");
     return rows.map(r => ({
       target_key: r.target_key || "",
@@ -1877,7 +1877,7 @@ export async function loadSiteRuntimeInventoryRegistry(sheets) {
 }
 
 export async function loadSiteSettingsInventoryRegistry(sheets) {
-  if (_DATA_SOURCE !== "sheets") {
+  if (DATA_SOURCE !== "sheets") {
     const rows = await sqlReadTableDirect("Site Settings Inventory Registry");
     return rows.map(r => ({
       target_key: r.target_key || "",
@@ -1929,7 +1929,7 @@ export async function loadSiteSettingsInventoryRegistry(sheets) {
 }
 
 export async function loadPluginInventoryRegistry(sheets) {
-  if (_DATA_SOURCE !== "sheets") {
+  if (DATA_SOURCE !== "sheets") {
     const rows = await sqlReadTableDirect("Plugin Inventory Registry");
     return rows.map(r => ({
       target_key: r.target_key || "",
@@ -1983,7 +1983,7 @@ export async function loadPluginInventoryRegistry(sheets) {
 export async function loadTaskRoutesRegistry(sheets, options = {}) {
   const includeCandidateInspection = options?.include_candidate_inspection === true;
 
-  if (_DATA_SOURCE !== "sheets") {
+  if (DATA_SOURCE !== "sheets") {
     const dbRows = await sqlReadTableDirect("Task Routes");
     const rows = dbRows.map(r => {
       const taskKey = r.task_key || "";
@@ -2186,7 +2186,7 @@ export async function loadTaskRoutesRegistry(sheets, options = {}) {
 export async function loadWorkflowRegistry(sheets, options = {}) {
   const includeCandidateInspection = options?.include_candidate_inspection === true;
 
-  if (_DATA_SOURCE !== "sheets") {
+  if (DATA_SOURCE !== "sheets") {
     const dbRows = await sqlReadTableDirect("Workflow Registry");
     const rows = dbRows.map(r => {
       const activeRaw = r.active || "";
