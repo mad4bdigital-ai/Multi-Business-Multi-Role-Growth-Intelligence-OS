@@ -24,7 +24,7 @@ function looksLikePem(value = "") {
 
 function stripCommonEnvAssignment(value = "") {
   const text = String(value || "").trim();
-  const match = text.match(/^(?:export\\s+)?(?:GITHUB_APP_PRIVATE_KEY_B64|GITHUB_APP_PRIVATE_KEY)\\s*=\\s*([\\s\\S]*)$/);
+  const match = text.match(/^(?:export\s+)?(?:GITHUB_APP_PRIVATE_KEY_B64|GITHUB_APP_PRIVATE_KEY)\s*=\s*([\s\S]*)$/);
   return match ? match[1].trim() : text;
 }
 

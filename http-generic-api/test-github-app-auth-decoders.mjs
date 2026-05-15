@@ -27,5 +27,8 @@ assertDecodes("base64 PEM decodes", b64Pem);
 assertDecodes("double-base64 PEM decodes", doubleB64Pem);
 assertDecodes("JSON-wrapped private_key decodes", jsonWrapped);
 assertDecodes("base64 JSON-wrapped private_key decodes", jsonWrappedB64);
+assertDecodes("base64 env assignment decodes", `GITHUB_APP_PRIVATE_KEY_B64=${b64Pem}`);
+assertDecodes("exported base64 env assignment decodes", `export GITHUB_APP_PRIVATE_KEY_B64="${b64Pem}"`);
+assertDecodes("raw PEM env assignment decodes", `GITHUB_APP_PRIVATE_KEY='${escapedPem}'`);
 
 console.log("ALL GITHUB APP DECODER FORMAT TESTS PASS");
