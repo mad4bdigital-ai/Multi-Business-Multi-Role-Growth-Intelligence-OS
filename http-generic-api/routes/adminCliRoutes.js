@@ -997,8 +997,11 @@ export function buildAdminCliRoutes(deps) {
         filename,
         config_source: configSource,
         device_id: resolvedDevice,
-        instructions: "Save the file as install-connector.bat and run as Administrator from the repo root. cloudflared and the Node.js connector service (via NSSM) will be installed automatically if missing. Both services auto-restart on failure and reboot.",
-        script_content: batContent,
+        instructions: driveResult
+          ? "Download the generated installer from drive.drive_link and run it as Administrator from the repo root. cloudflared and the Node.js connector service (via NSSM) will be installed automatically if missing. Both services auto-restart on failure and reboot."
+          : "Drive upload was unavailable. Use the direct admin-only format=bat download path outside Custom GPT to retrieve the installer, then run it as Administrator from the repo root.",
+        script_content_omitted: true,
+        script_content_reason: "installer contains live tunnel and backend credentials",
         drive: driveResult,
       });
     } catch (err) {
@@ -1139,7 +1142,8 @@ export function buildAdminCliRoutes(deps) {
           action: "Run the installer as Administrator on the Windows device. It installs cloudflared and the Node.js connector as auto-restart Windows services (via NSSM).",
           filename,
           drive: driveResult,
-          script_content: batContent,
+          script_content_omitted: true,
+          script_content_reason: "installer contains live tunnel and backend credentials",
         },
       });
     } catch (err) {
@@ -1322,5 +1326,4 @@ echo.
 pause
 `;
 }
-
 

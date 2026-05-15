@@ -218,6 +218,29 @@ section("dispatcher contracts");
     adminOps.some((op) => op.pathKey === "/gpt/tools/call" && op.method === "post"));
   assert("admin dispatcher hides direct admin control route",
     !adminOps.some((op) => op.operation.operationId === "executeAdminControl"));
+  const hiddenDirectAdminOperationIds = [
+    "upsertAdminGoogleAuthPlatformTab",
+    "upsertAdminApisServicesCredentials",
+    "executeHostingerApiCall",
+    "executeCloudflareApiCall",
+    "upsertDnsRecord",
+    "deleteDnsRecord",
+    "issuePlatformJwtClientToken",
+    "linkSessionContinuityUser",
+    "importSchemaUpload",
+    "importSchemaFromRepo",
+  ];
+  for (const operationId of hiddenDirectAdminOperationIds) {
+    assert(`admin dispatcher hides direct ${operationId}`,
+      !adminOps.some((op) => op.operation.operationId === operationId));
+  }
+  const adminMutatingOps = adminOps.filter((op) => ["post", "put", "patch", "delete"].includes(op.method));
+  assert("admin dispatcher mutating operations are non-consequential or hidden",
+    adminMutatingOps.every((op) => op.operation["x-openai-isConsequential"] === false),
+    adminMutatingOps
+      .filter((op) => op.operation["x-openai-isConsequential"] !== false)
+      .map((op) => `${op.method.toUpperCase()} ${op.pathKey} ${op.operation.operationId}`)
+      .join(", "));
 
   const tenantPostOps = collectOperations(tenantDoc).filter((op) => op.method === "post");
   assert("tenant dispatcher POST operations are non-consequential",

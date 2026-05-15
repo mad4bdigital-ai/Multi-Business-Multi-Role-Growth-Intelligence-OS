@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { handleEnvControl, handleWindowsAppControl, parseArgs, requireAdminPrincipal } from "./routes/adminCliRoutes.js";
 
 let passed = 0;
@@ -18,6 +19,14 @@ const originalPlain = process.env.ADMIN_CONTROL_TEST_PLAIN;
 
 try {
   console.log("\n== admin control helpers");
+
+  const adminCliSource = fs.readFileSync(new URL("./routes/adminCliRoutes.js", import.meta.url), "utf8");
+  assert("local connector JSON responses omit inline installer secrets",
+    !adminCliSource.includes("script_content: batContent"),
+    "JSON action responses must not expose generated .bat content with live credentials");
+  assert("local connector JSON responses explain omitted installer secrets",
+    adminCliSource.includes("script_content_omitted: true"),
+    "responses should make the omission explicit");
 
   assert("parseArgs preserves array entries", JSON.stringify(parseArgs(["a", "b c"])) === JSON.stringify(["a", "b c"]));
   assert("parseArgs splits simple strings", JSON.stringify(parseArgs("repo list")) === JSON.stringify(["repo", "list"]));
