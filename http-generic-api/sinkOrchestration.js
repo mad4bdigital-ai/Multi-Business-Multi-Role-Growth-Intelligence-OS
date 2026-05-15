@@ -145,19 +145,23 @@ export async function performUniversalServerWriteback(input = {}, deps = {}) {
     );
 
   if (shouldPersistJsonAsset) {
-    const artifact = await persistOversizedArtifactImpl({
-      brand_name: input.brand_name,
-      target_key: input.target_key,
-      endpoint_key: input.endpoint_key,
-      execution_trace_id,
-      captured_at: started_at,
-      body: extractedJsonAssetBody
-    });
+    try {
+      const artifact = await persistOversizedArtifactImpl({
+        brand_name: input.brand_name,
+        target_key: input.target_key,
+        endpoint_key: input.endpoint_key,
+        execution_trace_id,
+        captured_at: started_at,
+        body: extractedJsonAssetBody
+      });
 
-    artifactPointer = {
-      drive_file_id: artifact.drive_file_id,
-      google_drive_link: artifact.google_drive_link
-    };
+      artifactPointer = {
+        drive_file_id: artifact.drive_file_id,
+        google_drive_link: artifact.google_drive_link
+      };
+    } catch (err) {
+      console.warn("[sinkOrchestration] persistOversizedArtifactImpl failed — continuing:", err.message);
+    }
   }
 
   if (shouldPersistJsonAsset) {

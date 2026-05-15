@@ -1461,14 +1461,16 @@ async function performUniversalServerWriteback(input = {}) {
       extractJsonAssetPayloadBody,
       isSchemaMetaOnlyPayload,
       classifyAssetHome,
-      persistOversizedArtifactImpl: (artifactInput) => persistOversizedArtifactCore(
-        artifactInput,
-        {
-          getGoogleClients,
-          buildArtifactFileName,
-          oversizedArtifactsDriveFolderId: OVERSIZED_ARTIFACTS_DRIVE_FOLDER_ID
-        }
-      ),
+      persistOversizedArtifactImpl: DATA_SOURCE_MODE === "sql"
+        ? () => Promise.resolve({ drive_file_id: "", google_drive_link: "", artifact_file_name: "" })
+        : (artifactInput) => persistOversizedArtifactCore(
+          artifactInput,
+          {
+            getGoogleClients,
+            buildArtifactFileName,
+            oversizedArtifactsDriveFolderId: OVERSIZED_ARTIFACTS_DRIVE_FOLDER_ID
+          }
+        ),
       findExistingJsonAssetByAssetKey,
       toJsonAssetRegistryRow,
       executionEntryTypes: EXECUTION_ENTRY_TYPES,
