@@ -1026,7 +1026,9 @@ export async function performUniversalServerWriteback(input = {}) {
         retryErr.error_code || err.error_code || "authoritative_log_write_failed";
       retryErr.logging_retry_attempted = true;
       retryErr.logging_retry_exhausted = true;
-      throw retryErr;
+      // Fail-open: log write is best-effort. A missing/deleted log sink must not
+      // block the governed execution result from being returned to the caller.
+      console.error("[execution] authoritative log write exhausted — continuing:", retryErr.message);
     }
   }
 
