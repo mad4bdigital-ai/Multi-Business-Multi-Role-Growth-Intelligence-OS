@@ -102,7 +102,22 @@ export function decodeGitHubAppPrivateKey(value = "") {
   return pem || candidates[0] || "";
 }
 
-function createInvalidPrivateKeyError(cause) {
+function privateKeyShapeDetails(value = "") {
+  const raw = stripCommonEnvAssignment(String(value || ""));
+  const normalized = normalizePemText(raw);
+  return {
+    raw_length: raw.length,
+    normalized_length: normalized.length,
+    has_actual_newlines: raw.includes("\n") || raw.includes("\r"),
+    has_escaped_newlines: raw.includes("\\n") || raw.includes("\\r\\n"),
+    starts_with_pem_header: normalized.startsWith("-----BEGIN"),
+    contains_private_key_header: normalized.includes("PRIVATE KEY-----"),
+    contains_pem_footer: normalized.includes("-----END") && normalized.includes("PRIVATE KEY-----"),
+    looks_like_pem: looksLikePem(normalized),
+  };
+}
+
+function createInvalidPrivateKeyError(cause, privateKey) {
   const err = new Error(
     "GitHub App private key could not be parsed. Provide GITHUB_APP_PRIVATE_KEY as the raw PEM with newline escapes preserved."
   );
@@ -112,6 +127,7 @@ function createInvalidPrivateKeyError(cause) {
     cause_code: cause?.code || "",
     cause_message: cause?.message || "",
     expected_prefixes: ["-----BEGIN RSA PRIVATE KEY-----", "-----BEGIN PRIVATE KEY-----"],
+    key_shape: privateKeyShapeDetails(privateKey),
   };
   return err;
 }
@@ -147,7 +163,7 @@ export function createGitHubAppJwt({ appId, privateKey, nowSeconds = Math.floor(
   try {
     signature = crypto.createSign("RSA-SHA256").update(signingInput).sign(key);
   } catch (error) {
-    throw createInvalidPrivateKeyError(error);
+    throw createInvalidPrivateKeyError(error, privateKey);
   }
 
   return `${signingInput}.${base64Url(signature)}`;

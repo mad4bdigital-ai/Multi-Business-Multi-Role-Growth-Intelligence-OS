@@ -45,6 +45,18 @@ assert.equal(payload.iss, "3654304", "JWT issuer is GitHub App id");
 assert.equal(payload.iat, 1_699_999_940, "JWT iat is backdated for clock skew");
 assert.equal(payload.exp, 1_700_000_540, "JWT exp stays within GitHub ten-minute limit");
 
+assert.throws(
+  () => createGitHubAppJwt({ appId: "3654304", privateKey: "not-a-pem", nowSeconds: 1_700_000_000 }),
+  (error) => {
+    assert.equal(error.code, "github_app_auth_invalid_private_key", "invalid key reports structured code");
+    assert.equal(error.details?.key_shape?.raw_length, 9, "invalid key reports non-secret shape length");
+    assert.equal(error.details?.key_shape?.starts_with_pem_header, false, "invalid key reports header shape");
+    assert.ok(!JSON.stringify(error.details).includes("not-a-pem"), "invalid key details do not expose key material");
+    return true;
+  },
+  "invalid private key exposes only non-secret shape diagnostics"
+);
+
 process.env.TEST_GITHUB_APP_PRIVATE_KEY = privateKeyPem;
 clearGitHubAppInstallationTokenCache();
 
