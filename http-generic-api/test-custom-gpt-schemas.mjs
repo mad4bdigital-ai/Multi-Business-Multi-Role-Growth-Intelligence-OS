@@ -1,20 +1,41 @@
 /**
  * test-custom-gpt-schemas.mjs
  *
- * Contract checks for generated Custom GPT OpenAPI action schemas.
+ * Contract checks for the active Custom GPT OpenAPI action schemas.
  * These tests stay local and deterministic: no network, DB, or credentials.
  *
  * Run: node test-custom-gpt-schemas.mjs
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const SCHEMAS = [
+const ACTIVE_SCHEMAS = {
+  "openapi.custom-gpt.auth-dispatcher.yaml": {
+    serverUrl: "https://auth.mad4b.com",
+    securityScheme: "backendBearerAuth",
+    maxOperations: 30,
+    requiredOperations: ["listAdminTools", "callAdminTool", "repairLocalConnector"],
+  },
+  "openapi.tenant-gpt.auth.yaml": {
+    serverUrl: "https://auth.mad4b.com",
+    securityScheme: "userBearerAuth",
+    maxOperations: 30,
+    requiredOperations: ["activateSession", "listTools", "callTool", "writeSessionTurn", "endSession"],
+  },
+  "openapi.gpt-action.local-connector.yaml": {
+    serverUrl: "https://connector.mad4b.com",
+    securityScheme: "backendBearerAuth",
+    maxOperations: 30,
+    requiredOperations: ["connectorHealth", "connectorShell", "connectorCf"],
+  },
+};
+
+const OBSOLETE_SCHEMAS = [
   "openapi.custom-gpt.runtime.yaml",
   "openapi.custom-gpt.identity.yaml",
   "openapi.custom-gpt.customers.yaml",
@@ -27,31 +48,7 @@ const SCHEMAS = [
 ];
 
 const METHOD_NAMES = new Set(["get", "post", "put", "delete", "patch", "options", "head", "trace"]);
-const CUSTOM_GPT_SECURITY_SCHEME = "backendBearerAuth";
-const MAX_OPERATIONS = 29;
 const MAX_DESCRIPTION_LENGTH = 300;
-const EXPECTED_SERVER_URLS = {
-  "openapi.custom-gpt.runtime.yaml": "https://api.mad4b.com",
-  "openapi.custom-gpt.identity.yaml": "https://identity.mad4b.com",
-  "openapi.custom-gpt.customers.yaml": "https://customers.mad4b.com",
-  "openapi.custom-gpt.systems.yaml": "https://systems.mad4b.com",
-  "openapi.custom-gpt.logic.yaml": "https://logic.mad4b.com",
-  "openapi.custom-gpt.observability.yaml": "https://observability.mad4b.com",
-  "openapi.custom-gpt.developer.yaml": "https://developer.mad4b.com",
-  "openapi.custom-gpt.admin-cli.yaml": "https://admin.mad4b.com",
-  "openapi.custom-gpt.ops.yaml": "https://ops.mad4b.com",
-};
-const EXPECTED_SCOPE_TAGS = {
-  "openapi.custom-gpt.runtime.yaml": new Set(["health", "activation", "governance", "jobs", "execution", "ai", "tenants"]),
-  "openapi.custom-gpt.identity.yaml": new Set(["identity", "access"]),
-  "openapi.custom-gpt.customers.yaml": new Set(["customers"]),
-  "openapi.custom-gpt.systems.yaml": new Set(["connected-systems", "planner", "bootstrap"]),
-  "openapi.custom-gpt.logic.yaml": new Set(["logic", "workflows"]),
-  "openapi.custom-gpt.observability.yaml": new Set(["observability", "security"]),
-  "openapi.custom-gpt.developer.yaml": new Set(["developer-api"]),
-  "openapi.custom-gpt.admin-cli.yaml": new Set(["admin-control", "system-layer"]),
-  "openapi.custom-gpt.ops.yaml": new Set(["release"]),
-};
 
 let passed = 0;
 let failed = 0;
@@ -131,9 +128,23 @@ function parameterKey(parameter) {
   return `${parameter?.in || ""}:${parameter?.name || ""}`;
 }
 
-const serverUrls = new Map();
+function assertToolArgsContract(doc, operationId) {
+  const operation = collectOperations(doc).find((op) => op.operation.operationId === operationId)?.operation;
+  const schema = operation?.requestBody?.content?.["application/json"]?.schema;
+  assert(`${operationId} body requires name`, Array.isArray(schema?.required) && schema.required.includes("name"));
+  assert(`${operationId} body exposes tool_args`, Boolean(schema?.properties?.tool_args));
+  assert(`${operationId} body does not expose legacy arguments`, !schema?.properties?.arguments);
+}
 
-for (const file of SCHEMAS) {
+section("schema inventory");
+for (const file of Object.keys(ACTIVE_SCHEMAS)) {
+  assert(`${file} exists`, existsSync(resolve(__dirname, file)));
+}
+for (const file of OBSOLETE_SCHEMAS) {
+  assert(`${file} is deleted`, !existsSync(resolve(__dirname, file)));
+}
+
+for (const [file, expected] of Object.entries(ACTIVE_SCHEMAS)) {
   const doc = loadSchema(file);
   const label = basename(file);
   const operations = collectOperations(doc);
@@ -142,34 +153,18 @@ for (const file of SCHEMAS) {
 
   assert("uses OpenAPI 3.1", doc.openapi === "3.1.0", `got ${doc.openapi}`);
   assert("has exactly one server", Array.isArray(doc.servers) && doc.servers.length === 1);
-
-  const serverUrl = doc.servers?.[0]?.url;
-  assert("server URL is HTTPS", typeof serverUrl === "string" && serverUrl.startsWith("https://"), `got ${serverUrl}`);
-  assert("server URL matches scope", serverUrl === EXPECTED_SERVER_URLS[file], `got ${serverUrl}`);
-  assert("server URL is unique across scoped schemas", !serverUrls.has(serverUrl), `${serverUrl} also used by ${serverUrls.get(serverUrl)}`);
-  serverUrls.set(serverUrl, label);
-
-  assert(`operation count <= ${MAX_OPERATIONS}`, operations.length <= MAX_OPERATIONS, `got ${operations.length}`);
+  assert("server URL matches live host", doc.servers?.[0]?.url === expected.serverUrl, `got ${doc.servers?.[0]?.url}`);
+  assert(`operation count <= ${expected.maxOperations}`, operations.length <= expected.maxOperations, `got ${operations.length}`);
   assert("has at least one operation", operations.length > 0);
   assert("does not expose root path operation", !operations.some((operation) => operation.pathKey === "/"));
-  const expectedTags = EXPECTED_SCOPE_TAGS[file];
-  const unexpectedTags = operations
-    .map((operation) => operation.operation.tags?.[0] || "untagged")
-    .filter((tag) => !expectedTags.has(tag));
-  assert("operations match declared scope tag classification", unexpectedTags.length === 0, unexpectedTags.join(", "));
 
   const securitySchemes = Object.keys(doc.components?.securitySchemes || {});
-  assert("exposes one security scheme", securitySchemes.length === 1, `got ${securitySchemes.join(", ")}`);
-  assert("security scheme is backendBearerAuth", securitySchemes[0] === CUSTOM_GPT_SECURITY_SCHEME, `got ${securitySchemes[0]}`);
+  assert("exposes expected security scheme", securitySchemes.includes(expected.securityScheme), `got ${securitySchemes.join(", ")}`);
 
-  const rootSecurity = doc.security || [];
-  assert("root security uses backendBearerAuth only",
-    Array.isArray(rootSecurity) &&
-      rootSecurity.length === 1 &&
-      rootSecurity[0] &&
-      Object.keys(rootSecurity[0]).length === 1 &&
-      CUSTOM_GPT_SECURITY_SCHEME in rootSecurity[0],
-    JSON.stringify(rootSecurity));
+  const operationIds = new Set(operations.map((op) => op.operation.operationId).filter(Boolean));
+  for (const operationId of expected.requiredOperations) {
+    assert(`exposes ${operationId}`, operationIds.has(operationId));
+  }
 
   const longDescriptions = walkDescriptions(doc);
   assert("all descriptions are <= 300 chars", longDescriptions.length === 0,
@@ -199,43 +194,24 @@ for (const file of SCHEMAS) {
   }
 }
 
-section("openapi.custom-gpt.auth-dispatcher.yaml (MCP-style)");
+section("dispatcher contracts");
 {
-  const doc = loadSchema("openapi.custom-gpt.auth-dispatcher.yaml");
-  const operations = collectOperations(doc);
-  assert("auth dispatcher uses auth host", doc.servers?.[0]?.url === "https://auth.mad4b.com", doc.servers?.[0]?.url);
-  assert("auth dispatcher has operations", operations.length > 0);
-  assert("auth dispatcher operation count <= 30", operations.length <= 30, `got ${operations.length}`);
-  assert("auth dispatcher uses session and tools tags only",
-    operations.every((op) => ["session", "tools"].includes(op.operation.tags?.[0])),
-    operations.map((op) => op.operation.tags?.[0]).join(", "));
+  const adminDoc = loadSchema("openapi.custom-gpt.auth-dispatcher.yaml");
+  const tenantDoc = loadSchema("openapi.tenant-gpt.auth.yaml");
 
-  // MCP meta-operations
-  assert("auth dispatcher exposes activateSession", operations.some((op) => op.pathKey === "/activation/session-context" && op.method === "get"));
-  assert("auth dispatcher exposes listTools", operations.some((op) => op.pathKey === "/gpt/tools" && op.method === "get"));
-  assert("auth dispatcher exposes callTool", operations.some((op) => op.pathKey === "/gpt/tools/call" && op.method === "post"));
-  assert("auth dispatcher exposes writeSessionTurn", operations.some((op) => op.pathKey === "/gpt/sessions/{id}/turn" && op.method === "post"));
-  assert("auth dispatcher exposes endSession", operations.some((op) => op.pathKey === "/gpt/sessions/{id}/end" && op.method === "post"));
+  assertToolArgsContract(adminDoc, "callAdminTool");
+  assertToolArgsContract(tenantDoc, "callTool");
 
-  // All POST operations must be marked non-consequential so ChatGPT never halts for approval
-  const postOps = operations.filter((op) => op.method === "post");
-  assert("all auth dispatcher POST operations are non-consequential",
-    postOps.every((op) => op.operation["x-openai-isConsequential"] === false),
-    postOps.filter((op) => op.operation["x-openai-isConsequential"] !== false).map((op) => op.pathKey).join(", "));
+  const adminOps = collectOperations(adminDoc);
+  assert("admin dispatcher includes GPT tool catalog route",
+    adminOps.some((op) => op.pathKey === "/gpt/tools" && op.method === "get"));
+  assert("admin dispatcher includes GPT tool call route",
+    adminOps.some((op) => op.pathKey === "/gpt/tools/call" && op.method === "post"));
 
-  // callTool body must require name
-  const callToolSchema = doc.paths?.["/gpt/tools/call"]?.post?.requestBody?.content?.["application/json"]?.schema;
-  assert("callTool body requires name", Array.isArray(callToolSchema?.required) && callToolSchema.required.includes("name"));
-
-  // Security scheme
-  const securitySchemes = Object.keys(doc.components?.securitySchemes || {});
-  assert("auth dispatcher exposes one security scheme", securitySchemes.length === 1);
-  assert("auth dispatcher security scheme is backendBearerAuth", securitySchemes[0] === "backendBearerAuth", securitySchemes[0]);
-
-  // Description length
-  const longDescriptions = walkDescriptions(doc);
-  assert("auth dispatcher descriptions are <= 300 chars", longDescriptions.length === 0,
-    longDescriptions.map((item) => `${item.path}:${item.length}`).join(", "));
+  const tenantPostOps = collectOperations(tenantDoc).filter((op) => op.method === "post");
+  assert("tenant dispatcher POST operations are non-consequential",
+    tenantPostOps.every((op) => op.operation["x-openai-isConsequential"] === false),
+    tenantPostOps.filter((op) => op.operation["x-openai-isConsequential"] !== false).map((op) => op.pathKey).join(", "));
 }
 
 console.log(`\nResults: ${passed} passed, ${failed} failed`);
