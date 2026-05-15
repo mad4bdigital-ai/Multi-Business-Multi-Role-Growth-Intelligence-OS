@@ -957,6 +957,8 @@ export async function verifyJsonAssetAppendReadback(
 
 
 export async function writeExecutionLogUnifiedRow(row) {
+  if (!EXECUTION_LOG_UNIFIED_SPREADSHEET_ID) return null;
+
   const { sheets } = await getGoogleClients();
 
   const live = await readLiveSheetShape(
