@@ -1,0 +1,11 @@
+PassengerAppRoot /home/u338416126/domains/auth.mad4b.com/nodejs
+PassengerAppType node
+PassengerNodejs /opt/alt/alt-nodejs22/root/bin/node
+PassengerStartupFile http-generic-api/server.js
+PassengerBaseURI /
+PassengerRestartDir /home/u338416126/domains/auth.mad4b.com/nodejs/tmp
+SetEnv LSNODE_CONSOLE_LOG console.log
+SetEnv DATA_SOURCE db
+RewriteRule ^\.builds - [F,L]
+SetEnvIfNoCase CF-Connecting-IP .+ noabuse=1
+SetEnvIfNoCase Authorization .+ noabuse=1

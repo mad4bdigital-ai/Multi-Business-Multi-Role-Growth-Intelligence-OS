@@ -2484,7 +2484,9 @@ async function fetchFromGoogleSheets(options = {}) {
     registryReadPolicyOverride = READ_POLICIES.FORCED_REFRESH;
   }
   try {
+    const useDb = String(process.env.DATA_SOURCE || "").trim().toLowerCase() !== "sheets";
     const { sheets, drive } = await getGoogleClients();
+    const sheetsClient = useDb ? null : sheets;
     const [
       brandRows,
       hostingAccounts,
@@ -2497,16 +2499,16 @@ async function fetchFromGoogleSheets(options = {}) {
       taskRouteRows,
       workflowRows
     ] = await Promise.all([
-      loadBrandRegistry(sheets),
-      loadHostingAccountRegistry(sheets),
-      loadActionsRegistry(sheets),
-      loadEndpointRegistry(sheets),
-      loadExecutionPolicies(sheets),
-      loadSiteRuntimeInventoryRegistry(sheets).catch(() => []),
-      loadSiteSettingsInventoryRegistry(sheets).catch(() => []),
-      loadPluginInventoryRegistry(sheets).catch(() => []),
-      loadTaskRoutesRegistry(sheets).catch(() => []),
-      loadWorkflowRegistry(sheets).catch(() => [])
+      loadBrandRegistry(sheetsClient),
+      loadHostingAccountRegistry(sheetsClient),
+      loadActionsRegistry(sheetsClient),
+      loadEndpointRegistry(sheetsClient),
+      loadExecutionPolicies(sheetsClient),
+      loadSiteRuntimeInventoryRegistry(sheetsClient).catch(() => []),
+      loadSiteSettingsInventoryRegistry(sheetsClient).catch(() => []),
+      loadPluginInventoryRegistry(sheetsClient).catch(() => []),
+      loadTaskRoutesRegistry(sheetsClient).catch(() => []),
+      loadWorkflowRegistry(sheetsClient).catch(() => [])
     ]);
 
     return {

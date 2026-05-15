@@ -133,6 +133,36 @@ export async function getCanonicalSurfaceMetadata(surfaceId = "", fallback = {})
 }
 
 export async function loadBrandRegistry(sheets) {
+  if (_DATA_SOURCE !== "sheets") {
+    const rows = await sqlReadTableDirect("Brand Registry");
+    return rows.map(r => ({
+      brand_name: r.brand_name || "",
+      normalized_brand_name: r.normalized_brand_name || "",
+      brand_domain: r.brand_domain || "",
+      target_key: r.target_key || "",
+      site_aliases_json: r.site_aliases_json || "",
+      base_url: r.base_url || "",
+      transport_action_key: r.transport_action_key || "",
+      auth_type: r.auth_type || "",
+      credential_resolution: r.credential_resolution || "",
+      username: r.username || "",
+      application_password: r.application_password || "",
+      default_headers_json: r.default_headers_json || "",
+      write_allowed: r.write_allowed || "",
+      destructive_allowed: r.destructive_allowed || "",
+      transport_enabled: r.transport_enabled || "",
+      target_resolution_mode: r.target_resolution_mode || "",
+      hosting_provider: r.hosting_provider || "",
+      hosting_account_key: r.hosting_account_key || "",
+      hostinger_api_target_key: r.hostinger_api_target_key || "",
+      server_environment_label: r.server_environment_label || "",
+      server_environment_type: r.server_environment_type || "",
+      server_region_or_datacenter: r.server_region_or_datacenter || "",
+      server_primary_domain: r.server_primary_domain || "",
+      server_panel_reference: r.server_panel_reference || "",
+      hosting_account_registry_ref: r.hosting_account_registry_ref || ""
+    })).filter(r => r.brand_name || r.target_key || r.base_url);
+  }
   const values = await fetchRange(sheets, `'${BRAND_REGISTRY_SHEET}'!A1:CX1000`);
   if (!values.length) throw registryError("Brand Registry");
   const headers = values[0];
@@ -173,6 +203,39 @@ export async function loadBrandRegistry(sheets) {
 }
 
 export async function loadHostingAccountRegistry(sheets) {
+  if (_DATA_SOURCE !== "sheets") {
+    const rows = await sqlReadTableDirect("Hosting Account Registry");
+    return rows.map(r => ({
+      hosting_account_key: r.hosting_account_key || "",
+      hosting_provider: r.hosting_provider || "",
+      account_identifier: r.account_identifier || "",
+      api_auth_mode: r.api_auth_mode || "",
+      api_key_reference: r.api_key_reference || "",
+      api_key_storage_mode: r.api_key_storage_mode || "",
+      plan_label: r.plan_label || "",
+      plan_type: r.plan_type || "",
+      account_scope_notes: r.account_scope_notes || "",
+      status: r.status || "",
+      last_reviewed_at: r.last_reviewed_at || "",
+      brand_sites_json: r.brand_sites_json || "",
+      resolver_target_keys_json: r.resolver_target_keys_json || "",
+      auth_validation_status: r.auth_validation_status || "",
+      endpoint_binding_status: r.endpoint_binding_status || "",
+      resolver_execution_ready: r.resolver_execution_ready || "",
+      last_runtime_check_at: r.last_runtime_check_at || "",
+      ssh_available: r.ssh_available || "",
+      wp_cli_available: r.wp_cli_available || "",
+      shared_access_enabled: r.shared_access_enabled || "",
+      account_mode: r.account_mode || "",
+      ssh_host: r.ssh_host || "",
+      ssh_port: r.ssh_port || "",
+      ssh_username: r.ssh_username || "",
+      ssh_auth_mode: r.ssh_auth_mode || "",
+      ssh_credential_reference: r.ssh_credential_reference || "",
+      ssh_runtime_notes: r.ssh_runtime_notes || "",
+      sftp_available: r.sftp_available || ""
+    })).filter(r => r.hosting_account_key);
+  }
   const values = await fetchRange(
     sheets,
     `'${HOSTING_ACCOUNT_REGISTRY_SHEET}'!A1:AZ1000`
@@ -238,6 +301,28 @@ export async function loadHostingAccountRegistry(sheets) {
 }
 
 export async function loadActionsRegistry(sheets) {
+  if (_DATA_SOURCE !== "sheets") {
+    const rows = await sqlReadTableDirect("Actions Registry");
+    return rows.map(r => ({
+      action_key: r.action_key || "",
+      status: r.status || "",
+      module_binding: r.module_binding || "",
+      connector_family: r.connector_family || "",
+      api_key_mode: r.api_key_mode || "",
+      api_key_param_name: r.api_key_param_name || "",
+      api_key_header_name: r.api_key_header_name || "",
+      api_key_value: r.api_key_value || "",
+      api_key_storage_mode: r.api_key_storage_mode || "",
+      secret_store_ref: r.secret_store_ref || "",
+      openai_schema_file_id: r.openai_schema_file_id || "",
+      oauth_config_file_id: r.oauth_config_file_id || "",
+      oauth_config_file_name: r.oauth_config_file_name || "",
+      runtime_capability_class: r.runtime_capability_class || "",
+      runtime_callable: r.runtime_callable || "",
+      primary_executor: r.primary_executor || "",
+      notes: r.notes || ""
+    })).filter(r => r.action_key);
+  }
   const values = await fetchRange(sheets, `'${ACTIONS_REGISTRY_SHEET}'!A1:AM1000`);
   if (!values.length) throw registryError("Actions Registry");
   const headers = values[0];
@@ -264,6 +349,48 @@ export async function loadActionsRegistry(sheets) {
 }
 
 export async function loadEndpointRegistry(sheets) {
+  if (_DATA_SOURCE !== "sheets") {
+    const rows = await sqlReadTableDirect("API Actions Endpoint Registry");
+    return rows.map(r => ({
+      endpoint_id: r.endpoint_id || "",
+      parent_action_key: r.parent_action_key || "",
+      endpoint_key: r.endpoint_key || "",
+      endpoint_operation: r.endpoint_operation || "",
+      provider_domain: r.provider_domain || "",
+      method: r.method || "",
+      endpoint_path_or_function: r.endpoint_path_or_function || "",
+      route_target: r.route_target || "",
+      openai_action_name: r.openai_action_name || "",
+      module_binding: r.module_binding || "",
+      connector_family: r.connector_family || "",
+      status: r.status || "",
+      spec_validation_status: r.spec_validation_status || "",
+      auth_validation_status: r.auth_validation_status || "",
+      privacy_validation_status: r.privacy_validation_status || "",
+      execution_readiness: r.execution_readiness || "",
+      endpoint_role: r.endpoint_role || "",
+      execution_mode: r.execution_mode || "",
+      transport_required: r.transport_required || "",
+      fallback_allowed: r.fallback_allowed || "",
+      fallback_match_basis: r.fallback_match_basis || "",
+      fallback_provider_domain: r.fallback_provider_domain || "",
+      fallback_connector_family: r.fallback_connector_family || "",
+      fallback_action_name: r.fallback_action_name || "",
+      fallback_route_target: r.fallback_route_target || "",
+      fallback_notes: r.fallback_notes || "",
+      inventory_role: r.inventory_role || "",
+      inventory_source: r.inventory_source || "",
+      notes: r.notes || "",
+      brand_resolution_source: r.brand_resolution_source || "",
+      transport_action_key: r.transport_action_key || "",
+      child_openai_schema_file_id: r.child_openai_schema_file_id || "",
+      schema_json: r.schema_json || null,
+      schema_overlay_mode: r.schema_overlay_mode || "",
+      schema_overlay_status: r.schema_overlay_status || "",
+      schema_overlay_parent_action_key: r.schema_overlay_parent_action_key || "",
+      schema_overlay_notes: r.schema_overlay_notes || ""
+    })).filter(r => r.endpoint_key);
+  }
   const values = await fetchRange(sheets, `'${ENDPOINT_REGISTRY_SHEET}'!A1:BA2000`);
   if (!values.length) throw registryError("API Actions Endpoint Registry");
   const headers = values[0];
@@ -306,6 +433,19 @@ export async function loadEndpointRegistry(sheets) {
 }
 
 export async function loadExecutionPolicies(sheets) {
+  if (_DATA_SOURCE !== "sheets") {
+    const rows = await sqlReadTableDirect("Execution Policy Registry");
+    return rows.map(r => ({
+      policy_group: r.policy_group || "",
+      policy_key: r.policy_key || "",
+      policy_value: r.policy_value || "",
+      active: r.active || "",
+      execution_scope: r.execution_scope || "",
+      affects_layer: r.affects_layer || "",
+      blocking: r.blocking || "",
+      notes: r.notes || ""
+    })).filter(r => r.policy_key && boolFromSheet(r.active));
+  }
   const values = await fetchRange(sheets, `'${EXECUTION_POLICY_SHEET}'!A1:H2000`);
   if (!values.length) throw registryError("Execution Policy Registry");
   const headers = values[0];
@@ -1843,6 +1983,78 @@ export async function loadPluginInventoryRegistry(sheets) {
 export async function loadTaskRoutesRegistry(sheets, options = {}) {
   const includeCandidateInspection = options?.include_candidate_inspection === true;
 
+  if (_DATA_SOURCE !== "sheets") {
+    const dbRows = await sqlReadTableDirect("Task Routes");
+    const rows = dbRows.map(r => {
+      const taskKey = r.task_key || "";
+      const activeRaw = r.active || "";
+      const routeActive = String(activeRaw).trim().toUpperCase() === "TRUE";
+      const additionStatus = normalizeGovernedAdditionState(
+        r.addition_status || r.governance_status || r.validation_status
+      );
+      const routeRecord = {
+        task_key: taskKey,
+        route_key: taskKey,
+        trigger_terms: r.trigger_terms || "",
+        route_modules: r.route_modules || "",
+        execution_layer: r.execution_layer || "",
+        enabled: r.enabled || "",
+        output_focus: r.output_focus || "",
+        notes: r.notes || "",
+        entry_sources: r.entry_sources || "",
+        linked_starter_titles: r.linked_starter_titles || "",
+        active_starter_count: r.active_starter_count || "",
+        route_key_match_status: r.route_key_match_status || "",
+        row_id: r.row_id || "",
+        route_id: r.route_id || "",
+        active: activeRaw,
+        intent_key: r.intent_key || "",
+        brand_scope: r.brand_scope || "",
+        request_type: r.request_type || "",
+        route_mode: r.route_mode || "",
+        target_module: r.target_module || "",
+        workflow_key: r.workflow_key || "",
+        lifecycle_mode: r.lifecycle_mode || "",
+        memory_required: r.memory_required || "",
+        logging_required: r.logging_required || "",
+        review_required: r.review_required || "",
+        priority: r.priority || "",
+        allowed_states: r.allowed_states || "",
+        degraded_action: r.degraded_action || "",
+        blocked_action: r.blocked_action || "",
+        match_rule: r.match_rule || "",
+        route_source: r.route_source || "",
+        last_validated_at: r.last_validated_at || "",
+        addition_status: additionStatus,
+        governance_status: r.governance_status || "",
+        validation_status: r.validation_status || "",
+        overlap_group: r.overlap_group || "",
+        integration_mode: r.integration_mode || "",
+        chain_candidate: r.chain_candidate || "",
+        graph_update_required: r.graph_update_required || "",
+        bindings_update_required: r.bindings_update_required || "",
+        policy_update_required: r.policy_update_required || "",
+        starter_update_required: r.starter_update_required || "",
+        reconciliation_required: r.reconciliation_required || ""
+      };
+      const deferredActivationRequired = hasDeferredGovernedActivationDependencies(
+        routeRecord,
+        ["chain_candidate", "graph_update_required", "bindings_update_required",
+          "policy_update_required", "starter_update_required", "reconciliation_required"]
+      );
+      const executableAuthority =
+        routeActive &&
+        !governedAdditionStateBlocksAuthority(routeRecord.addition_status) &&
+        !deferredActivationRequired;
+      return { ...routeRecord, executable_authority: executableAuthority };
+    }).filter(row =>
+      String(row.task_key || "").trim() ||
+      String(row.route_id || "").trim() ||
+      String(row.workflow_key || "").trim()
+    );
+    return includeCandidateInspection ? rows : rows.filter(row => row.executable_authority);
+  }
+
   const taskShape = await readLiveSheetShape(
     REGISTRY_SPREADSHEET_ID,
     TASK_ROUTES_SHEET,
@@ -1973,6 +2185,86 @@ export async function loadTaskRoutesRegistry(sheets, options = {}) {
 
 export async function loadWorkflowRegistry(sheets, options = {}) {
   const includeCandidateInspection = options?.include_candidate_inspection === true;
+
+  if (_DATA_SOURCE !== "sheets") {
+    const dbRows = await sqlReadTableDirect("Workflow Registry");
+    const rows = dbRows.map(r => {
+      const activeRaw = r.active || "";
+      const workflowActive = String(activeRaw).trim().toUpperCase() === "TRUE";
+      const additionStatus = normalizeGovernedAdditionState(
+        r.addition_status || r.governance_status || r.validation_status
+      );
+      const workflowRecord = {
+        workflow_id: r.workflow_id || "",
+        workflow_name: r.workflow_name || "",
+        module_mode: r.module_mode || "",
+        trigger_source: r.trigger_source || "",
+        input_type: r.input_type || "",
+        primary_objective: r.primary_objective || "",
+        mapped_engines: r.mapped_engines || "",
+        engine_order: r.engine_order || "",
+        workflow_type: r.workflow_type || "",
+        primary_output: r.primary_output || "",
+        input_detection_rules: r.input_detection_rules || "",
+        output_template: r.output_template || "",
+        priority: r.priority || "",
+        route_key: r.route_key || "",
+        execution_mode: r.execution_mode || "",
+        user_facing: r.user_facing || "",
+        parent_layer: r.parent_layer || "",
+        status: r.status || "",
+        linked_workflows: r.linked_workflows || "",
+        linked_engines: r.linked_engines || "",
+        notes: r.notes || "",
+        entry_priority_weight: r.entry_priority_weight || "",
+        dependency_type: r.dependency_type || "",
+        output_artifact_type: r.output_artifact_type || "",
+        workflow_key: r.workflow_key || "",
+        active: activeRaw,
+        target_module: r.target_module || "",
+        execution_class: r.execution_class || "",
+        lifecycle_mode: r.lifecycle_mode || "",
+        route_compatibility: r.route_compatibility || "",
+        memory_required: r.memory_required || "",
+        logging_required: r.logging_required || "",
+        review_required: r.review_required || "",
+        allowed_states: r.allowed_states || "",
+        degraded_action: r.degraded_action || "",
+        blocked_action: r.blocked_action || "",
+        registry_source: r.registry_source || "",
+        last_validated_at: r.last_validated_at || "",
+        addition_status: additionStatus,
+        governance_status: r.governance_status || "",
+        validation_status: r.validation_status || "",
+        workflow_family: r.workflow_family || "",
+        overlap_group: r.overlap_group || "",
+        execution_path_role: r.execution_path_role || "",
+        chain_eligible: r.chain_eligible || "",
+        graph_update_required: r.graph_update_required || "",
+        bindings_update_required: r.bindings_update_required || "",
+        repair_mapping_required: r.repair_mapping_required || "",
+        policy_dependency_required: r.policy_dependency_required || "",
+        policy_update_required: r.policy_update_required || "",
+        starter_update_required: r.starter_update_required || "",
+        reconciliation_required: r.reconciliation_required || ""
+      };
+      const deferredActivationRequired = hasDeferredGovernedActivationDependencies(
+        workflowRecord,
+        ["chain_eligible", "graph_update_required", "bindings_update_required",
+          "repair_mapping_required", "policy_dependency_required", "policy_update_required",
+          "starter_update_required", "reconciliation_required"]
+      );
+      const executableAuthority =
+        workflowActive &&
+        !governedAdditionStateBlocksAuthority(workflowRecord.addition_status) &&
+        !deferredActivationRequired;
+      return { ...workflowRecord, executable_authority: executableAuthority };
+    }).filter(row =>
+      String(row.workflow_id || "").trim() ||
+      String(row.workflow_key || "").trim()
+    );
+    return includeCandidateInspection ? rows : rows.filter(row => row.executable_authority);
+  }
 
   const workflowShape = await readLiveSheetShape(
     REGISTRY_SPREADSHEET_ID,
