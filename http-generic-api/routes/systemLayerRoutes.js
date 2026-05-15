@@ -3,6 +3,7 @@ import {
   ACTIVATION_BOOTSTRAP_CONFIG_RANGE,
   ACTIVATION_BOOTSTRAP_CONFIG_SHEET,
   ACTIVATION_BOOTSTRAP_SPREADSHEET_ID,
+  OVERSIZED_ARTIFACTS_DRIVE_FOLDER_ID,
 } from "../config.js";
 import { getPool } from "../db.js";
 import { getGoogleClientsForSpreadsheet } from "../googleSheets.js";
@@ -488,18 +489,18 @@ function bootstrapRowObject(values = []) {
     environment: row[2] || "",
     registry_sheet_id: row[3] || "",
     activity_sheet_id: row[4] || "",
-    github_repo: row[5] || process.env.GITHUB_REPO || "",
+    github_repo: row[5] || "",
     cloudflare_zone: row[6] || "",
     connector_url: row[7] || "",
     bootstrap_version: row[8] || "",
     activated_at: row[9] || "",
   };
-  const repo = parseGithubRepo(mapped.github_repo || process.env.GITHUB_REPO);
+  const repo = parseGithubRepo(mapped.github_repo);
   return {
     ...mapped,
     diagnostic_only: true,
     github_parent_action_key: "github_api_mcp",
-    github_endpoint_key: "getRepositoryContent",
+    github_endpoint_key: "github_get_repository",
     github_owner: repo?.owner || "",
     github_repo: repo?.repo || mapped.github_repo,
     github_branch: process.env.GITHUB_BRANCH || "main",
@@ -663,9 +664,36 @@ function resolveGithubValidationTarget(args = {}, bootstrapRow = {}) {
   const fromBootstrap = bootstrapRow.github_owner && bootstrapRow.github_repo
     ? { owner: bootstrapRow.github_owner, repo: bootstrapRow.github_repo }
     : parseGithubRepo(bootstrapRow.github_repo);
-  const fromEnv = parseGithubRepo(process.env.GITHUB_REPO);
-  const target = explicit || fromBootstrap || fromEnv;
+  const target = explicit || fromBootstrap;
   return target ? { ...target, branch: args.github_branch || bootstrapRow.github_branch || process.env.GITHUB_BRANCH || "main" } : null;
+}
+
+const GITHUB_REPOSITORY_ENDPOINT_KEY = "github_get_repository";
+const ARTIFACT_ENV_BINDINGS = [
+  ["OVERSIZED_ARTIFACTS_DRIVE_FOLDER_ID", OVERSIZED_ARTIFACTS_DRIVE_FOLDER_ID],
+  ["BACKEND_ARTIFACTS", process.env.BACKEND_ARTIFACTS],
+  ["BACKEND_ARTIFACTS_DRIVE_FOLDER_ID", process.env.BACKEND_ARTIFACTS_DRIVE_FOLDER_ID],
+  ["ARTIFACTS_DRIVE_FOLDER_ID", process.env.ARTIFACTS_DRIVE_FOLDER_ID],
+].map(([name, value]) => [name, String(value || "").trim()]).filter(([, value]) => value);
+
+function findArtifactBindingInGithubTarget(target) {
+  if (!target) return null;
+  const fields = {
+    github_owner: String(target.owner || "").trim(),
+    github_repo: String(target.repo || "").trim(),
+  };
+  for (const [field, value] of Object.entries(fields)) {
+    const match = ARTIFACT_ENV_BINDINGS.find(([, envValue]) => envValue && value === envValue);
+    if (match) return { field, env_key: match[0] };
+  }
+  return null;
+}
+
+function resolveGithubRepositoryEndpointKey(endpointKey) {
+  const normalized = String(endpointKey || "").trim();
+  return normalized === GITHUB_REPOSITORY_ENDPOINT_KEY
+    ? normalized
+    : GITHUB_REPOSITORY_ENDPOINT_KEY;
 }
 
 function normalizeExecutionBody(executionResult = {}) {
@@ -690,17 +718,35 @@ async function activationGithubValidate(args = {}, bootstrapRow = {}, deps = {})
       return {
         ok: false,
         provider: "github",
-        code: "missing_github_validation_target",
-        message: "GitHub validation requires github_owner/github_repo or a bootstrap/env repository binding.",
+        code: "activation_github_binding_missing",
+        message: "GitHub validation requires github_owner/github_repo from explicit arguments or the bootstrap repository binding.",
+        details: {
+          explicit_owner_present: Boolean(args.github_owner),
+          explicit_repo_present: Boolean(args.github_repo),
+          bootstrap_owner_present: Boolean(bootstrapRow.github_owner),
+          bootstrap_repo_present: Boolean(bootstrapRow.github_repo),
+        },
+      };
+    }
+
+    const artifactBinding = findArtifactBindingInGithubTarget(target);
+    if (artifactBinding) {
+      return {
+        ok: false,
+        provider: "github",
+        code: "activation_github_artifact_binding_rejected",
+        message: "GitHub validation received an artifact storage identifier instead of a repository binding.",
+        details: artifactBinding,
       };
     }
 
     const parentActionKey = String(
       bootstrapRow.github_parent_action_key || "github_api_mcp"
     ).trim();
-    const endpointKey = String(
-      bootstrapRow.github_endpoint_key || "github_get_repository"
+    const configuredEndpointKey = String(
+      bootstrapRow.github_endpoint_key || GITHUB_REPOSITORY_ENDPOINT_KEY
     ).trim();
+    const endpointKey = resolveGithubRepositoryEndpointKey(configuredEndpointKey);
 
     const executionResult = await executeGovernedHttp({
       parent_action_key: parentActionKey,
@@ -744,6 +790,7 @@ async function activationGithubValidate(args = {}, bootstrapRow = {}, deps = {})
       attempted_binding: {
         parent_action_key: parentActionKey,
         endpoint_key: endpointKey,
+        ...(endpointKey !== configuredEndpointKey ? { configured_endpoint_key: configuredEndpointKey } : {}),
       },
       repository: payload.full_name || `${target.owner}/${target.repo}`,
       default_branch: payload.default_branch || null,
@@ -1178,10 +1225,10 @@ export function buildSystemLayerRoutes(deps) {
 export {
   SYSTEM_LAYER_TOOLS,
   activationBootstrapConfigUpsert,
+  activationGithubValidate,
   callSystemLayerTool,
   ensurePlatformRuntimeConfigTable,
   getConnectorRegistrySystem,
   listConnectorRegistry,
+  resolveGithubValidationTarget,
 };
-
-
