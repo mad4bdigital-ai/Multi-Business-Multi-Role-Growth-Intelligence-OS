@@ -136,6 +136,11 @@ function assertToolArgsContract(doc, operationId) {
   assert(`${operationId} body does not expose legacy arguments`, !schema?.properties?.arguments);
 }
 
+function assertNonConsequentialOperation(doc, operationId) {
+  const operation = collectOperations(doc).find((op) => op.operation.operationId === operationId)?.operation;
+  assert(`${operationId} is non-consequential`, operation?.["x-openai-isConsequential"] === false);
+}
+
 section("schema inventory");
 for (const file of Object.keys(ACTIVE_SCHEMAS)) {
   assert(`${file} exists`, existsSync(resolve(__dirname, file)));
@@ -201,6 +206,10 @@ section("dispatcher contracts");
 
   assertToolArgsContract(adminDoc, "callAdminTool");
   assertToolArgsContract(tenantDoc, "callTool");
+
+  for (const operationId of ["callSystemTool", "callAdminSystemTool", "callAdminTool", "repairLocalConnector"]) {
+    assertNonConsequentialOperation(adminDoc, operationId);
+  }
 
   const adminOps = collectOperations(adminDoc);
   assert("admin dispatcher includes GPT tool catalog route",
