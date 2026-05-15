@@ -521,10 +521,7 @@ export function buildActivationRoutes(deps) {
   const router = Router();
 
   router.get("/activation/env-bootstrap", requireBackendApiKey, async (_req, res) => {
-    const githubAppPrivateKeyConfigured = Boolean(
-      process.env.GITHUB_APP_PRIVATE_KEY ||
-      process.env.GITHUB_APP_PRIVATE_KEY_B64
-    );
+    const githubAppPrivateKeyConfigured = Boolean(process.env.GITHUB_APP_PRIVATE_KEY);
     const githubAppConfigured = Boolean(
       process.env.GITHUB_APP_INSTALLATION_ID &&
       process.env.GITHUB_APP_ID &&
@@ -561,7 +558,6 @@ export function buildActivationRoutes(deps) {
         github_app_installation_id_configured: Boolean(process.env.GITHUB_APP_INSTALLATION_ID),
         github_app_id_configured: Boolean(process.env.GITHUB_APP_ID),
         github_app_private_key_configured: Boolean(process.env.GITHUB_APP_PRIVATE_KEY),
-        github_app_private_key_b64_configured: Boolean(process.env.GITHUB_APP_PRIVATE_KEY_B64),
         github_token_configured: githubPatConfigured,
         activation_github_repository_configured: Boolean(process.env.ACTIVATION_GITHUB_REPOSITORY),
         activation_github_owner_configured: Boolean(process.env.ACTIVATION_GITHUB_OWNER),

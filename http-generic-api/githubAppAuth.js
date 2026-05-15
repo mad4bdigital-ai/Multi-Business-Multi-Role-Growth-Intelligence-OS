@@ -24,7 +24,7 @@ function looksLikePem(value = "") {
 
 function stripCommonEnvAssignment(value = "") {
   const text = String(value || "").trim();
-  const match = text.match(/^(?:export\s+)?(?:GITHUB_APP_PRIVATE_KEY_B64|GITHUB_APP_PRIVATE_KEY)\s*=\s*([\s\S]*)$/);
+  const match = text.match(/^(?:export\s+)?GITHUB_APP_PRIVATE_KEY\s*=\s*([\s\S]*)$/);
   return match ? match[1].trim() : text;
 }
 
@@ -104,7 +104,7 @@ export function decodeGitHubAppPrivateKey(value = "") {
 
 function createInvalidPrivateKeyError(cause) {
   const err = new Error(
-    "GitHub App private key could not be parsed. Provide GITHUB_APP_PRIVATE_KEY as the raw PEM with newline escapes preserved, or GITHUB_APP_PRIVATE_KEY_B64 as base64 of the full PEM private key."
+    "GitHub App private key could not be parsed. Provide GITHUB_APP_PRIVATE_KEY as the raw PEM with newline escapes preserved."
   );
   err.code = "github_app_auth_invalid_private_key";
   err.status = 500;
@@ -163,8 +163,7 @@ export function resolveGitHubAppConfig(action = {}) {
       String(process.env.GITHUB_APP_INSTALLATION_ID || "").trim(),
     privateKey:
       envSecretFromReference(action.secret_store_ref) ||
-      String(process.env.GITHUB_APP_PRIVATE_KEY || "").trim() ||
-      String(process.env.GITHUB_APP_PRIVATE_KEY_B64 || "").trim(),
+      String(process.env.GITHUB_APP_PRIVATE_KEY || "").trim(),
   };
 }
 

@@ -102,11 +102,9 @@ assert.equal(calls, 1, "installation token fetch runs once before cache reuse");
 const savedGitHubAppId = process.env.GITHUB_APP_ID;
 const savedGitHubAppInstallationId = process.env.GITHUB_APP_INSTALLATION_ID;
 const savedGitHubAppPrivateKey = process.env.GITHUB_APP_PRIVATE_KEY;
-const savedGitHubAppPrivateKeyB64 = process.env.GITHUB_APP_PRIVATE_KEY_B64;
 delete process.env.GITHUB_APP_ID;
 delete process.env.GITHUB_APP_INSTALLATION_ID;
 delete process.env.GITHUB_APP_PRIVATE_KEY;
-delete process.env.GITHUB_APP_PRIVATE_KEY_B64;
 
 assert.deepEqual(
   resolveGitHubAppConfig({}),
@@ -120,8 +118,6 @@ if (savedGitHubAppInstallationId === undefined) delete process.env.GITHUB_APP_IN
 else process.env.GITHUB_APP_INSTALLATION_ID = savedGitHubAppInstallationId;
 if (savedGitHubAppPrivateKey === undefined) delete process.env.GITHUB_APP_PRIVATE_KEY;
 else process.env.GITHUB_APP_PRIVATE_KEY = savedGitHubAppPrivateKey;
-if (savedGitHubAppPrivateKeyB64 === undefined) delete process.env.GITHUB_APP_PRIVATE_KEY_B64;
-else process.env.GITHUB_APP_PRIVATE_KEY_B64 = savedGitHubAppPrivateKeyB64;
 
 assert.equal(
   inferAuthMode({ action: { api_key_mode: "github_app" }, brand: {} }),

@@ -48,7 +48,6 @@ console.log("Runtime env readiness:");
 console.log(`  GITHUB_APP_INSTALLATION_ID: ${maskPresence("GITHUB_APP_INSTALLATION_ID")}`);
 console.log(`  GITHUB_APP_ID:              ${maskPresence("GITHUB_APP_ID")}`);
 console.log(`  GITHUB_APP_PRIVATE_KEY:     ${maskPresence("GITHUB_APP_PRIVATE_KEY")}`);
-console.log(`  GITHUB_APP_PRIVATE_KEY_B64: ${maskPresence("GITHUB_APP_PRIVATE_KEY_B64")} (legacy fallback)`);
 console.log(`  GITHUB_TOKEN:               ${maskPresence("GITHUB_TOKEN")} (not used for github_app mode)`);
 
 const [rows] = await pool.query(
