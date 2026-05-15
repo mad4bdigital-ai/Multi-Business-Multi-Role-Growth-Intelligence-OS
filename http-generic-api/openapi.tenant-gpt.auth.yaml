@@ -12,17 +12,17 @@ components:
   securitySchemes:
     userBearerAuth:
       type: oauth2
-      description: Tenant GPT OAuth. ChatGPT signs in through the Growth Intelligence Platform popup, then /auth/oauth/token mints a fresh Mad4B tenant access JWT. Google Sign-In is only an upstream identity proof inside the popup; do not call OAuth token or Google ID-token endpoints as normal actions.
+      description: Tenant GPT OAuth. ChatGPT signs in through the Growth Intelligence Platform popup, then /auth/oauth/token mints a fresh Mad4B tenant access JWT with issuer, audience, subject, scope, user_id, and tenant_id claims. Google Sign-In is only an upstream identity proof inside the popup; do not call OAuth token or Google ID-token endpoints as normal actions. The authorize URL may include safe activation hints such as screen_hint, activation_mode, device_id, workspace_name, and sign_in_options, but never secrets.
       flows:
         authorizationCode:
           authorizationUrl: https://auth.mad4b.com/auth/oauth/authorize
           tokenUrl: https://auth.mad4b.com/auth/oauth/token
           scopes:
-            https://auth.mad4b.com/scopes/tenant.links: Access tenant-scoped Growth Intelligence links.
-            https://auth.mad4b.com/scopes/tenant.status: Read tenant connection status.
-            https://auth.mad4b.com/scopes/tenant.activation: Activate managed or dedicated tenant connection.
-            https://auth.mad4b.com/scopes/tenant.install: Provision tenant local connector install bundles.
-            https://auth.mad4b.com/scopes/tenant.system-tools: Use tenant-scoped governed system tools.
+            https://auth.mad4b.com/scopes/tenant.links: Access tenant-scoped Growth Intelligence links for the signed-in user.
+            https://auth.mad4b.com/scopes/tenant.status: Read tenant connection status for the signed-in user.
+            https://auth.mad4b.com/scopes/tenant.activation: Activate managed or dedicated tenant connection mode for the signed-in user.
+            https://auth.mad4b.com/scopes/tenant.install: Provision tenant local connector install bundles for the signed-in user.
+            https://auth.mad4b.com/scopes/tenant.system-tools: Use tenant-scoped governed system tools for the signed-in user.
   schemas:
     ToolItem:
       type: object
@@ -51,21 +51,32 @@ components:
       type: object
       additionalProperties: true
       properties:
-        session_id: { type: string }
-        session_status: { type: string }
-        turn_count: { type: integer }
-        started_at: { type: string }
-        ended_at: { type: string, nullable: true }
-        drive_export_url: { type: string, nullable: true }
+        session_id:
+          type: string
+        session_status:
+          type: string
+        turn_count:
+          type: integer
+        started_at:
+          type: string
+        ended_at:
+          type: string
+          nullable: true
+        drive_export_url:
+          type: string
+          nullable: true
     ErrorResponse:
       type: object
       properties:
-        ok: { type: boolean }
+        ok:
+          type: boolean
         error:
           type: object
           properties:
-            code: { type: string }
-            message: { type: string }
+            code:
+              type: string
+            message:
+              type: string
   responses:
     Unauthorized:
       description: Unauthorized
@@ -74,18 +85,27 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
 security:
-  - userBearerAuth: []
+  - userBearerAuth:
+      - https://auth.mad4b.com/scopes/tenant.links
+      - https://auth.mad4b.com/scopes/tenant.status
+      - https://auth.mad4b.com/scopes/tenant.activation
+      - https://auth.mad4b.com/scopes/tenant.install
+      - https://auth.mad4b.com/scopes/tenant.system-tools
 paths:
   /activation/session-context:
     get:
-      tags: [session]
+      tags:
+        - session
       operationId: activateSession
       summary: Open conversation session and load tenant platform context
-      description: "Call once at conversation start. Auto-closes previous open sessions, opens a new one, returns session_id plus platform context (scope, recent sessions). Use session_id for writeSessionTurn and endSession calls."
+      description: Call once at conversation start. Auto-closes previous open sessions, opens a new one, returns session_id plus platform context (scope, recent sessions). Use session_id for writeSessionTurn and endSession calls.
       parameters:
         - name: limit
           in: query
-          schema: { type: integer, default: 20, maximum: 50 }
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
       responses:
         '200':
           description: Session opened
@@ -94,23 +114,34 @@ paths:
               schema:
                 type: object
                 additionalProperties: true
-                required: [ok, session_id]
+                required:
+                  - ok
+                  - session_id
                 properties:
-                  ok: { type: boolean }
+                  ok:
+                    type: boolean
                   session_id:
                     type: string
                     description: Use this in /gpt/sessions/{id}/turn and /gpt/sessions/{id}/end.
-                  closed_sessions: { type: integer }
+                  closed_sessions:
+                    type: integer
                   gpt_sessions:
                     type: array
-                    items: { $ref: '#/components/schemas/GptSession' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+                    items:
+                      $ref: '#/components/schemas/GptSession'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
       security:
-        - userBearerAuth: []
-
+        - userBearerAuth:
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
   /gpt/tools:
     get:
-      tags: [tools]
+      tags:
+        - tools
       operationId: listTools
       summary: List all available platform tools for this tenant
       description: |
@@ -122,32 +153,45 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [ok, tools]
+                required:
+                  - ok
+                  - tools
                 properties:
-                  ok: { type: boolean }
-                  caller_type: { type: string }
-                  count: { type: integer }
+                  ok:
+                    type: boolean
+                  caller_type:
+                    type: string
+                  count:
+                    type: integer
                   tools:
                     type: array
-                    items: { $ref: '#/components/schemas/ToolItem' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+                    items:
+                      $ref: '#/components/schemas/ToolItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
       security:
-        - userBearerAuth: []
-
+        - userBearerAuth:
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
   /gpt/tools/call:
     post:
       x-openai-isConsequential: false
-      tags: [tools]
+      tags:
+        - tools
       operationId: callTool
       summary: Execute any platform tool by name
-      description: "Executes a tool from the tenant registry. Use listTools first to get tool names and required arguments. Path params are substituted automatically; GET uses query string, POST uses request body. Returns the raw upstream response."
+      description: Executes a tool from the tenant registry. Use listTools first to get tool names and required arguments. Path params are substituted automatically; GET uses query string, POST uses request body. Returns the raw upstream response.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [name]
+              required:
+                - name
               properties:
                 name:
                   type: string
@@ -168,20 +212,28 @@ paths:
           description: Missing name or path parameter
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ErrorResponse' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           description: Tool not found
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
-        - userBearerAuth: []
-
+        - userBearerAuth:
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
   /gpt/sessions/{id}/turn:
     post:
       x-openai-isConsequential: false
-      tags: [session]
+      tags:
+        - session
       operationId: writeSessionTurn
       summary: Record a conversation turn (user, assistant, or tool message)
       description: |
@@ -190,7 +242,8 @@ paths:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
           description: session_id from activateSession.
       requestBody:
         required: true
@@ -198,11 +251,16 @@ paths:
           application/json:
             schema:
               type: object
-              required: [role, content]
+              required:
+                - role
+                - content
               properties:
                 role:
                   type: string
-                  enum: [user, assistant, tool]
+                  enum:
+                    - user
+                    - assistant
+                    - tool
                 content:
                   type: string
                 action_key:
@@ -216,20 +274,32 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
-                  session_id: { type: string }
-                  turn_index: { type: integer }
-        '400': { description: Missing fields }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { description: Session not found }
-        '409': { description: Session already closed }
+                  ok:
+                    type: boolean
+                  session_id:
+                    type: string
+                  turn_index:
+                    type: integer
+        '400':
+          description: Missing fields
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Session not found
+        '409':
+          description: Session already closed
       security:
-        - userBearerAuth: []
-
+        - userBearerAuth:
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
   /gpt/sessions/{id}/end:
     post:
       x-openai-isConsequential: false
-      tags: [session]
+      tags:
+        - session
       operationId: endSession
       summary: Close the session and archive conversation to Google Drive
       description: |
@@ -238,7 +308,8 @@ paths:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
           description: session_id from activateSession.
       requestBody:
         required: false
@@ -259,20 +330,31 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
-                  session_id: { type: string }
+                  ok:
+                    type: boolean
+                  session_id:
+                    type: string
                   drive_export:
                     type: object
                     nullable: true
                     properties:
-                      drive_file_id: { type: string }
-                      drive_web_url: { type: string }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { description: Session not found }
-        '409': { description: Session already ended }
+                      drive_file_id:
+                        type: string
+                      drive_web_url:
+                        type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Session not found
+        '409':
+          description: Session already ended
       security:
-        - userBearerAuth: []
-
+        - userBearerAuth:
+            - https://auth.mad4b.com/scopes/tenant.links
+            - https://auth.mad4b.com/scopes/tenant.status
+            - https://auth.mad4b.com/scopes/tenant.activation
+            - https://auth.mad4b.com/scopes/tenant.install
+            - https://auth.mad4b.com/scopes/tenant.system-tools
 x-gpt-action-auth-preset:
   authentication_type: OAuth
   schema_url: https://auth.mad4b.com/openapi.tenant-gpt.auth.yaml

@@ -2044,6 +2044,7 @@ paths:
                       - env
                       - windows_app
                       - hostinger
+                      - cloudflare
                       - shell
                   result:
                     type: object
@@ -2139,6 +2140,396 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           description: Hostinger API call failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/cli/cloudflare:
+    post:
+      tags:
+        - admin-control
+      security:
+        - backendBearerAuth: []
+      operationId: executeCloudflareApiCall
+      summary: Forward a call to the Cloudflare REST API
+      description: Proxies any Cloudflare API call using server-stored credentials. Supply the path only, e.g. /client/v4/zones or /client/v4/tunnels/{tunnel_id}.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - path
+              properties:
+                path:
+                  type: string
+                  description: Cloudflare API path, e.g. /client/v4/zones or /client/v4/accounts/{account_id}/tunnels
+                method:
+                  type: string
+                  enum:
+                    - GET
+                    - POST
+                    - PUT
+                    - DELETE
+                    - PATCH
+                  default: GET
+                request_body:
+                  type: object
+                  additionalProperties: true
+                  description: JSON body for POST/PUT/PATCH requests.
+                  properties: {}
+                params:
+                  type: object
+                  additionalProperties: true
+                  description: Query string parameters to append.
+                  properties: {}
+      responses:
+        '200':
+          description: Cloudflare API response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required:
+                  - ok
+                  - result
+                properties:
+                  ok:
+                    type: boolean
+                  result:
+                    type: object
+                    additionalProperties: true
+                    properties: {}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: Cloudflare API call failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/cli/local-connector/install-bundle:
+    get:
+      tags:
+        - admin-control
+      security:
+        - backendBearerAuth: []
+      operationId: getLocalConnectorInstallBundle
+      summary: Generate and upload local connector installer
+      description: Generate a pre-filled Windows .bat installer for the local connector stack (cloudflared + Node.js service via NSSM). Reads cf_token and connector_secret from local_connector_user_configs in DB for the given user_id + device_id. Falls back to server env only if no DB row exists. Uploads to Google Dr.
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: User ID whose device config to load from DB. Defaults to platform admin.
+        - name: device_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Device ID (hostname) to load config for. Defaults to mohammedlap.
+      responses:
+        '200':
+          description: Installer uploaded, drive link returned
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required:
+                  - ok
+                  - drive
+                properties:
+                  ok:
+                    type: boolean
+                  drive:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      file_id:
+                        type: string
+                      drive_link:
+                        type: string
+                      filename:
+                        type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: Install bundle generation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/cli/local-connector/self-repair:
+    post:
+      tags:
+        - admin-control
+      security:
+        - backendBearerAuth: []
+      operationId: repairLocalConnector
+      summary: Self-repair the admin local connector
+      description: CALL IMMEDIATELY when connector.mad4b.com returns error 1033 or HTTP 530 — do NOT just report the error. Reads device config (cf_token, connector_secret) from local_connector_user_configs in DB, checks Cloudflare tunnel health via API, generates a pre-filled Windows .bat installer (cloudflared + NS.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                user_id:
+                  type: string
+                  description: User ID whose device to repair. Defaults to platform admin.
+                device_id:
+                  type: string
+                  description: Device hostname to repair. Defaults to mohammedlap.
+      responses:
+        '200':
+          description: Self-repair result with diagnosis and drive link
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required:
+                  - ok
+                  - diagnosis
+                  - repair
+                properties:
+                  ok:
+                    type: boolean
+                  diagnosis:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      device_id:
+                        type: string
+                      tunnel_url:
+                        type: string
+                      cf_tunnel_id:
+                        type: string
+                      cf_tunnel_status:
+                        type: string
+                      config_source:
+                        type: string
+                        enum:
+                          - db
+                          - env
+                  repair:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      action:
+                        type: string
+                      drive:
+                        type: object
+                        additionalProperties: true
+                        properties:
+                          file_id:
+                            type: string
+                          drive_link:
+                            type: string
+                          filename:
+                            type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: Self-repair failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/cli/dns:
+    get:
+      tags:
+        - admin-control
+      security:
+        - backendBearerAuth: []
+      operationId: listDnsRecords
+      summary: List DNS records for a zone
+      description: Lists all DNS records for the specified zone via Cloudflare API. Defaults to mad4b.com.
+      parameters:
+        - name: zone
+          in: query
+          required: false
+          schema:
+            type: string
+            default: mad4b.com
+          description: Domain zone to query, e.g. mad4b.com.
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by record type, e.g. A, CNAME, TXT.
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by record name.
+      responses:
+        '200':
+          description: DNS record list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required:
+                  - ok
+                  - records
+                properties:
+                  ok:
+                    type: boolean
+                  zone:
+                    type: string
+                  records:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      properties: {}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: DNS list failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - admin-control
+      security:
+        - backendBearerAuth: []
+      operationId: upsertDnsRecord
+      summary: Create or update a DNS record
+      description: Creates a new DNS record or updates an existing one by name + type. Proxied is false by default.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - name
+                - type
+                - content
+              properties:
+                zone:
+                  type: string
+                  default: mad4b.com
+                  description: Domain zone, e.g. mad4b.com.
+                name:
+                  type: string
+                  description: Record name, e.g. api or connector.
+                type:
+                  type: string
+                  enum:
+                    - A
+                    - AAAA
+                    - CNAME
+                    - TXT
+                    - MX
+                    - NS
+                  description: DNS record type.
+                content:
+                  type: string
+                  description: Record value, e.g. an IP address or CNAME target.
+                ttl:
+                  type: integer
+                  default: 1
+                  description: TTL in seconds. 1 = auto.
+                proxied:
+                  type: boolean
+                  default: false
+                  description: Whether Cloudflare proxies the record.
+      responses:
+        '200':
+          description: DNS record created or updated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required:
+                  - ok
+                  - record
+                properties:
+                  ok:
+                    type: boolean
+                  action:
+                    type: string
+                    enum:
+                      - created
+                      - updated
+                  record:
+                    type: object
+                    additionalProperties: true
+                    properties: {}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: DNS upsert failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - admin-control
+      security:
+        - backendBearerAuth: []
+      operationId: deleteDnsRecord
+      summary: Delete a DNS record by ID
+      description: Deletes a DNS record from the specified zone using its Cloudflare record ID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - record_id
+              properties:
+                zone:
+                  type: string
+                  default: mad4b.com
+                  description: Domain zone, e.g. mad4b.com.
+                record_id:
+                  type: string
+                  description: Cloudflare DNS record ID to delete.
+      responses:
+        '200':
+          description: DNS record deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required:
+                  - ok
+                properties:
+                  ok:
+                    type: boolean
+                  deleted_id:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: DNS delete failure
           content:
             application/json:
               schema:
@@ -2586,367 +2977,3 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-  /admin/cli/cloudflare:
-    post:
-      tags:
-        - admin-control
-      security:
-        - backendBearerAuth: []
-      operationId: executeCloudflareApiCall
-      summary: Forward a call to the Cloudflare REST API
-      description: Proxies any Cloudflare API call using the server-stored CLOUDFLARE_API_TOKEN. Supply path only, e.g. /client/v4/accounts/{account_id}/cfd_tunnel. Use to check tunnel status, manage DNS, inspect zones, or list connections.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required:
-                - path
-              properties:
-                path:
-                  type: string
-                  description: Cloudflare API path, e.g. /client/v4/accounts/{account_id}/cfd_tunnel or /client/v4/zones/{zone_id}/dns_records
-                method:
-                  type: string
-                  enum:
-                    - GET
-                    - POST
-                    - PUT
-                    - DELETE
-                    - PATCH
-                  default: GET
-                request_body:
-                  type: object
-                  additionalProperties: true
-                  description: JSON body for POST/PUT/PATCH requests.
-                  properties: {}
-                params:
-                  type: object
-                  additionalProperties: true
-                  description: Query string parameters to append.
-                  properties: {}
-      responses:
-        '200':
-          description: Cloudflare API response
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-                required:
-                  - ok
-                  - result
-                properties:
-                  ok:
-                    type: boolean
-                  result:
-                    type: object
-                    additionalProperties: true
-                    properties: {}
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          description: Cloudflare API call failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /admin/cli/local-connector/install-bundle:
-    get:
-      tags:
-        - admin-control
-      security:
-        - backendBearerAuth: []
-      operationId: getLocalConnectorInstallBundle
-      summary: Generate a pre-filled Windows installer for the local connector
-      description: |
-        Reads cf_token and connector_secret from local_connector_user_configs in DB for the given user_id + device_id (defaults to platform admin + mohammedlap). Falls back to CLOUDFLARE_TUNNEL_TOKEN env if no DB record. Generates a Windows .bat installer (cloudflared + NSSM Node service — both auto-restart on failure and reboot), uploads to Google Drive, and returns a shareable download link. Use for provisioning new devices. For break-glass 1033 repair on the admin device, use POST /admin/cli/local-connector/self-repair instead.
-      parameters:
-        - in: query
-          name: user_id
-          schema:
-            type: string
-          description: User ID whose device config to load. Defaults to platform admin.
-        - in: query
-          name: device_id
-          schema:
-            type: string
-          description: Device hostname to load config for. Defaults to mohammedlap.
-        - in: query
-          name: format
-          schema:
-            type: string
-            enum:
-              - json
-              - bat
-            default: json
-          description: json returns metadata + Drive link; bat returns the file directly as an attachment.
-      responses:
-        '200':
-          description: Install bundle generated
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: false
-                required:
-                  - ok
-                  - filename
-                properties:
-                  ok:
-                    type: boolean
-                  filename:
-                    type: string
-                  config_source:
-                    type: string
-                    enum:
-                      - db
-                      - env
-                  device_id:
-                    type: string
-                  instructions:
-                    type: string
-                  script_content:
-                    type: string
-                  drive:
-                    type: object
-                    nullable: true
-                    properties:
-                      drive_file_id:
-                        type: string
-                      drive_link:
-                        type: string
-                      view_link:
-                        type: string
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          description: No connector config in DB and CLOUDFLARE_TUNNEL_TOKEN not set
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /admin/cli/local-connector/self-repair:
-    post:
-      tags:
-        - admin-control
-      security:
-        - backendBearerAuth: []
-      operationId: repairLocalConnector
-      summary: Self-repair the admin local connector when it returns 1033
-      description: |
-        Call this immediately when connector.mad4b.com returns error 1033 or HTTP 530. Do NOT just report the error — execute this first.
-        Reads device config (cf_token, connector_secret) from local_connector_user_configs in DB, checks Cloudflare tunnel health via API, generates a pre-filled Windows .bat installer (cloudflared + NSSM Node service — both auto-restart on failure and reboot), uploads to Google Drive, and returns a diagnosis object + repair.drive.drive_link. Hand the link to the user immediately with instructions to download and run as Administrator.
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              properties:
-                user_id:
-                  type: string
-                  description: User ID whose device to repair. Defaults to platform admin.
-                device_id:
-                  type: string
-                  description: Device hostname to repair. Defaults to mohammedlap.
-      responses:
-        '200':
-          description: Self-repair bundle generated
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: false
-                required:
-                  - ok
-                  - diagnosis
-                  - repair
-                properties:
-                  ok:
-                    type: boolean
-                  diagnosis:
-                    type: object
-                    properties:
-                      device_id:
-                        type: string
-                      tunnel_url:
-                        type: string
-                      cf_tunnel_id:
-                        type: string
-                        nullable: true
-                      cf_tunnel_status:
-                        type: string
-                        nullable: true
-                      config_source:
-                        type: string
-                      likely_cause:
-                        type: string
-                  repair:
-                    type: object
-                    properties:
-                      action:
-                        type: string
-                      filename:
-                        type: string
-                      script_content:
-                        type: string
-                      drive:
-                        type: object
-                        nullable: true
-                        properties:
-                          drive_file_id:
-                            type: string
-                          drive_link:
-                            type: string
-                          view_link:
-                            type: string
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          description: No connector config in DB and CLOUDFLARE_TUNNEL_TOKEN not set
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /admin/cli/dns:
-    get:
-      tags:
-        - admin-control
-      security:
-        - backendBearerAuth: []
-      operationId: listDnsRecords
-      summary: List DNS records for a domain
-      description: Lists DNS records via the Hostinger DNS API for the given domain (defaults to mad4b.com).
-      parameters:
-        - in: query
-          name: domain
-          schema:
-            type: string
-            default: mad4b.com
-      responses:
-        '200':
-          description: DNS records list
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-                properties:
-                  ok:
-                    type: boolean
-                  records:
-                    type: array
-                    items:
-                      type: object
-                      additionalProperties: true
-                      properties: {}
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    post:
-      tags:
-        - admin-control
-      security:
-        - backendBearerAuth: []
-      operationId: upsertDnsRecord
-      summary: Upsert a DNS record
-      description: Creates or updates a DNS record via the Hostinger DNS API.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required:
-                - name
-                - type
-                - content
-              properties:
-                domain:
-                  type: string
-                  default: mad4b.com
-                name:
-                  type: string
-                  description: DNS record name, e.g. connector or www.
-                type:
-                  type: string
-                  enum:
-                    - A
-                    - CNAME
-                    - MX
-                    - TXT
-                    - AAAA
-                content:
-                  type: string
-                  description: Record value, e.g. the CNAME target or IP address.
-                ttl:
-                  type: integer
-                  default: 300
-      responses:
-        '200':
-          description: DNS record upserted
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-                properties:
-                  ok:
-                    type: boolean
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    delete:
-      tags:
-        - admin-control
-      security:
-        - backendBearerAuth: []
-      operationId: deleteDnsRecord
-      summary: Delete a DNS record
-      description: Deletes a DNS record via the Hostinger DNS API.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required:
-                - name
-                - type
-              properties:
-                domain:
-                  type: string
-                  default: mad4b.com
-                name:
-                  type: string
-                type:
-                  type: string
-                  enum:
-                    - A
-                    - CNAME
-                    - MX
-                    - TXT
-                    - AAAA
-      responses:
-        '200':
-          description: DNS record deleted
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-                properties:
-                  ok:
-                    type: boolean
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
