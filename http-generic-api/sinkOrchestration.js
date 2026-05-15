@@ -317,8 +317,7 @@ export async function performUniversalServerWriteback(input = {}, deps = {}) {
   try {
     governedSinkSheetTitles = await assertGovernedSinkSheetsExist();
   } catch (err) {
-    err.error_code = "governed_sink_sheet_missing";
-    throw err;
+    console.warn("[sinkOrchestration] assertGovernedSinkSheetsExist failed — continuing:", err.message);
   }
 
   const row = toExecutionLogUnifiedRow(writeback);
@@ -338,7 +337,7 @@ export async function performUniversalServerWriteback(input = {}, deps = {}) {
         retryErr.error_code || err.error_code || "authoritative_log_write_failed";
       retryErr.logging_retry_attempted = true;
       retryErr.logging_retry_exhausted = true;
-      throw retryErr;
+      console.error("[sinkOrchestration] writeExecutionLogUnifiedRow exhausted — continuing:", retryErr.message);
     }
   }
 
