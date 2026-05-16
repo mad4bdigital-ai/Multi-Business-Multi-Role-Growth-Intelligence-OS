@@ -1314,6 +1314,161 @@ async function handleN8n(req, res) {
   }
 }
 
+function n8nRuntimeInfo(extra = {}) {
+  return {
+    base_url: N8N_BASE,
+    public_url: N8N_PUBLIC_URL,
+    command: N8N_COMMAND,
+    user_folder: N8N_USER_FOLDER,
+    port: N8N_PORT,
+    listen_address: N8N_LISTEN_ADDRESS,
+    enabled: N8N_ENABLED,
+    ...extra,
+  };
+}
+
+function n8nCommandExists() {
+  try { return fs.existsSync(N8N_COMMAND); } catch { return false; }
+}
+
+function spawnDetached(command, args = [], envPatch = {}) {
+  const isWindowsCommandScript = process.platform === 'win32' && /\.(cmd|bat)$/i.test(command);
+  const quoteForCmd = (value) => {
+    const s = String(value);
+    if (!s) return '""';
+    return `"${s.replace(/"/g, '\\"')}"`;
+  };
+  const spawnCommand = isWindowsCommandScript ? (process.env.ComSpec || 'cmd.exe') : command;
+  const spawnArgs = isWindowsCommandScript
+    ? ['/d', '/s', '/c', [quoteForCmd(command), ...args.map(quoteForCmd)].join(' ')]
+    : args;
+  const child = spawn(spawnCommand, spawnArgs, {
+    cwd: N8N_USER_FOLDER,
+    env: { ...process.env, ...envPatch },
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: false,
+    shell: false,
+  });
+  child.unref();
+  return { pid: child.pid, command, args };
+}
+
+async function n8nHealthProbe() {
+  const candidates = ['/healthz', '/healthz/readiness', '/rest/settings'];
+  for (const candidate of candidates) {
+    try {
+      const response = await fetch(`${N8N_BASE}${candidate}`, {
+        method: 'GET',
+        headers: { ...(N8N_API_KEY ? { 'X-N8N-API-KEY': N8N_API_KEY } : {}) },
+        signal: AbortSignal.timeout(5000),
+      });
+      const text = await response.text();
+      let body;
+      try { body = JSON.parse(text); } catch { body = text.slice(0, 500); }
+      return { reachable: true, path: candidate, status: response.status, body };
+    } catch (e) {
+      // try next endpoint
+    }
+  }
+  return { reachable: false };
+}
+
+async function n8nProcessProbe() {
+  if (process.platform !== 'win32') return { supported: false, reason: 'process_probe_windows_only' };
+  const ps = `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'n8n' -or $_.CommandLine -match 'n8n.cmd' } | Select-Object ProcessId,Name,CommandLine | ConvertTo-Json -Compress`;
+  try {
+    const result = await runPs(ps, 10000);
+    let processes;
+    try { processes = JSON.parse(result.stdout || '[]'); } catch { processes = result.stdout; }
+    if (!Array.isArray(processes)) processes = processes ? [processes] : [];
+    return { supported: true, running: processes.length > 0, processes };
+  } catch (e) {
+    return { supported: true, running: null, error: e.message };
+  }
+}
+
+async function n8nStart() {
+  if (!n8nCommandExists() && path.isAbsolute(N8N_COMMAND)) {
+    const errObj = new Error(`n8n command not found at ${N8N_COMMAND}`);
+    errObj.code = 'N8N_COMMAND_NOT_FOUND';
+    throw errObj;
+  }
+  fs.mkdirSync(N8N_USER_FOLDER, { recursive: true });
+  return spawnDetached(N8N_COMMAND, ['start'], {
+    N8N_USER_FOLDER,
+    N8N_PORT,
+    N8N_HOST: process.env.N8N_HOST ?? 'n8n.mad4b.com',
+    N8N_LISTEN_ADDRESS,
+    N8N_PROTOCOL: process.env.N8N_PROTOCOL ?? 'https',
+    N8N_EDITOR_BASE_URL: process.env.N8N_EDITOR_BASE_URL ?? N8N_PUBLIC_URL,
+    WEBHOOK_URL: process.env.WEBHOOK_URL ?? N8N_PUBLIC_URL,
+  });
+}
+
+async function handleN8nV2(req, res) {
+  if (!N8N_ENABLED) return err(res, 403, 'DISABLED', 'n8n endpoint is disabled — set CONNECTOR_N8N_ENABLED=true');
+  if (!requireAuth(req, res)) return;
+  let body;
+  try { body = await readBody(req); } catch { return err(res, 400, 'BAD_BODY', 'Invalid JSON'); }
+
+  const { action, browser_alias = 'edge', timeout_ms } = body;
+  if (!action) return err(res, 400, 'MISSING_ACTION', 'action is required');
+  audit(req, { action: `n8n:${action}` });
+
+  try {
+    if (action === 'status' || action === 'diagnose') {
+      const [health, processStatus] = await Promise.all([n8nHealthProbe(), n8nProcessProbe()]);
+      let version = null;
+      try { version = await runCommand(N8N_COMMAND, ['--version'], clampTimeout(timeout_ms, 15000)); } catch (e) { version = { error: e.message }; }
+      return ok(res, { n8n: n8nRuntimeInfo({ health, process: processStatus, command_exists: n8nCommandExists(), version }) });
+    }
+
+    if (action === 'start') {
+      const before = await n8nHealthProbe();
+      if (before.reachable) return ok(res, { already_running: true, n8n: n8nRuntimeInfo({ health: before }) });
+      const launched = await n8nStart();
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      const after = await n8nHealthProbe();
+      return ok(res, { started: true, launched, n8n: n8nRuntimeInfo({ health: after }) });
+    }
+
+    if (action === 'open') {
+      const safeUrl = assertHttpUrl(body.url || N8N_PUBLIC_URL);
+      if (!safeUrl) return err(res, 400, 'INVALID_URL', 'url must be absolute http or https');
+      const browser = getAllowedApp(browser_alias) || getAllowedApp('edge');
+      if (browser?.browser === true) {
+        const result = await startApp(browser, [safeUrl], clampTimeout(timeout_ms, 8000));
+        return ok(res, { opened: safeUrl, browser_alias: browser.key, n8n: n8nRuntimeInfo(), ...result });
+      }
+      const result = await runPs(`Start-Process ${psString(safeUrl)}`, clampTimeout(timeout_ms, 8000));
+      return ok(res, { opened: safeUrl, n8n: n8nRuntimeInfo(), ...result });
+    }
+
+    if (action === 'stop') {
+      if (process.platform !== 'win32') return err(res, 400, 'UNSUPPORTED_PLATFORM', 'stop is currently implemented for Windows connectors only');
+      const ps = `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'n8n' -or $_.CommandLine -match 'n8n.cmd' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`;
+      const result = await runPs(ps, clampTimeout(timeout_ms, 15000));
+      return ok(res, { stopped: true, n8n: n8nRuntimeInfo(), ...result });
+    }
+
+    if (action === 'restart') {
+      if (process.platform === 'win32') {
+        await runPs(`Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'n8n' -or $_.CommandLine -match 'n8n.cmd' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`, 15000).catch(() => null);
+      }
+      const launched = await n8nStart();
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      const health = await n8nHealthProbe();
+      return ok(res, { restarted: true, launched, n8n: n8nRuntimeInfo({ health }) });
+    }
+
+    // Fall through to the API-control implementation for workflow operations.
+    return await handleN8n(req, res);
+  } catch (e) {
+    return err(res, 500, e.code || 'N8N_CONTROL_ERROR', e.message);
+  }
+}
+
 async function handleCf(req, res) {
   if (!CF_ENABLED) return err(res, 403, 'DISABLED', 'Cloudflare endpoint is disabled — set CONNECTOR_CF_ENABLED=true');
   if (!requireAuth(req, res)) return;
