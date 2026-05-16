@@ -18,6 +18,7 @@ import { mcpAdapter }          from "./mcp.js";
 import { makecomAdapter }      from "./makecom.js";
 import { n8nAdapter }          from "./n8n.js";
 import { makecomMcpAdapter } from "./makecomMcp.js";
+import { wordpressRestAdapter } from "./wordpressRest.js";
 import { decryptCredentials, encryptCredentials } from "../tokenEncryption.js";
 import { getPool }             from "../db.js";
 
