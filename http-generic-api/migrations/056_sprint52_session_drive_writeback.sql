@@ -1,5 +1,5 @@
 -- Sprint 52: Drive-backed GPT session writeback
--- SQL remains the session index/control plane; Drive stores full transcript,
+-- SQL remains the session index/control plane. Drive stores full transcript,
 -- JSONL stream, artifacts, and exportable documents.
 
 ALTER TABLE `customer_sessions`
