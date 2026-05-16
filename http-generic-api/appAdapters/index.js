@@ -33,6 +33,7 @@ const REGISTRY = {
   makecom:      makecomAdapter,
   n8n:          n8nAdapter,
   makecom_mcp: makecomMcpAdapter,
+  wordpress_rest: wordpressRestAdapter,
 };
 
 export function getAdapter(app_key) {
