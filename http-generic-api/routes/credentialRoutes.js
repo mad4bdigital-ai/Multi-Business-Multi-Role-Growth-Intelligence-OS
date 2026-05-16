@@ -109,33 +109,41 @@ export function buildCredentialRoutes(deps) {
         );
       }
 
-      await pool.query(
-        `INSERT INTO \`secret_references\`
-           (ref_id, tenant_id, owner_type, owner_id, secret_key, store_type, env_var_name, vault_path,
-            description, provider_family, connector_family, credential_type, consent_status, validation_status, status, created_at)
-         VALUES (UUID(), ?, ?, ?, ?, 'db_encrypted', NULL, NULL, ?, ?, ?, ?, 'not_required', 'stored', 'active', NOW())
-         ON DUPLICATE KEY UPDATE
-           owner_type = VALUES(owner_type),
-           owner_id = VALUES(owner_id),
-           store_type = 'db_encrypted',
-           env_var_name = NULL,
-           vault_path = NULL,
-           provider_family = VALUES(provider_family),
-           connector_family = VALUES(connector_family),
-           credential_type = VALUES(credential_type),
-           validation_status = 'stored',
-           status = 'active'`,
-        [
-          ownerType === "tenant" ? tenantId : "f2795a7f-8d06-4053-8bee-35ca9af8b460",
-          ownerType,
-          ownerType === "tenant" ? tenantId : "platform",
-          secretKey,
-          str(body.description) || `${ownerType} ${secretKey} stored as db_encrypted credential`,
-          providerFamily,
-          connectorFamily,
-          credentialType
-        ]
+      const referenceTenantId = ownerType === "tenant" ? tenantId : "f2795a7f-8d06-4053-8bee-35ca9af8b460";
+      const referenceOwnerId = ownerType === "tenant" ? tenantId : "platform";
+      const referenceDescription = str(body.description) || `${ownerType} ${secretKey} stored as db_encrypted credential`;
+      const [existingReferences] = await pool.query(
+        `SELECT id FROM \`secret_references\`
+          WHERE tenant_id = ? AND owner_type = ? AND secret_key = ?
+          ORDER BY id ASC LIMIT 1`,
+        [referenceTenantId, ownerType, secretKey]
       );
+
+      if (existingReferences[0]?.id) {
+        await pool.query(
+          `UPDATE \`secret_references\`
+              SET owner_id = ?,
+                  store_type = 'db_encrypted',
+                  env_var_name = NULL,
+                  vault_path = NULL,
+                  description = ?,
+                  provider_family = ?,
+                  connector_family = ?,
+                  credential_type = ?,
+                  validation_status = 'stored',
+                  status = 'active'
+            WHERE id = ?`,
+          [referenceOwnerId, referenceDescription, providerFamily, connectorFamily, credentialType, existingReferences[0].id]
+        );
+      } else {
+        await pool.query(
+          `INSERT INTO \`secret_references\`
+             (ref_id, tenant_id, owner_type, owner_id, secret_key, store_type, env_var_name, vault_path,
+              description, provider_family, connector_family, credential_type, consent_status, validation_status, status, created_at)
+           VALUES (UUID(), ?, ?, ?, ?, 'db_encrypted', NULL, NULL, ?, ?, ?, ?, 'not_required', 'stored', 'active', NOW())`,
+          [referenceTenantId, ownerType, referenceOwnerId, secretKey, referenceDescription, providerFamily, connectorFamily, credentialType]
+        );
+      }
 
       res.json({
         ok: true,
