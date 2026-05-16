@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getPool } from "../db.js";
 import { exportSessionToDrive } from "../sessionExportPipeline.js";
+import { closeGptSessionArchive, recordGptSessionTurn } from "../sessionArchiveService.js";
 
 async function resolveSessionForCaller(pool, sessionId, req) {
   const [rows] = await pool.query(
@@ -49,24 +50,24 @@ export function buildGptSessionRoutes(deps) {
       );
       const turnIndex = Number(max_idx) + 1;
 
-      await pool.query(
-        `INSERT INTO \`gpt_session_turns\` (session_id, turn_index, role, content, action_key, created_at)
-         VALUES (?, ?, ?, ?, ?, NOW())`,
-        [session.session_id, turnIndex, role, content, action_key]
-      );
+      const writeback = await recordGptSessionTurn({
+        pool,
+        session,
+        role,
+        content,
+        action_key,
+        turnIndex,
+      });
 
-      await pool.query(
-        "UPDATE `customer_sessions` SET turn_count = COALESCE(turn_count, 0) + 1 WHERE session_id = ?",
-        [session.session_id]
-      );
-
-      await pool.query(
-        `INSERT INTO \`session_events\` (event_id, session_id, record_type, event_type, payload_json, event_timestamp)
-         VALUES (UUID(), ?, 'message', ?, ?, NOW())`,
-        [session.session_id, role, JSON.stringify({ role, content, action_key })]
-      );
-
-      return res.status(200).json({ ok: true, session_id: session.session_id, turn_index: turnIndex });
+      return res.status(200).json({
+        ok: true,
+        session_id: session.session_id,
+        turn_index: turnIndex,
+        turn_id: writeback.turn_id,
+        drive_doc_id: writeback.drive_doc_id,
+        drive_anchor: writeback.drive_anchor,
+        archive_status: writeback.archive_status,
+      });
     } catch (err) {
       if (err.status === 403) return res.status(403).json({ ok: false, error: { code: "forbidden", message: err.message } });
       return res.status(500).json({ ok: false, error: { code: "turn_write_failed", message: err.message } });
@@ -99,6 +100,8 @@ export function buildGptSessionRoutes(deps) {
         );
       }
 
+      const archiveClose = await closeGptSessionArchive({ pool, session, summary });
+
       let driveResult = null;
       try {
         driveResult = await exportSessionToDrive(session.session_id, user_email);
@@ -109,6 +112,7 @@ export function buildGptSessionRoutes(deps) {
       return res.status(200).json({
         ok: true,
         session_id: session.session_id,
+        archive: archiveClose,
         drive_export: driveResult
           ? { drive_file_id: driveResult.drive_file_id, drive_web_url: driveResult.drive_web_url }
           : null,

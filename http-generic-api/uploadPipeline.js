@@ -12,10 +12,26 @@ let _drive = null;
 function getDrive() {
   if (_drive) return _drive;
   const auth = new google.auth.GoogleAuth({
-    scopes: ["https://www.googleapis.com/auth/drive"],
+    scopes: [
+      "https://www.googleapis.com/auth/drive",
+      "https://www.googleapis.com/auth/documents",
+    ],
   });
   _drive = google.drive({ version: "v3", auth });
   return _drive;
+}
+
+let _docs = null;
+function getDocs() {
+  if (_docs) return _docs;
+  const auth = new google.auth.GoogleAuth({
+    scopes: [
+      "https://www.googleapis.com/auth/drive",
+      "https://www.googleapis.com/auth/documents",
+    ],
+  });
+  _docs = google.docs({ version: "v1", auth });
+  return _docs;
 }
 
 // ---------------------------------------------------------------------------
@@ -149,6 +165,77 @@ export async function uploadContentToDrive(content, filename, mimeType, userEmai
   return {
     drive_file_id: fileId,
     drive_folder_id: folderId,
+    drive_web_url: response.data.webViewLink || null,
+    size_bytes: response.data.size ? Number(response.data.size) : null,
+  };
+}
+
+export async function createGoogleDocInDrive(name, parentId, initialText = "") {
+  if (!parentId) throw new Error("parentId is required to create a Google Doc");
+  const drive = getDrive();
+  const safeName = String(name || "Session Transcript").replace(/[^\w.\- ]/g, "_");
+
+  const created = await drive.files.create({
+    requestBody: {
+      name: safeName,
+      parents: [parentId],
+      mimeType: "application/vnd.google-apps.document",
+    },
+    supportsAllDrives: true,
+    fields: "id,webViewLink,name,mimeType",
+  });
+
+  if (initialText) {
+    await appendTextToGoogleDoc(created.data.id, initialText);
+  }
+
+  return {
+    drive_file_id: created.data.id,
+    drive_web_url: created.data.webViewLink || null,
+    name: created.data.name,
+  };
+}
+
+export async function appendTextToGoogleDoc(documentId, text) {
+  if (!documentId) throw new Error("documentId is required");
+  if (!text) return { ok: true, skipped: true };
+  const docs = getDocs();
+  const doc = await docs.documents.get({
+    documentId,
+    fields: "body(content(endIndex))",
+  });
+  const content = doc.data.body?.content || [];
+  const endIndex = Math.max(...content.map((item) => Number(item.endIndex || 1)), 1);
+  await docs.documents.batchUpdate({
+    documentId,
+    requestBody: {
+      requests: [
+        {
+          insertText: {
+            location: { index: Math.max(1, endIndex - 1) },
+            text,
+          },
+        },
+      ],
+    },
+  });
+  return { ok: true };
+}
+
+export async function updateDriveFileContent(driveFileId, content, mimeType = "text/plain") {
+  if (!driveFileId) throw new Error("driveFileId is required");
+  const drive = getDrive();
+  const response = await drive.files.update({
+    fileId: driveFileId,
+    media: {
+      mimeType,
+      body: Readable.from([content || ""]),
+    },
+    supportsAllDrives: true,
+    fields: "id,webViewLink,name,mimeType,size",
+  });
+  return {
+    drive_file_id: response.data.id,
     drive_web_url: response.data.webViewLink || null,
     size_bytes: response.data.size ? Number(response.data.size) : null,
   };
