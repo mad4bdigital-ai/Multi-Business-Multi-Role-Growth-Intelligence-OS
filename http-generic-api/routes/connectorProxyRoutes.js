@@ -148,7 +148,7 @@ export function buildConnectorProxyRoutes(deps) {
     }
   });
 
-  router.post("/connector/:device_id/n8n", requireBackendApiKey, adminOnly, async (req, res) => {
+  router.post("/connector/:device_id/n8n", requireBackendApiKey, async (req, res) => {
     try {
       await proxyToDevice(req, res, req.params.device_id, "/n8n");
     } catch (err) {
