@@ -713,7 +713,7 @@ paths:
       tags: [connector]
       operationId: connectorN8n
       summary: Control the local n8n automation instance
-      description: "Calls the n8n REST API at localhost:5678. Actions: health, list_workflows, get_workflow, activate_workflow, deactivate_workflow, run_workflow, list_executions. Requires N8N_API_KEY in env."
+      description: "Governed local n8n control. Actions: status, diagnose, start, open, stop, restart, health, list_workflows, get_workflow, activate_workflow, deactivate_workflow, run_workflow, list_executions. Lifecycle actions do not require generic PowerShell; workflow API actions use N8N_API_KEY when configured."
       security:
         - backendBearerAuth: []
       requestBody:
