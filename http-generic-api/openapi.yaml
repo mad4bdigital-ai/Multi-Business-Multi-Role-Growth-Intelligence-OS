@@ -6610,3 +6610,116 @@ paths:
         "404": { description: Session not found, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
         "409": { description: Session is already closed, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
         "500": { description: Session end failure, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
+  /connect/api/app-integrations:
+    get:
+      tags: [connect-api]
+      security: [userBearerAuth: []]
+      operationId: listConnectApiAppIntegrations
+      summary: List active app integrations the user can connect
+      responses:
+        "200": { description: Active app integrations, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /connect/api/connections:
+    get:
+      tags: [connect-api]
+      security: [userBearerAuth: []]
+      operationId: listConnectApiConnections
+      summary: List the signed-in user's app connections
+      description: "Returns the caller's own user_app_connections rows. Does NOT include encrypted_credentials or any secret material."
+      responses:
+        "200": { description: User connections (no secrets), content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /connect/api/connections/{connection_id}:
+    delete:
+      tags: [connect-api]
+      security: [userBearerAuth: []]
+      operationId: deleteConnectApiConnection
+      summary: Revoke a user connection and zero its credentials
+      parameters:
+        - { name: connection_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Connection revoked }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { description: Revocation failure, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
+  /connect/api/cms/claims:
+    get:
+      tags: [connect-api]
+      security: [userBearerAuth: []]
+      operationId: listConnectApiCmsClaims
+      summary: List the user's CMS account claims
+      responses:
+        "200": { description: User's CMS claims, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [connect-api]
+      security: [userBearerAuth: []]
+      operationId: createConnectApiCmsClaim
+      summary: Verify a user-supplied WordPress account and create a private claim
+      description: "Calls /wp/v2/users/me on the supplied site with Basic auth (username + application_password), creates an encrypted user_app_connections row, a private credential_bindings row, and a cms_account_claims row. user_id is taken from the authenticated session and rejected if present in the body. Secrets are never returned."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [site_url, username, application_password]
+              properties:
+                site_url: { type: string, description: "Site URL or domain. www and trailing slashes are normalized away." }
+                username: { type: string }
+                application_password: { type: string, description: "WordPress application password. Never logged or returned." }
+                requested_scope: { type: string, enum: [personal, workspace, tenant_brand], default: personal }
+      responses:
+        "201":
+          description: Claim verified and created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [ok, status, claim_id, connection_id]
+                properties:
+                  ok: { type: boolean }
+                  status: { type: string }
+                  claim_id: { type: string }
+                  connection_id: { type: string }
+                  app_key: { type: string }
+                  normalized_domain: { type: string }
+                  matched_brand_key:
+                    oneOf: [{ type: string }, { type: "null" }]
+                  match_confidence: { type: string, enum: [none, low, medium, high, verified] }
+                  approval_required: { type: boolean }
+                  next_action: { type: string }
+        "400": { description: Validation error, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { description: WordPress rejected the credentials, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "502": { description: WordPress unreachable or non-auth error, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "504": { description: WordPress verification timeout, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
+  /connect/api/cms/claims/{claim_id}/approve:
+    post:
+      tags: [connect-api]
+      security: [userBearerAuth: []]
+      operationId: approveConnectApiCmsClaim
+      summary: Approve a CMS claim for workspace/tenant sharing
+      parameters:
+        - { name: claim_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Approval result, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /connect/api/cms/claims/{claim_id}/reject:
+    post:
+      tags: [connect-api]
+      security: [userBearerAuth: []]
+      operationId: rejectConnectApiCmsClaim
+      summary: Reject a CMS claim
+      parameters:
+        - { name: claim_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Rejection result, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }

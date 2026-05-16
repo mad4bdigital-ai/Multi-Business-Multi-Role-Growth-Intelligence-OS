@@ -212,6 +212,35 @@ async function fetchTools(callerType) {
   return callerType === "admin" ? [...VIRTUAL_ADMIN_TOOLS, ...dbTools] : dbTools;
 }
 
+async function detectMissingRequiredArgs(callerType, toolKey, args) {
+  // Virtual admin tools enforce their own schemas inside dispatchToolImpl;
+  // skip up-front validation for them.
+  if (callerType === "admin" && VIRTUAL_ADMIN_TOOLS.some((t) => t.name === toolKey)) {
+    return null;
+  }
+  const table = TOOLS_TABLE[callerType] || TOOLS_TABLE.tenant;
+  try {
+    const [rows] = await getPool().query(
+      `SELECT input_schema FROM \`${table}\` WHERE tool_key = ? AND is_enabled = 1 LIMIT 1`,
+      [toolKey]
+    );
+    const schema = parseJson(rows?.[0]?.input_schema);
+    const required = Array.isArray(schema?.required) ? schema.required : [];
+    if (!required.length) return null;
+    const provided = args && typeof args === "object" ? args : {};
+    const missing = required.filter((key) => {
+      const value = provided[key];
+      return value === undefined || value === null || value === "";
+    });
+    if (!missing.length) return null;
+    return { tool: toolKey, required, missing };
+  } catch {
+    // If the lookup fails, fall through to the dispatcher — it will surface
+    // a tool_not_found or downstream error instead of a hidden 500 here.
+    return null;
+  }
+}
+
 async function dispatchTool(callerType, toolKey, args, req) {
   const result = await dispatchToolImpl(callerType, toolKey, args, req);
   // Best-effort: archive the dispatch as a tool turn so admin GPT sessions get a
@@ -819,6 +848,23 @@ export function buildGptToolsRoutes(deps) {
       }
 
       const callerType = resolveCallerType(req);
+
+      // Up-front required-args check so the GPT gets a clear retry signal
+      // instead of a downstream HTTP error when its schema cache forgot to
+      // attach tool_args/arguments. Skips for virtual tools (their schemas
+      // are exposed via VIRTUAL_ADMIN_TOOLS and enforced inline).
+      const missingArgs = await detectMissingRequiredArgs(callerType, name, args);
+      if (missingArgs) {
+        return res.status(400).json({
+          ok: false,
+          error: {
+            code: "missing_required_args",
+            message: `Tool '${name}' requires ${missingArgs.required.join(", ")}. Pass them under tool_args or arguments. Missing: ${missingArgs.missing.join(", ")}.`,
+            details: missingArgs,
+          },
+        });
+      }
+
       const result = await dispatchTool(callerType, name, args, req);
       return res.status(result.status).json(result.body);
     } catch (err) {
