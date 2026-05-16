@@ -235,8 +235,17 @@ function safeParseJsonObject(value, fallback = {}) {
   }
 }
 
-function platformEndpointToolViewForPrincipal(auth) {
-  return isAdminPrincipal(auth) ? "admin_platform_endpoint_tools" : "tenant_platform_endpoint_tools";
+function platformEndpointToolScopeClassesForPrincipal(auth) {
+  return isAdminPrincipal(auth) ? ["admin", "both"] : ["tenant", "both"];
+}
+
+function platformEndpointToolTenantClauseForPrincipal(auth, tableAlias = "x") {
+  if (isAdminPrincipal(auth)) return { sql: "", params: [] };
+
+  const tenantId = principalTenantId(auth);
+  if (!tenantId) return { sql: `AND ${tableAlias}.tenant_id IS NULL`, params: [] };
+
+  return { sql: `AND (${tableAlias}.tenant_id IS NULL OR ${tableAlias}.tenant_id = ?)`, params: [tenantId] };
 }
 
 function normalizePlatformEndpointInputSchema(schemaJson) {
