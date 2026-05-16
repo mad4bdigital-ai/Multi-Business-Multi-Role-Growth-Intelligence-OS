@@ -158,6 +158,63 @@ const decryptCredentials = (stored) => JSON.parse(stored);
 }
 
 {
+  const pool = makePool({
+    bindings: [
+      {
+        binding_id: "tenant-sql-secret-binding",
+        tenant_id: "tenant-1",
+        owner_type: "tenant",
+        owner_id: "tenant-1",
+        target_key: "allroyalegypt_wp",
+        credential_role: "wordpress_app_password",
+        credential_ref: "tenant_secret:tenant-1:ALLROYALEGYPT_WP_APP_PASSWORD",
+        resolution_priority: 50,
+        status: "active"
+      }
+    ],
+    tenantSecrets: [
+      {
+        tenant_id: "tenant-1",
+        secret_key: "ALLROYALEGYPT_WP_APP_PASSWORD",
+        secret_type: "basic_auth_app_password",
+        storage_backend: "db_encrypted",
+        value_sha256: "hash-present",
+        value_ciphertext: "ciphertext-placeholder",
+        status: "active"
+      }
+    ]
+  });
+
+  const status = await getEffectiveCredentialStatus(
+    {
+      tenantId: "tenant-1",
+      targetKey: "allroyalegypt_wp",
+      credentialRole: "wordpress_app_password"
+    },
+    { pool, decryptCredentials, decryptToken: () => "wp-app-password", env: {} }
+  );
+
+  assert.equal(status.status, "resolved");
+  assert.equal(status.source, "credential_bindings");
+  assert.equal(status.storage_backend, "db_encrypted");
+  assert.equal(status.secret_present, true);
+  assert.equal(Object.prototype.hasOwnProperty.call(status, "secret"), false);
+
+  const resolved = await resolveEffectiveCredential(
+    {
+      tenantId: "tenant-1",
+      targetKey: "allroyalegypt_wp",
+      credentialRole: "wordpress_app_password",
+      includeSecret: true
+    },
+    { pool, decryptCredentials, decryptToken: () => "wp-app-password", env: {} }
+  );
+
+  assert.equal(resolved.status, "resolved");
+  assert.equal(resolved.secret, "wp-app-password");
+}
+
+{
   assert.equal(__test__.upperEnvKey("allroyalegypt_wp"), "ALLROYALEGYPT_WP");
   assert.deepEqual(__test__.roleCandidateFields("mcp_bearer_token", "mcp").slice(0, 2), ["mcp_token", "mcp_bearer"]);
 }
