@@ -1528,7 +1528,26 @@ async function performUniversalServerWriteback(input = {}) {
         }
         );
       },
-      writeJsonAssetRegistryRow: (row) => writeJsonAssetRegistryRowCore(
+      writeJsonAssetRegistryRow: async (row) => {
+        if (DATA_SOURCE_MODE === "sql") {
+          try {
+            const sqlResult = await sqlAdapter.appendRow("JSON Asset Registry", row);
+            return {
+              headerSignature: "sql_runtime_authority",
+              expectedHeaderSignature: "sql_runtime_authority",
+              row2Read: false,
+              preflight: { source: "sql", table: "json_assets" },
+              safeColumns: Object.keys(row || {}),
+              unsafeColumns: [],
+              sql_insert_id: sqlResult?.insertId ?? null,
+              data_source: "sql",
+            };
+          } catch (err) {
+            console.error("[sinkOrchestration] SQL json_assets append failed — fail-open:", err.message);
+            return null;
+          }
+        }
+        return writeJsonAssetRegistryRowCore(
         row,
         {
           getGoogleClients: getGoogleClients, // Ensure this is the Sheets client
@@ -1551,7 +1570,8 @@ async function performUniversalServerWriteback(input = {}) {
             }
           )
         }
-      ),
+        );
+      },
       executionLogUnifiedSheet: EXECUTION_LOG_UNIFIED_SHEET,
       jsonAssetRegistrySheet: JSON_ASSET_REGISTRY_SHEET,
       executionLogUnifiedSpreadsheetId: EXECUTION_LOG_UNIFIED_SPREADSHEET_ID,
