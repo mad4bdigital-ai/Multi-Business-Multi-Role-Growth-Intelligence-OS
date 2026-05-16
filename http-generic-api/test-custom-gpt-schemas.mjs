@@ -218,6 +218,16 @@ section("dispatcher contracts");
     adminOps.some((op) => op.pathKey === "/gpt/tools/call" && op.method === "post"));
   assert("admin dispatcher hides direct admin control route",
     !adminOps.some((op) => op.operation.operationId === "executeAdminControl"));
+  assert("admin dispatcher keeps device capability routes DB-backed",
+    !adminOps.some((op) => [
+      "/connector/{device_id}/dependencies",
+      "/connector/{device_id}/apps",
+      "/connector/{device_id}/browser",
+      "/connector/{device_id}/ps",
+      "/connector/{device_id}/win",
+      "/connector/{device_id}/n8n",
+      "/connector/{device_id}/cf",
+    ].includes(op.pathKey)));
   const hiddenDirectAdminOperationIds = [
     "upsertAdminGoogleAuthPlatformTab",
     "upsertAdminApisServicesCredentials",
@@ -246,6 +256,36 @@ section("dispatcher contracts");
   assert("tenant dispatcher POST operations are non-consequential",
     tenantPostOps.every((op) => op.operation["x-openai-isConsequential"] === false),
     tenantPostOps.filter((op) => op.operation["x-openai-isConsequential"] !== false).map((op) => op.pathKey).join(", "));
+}
+
+section("DB tool registry fixtures");
+{
+  const migration = readFileSync(resolve(__dirname, "migrations/059_sprint54_local_connector_capability_tools.sql"), "utf8");
+  const seed = readFileSync(resolve(__dirname, "seed-tool-registry.ps1"), "utf8");
+  const dbBackedDeviceTools = [
+    "connector_files",
+    "connector_dependencies",
+    "connector_apps",
+    "connector_browser",
+    "connector_ps",
+    "connector_win",
+    "connector_n8n",
+    "connector_cf",
+  ];
+  for (const toolKey of dbBackedDeviceTools) {
+    assert(`migration registers ${toolKey}`, migration.includes(`'${toolKey}'`));
+    assert(`seed registers ${toolKey}`, seed.includes(`'${toolKey}'`));
+  }
+  assert("registry files schema includes drive and repo discovery",
+    migration.includes('"list_drives"') && migration.includes('"locate_repo"') &&
+    seed.includes('"list_drives"') && seed.includes('"locate_repo"'));
+  assert("browser registry contract keeps URL scheme validation visible",
+    migration.includes('"format":"uri"') && migration.includes("device,browser,interactive,classified"));
+  assert("browser registry scale uses fraction units (0.1..1.0) in admin and tenant rows",
+    (migration.match(/"scale":\{"type":"number","minimum":0\.1,"maximum":1\.0\}/g) || []).length >= 2 &&
+    (seed.match(/"scale":\{"type":"number","minimum":0\.1,"maximum":1\.0\}/g) || []).length >= 2);
+  assert("browser registry never uses 25..200 integer scale (old percent units)",
+    !migration.includes('"minimum":25,"maximum":200') && !seed.includes('"minimum":25,"maximum":200'));
 }
 
 console.log(`\nResults: ${passed} passed, ${failed} failed`);

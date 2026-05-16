@@ -55,8 +55,21 @@ async function proxyToDevice(req, res, deviceId, targetPath) {
 }
 
 export function buildConnectorProxyRoutes(deps) {
-  const { requireBackendApiKey } = deps;
+  const { requireBackendApiKey, requireAdminPrincipal } = deps;
   const router = Router();
+
+  function adminOnly(req, res, next) {
+    if (typeof requireAdminPrincipal === "function") return requireAdminPrincipal(req, res, next);
+    if (req.auth?.is_admin === true) return next();
+    return res.status(403).json({
+      ok: false,
+      error: {
+        code: "admin_backend_api_key_required",
+        message: "This connector workaround proxy requires admin/service BACKEND_API_KEY. User JWT access is not allowed.",
+        status: 403,
+      },
+    });
+  }
 
   // ── GET /connector/:device_id/policy ─────────────────────────────────────
   router.get("/connector/:device_id/policy", requireBackendApiKey, async (req, res) => {
@@ -95,6 +108,62 @@ export function buildConnectorProxyRoutes(deps) {
   });
 
   // ── POST /connector/:device_id/fetch-upload ───────────────────────────────
+  router.post("/connector/:device_id/dependencies", requireBackendApiKey, async (req, res) => {
+    try {
+      await proxyToDevice(req, res, req.params.device_id, "/dependencies");
+    } catch (err) {
+      res.status(502).json({ ok: false, error: { code: "proxy_failed", message: err.message } });
+    }
+  });
+
+  router.post("/connector/:device_id/apps", requireBackendApiKey, async (req, res) => {
+    try {
+      await proxyToDevice(req, res, req.params.device_id, "/apps");
+    } catch (err) {
+      res.status(502).json({ ok: false, error: { code: "proxy_failed", message: err.message } });
+    }
+  });
+
+  router.post("/connector/:device_id/browser", requireBackendApiKey, async (req, res) => {
+    try {
+      await proxyToDevice(req, res, req.params.device_id, "/browser");
+    } catch (err) {
+      res.status(502).json({ ok: false, error: { code: "proxy_failed", message: err.message } });
+    }
+  });
+
+  router.post("/connector/:device_id/ps", requireBackendApiKey, adminOnly, async (req, res) => {
+    try {
+      await proxyToDevice(req, res, req.params.device_id, "/ps");
+    } catch (err) {
+      res.status(502).json({ ok: false, error: { code: "proxy_failed", message: err.message } });
+    }
+  });
+
+  router.post("/connector/:device_id/win", requireBackendApiKey, adminOnly, async (req, res) => {
+    try {
+      await proxyToDevice(req, res, req.params.device_id, "/win");
+    } catch (err) {
+      res.status(502).json({ ok: false, error: { code: "proxy_failed", message: err.message } });
+    }
+  });
+
+  router.post("/connector/:device_id/n8n", requireBackendApiKey, adminOnly, async (req, res) => {
+    try {
+      await proxyToDevice(req, res, req.params.device_id, "/n8n");
+    } catch (err) {
+      res.status(502).json({ ok: false, error: { code: "proxy_failed", message: err.message } });
+    }
+  });
+
+  router.post("/connector/:device_id/cf", requireBackendApiKey, adminOnly, async (req, res) => {
+    try {
+      await proxyToDevice(req, res, req.params.device_id, "/cf");
+    } catch (err) {
+      res.status(502).json({ ok: false, error: { code: "proxy_failed", message: err.message } });
+    }
+  });
+
   router.post("/connector/:device_id/fetch-upload", requireBackendApiKey, async (req, res) => {
     try {
       await proxyToDevice(req, res, req.params.device_id, "/fetch-upload");

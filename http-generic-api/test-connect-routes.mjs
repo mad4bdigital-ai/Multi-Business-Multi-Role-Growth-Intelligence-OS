@@ -251,6 +251,9 @@ section("connect api auth scope");
     assert("local connector schema exposes /health", exposedPaths.includes("/health"));
     assert("local connector schema exposes /github", exposedPaths.includes("/github"));
     assert("local connector schema exposes /gcloud", exposedPaths.includes("/gcloud"));
+    assert("local connector schema exposes /dependencies", exposedPaths.includes("/dependencies"));
+    assert("local connector schema exposes /apps", exposedPaths.includes("/apps"));
+    assert("local connector schema exposes /browser", exposedPaths.includes("/browser"));
     assert("local connector schema exposes /shell", exposedPaths.includes("/shell"));
     assert("local connector schema exposes /files", exposedPaths.includes("/files"));
     assert("local connector schema exposes /fetch-upload", exposedPaths.includes("/fetch-upload"));
@@ -282,6 +285,36 @@ section("connect api auth scope");
     const filesSchema = doc.paths?.["/files"]?.post?.requestBody?.content?.["application/json"]?.schema;
     assert("local connector /files supports bounded directory listing",
       Boolean(filesSchema?.properties?.max_entries) && Boolean(doc.paths?.["/files"]?.post?.responses?.["200"]?.content?.["application/json"]?.schema?.properties?.entries));
+    assert("local connector /files supports bounded repo location discovery",
+      filesSchema?.properties?.action?.enum?.includes("list_drives") &&
+      filesSchema?.properties?.action?.enum?.includes("locate_repo") &&
+      Boolean(doc.paths?.["/files"]?.post?.responses?.["200"]?.content?.["application/json"]?.schema?.properties?.candidates));
+
+    const dependenciesSchema = doc.paths?.["/dependencies"]?.post?.requestBody?.content?.["application/json"]?.schema;
+    assert("local connector /dependencies supports allowlisted recovery installs",
+      dependenciesSchema?.properties?.action?.enum?.includes("install") &&
+      dependenciesSchema?.properties?.package_key?.enum?.includes("gh") &&
+      dependenciesSchema?.properties?.package_key?.enum?.includes("googlecloudsdk"));
+
+    const appsSchema = doc.paths?.["/apps"]?.post?.requestBody?.content?.["application/json"]?.schema;
+    const appsResponseSchema = doc.paths?.["/apps"]?.post?.responses?.["200"]?.content?.["application/json"]?.schema;
+    assert("local connector /apps supports allowlisted app aliases",
+      appsSchema?.properties?.action?.enum?.includes("launch") &&
+      appsSchema?.properties?.action?.enum?.includes("status_app") &&
+      Boolean(appsSchema?.properties?.app_alias));
+    assert("local connector /apps exposes classification metadata",
+      Boolean(appsResponseSchema?.properties?.classification?.properties?.capability_class) &&
+      Boolean(appsResponseSchema?.properties?.classification?.properties?.risk_class));
+
+    const browserSchema = doc.paths?.["/browser"]?.post?.requestBody?.content?.["application/json"]?.schema;
+    const browserResponseSchema = doc.paths?.["/browser"]?.post?.responses?.["200"]?.content?.["application/json"]?.schema;
+    assert("local connector /browser supports allowlisted browser open_url",
+      browserSchema?.properties?.action?.enum?.includes("open_url") &&
+      Boolean(browserSchema?.properties?.browser_alias) &&
+      Boolean(browserSchema?.properties?.url));
+    assert("local connector /browser exposes classification metadata",
+      Boolean(browserResponseSchema?.properties?.classification?.properties?.capability_class) &&
+      Boolean(browserResponseSchema?.properties?.classification?.properties?.allowed_url_schemes));
 
     const uploadPaths = ["/fetch-upload", "/shell-fetch-upload"];
     for (const p of uploadPaths) {
@@ -292,6 +325,40 @@ section("connect api auth scope");
   }
 
 // ── sanitizeMetadataPayload guarantees for /connect/preferences and /connect/profile ─────
+  section("auth-host connector proxy schema");
+
+  {
+    const doc = yaml.load(readFileSync("openapi.yaml", "utf8"));
+    const proxyPaths = Object.keys(doc.paths || {}).filter((pathKey) => pathKey.startsWith("/connector/{device_id}/"));
+    for (const pathKey of ["/connector/{device_id}/dependencies", "/connector/{device_id}/apps", "/connector/{device_id}/browser", "/connector/{device_id}/ps", "/connector/{device_id}/win", "/connector/{device_id}/n8n", "/connector/{device_id}/cf"]) {
+      assert(`auth-host schema exposes ${pathKey}`, proxyPaths.includes(pathKey), proxyPaths.join(", "));
+    }
+    assert("auth-host ps proxy requires script",
+      doc.paths?.["/connector/{device_id}/ps"]?.post?.requestBody?.content?.["application/json"]?.schema?.required?.includes("script"));
+    assert("auth-host win proxy exposes workaround actions",
+      doc.paths?.["/connector/{device_id}/win"]?.post?.requestBody?.content?.["application/json"]?.schema?.properties?.action?.enum?.includes("service_action"));
+    assert("auth-host cf proxy exposes tunnel_status",
+      doc.paths?.["/connector/{device_id}/cf"]?.post?.requestBody?.content?.["application/json"]?.schema?.properties?.action?.enum?.includes("tunnel_status"));
+
+    const browserScale = doc.paths?.["/connector/{device_id}/browser"]?.post?.requestBody?.content?.["application/json"]?.schema?.properties?.scale;
+    assert("auth-host browser scale stays in fraction units (0.1..1.0)",
+      browserScale?.type === "number" && browserScale?.minimum === 0.1 && browserScale?.maximum === 1.0);
+  }
+
+  section("auth-host connector proxy admin-only enforcement");
+
+  {
+    const source = readFileSync("routes/connectorProxyRoutes.js", "utf8");
+    for (const workaround of ["/connector/:device_id/ps", "/connector/:device_id/win", "/connector/:device_id/n8n", "/connector/:device_id/cf"]) {
+      const routePattern = new RegExp(`router\\.post\\("${workaround.replace(/[/]/g, "\\/").replace(/:/g, ":")}",[^)]*adminOnly`);
+      assert(`workaround route ${workaround} requires adminOnly guard`, routePattern.test(source), `missing adminOnly on ${workaround}`);
+    }
+    for (const tenantSafe of ["/connector/:device_id/files", "/connector/:device_id/apps", "/connector/:device_id/browser", "/connector/:device_id/dependencies"]) {
+      const routePattern = new RegExp(`router\\.post\\("${tenantSafe.replace(/[/]/g, "\\/").replace(/:/g, ":")}",[^)]*adminOnly`);
+      assert(`tenant-safe route ${tenantSafe} stays open to user JWT (no adminOnly)`, !routePattern.test(source));
+    }
+  }
+
 {
   const { PREFERENCES_FIELD_ALLOWLIST, BUSINESS_PROFILE_FIELD_ALLOWLIST, PROFILE_MAX_BYTES } = _testingAllowlists;
 

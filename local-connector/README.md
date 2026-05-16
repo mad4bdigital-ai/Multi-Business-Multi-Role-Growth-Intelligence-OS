@@ -144,10 +144,58 @@ CONNECTOR_FILE_PATHS=C:\path\to\file.txt,C:\another\config.json
 Actions:
 - `list` without `path` returns the allowlist.
 - `list` with an allowlisted directory `path` returns directory entries.
+- `list_drives` returns detected local drive roots and which allowlisted roots sit on each drive.
+- `locate_repo` searches only below allowlisted roots for repo markers such as `.git`, `AGENTS.md`, `package.json`, and `http-generic-api/openapi.yaml`.
 - `read` returns file content.
 - `write` creates or overwrites a file.
 
 When an allowlisted path is a directory, `read` and `write` may target files under that directory.
+Use `locate_repo` after connector health to identify the working project path on the connected device without opening unrestricted disk traversal.
+
+---
+
+## Dependency installer endpoint
+
+Enable with `CONNECTOR_DEPENDENCIES_ENABLED=true`. The connector installs only package keys from `CONNECTOR_DEPENDENCY_ALLOWLIST`; default recovery packages are `gh` and `googlecloudsdk` through Chocolatey.
+
+Actions:
+- `status` returns whether dependency install is enabled.
+- `list` returns installable allowlisted package keys.
+- `install` installs one allowlisted `package_key`, then runs its post-install version check when configured.
+
+This endpoint exists so GPT can restore local recovery tools without arbitrary shell package commands. Keep the allowlist narrow.
+
+---
+
+## Apps and browser endpoints
+
+Enable with `CONNECTOR_APPS_ENABLED=true`. App and browser control uses `CONNECTOR_APP_ALLOWLIST`; callers pass only `app_alias` or `browser_alias`, never raw commands.
+
+Default app aliases:
+- `edge`
+- `chrome`
+- `vscode`
+- `notepad`
+
+Each app may include classification fields:
+- `capability_class`: `browser`, `developer_tool`, `utility`, `desktop_app`, or a custom class
+- `risk_class`: `low`, `interactive`, `state_changing`, `destructive`, or a custom risk label
+- `browser`: whether the app can be used by `/browser`
+
+`POST /apps` actions:
+- `status`
+- `list`
+- `launch`
+- `status_app`
+- `close`
+
+`POST /browser` actions:
+- `list`
+- `open_url` for absolute `http` or `https` URLs only
+- `screenshot` for a bounded JPEG desktop screenshot after browser interaction
+
+Use `/browser` for web-console inspection and `/apps` for allowlisted app lifecycle control. Keep form submission, publishing, billing, deletion, and DNS mutations on governed API routes rather than blind UI clicks.
+Responses include `classification` metadata so GPT can choose the right guardrail before acting.
 
 ---
 

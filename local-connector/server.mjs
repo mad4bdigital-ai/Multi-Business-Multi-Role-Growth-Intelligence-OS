@@ -58,6 +58,58 @@ const CF_ENABLED = process.env.CONNECTOR_CF_ENABLED === 'true';
 const CF_TOKEN = process.env.CLOUDFLARE_API_TOKEN ?? '';
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID ?? '';
 const CF_ZONE_ID = process.env.CF_ZONE_ID ?? '';
+const DEPENDENCIES_ENABLED = process.env.CONNECTOR_DEPENDENCIES_ENABLED === 'true';
+const APPS_ENABLED = process.env.CONNECTOR_APPS_ENABLED === 'true';
+
+const DEFAULT_DEPENDENCY_ALLOWLIST = {
+  gh: {
+    package: 'gh',
+    display_name: 'GitHub CLI',
+    manager: 'choco',
+    post_install_check: { command: 'gh', args: ['--version'] },
+  },
+  googlecloudsdk: {
+    package: 'googlecloudsdk',
+    display_name: 'Google Cloud SDK',
+    manager: 'choco',
+    post_install_check: { command: 'gcloud', args: ['--version'] },
+  },
+};
+
+const DEFAULT_APP_ALLOWLIST = {
+  edge: {
+    display_name: 'Microsoft Edge',
+    command: 'msedge',
+    process_name: 'msedge',
+    browser: true,
+    capability_class: 'browser',
+    risk_class: 'interactive',
+  },
+  chrome: {
+    display_name: 'Google Chrome',
+    command: 'chrome',
+    process_name: 'chrome',
+    browser: true,
+    capability_class: 'browser',
+    risk_class: 'interactive',
+  },
+  vscode: {
+    display_name: 'Visual Studio Code',
+    command: 'code',
+    process_name: 'Code',
+    browser: false,
+    capability_class: 'developer_tool',
+    risk_class: 'interactive',
+  },
+  notepad: {
+    display_name: 'Notepad',
+    command: 'notepad',
+    process_name: 'notepad',
+    browser: false,
+    capability_class: 'utility',
+    risk_class: 'low',
+  },
+};
 
 /** @type {Record<string, ShellAlias>} */
 let SHELL_ALLOWLIST = {};
@@ -67,6 +119,24 @@ try {
   }
 } catch (e) {
   console.error('[connector] Failed to parse CONNECTOR_SHELL_ALLOWLIST:', e.message);
+}
+
+let DEPENDENCY_ALLOWLIST = DEFAULT_DEPENDENCY_ALLOWLIST;
+try {
+  if (process.env.CONNECTOR_DEPENDENCY_ALLOWLIST) {
+    DEPENDENCY_ALLOWLIST = JSON.parse(process.env.CONNECTOR_DEPENDENCY_ALLOWLIST);
+  }
+} catch (e) {
+  console.error('[connector] Failed to parse CONNECTOR_DEPENDENCY_ALLOWLIST:', e.message);
+}
+
+let APP_ALLOWLIST = DEFAULT_APP_ALLOWLIST;
+try {
+  if (process.env.CONNECTOR_APP_ALLOWLIST) {
+    APP_ALLOWLIST = JSON.parse(process.env.CONNECTOR_APP_ALLOWLIST);
+  }
+} catch (e) {
+  console.error('[connector] Failed to parse CONNECTOR_APP_ALLOWLIST:', e.message);
 }
 
 /** @type {string[]} */
@@ -116,6 +186,95 @@ function directoryEntries(dirPath, maxEntries = 200) {
       modified: stat.mtime.toISOString(),
     };
   });
+}
+
+function detectDriveRoots() {
+  if (process.platform === 'win32') {
+    const roots = [];
+    for (let code = 65; code <= 90; code += 1) {
+      const drive = `${String.fromCharCode(code)}:\\`;
+      if (fs.existsSync(drive)) roots.push(drive);
+    }
+    return roots;
+  }
+  return ['/'];
+}
+
+function rootIsOnDrive(root, drive) {
+  const resolvedRoot = path.resolve(root).toLowerCase();
+  const resolvedDrive = path.resolve(drive).toLowerCase();
+  return resolvedRoot === resolvedDrive || resolvedRoot.startsWith(resolvedDrive);
+}
+
+function repoMarkerMatches(candidateDir, markers) {
+  const found = [];
+  for (const marker of markers) {
+    const markerPath = path.resolve(candidateDir, marker);
+    if (resolveAllowedFilePath(markerPath) && fs.existsSync(markerPath)) {
+      found.push(marker);
+    }
+  }
+  return found;
+}
+
+function locateRepoCandidates(startPath, options = {}) {
+  const markers = Array.isArray(options.markers) && options.markers.length
+    ? options.markers.map(String)
+    : ['.git', 'AGENTS.md', 'package.json', 'http-generic-api/openapi.yaml'];
+  const parsedMaxDepth = parseInt(options.max_depth, 10);
+  const maxDepth = Number.isFinite(parsedMaxDepth) ? Math.min(Math.max(parsedMaxDepth, 0), 8) : 5;
+  const maxMatches = Math.min(Math.max(parseInt(options.max_matches, 10) || 20, 1), 50);
+  const maxEntries = Math.min(Math.max(parseInt(options.max_entries, 10) || 200, 1), 500);
+  const skipDirs = new Set(['.git', 'node_modules', '.next', 'dist', 'build', '.cache']);
+  const candidates = [];
+  const visited = new Set();
+
+  function walk(dirPath, depth) {
+    if (candidates.length >= maxMatches) return;
+    const allowed = resolveAllowedFilePath(dirPath);
+    if (!allowed) return;
+
+    const resolved = allowed.resolved;
+    const key = resolved.toLowerCase();
+    if (visited.has(key)) return;
+    visited.add(key);
+
+    let stat;
+    try {
+      stat = fs.statSync(resolved);
+    } catch {
+      return;
+    }
+    if (!stat.isDirectory()) return;
+
+    const found = repoMarkerMatches(resolved, markers);
+    if (found.length) {
+      candidates.push({
+        path: resolved,
+        root: allowed.root,
+        markers_found: found,
+        score: found.length,
+      });
+    }
+
+    if (depth >= maxDepth || candidates.length >= maxMatches) return;
+
+    let children;
+    try {
+      children = fs.readdirSync(resolved, { withFileTypes: true }).slice(0, maxEntries);
+    } catch {
+      return;
+    }
+
+    for (const entry of children) {
+      if (!entry.isDirectory() || skipDirs.has(entry.name)) continue;
+      walk(path.join(resolved, entry.name), depth + 1);
+      if (candidates.length >= maxMatches) break;
+    }
+  }
+
+  walk(startPath, 0);
+  return candidates.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
 }
 
 // ---------------------------------------------------------------------------
@@ -202,6 +361,77 @@ function runCommand(command, args, timeoutMs) {
       }
     });
   });
+}
+
+function windowsCommand(command) {
+  if (process.platform !== 'win32') return command;
+  const lower = String(command).toLowerCase();
+  if (lower === 'gcloud') return 'gcloud.cmd';
+  if (lower === 'gh') return 'gh.exe';
+  if (lower === 'choco') return 'choco.exe';
+  return command;
+}
+
+function isSafeAlias(value) {
+  return /^[A-Za-z0-9_.-]+$/.test(String(value || ''));
+}
+
+function getAllowedApp(appKey) {
+  const key = String(appKey || '').trim().toLowerCase();
+  if (!isSafeAlias(key)) return null;
+  return APP_ALLOWLIST[key] ? { key, ...APP_ALLOWLIST[key] } : null;
+}
+
+function assertHttpUrl(rawUrl) {
+  try {
+    const parsed = new URL(String(rawUrl));
+    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function psString(value) {
+  return JSON.stringify(String(value));
+}
+
+function psArray(values) {
+  return `@(${values.map(psString).join(',')})`;
+}
+
+function appClassification(entry) {
+  const capabilityClass = String(entry.capability_class || (entry.browser ? 'browser' : 'desktop_app'));
+  const riskClass = String(entry.risk_class || (entry.browser ? 'interactive' : 'low'));
+  return {
+    capability_class: capabilityClass,
+    risk_class: riskClass,
+    execution_surface: 'local_device_app',
+    requires_allowlist: true,
+    requires_runtime_enablement: 'CONNECTOR_APPS_ENABLED',
+    consequential_actions_require_confirmation: true,
+  };
+}
+
+function browserClassification() {
+  return {
+    capability_class: 'browser',
+    risk_class: 'interactive',
+    execution_surface: 'local_device_browser',
+    requires_allowlist: true,
+    requires_runtime_enablement: 'CONNECTOR_APPS_ENABLED',
+    allowed_url_schemes: ['http', 'https'],
+    consequential_actions_require_confirmation: true,
+  };
+}
+
+async function startApp(entry, args = [], timeoutMs = 8000) {
+  const command = String(entry.command || '').trim();
+  if (!command) throw new Error('Configured app command is empty');
+  if (/[<>\n\r]/.test(command)) throw new Error('Configured app command is unsafe');
+  const script = args.length
+    ? `Start-Process -FilePath ${psString(command)} -ArgumentList ${psArray(args)}`
+    : `Start-Process -FilePath ${psString(command)}`;
+  return runPs(script, timeoutMs);
 }
 
 // ---------------------------------------------------------------------------
@@ -418,7 +648,7 @@ async function handleGitHub(req, res) {
   audit(req, { action: 'gh', args });
 
   try {
-    const result = await runCommand('gh', args, timeoutMs);
+    const result = await runCommand(windowsCommand('gh'), args, timeoutMs);
     return ok(res, result);
   } catch (e) {
     return err(res, 500, 'EXEC_ERROR', e.message);
@@ -442,11 +672,74 @@ async function handleGCloud(req, res) {
   audit(req, { action: 'gcloud', args });
 
   try {
-    const result = await runCommand('gcloud', args, timeoutMs);
+    const result = await runCommand(windowsCommand('gcloud'), args, timeoutMs);
     return ok(res, result);
   } catch (e) {
     return err(res, 500, 'EXEC_ERROR', e.message);
   }
+}
+
+async function handleDependencies(req, res) {
+  if (!DEPENDENCIES_ENABLED) return err(res, 403, 'DISABLED', 'Dependency installer is disabled on this connector');
+  if (!requireAuth(req, res)) return;
+  let body;
+  try { body = await readBody(req); } catch { return err(res, 400, 'BAD_BODY', 'Invalid JSON'); }
+
+  const { action, package_key, timeout_ms } = body;
+
+  if (action === 'status') {
+    audit(req, { action: 'dependencies:status' });
+    return ok(res, {
+      dependencies_enabled: DEPENDENCIES_ENABLED,
+      package_count: Object.keys(DEPENDENCY_ALLOWLIST).length,
+    });
+  }
+
+  if (action === 'list') {
+    audit(req, { action: 'dependencies:list' });
+    return ok(res, {
+      packages: Object.entries(DEPENDENCY_ALLOWLIST).map(([key, entry]) => ({
+        package_key: key,
+        display_name: entry.display_name ?? key,
+        manager: entry.manager ?? 'choco',
+        package: entry.package,
+      })),
+    });
+  }
+
+  if (action === 'install') {
+    if (!package_key) return err(res, 400, 'MISSING_PACKAGE_KEY', 'package_key is required for action=install');
+    const entry = DEPENDENCY_ALLOWLIST[String(package_key)];
+    if (!entry) return err(res, 404, 'UNKNOWN_PACKAGE', `Package "${package_key}" is not in the dependency allowlist`);
+    if ((entry.manager ?? 'choco') !== 'choco') return err(res, 400, 'UNSUPPORTED_MANAGER', 'Only choco dependency installs are supported');
+
+    const packageName = String(entry.package || '');
+    if (!/^[A-Za-z0-9_.-]+$/.test(packageName)) return err(res, 400, 'UNSAFE_PACKAGE', 'Dependency package name is invalid');
+
+    const timeoutMs = clampTimeout(timeout_ms, 600000);
+    audit(req, { action: 'dependencies:install', package_key, manager: 'choco', package: packageName });
+
+    try {
+      const install = await runCommand(windowsCommand('choco'), ['install', packageName, '-y', '--no-progress'], timeoutMs);
+      let post_install_check = null;
+      if (entry.post_install_check?.command) {
+        const checkCommand = windowsCommand(String(entry.post_install_check.command));
+        const checkArgs = Array.isArray(entry.post_install_check.args) ? entry.post_install_check.args.map(String) : [];
+        post_install_check = await runCommand(checkCommand, checkArgs, 30000);
+      }
+      return ok(res, {
+        package_key,
+        manager: 'choco',
+        package: packageName,
+        install,
+        post_install_check,
+      });
+    } catch (e) {
+      return err(res, 500, 'INSTALL_ERROR', e.message);
+    }
+  }
+
+  return err(res, 400, 'UNKNOWN_ACTION', 'action must be "status", "list", or "install"');
 }
 
 async function handleShell(req, res) {
@@ -508,13 +801,155 @@ async function handleShell(req, res) {
   return err(res, 400, 'UNKNOWN_ACTION', 'action must be "status", "list", or "run"');
 }
 
+async function handleApps(req, res) {
+  if (!APPS_ENABLED) return err(res, 403, 'DISABLED', 'App control endpoint is disabled on this connector');
+  if (!requireAuth(req, res)) return;
+  let body;
+  try { body = await readBody(req); } catch { return err(res, 400, 'BAD_BODY', 'Invalid JSON'); }
+
+  const { action, app_alias, timeout_ms } = body;
+
+  if (action === 'status') {
+    audit(req, { action: 'apps:status' });
+    return ok(res, {
+      apps_enabled: APPS_ENABLED,
+      app_count: Object.keys(APP_ALLOWLIST).length,
+      classification: {
+        capability_class: 'desktop_app_control',
+        risk_class: 'interactive',
+        execution_surface: 'local_device_app',
+        requires_allowlist: true,
+        requires_runtime_enablement: 'CONNECTOR_APPS_ENABLED',
+      },
+    });
+  }
+
+  if (action === 'list') {
+    audit(req, { action: 'apps:list' });
+    return ok(res, {
+      apps: Object.entries(APP_ALLOWLIST).map(([key, entry]) => ({
+        app_alias: key,
+        display_name: entry.display_name ?? key,
+        browser: entry.browser === true,
+        classification: appClassification(entry),
+      })),
+    });
+  }
+
+  if (action === 'launch') {
+    const app = getAllowedApp(app_alias);
+    if (!app) return err(res, 404, 'APP_NOT_ALLOWED', 'app_alias must match an allowlisted app');
+    audit(req, { action: 'apps:launch', app_alias: app.key });
+    try {
+      const result = await startApp(app, [], clampTimeout(timeout_ms, 8000));
+      return ok(res, { app_alias: app.key, launched: true, classification: appClassification(app), ...result });
+    } catch (e) {
+      return err(res, 500, 'APP_LAUNCH_ERROR', e.message);
+    }
+  }
+
+  if (action === 'status_app') {
+    const app = getAllowedApp(app_alias);
+    if (!app) return err(res, 404, 'APP_NOT_ALLOWED', 'app_alias must match an allowlisted app');
+    const processName = String(app.process_name || app.command || app.key).replace(/\.exe$/i, '');
+    audit(req, { action: 'apps:status_app', app_alias: app.key });
+    try {
+      const result = await runPs(`Get-Process -Name ${psString(processName)} -ErrorAction SilentlyContinue | Select-Object Name,Id,MainWindowTitle | ConvertTo-Json -Compress`, 10000);
+      let processes;
+      try { processes = JSON.parse(result.stdout || '[]'); } catch { processes = result.stdout; }
+      if (!Array.isArray(processes)) processes = processes ? [processes] : [];
+      return ok(res, { app_alias: app.key, running: processes.length > 0, processes, classification: appClassification(app) });
+    } catch (e) {
+      return err(res, 500, 'APP_STATUS_ERROR', e.message);
+    }
+  }
+
+  if (action === 'close') {
+    const app = getAllowedApp(app_alias);
+    if (!app) return err(res, 404, 'APP_NOT_ALLOWED', 'app_alias must match an allowlisted app');
+    const processName = String(app.process_name || app.command || app.key).replace(/\.exe$/i, '');
+    audit(req, { action: 'apps:close', app_alias: app.key });
+    try {
+      const result = await runPs(`Stop-Process -Name ${psString(processName)} -ErrorAction Stop`, 15000);
+      return ok(res, { app_alias: app.key, closed: true, exit_code: result.exitCode, classification: appClassification(app) });
+    } catch (e) {
+      return err(res, 500, 'APP_CLOSE_ERROR', e.message);
+    }
+  }
+
+  return err(res, 400, 'UNKNOWN_ACTION', 'action must be "status", "list", "launch", "status_app", or "close"');
+}
+
+async function handleBrowser(req, res) {
+  if (!APPS_ENABLED) return err(res, 403, 'DISABLED', 'Browser control endpoint is disabled on this connector');
+  if (!requireAuth(req, res)) return;
+  let body;
+  try { body = await readBody(req); } catch { return err(res, 400, 'BAD_BODY', 'Invalid JSON'); }
+
+  const { action, browser_alias = 'edge', url, timeout_ms } = body;
+
+  if (action === 'list') {
+    audit(req, { action: 'browser:list' });
+    return ok(res, {
+      browsers: Object.entries(APP_ALLOWLIST)
+        .filter(([, entry]) => entry.browser === true)
+        .map(([key, entry]) => ({
+          browser_alias: key,
+          display_name: entry.display_name ?? key,
+          classification: { ...browserClassification(), ...appClassification(entry) },
+        })),
+      classification: browserClassification(),
+    });
+  }
+
+  if (action === 'open_url') {
+    const browser = getAllowedApp(browser_alias);
+    if (!browser || browser.browser !== true) return err(res, 404, 'BROWSER_NOT_ALLOWED', 'browser_alias must match an allowlisted browser');
+    const safeUrl = assertHttpUrl(url);
+    if (!safeUrl) return err(res, 400, 'INVALID_URL', 'url must be absolute http or https');
+    audit(req, { action: 'browser:open_url', browser_alias: browser.key, url: safeUrl });
+    try {
+      const result = await startApp(browser, [safeUrl], clampTimeout(timeout_ms, 8000));
+      return ok(res, { browser_alias: browser.key, opened: safeUrl, classification: browserClassification(), ...result });
+    } catch (e) {
+      return err(res, 500, 'BROWSER_OPEN_ERROR', e.message);
+    }
+  }
+
+  if (action === 'screenshot') {
+    const scale = Math.min(Math.max(Number(body.scale) || 0.5, 0.1), 1.0);
+    audit(req, { action: 'browser:screenshot', scale });
+    const ps = `Add-Type -AssemblyName System.Windows.Forms,System.Drawing
+$bounds=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+$full=New-Object System.Drawing.Bitmap($bounds.Width,$bounds.Height)
+$g=[System.Drawing.Graphics]::FromImage($full)
+$g.CopyFromScreen($bounds.Location,[System.Drawing.Point]::Empty,$bounds.Size)
+$w=[int]($bounds.Width*${scale});$h=[int]($bounds.Height*${scale})
+$scaled=New-Object System.Drawing.Bitmap($w,$h)
+$sg=[System.Drawing.Graphics]::FromImage($scaled)
+$sg.DrawImage($full,0,0,$w,$h)
+$m=New-Object System.IO.MemoryStream
+$scaled.Save($m,[System.Drawing.Imaging.ImageFormat]::Jpeg)
+[Convert]::ToBase64String($m.ToArray())`;
+    try {
+      const result = await runPs(ps, 15000);
+      if (result.exitCode !== 0) return err(res, 500, 'SCREENSHOT_FAILED', result.stderr);
+      return ok(res, { image_base64: result.stdout.trim(), format: 'jpeg', scale, classification: browserClassification() });
+    } catch (e) {
+      return err(res, 500, 'BROWSER_SCREENSHOT_ERROR', e.message);
+    }
+  }
+
+  return err(res, 400, 'UNKNOWN_ACTION', 'action must be "list", "open_url", or "screenshot"');
+}
+
 async function handleFiles(req, res) {
   if (!FILES_ENABLED) return err(res, 403, 'DISABLED', 'Files endpoint is disabled on this connector');
   if (!requireAuth(req, res)) return;
   let body;
   try { body = await readBody(req); } catch { return err(res, 400, 'BAD_BODY', 'Invalid JSON'); }
 
-  const { action, path: filePath, content, max_entries } = body;
+  const { action, path: filePath, content, max_entries, markers, max_depth, max_matches } = body;
 
   if (action === 'list') {
     if (!filePath) {
@@ -544,6 +979,52 @@ async function handleFiles(req, res) {
     } catch (e) {
       return err(res, 500, 'LIST_ERROR', e.message);
     }
+  }
+
+  if (action === 'list_drives') {
+    audit(req, { action: 'files:list_drives' });
+    const allowedRoots = FILE_ALLOWLIST.map(p => path.resolve(p));
+    const drives = detectDriveRoots().map((drive) => ({
+      path: drive,
+      allowed: allowedRoots.some((root) => rootIsOnDrive(root, drive)),
+      allowed_paths: allowedRoots.filter((root) => rootIsOnDrive(root, drive)),
+    }));
+    return ok(res, { drives, count: drives.length, allowed_paths: FILE_ALLOWLIST });
+  }
+
+  if (action === 'locate_repo') {
+    const searchRoots = filePath ? [filePath] : FILE_ALLOWLIST;
+    const candidates = [];
+
+    for (const searchRoot of searchRoots) {
+      const allowed = resolveAllowedFilePath(searchRoot);
+      if (!allowed) {
+        if (filePath) return err(res, 403, 'PATH_NOT_ALLOWED', 'Path is not in the allowed list');
+        continue;
+      }
+      audit(req, { action: 'files:locate_repo', path: allowed.resolved });
+      try {
+        candidates.push(...locateRepoCandidates(allowed.resolved, {
+          markers,
+          max_depth,
+          max_matches,
+          max_entries,
+        }));
+      } catch (e) {
+        return err(res, 500, 'LOCATE_REPO_ERROR', e.message);
+      }
+      if (candidates.length >= (Math.min(Math.max(parseInt(max_matches, 10) || 20, 1), 50))) break;
+    }
+
+    const deduped = Array.from(
+      new Map(candidates.map((candidate) => [candidate.path.toLowerCase(), candidate])).values(),
+    ).sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+
+    return ok(res, {
+      candidates: deduped.slice(0, Math.min(Math.max(parseInt(max_matches, 10) || 20, 1), 50)),
+      count: deduped.length,
+      allowed_paths: FILE_ALLOWLIST,
+    });
   }
 
   if (action === 'read') {
@@ -582,7 +1063,7 @@ async function handleFiles(req, res) {
     }
   }
 
-  return err(res, 400, 'UNKNOWN_ACTION', 'action must be "list", "read", or "write"');
+  return err(res, 400, 'UNKNOWN_ACTION', 'action must be "list", "list_drives", "locate_repo", "read", or "write"');
 }
 
 async function handlePs(req, res) {
@@ -923,7 +1404,10 @@ const server = http.createServer(async (req, res) => {
 
     if (method === 'POST' && url === '/github') return await handleGitHub(req, res);
     if (method === 'POST' && url === '/gcloud') return await handleGCloud(req, res);
+    if (method === 'POST' && url === '/dependencies') return await handleDependencies(req, res);
     if (method === 'POST' && url === '/shell') return await handleShell(req, res);
+    if (method === 'POST' && url === '/apps') return await handleApps(req, res);
+    if (method === 'POST' && url === '/browser') return await handleBrowser(req, res);
     if (method === 'POST' && url === '/files') return await handleFiles(req, res);
     if (method === 'POST' && url === '/fetch-upload') return await handleFetchUpload(req, res);
     if (method === 'POST' && url === '/shell-fetch-upload') return await handleShellFetchUpload(req, res);

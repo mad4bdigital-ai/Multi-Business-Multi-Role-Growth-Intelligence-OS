@@ -224,7 +224,7 @@ The Admin Assistant uses exactly **two** action connectors. Custom GPT is limite
 | Connector | File | Server URL | Ops | Purpose |
 |---|---|---:|---:|---|
 | **Platform** | `http-generic-api/openapi.custom-gpt.auth-dispatcher.yaml` | `https://auth.mad4b.com` | 19 | Activation context, system + admin tool registries (list/call), GPT meta-tool dispatcher (`listAdminTools` / `callAdminTool`), and a small set of admin-CLI surfaces. All other admin work routes through `callAdminTool` with a registered tool_key. |
-| **Local** | `http-generic-api/openapi.gpt-action.local-connector.yaml` | `https://connector.mad4b.com` | 11 | Standalone local execution bridge for break-glass shell/file/GitHub/gcloud/PS/Win/n8n/cf on mohammedlap via Cloudflare Tunnel |
+| **Local** | `http-generic-api/openapi.gpt-action.local-connector.yaml` | `https://connector.mad4b.com` | 11 | Standalone local execution bridge for break-glass shell/file/GitHub/gcloud/PS/Win/n8n/cf on the active admin Windows host via Cloudflare Tunnel |
 
 `auth.mad4b.com` is the governed control plane and must be the first choice for admin work. The local connector is a standalone plugin/action because it touches the local environment; call it only after the platform action indicates local execution is needed, or when the cloud control plane is unavailable and break-glass recovery is explicitly required. If `connect.mad4b.com` is used as the connector-facing host alias, it must follow the same local-connector contract as `connector.mad4b.com`.
 
@@ -448,17 +448,36 @@ Do not skip `writeSessionTurn` or `endSession`. Skipping turns leaves the sessio
 
 Use `http-generic-api/openapi.gpt-action.local-connector.yaml` for break-glass operations or real-time direct device ops when the primary Cloud Run API is unavailable or when lower-latency direct access is preferred.
 
-The connector runs on the admin’s local Windows machine (`mohammedlap`) and is reachable via Cloudflare Tunnel at `connector.mad4b.com`. It binds only to `127.0.0.1` — Cloudflare Tunnel is the sole internet entry point. Auth: `Authorization: Bearer <BACKEND_API_KEY>`. `/health` is unauthenticated.
+The connector runs on the active admin Windows machine and is reachable via Cloudflare Tunnel at `connector.mad4b.com`. It binds only to `127.0.0.1` — Cloudflare Tunnel is the sole internet entry point. Auth: `Authorization: Bearer <BACKEND_API_KEY>`. `/health` is unauthenticated.
 
 **Device:** mohammedlap | **Tunnel:** 95e4ba8c-782b-4819-9f80-04af4457ce73 | **Port:** 7070
 
+Latest observed direct connector evidence (2026-05-16):
+
+- Host: `Essam`
+- Service: `growth-intelligence-local-connector`
+- Platform: `win32`
+- Port: `7070`
+- Connector status: healthy
+- Local services: `Cloudflared` running, `local-connector` running
+- Shell surface: enabled with 6 aliases: `node_ver`, `npm_ver`, `git_version`, `gh_status`, `gcloud_version`, `connector_services`
+- Runtime tools: Node `v24.15.0`; Git `2.53.0.windows.3`
+- Degraded local recovery tools: GitHub CLI missing from PATH (`spawn gh ENOENT`), gcloud missing from PATH (`spawn gcloud ENOENT`)
+- Platform registry cross-check: auth-host connector registry reachable; 26 connectors returned; relevant GitHub REST, Google Cloud REST, Sheets, Docs, Search Console, Analytics, and brand WordPress connectors were active
+
+Classification rule: if `/health` is healthy but `gh_status` or `gcloud_version` reports `ENOENT`, classify the connector as `local_connector_active_with_degraded_recovery_tools`. Use Git and allowlisted shell/service aliases normally, but do not attempt `/github` or `/gcloud` recovery operations until GitHub CLI and gcloud are installed or restored on PATH. Prefer the auth-host system layer for GitHub REST and Google Cloud REST tasks while the direct local CLIs are degraded.
+
 Key operations:
 
+- Auth-host DB tool registry: the admin and tenant GPT dispatchers should discover connector device capabilities through `listAdminTools` / `listTools` and execute them through `callAdminTool` / `callTool`. The DB tool keys are `connector_files`, `connector_dependencies` (admin only), `connector_apps`, and `connector_browser`; admin workaround keys also include `connector_ps`, `connector_win`, `connector_n8n`, and `connector_cf`. Keep `openapi.custom-gpt.auth-dispatcher.yaml` small and MCP-like instead of adding direct dispatcher paths for each local capability.
 - `connectorHealth` (`GET /health`): alive check; no auth required; returns hostname, platform, uptime. **If this returns 1033 / status 530: immediately call `local_connector_self_repair` — do NOT just report the error.** See Self-Repair Capabilities section.
-- `connectorGithub` (`POST /github`): run `gh` CLI on the Windows machine; use for recovery commits, workflow status, deployment triggers when Cloud Run is down.
-- `connectorGcloud` (`POST /gcloud`): run `gcloud` CLI; use for restarting Cloud Run, reading deployment logs, triggering redeployments.
-- `connectorShell` (`POST /shell`): run an allowlisted shell alias (`action: “list”` to discover, `action: “run”` to execute). Default aliases: `node_ver`, `git_status`, `list_processes`, `disk_usage`, `n8n_health`.
-- `connectorFiles` (`POST /files`): read or write files from `CONNECTOR_FILE_PATHS`; actions `list`, `read`, `write`.
+- `connectorGithub` (`POST /github`): run `gh` CLI on the Windows machine; use for recovery commits, workflow status, deployment triggers when Cloud Run is down. First verify `gh_status`; if it reports `spawn gh ENOENT`, treat this operation as unavailable and use the auth-host GitHub REST connector instead.
+- `connectorGcloud` (`POST /gcloud`): run `gcloud` CLI; use for restarting Cloud Run, reading deployment logs, triggering redeployments. First verify `gcloud_version`; if it reports `spawn gcloud ENOENT`, treat this operation as unavailable and use the auth-host Google Cloud REST connector or governed bootstrap config tools instead.
+- `connectorDependencies` (`POST /dependencies`): install allowlisted recovery packages on the local device when `CONNECTOR_DEPENDENCIES_ENABLED=true`. Use `action: "list"` first, then `action: "install"` with `package_key: "gh"` or `package_key: "googlecloudsdk"` to repair missing local recovery tools.
+- `connectorApps` (`POST /apps`): classified local app control when `CONNECTOR_APPS_ENABLED=true`. Responses include `capability_class`, `risk_class`, and execution-surface metadata. Callers pass `app_alias`, never raw commands.
+- `connectorBrowser` (`POST /browser`): classified browser control for allowlisted browser aliases. Opens absolute `http` or `https` URLs and captures bounded screenshots with capability/risk metadata.
+- `connectorShell` (`POST /shell`): run an allowlisted shell alias (`action: "list"` to discover, `action: "run"` to execute). Observed aliases: `node_ver`, `npm_ver`, `git_version`, `gh_status`, `gcloud_version`, `connector_services`.
+- `connectorFiles` (`POST /files`): discover local drives, locate repo candidates, and read/write files inside `CONNECTOR_FILE_PATHS`; actions `list`, `list_drives`, `locate_repo`, `read`, `write`.
 - `connectorFetchUpload` (`POST /fetch-upload`): fetch a URL and upload to Cloud Run storage.
 - `connectorShellFetchUpload` (`POST /shell-fetch-upload`): run a shell alias and upload the output.
 - `connectorPs` (`POST /ps`): execute a PowerShell script on the local Windows device; script must be in the PS allowlist.
@@ -470,6 +489,56 @@ When to use: Cloud Run is down, deployment rollback needed, recovery commit to p
 When not to use: Cloud Run is healthy — prefer `/dispatch` for governed device ops with audit trail. Never use as a general-purpose shell.
 
 Also routes n8n at `n8n.mad4b.com → localhost:5678` via the same Cloudflare tunnel.
+
+Device disk and repo path discovery:
+
+1. Confirm `connectorHealth` is healthy before local filesystem discovery.
+2. Call `connectorFiles` with `action: "list_drives"` to see local drive roots and which configured `CONNECTOR_FILE_PATHS` roots are available per drive.
+3. Call `connectorFiles` with `action: "locate_repo"` to search only allowlisted roots for project markers. Preferred markers for this workspace are `.git`, `AGENTS.md`, and `http-generic-api/openapi.yaml`.
+4. Treat the current known workspace candidate as `D:\Nagy\Multi-Business-Multi-Role-Growth-Intelligence-OS` when returned by the connector, and verify it by reading `AGENTS.md` or listing `http-generic-api`.
+5. If the needed drive or folder is not under `CONNECTOR_FILE_PATHS`, report `blocked_local_filesystem_scope` and add the exact repo root to the connector allowlist before retrying. Do not use unrestricted PowerShell or shell traversal to bypass the file allowlist.
+
+Recovery dependency repair workflow:
+
+1. If `gh_status` or `gcloud_version` returns `ENOENT`, call `connectorDependencies` with `action: "status"`.
+2. If enabled, call `connectorDependencies` with `action: "list"` and install only the matching allowlisted package: `gh` for GitHub CLI, `googlecloudsdk` for gcloud.
+3. Restart or recycle the local connector service after installation so the Windows service environment can pick up PATH changes.
+4. Re-run `gh_status` and `gcloud_version`; classify as `local_connector_active_with_full_recovery_tools` only when both checks pass.
+
+Local app and browser control workflow:
+
+1. Call `connectorApps` with `action: "status"` and `action: "list"` to inspect allowed local apps.
+2. Read each response `classification`. Treat `risk_class: "low"` as inspectable, `interactive` as user-visible UI control, `state_changing` as requiring explicit task intent, and `destructive` as requiring explicit confirmation.
+3. Use `connectorBrowser` with `action: "list"` to inspect allowed browser aliases, then `action: "open_url"` with an absolute `http` or `https` URL.
+4. Use `connectorBrowser` with `action: "screenshot"` for visual evidence after opening a page.
+5. Use `connectorApps` with `action: "status_app"` or `action: "close"` only for allowlisted app aliases. Do not use raw shell, PowerShell, or arbitrary process names to control apps.
+6. Keep destructive web-console actions such as publish, delete, billing, DNS, and credential changes on governed API routes or explicit confirmation workflows.
+
+Admin workaround escalation order:
+
+1. Prefer the narrow governed auth-host tool first, such as GitHub REST, Google Cloud REST, Cloudflare REST, schema import, DB-backed runtime config, or local `connector_files` / `connector_apps` / `connector_browser`.
+2. Use `connector_win` for visual diagnostics, service/process recovery, desktop screenshots, and controlled UI state when browser/app tools are not enough.
+3. Use `connector_n8n` only for local workflow inspection or recovery when the normal n8n/cloud endpoint is unavailable.
+4. Use `connector_cf` only for tunnel, DNS, zone, or cache recovery when the primary Cloudflare proxy path is degraded.
+5. Use `connector_ps` last, only for admin recovery scripts with current user intent. Prefer a small bounded script, record the purpose in the session, and verify the result with a narrower readback tool.
+
+Local connector capability classifications:
+
+- `browser`: browser launch, URL open, screenshots, and web-console inspection.
+- `developer_tool`: VS Code, terminal-like tooling, repo/path inspection, and local development workflows.
+- `utility`: low-risk helper apps such as Notepad.
+- `desktop_app`: general allowlisted app lifecycle control.
+- `dependency_recovery`: allowlisted package installation for recovery tools.
+- `filesystem`: allowlisted drive/root/repo/file discovery and read/write.
+- `shell_alias`: fixed shell aliases from connector config only.
+- `windows_control`: screenshots, services, process inspection/action, and UI-level Windows operations.
+
+Risk classes:
+
+- `low`: read-only or harmless visible action.
+- `interactive`: launches or manipulates visible UI.
+- `state_changing`: changes local state, installs packages, writes files, or restarts services.
+- `destructive`: deletes, kills, stops, publishes, revokes, or permanently mutates external state.
 
 ## Privacy Policy URLs
 
@@ -544,3 +613,46 @@ After hard activation, report:
 - Suggested entry points
 
 Keep reports compact and evidence-based. Do not treat narrative confidence as activation evidence.
+
+## Architecture Roadmap — Future Controllers (Sprint 55+, not yet built)
+
+These two controller surfaces are planned next; they extend the same DB-backed `admin_platform_endpoint_tools` / `tenant_platform_endpoint_tools` registries the dispatcher already reads. Implementation is deferred — they require UI design before backend work begins.
+
+### 1. Admin scope-sharing controller — share platform-managed access with tenants
+
+**Problem.** Today, `connector_ps`, `connector_win`, `connector_n8n`, `connector_cf`, `admin_control`, `admin_cloudflare`, and `admin_hostinger` are admin-only. There is no governed way to lend a tenant a narrow slice of one of these scopes without copying the BACKEND_API_KEY or building a one-off endpoint.
+
+**Goal.** A controller that lets the platform admin grant a tenant time-bounded, scope-bounded access to a normally admin-only tool — recorded in DB, auditable, revocable.
+
+**Sketch (not yet implemented):**
+
+- New table `admin_scope_grants(grant_id, tenant_id, user_id, source_tool_key, allowed_actions JSON, allowed_args JSON, expires_at, revoked_at, granted_by, reason)`.
+- New endpoints:
+  - `POST /admin/scope-grants` — admin issues a grant.
+  - `GET /admin/scope-grants?tenant_id=…` — admin lists.
+  - `DELETE /admin/scope-grants/{grant_id}` — admin revokes.
+  - `GET /me/scope-grants` — tenant user sees what they were lent.
+- Dispatcher (`/gpt/tools/call`) checks `admin_scope_grants` when a tenant calls an admin-only `tool_key`. Match by `tenant_id` + `user_id` + tool name + action enum + arg-shape policy. Grant must be active (not expired, not revoked).
+- Audit every dispatch through a granted scope into `audit_log` with `grant_id` reference.
+
+**UI requirement.** Admin needs a grant-builder UI: pick tool → pick action enums → pick arg constraints → set expiry → audit reason. Tenant needs a "scopes lent to me" panel. Both pending design.
+
+### 2. Tenant auth token controller — per-account API tokens and token UI
+
+**Problem.** Tenants currently have no self-service token panel. `pk_*` API credentials exist via `/developer-apps/{app_id}/credentials`, but they're developer-app-scoped (one credential = one app), not user-scoped, and there is no UI to list, label, rotate, or revoke them from a tenant account view.
+
+**Goal.** Per-user tokens that a signed-in tenant can mint, label, rotate, and revoke from their account page, scoped to capabilities the tenant already has (not admin-only ones unless covered by a `scope_grant` from controller #1).
+
+**Sketch (not yet implemented):**
+
+- Reuse `api_credentials` table; add columns `user_id`, `label`, `last_used_at`, `created_via` (already partly present).
+- New endpoints:
+  - `POST /me/tokens` — mint a token for the signed-in user (full key returned once).
+  - `GET /me/tokens` — list tokens (metadata only).
+  - `PATCH /me/tokens/{credential_id}` — relabel, change expiry.
+  - `DELETE /me/tokens/{credential_id}` — revoke.
+- Scope inheritance: token inherits whatever the user's role + active `admin_scope_grants` would have allowed at the time of mint. Re-evaluated at call time so admin revoking a grant immediately disables tokens that depended on it.
+
+**UI requirement.** Tenant account page needs a "API Tokens" tab — mint flow with one-time-reveal modal, list with last-used timestamps, revoke with confirmation, and a "scopes shown" column that reflects the token's effective scope at this moment. Pending frontend design.
+
+**Sequencing.** Build controller #1 first (admin shares scopes), then controller #2 (tenant tokens inherit shared scopes). Both depend on a UI design pass before backend work — do not start endpoints until UI mockups exist, to avoid building shapes the UI then has to reshape.

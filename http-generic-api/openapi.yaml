@@ -6185,8 +6185,8 @@ paths:
       tags: [connector-proxy]
       security: [backendBearerAuth: [], backendApiKeyAuth: []]
       operationId: postConnectorDeviceFiles
-      summary: Read or write files via device tunnel
-      description: "Proxies POST /files to the device tunnel. Connector restricts I/O to configured roots; size and path constraints are enforced server-side."
+      summary: Discover drives, locate repos, or read/write files via device tunnel
+      description: "Proxies POST /files to the device tunnel. Supports list, list_drives, locate_repo, read, and write. Connector restricts traversal and I/O to configured roots."
       parameters:
         - { name: device_id, in: path, required: true, schema: { type: string } }
         - { name: user_id, in: query, required: false, schema: { type: string }, description: Admin caller only — target user id. }
@@ -6197,8 +6197,293 @@ paths:
             schema:
               type: object
               additionalProperties: true
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [list, list_drives, locate_repo, read, write]
+                path:
+                  type: string
+                content:
+                  type: string
+                markers:
+                  type: array
+                  items: { type: string }
+                max_depth:
+                  type: integer
+                  minimum: 0
+                  maximum: 8
+                max_matches:
+                  type: integer
+                  minimum: 1
+                  maximum: 50
+                max_entries:
+                  type: integer
+                  minimum: 1
+                  maximum: 500
       responses:
         "200": { description: File operation result, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { description: Device not found or not enabled, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "502": { description: Proxy failure to device tunnel, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "503": { description: Device tunnel not provisioned, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
+  /connector/{device_id}/dependencies:
+    post:
+      tags: [connector-proxy]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
+      operationId: postConnectorDeviceDependencies
+      summary: Install allowlisted recovery dependencies via device tunnel
+      description: "Proxies POST /dependencies to the device tunnel. Installs only connector-allowlisted packages when dependency installation is enabled on the device."
+      parameters:
+        - { name: device_id, in: path, required: true, schema: { type: string } }
+        - { name: user_id, in: query, required: false, schema: { type: string }, description: Admin caller only â€” target user id. }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [status, list, install]
+                package_key:
+                  type: string
+                  enum: [gh, googlecloudsdk]
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+      responses:
+        "200": { description: Dependency installer result, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { description: Device not found or not enabled, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "502": { description: Proxy failure to device tunnel, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "503": { description: Device tunnel not provisioned, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
+  /connector/{device_id}/apps:
+    post:
+      tags: [connector-proxy]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
+      operationId: postConnectorDeviceApps
+      summary: Classified local app control via device tunnel
+      description: "Proxies POST /apps to the device tunnel. Returns capability/risk classifications and controls connector-allowlisted app aliases when enabled."
+      parameters:
+        - { name: device_id, in: path, required: true, schema: { type: string } }
+        - { name: user_id, in: query, required: false, schema: { type: string }, description: Admin caller only â€” target user id. }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [status, list, launch, status_app, close]
+                app_alias:
+                  type: string
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+      responses:
+        "200": { description: App control result, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { description: Device not found or not enabled, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "502": { description: Proxy failure to device tunnel, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "503": { description: Device tunnel not provisioned, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
+  /connector/{device_id}/browser:
+    post:
+      tags: [connector-proxy]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
+      operationId: postConnectorDeviceBrowser
+      summary: Classified local browser control via device tunnel
+      description: "Proxies POST /browser to the device tunnel. Returns capability/risk classifications and opens only absolute http/https URLs in allowlisted browsers."
+      parameters:
+        - { name: device_id, in: path, required: true, schema: { type: string } }
+        - { name: user_id, in: query, required: false, schema: { type: string }, description: Admin caller only â€” target user id. }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [list, open_url, screenshot]
+                browser_alias:
+                  type: string
+                url:
+                  type: string
+                scale:
+                  type: number
+                  minimum: 0.1
+                  maximum: 1.0
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+      responses:
+        "200": { description: Browser control result, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { description: Device not found or not enabled, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "502": { description: Proxy failure to device tunnel, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "503": { description: Device tunnel not provisioned, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
+  /connector/{device_id}/ps:
+    post:
+      tags: [connector-proxy]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
+      operationId: postConnectorDevicePs
+      summary: Admin-only PowerShell workaround via device tunnel
+      description: "Proxies POST /ps to the device tunnel. Requires device-side CONNECTOR_POWERSHELL_ENABLED=true and should be used only for admin recovery paths when narrower tools cannot complete the task."
+      parameters:
+        - { name: device_id, in: path, required: true, schema: { type: string } }
+        - { name: user_id, in: query, required: false, schema: { type: string }, description: Admin caller only - target user id. }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required: [script]
+              properties:
+                script:
+                  type: string
+                  maxLength: 10000
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+      responses:
+        "200": { description: PowerShell execution result, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { description: Device not found or not enabled, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "502": { description: Proxy failure to device tunnel, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "503": { description: Device tunnel not provisioned, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
+  /connector/{device_id}/win:
+    post:
+      tags: [connector-proxy]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
+      operationId: postConnectorDeviceWin
+      summary: Admin-only Windows control workaround via device tunnel
+      description: "Proxies POST /win to the device tunnel. Requires device-side CONNECTOR_WIN_ENABLED=true and is intended for visual diagnostics, services, processes, and controlled UI recovery."
+      parameters:
+        - { name: device_id, in: path, required: true, schema: { type: string } }
+        - { name: user_id, in: query, required: false, schema: { type: string }, description: Admin caller only - target user id. }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [open_url, open_vscode, screenshot, process_list, process_kill, notify, service_list, service_action, disk_list, dir_list, file_search]
+                url: { type: string }
+                path: { type: string }
+                pattern: { type: string }
+                recurse: { type: boolean }
+                limit: { type: integer, maximum: 200 }
+                scale: { type: number, minimum: 0.1, maximum: 1.0 }
+                filter: { type: string }
+                top: { type: integer }
+                name: { type: string }
+                pid: { type: integer }
+                title: { type: string }
+                message: { type: string }
+                service_name: { type: string }
+                service_action:
+                  type: string
+                  enum: [start, stop, restart]
+      responses:
+        "200": { description: Windows control result, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { description: Device not found or not enabled, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "502": { description: Proxy failure to device tunnel, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "503": { description: Device tunnel not provisioned, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
+  /connector/{device_id}/n8n:
+    post:
+      tags: [connector-proxy]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
+      operationId: postConnectorDeviceN8n
+      summary: Admin-only local n8n workaround via device tunnel
+      description: "Proxies POST /n8n to the device tunnel for local workflow inspection and recovery. Requires device-side CONNECTOR_N8N_ENABLED=true."
+      parameters:
+        - { name: device_id, in: path, required: true, schema: { type: string } }
+        - { name: user_id, in: query, required: false, schema: { type: string }, description: Admin caller only - target user id. }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [health, list_workflows, get_workflow, activate_workflow, deactivate_workflow, run_workflow, list_executions]
+                workflow_id: { type: string }
+                input_data: { type: object, additionalProperties: true }
+                limit: { type: integer }
+      responses:
+        "200": { description: n8n operation result, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { description: Device not found or not enabled, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "502": { description: Proxy failure to device tunnel, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "503": { description: Device tunnel not provisioned, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
+  /connector/{device_id}/cf:
+    post:
+      tags: [connector-proxy]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
+      operationId: postConnectorDeviceCf
+      summary: Admin-only Cloudflare workaround via device tunnel
+      description: "Proxies POST /cf to the device tunnel for tunnel, DNS, zone, and cache recovery when cloud control-plane paths are degraded. Requires device-side CONNECTOR_CF_ENABLED=true."
+      parameters:
+        - { name: device_id, in: path, required: true, schema: { type: string } }
+        - { name: user_id, in: query, required: false, schema: { type: string }, description: Admin caller only - target user id. }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [list_zones, list_dns, create_dns, delete_dns, list_tunnels, tunnel_status, purge_cache]
+                zone_id: { type: string }
+                record_id: { type: string }
+                tunnel_id: { type: string }
+                type: { type: string }
+                name: { type: string }
+                content: { type: string }
+                proxied: { type: boolean }
+                files:
+                  type: array
+                  items: { type: string }
+      responses:
+        "200": { description: Cloudflare operation result, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { description: Device not found or not enabled, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
         "502": { description: Proxy failure to device tunnel, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }

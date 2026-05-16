@@ -207,6 +207,11 @@ paths:
               schema:
                 type: object
                 additionalProperties: true
+                properties:
+                  ok:
+                    type: boolean
+                  result:
+                    description: Raw upstream tool response payload.
         '400':
           description: Missing name or path parameter
           content:

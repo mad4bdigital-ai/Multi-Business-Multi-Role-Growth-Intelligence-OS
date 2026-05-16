@@ -3,7 +3,7 @@ info:
   title: Growth Intelligence Platform - Local Windows Connector
   version: 1.0.0
   summary: Break-glass local device connector reachable via Cloudflare Tunnel.
-  description: "Local connector on the admin Windows device via connector.mad4b.com. Use when the main server is down. Supports GitHub CLI, gcloud CLI, allowlisted shell commands, and allowlisted file operations."
+  description: "Local connector on the active admin Windows device via connector.mad4b.com. Use for break-glass local evidence, allowlisted shell, and file operations. GitHub CLI and gcloud require device PATH availability; verify with gh_status and gcloud_version before /github or /gcloud."
 servers:
   - url: https://connector.mad4b.com
     description: Local Windows device via Cloudflare Tunnel
@@ -67,7 +67,7 @@ paths:
       tags: [connector]
       operationId: connectorGithub
       summary: Run a gh CLI command on the local device
-      description: "Executes the GitHub CLI (gh) on the local Windows machine. Use for pushing recovery commits, checking workflow status, or triggering deployments when the main server is down."
+      description: "Runs GitHub CLI on the local Windows machine for recovery commits, workflow status, or deployment triggers. First verify gh_status; if it reports spawn gh ENOENT, use the auth-host GitHub REST connector instead."
       security:
         - backendBearerAuth: []
       requestBody:
@@ -103,7 +103,7 @@ paths:
       tags: [connector]
       operationId: connectorGcloud
       summary: Run a gcloud CLI command on the local device
-      description: "Executes gcloud on the local Windows machine. Use for restarting Cloud Run services, reading logs, or triggering redeployments when the server is down."
+      description: "Runs gcloud on the local Windows machine for Cloud Run restarts, logs, or redeployments. First verify gcloud_version; if it reports spawn gcloud ENOENT, use auth-host Google Cloud REST or bootstrap tools."
       security:
         - backendBearerAuth: []
       requestBody:
@@ -132,6 +132,179 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CliResult' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /dependencies:
+    post:
+      x-openai-isConsequential: false
+      tags: [connector]
+      operationId: connectorDependencies
+      summary: Install allowlisted recovery dependencies on the local device
+      description: "Installs only packages from CONNECTOR_DEPENDENCY_ALLOWLIST and only when CONNECTOR_DEPENDENCIES_ENABLED=true. Default recovery packages are gh and googlecloudsdk."
+      security:
+        - backendBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [status, list, install]
+                package_key:
+                  type: string
+                  enum: [gh, googlecloudsdk]
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+                  default: 600000
+      responses:
+        '200':
+          description: Dependency installer result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                properties:
+                  ok: { type: boolean }
+                  dependencies_enabled: { type: boolean }
+                  packages:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+                  install: { $ref: '#/components/schemas/CliResult' }
+                  post_install_check: { $ref: '#/components/schemas/CliResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Dependency installer disabled
+
+  /apps:
+    post:
+      x-openai-isConsequential: false
+      tags: [connector]
+      operationId: connectorApps
+      summary: Classified local app control
+      description: "Classified app control from CONNECTOR_APP_ALLOWLIST when CONNECTOR_APPS_ENABLED=true. Supports status, list, launch, status_app, and close by app_alias with capability/risk metadata."
+      security:
+        - backendBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [status, list, launch, status_app, close]
+                app_alias:
+                  type: string
+                  description: "Allowlisted app alias such as edge, chrome, vscode, or notepad."
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+                  default: 8000
+      responses:
+        '200':
+          description: App control result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                properties:
+                  ok: { type: boolean }
+                  apps:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+                  app_alias: { type: string }
+                  launched: { type: boolean }
+                  running: { type: boolean }
+                  closed: { type: boolean }
+                  classification:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      capability_class: { type: string }
+                      risk_class: { type: string }
+                      execution_surface: { type: string }
+                      requires_allowlist: { type: boolean }
+                      requires_runtime_enablement: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: App control disabled
+
+  /browser:
+    post:
+      x-openai-isConsequential: false
+      tags: [connector]
+      operationId: connectorBrowser
+      summary: Classified local browser control
+      description: "Classified browser control for allowlisted browser aliases. Supports list, open_url, and screenshot with capability/risk metadata. URLs must be absolute http or https."
+      security:
+        - backendBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [list, open_url, screenshot]
+                browser_alias:
+                  type: string
+                  description: "Allowlisted browser alias such as edge or chrome."
+                url:
+                  type: string
+                  description: "Absolute http or https URL for open_url."
+                scale:
+                  type: number
+                  minimum: 0.1
+                  maximum: 1.0
+                  default: 0.5
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 600000
+                  default: 8000
+      responses:
+        '200':
+          description: Browser control result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                properties:
+                  ok: { type: boolean }
+                  browsers:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+                  browser_alias: { type: string }
+                  opened: { type: string }
+                  image_base64: { type: string }
+                  format: { type: string }
+                  classification:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      capability_class: { type: string }
+                      risk_class: { type: string }
+                      execution_surface: { type: string }
+                      allowed_url_schemes:
+                        type: array
+                        items: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Browser control disabled
 
   /shell:
     post:
@@ -305,8 +478,8 @@ paths:
       x-openai-isConsequential: false
       tags: [connector]
       operationId: connectorFiles
-      summary: Read or write allowlisted files on the local device
-      description: "File access restricted to CONNECTOR_FILE_PATHS. action=list without path shows roots; with path lists an allowlisted directory. read/write support allowlisted files and files below allowlisted directories."
+      summary: Discover drives, locate repos, or read/write allowlisted files
+      description: "Restricted to CONNECTOR_FILE_PATHS. list_drives shows device roots and allowlisted roots per drive. locate_repo finds project candidates under allowlisted roots by markers such as .git, AGENTS.md, and openapi.yaml. read/write stay inside allowlisted paths."
       security:
         - backendBearerAuth: []
       requestBody:
@@ -319,19 +492,35 @@ paths:
               properties:
                 action:
                   type: string
-                  enum: [list, read, write]
+                  enum: [list, list_drives, locate_repo, read, write]
                 path:
                   type: string
-                  description: "Absolute file or directory path. Must equal an allowlisted path or stay below an allowlisted directory."
+                  description: "Absolute file or directory path. For list/read/write/locate_repo with path, it must equal an allowlisted path or stay below an allowlisted directory."
                 content:
                   type: string
                   description: "File content for write action."
+                markers:
+                  type: array
+                  items: { type: string }
+                  description: "Repo marker paths for locate_repo. Defaults include .git, AGENTS.md, package.json, and http-generic-api/openapi.yaml."
+                max_depth:
+                  type: integer
+                  minimum: 0
+                  maximum: 8
+                  default: 5
+                  description: "Maximum directory depth for locate_repo."
+                max_matches:
+                  type: integer
+                  minimum: 1
+                  maximum: 50
+                  default: 20
+                  description: "Maximum repo candidates for locate_repo."
                 max_entries:
                   type: integer
                   minimum: 1
                   maximum: 500
                   default: 200
-                  description: "Max directory entries for action=list with path."
+                  description: "Max directory entries for action=list with path or each locate_repo directory scan."
       responses:
         '200':
           description: File operation result
@@ -349,6 +538,29 @@ paths:
                   allowed_paths:
                     type: array
                     items: { type: string }
+                  drives:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      properties:
+                        path: { type: string }
+                        allowed: { type: boolean }
+                        allowed_paths:
+                          type: array
+                          items: { type: string }
+                  candidates:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      properties:
+                        path: { type: string }
+                        root: { type: string }
+                        markers_found:
+                          type: array
+                          items: { type: string }
+                        score: { type: integer }
                   entries:
                     type: array
                     items:
