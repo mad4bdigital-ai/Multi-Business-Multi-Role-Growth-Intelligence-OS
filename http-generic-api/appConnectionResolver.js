@@ -4,6 +4,21 @@
 
 import { getPool } from "./db.js";
 
+function parseJsonArray(value, fallback = []) {
+  if (!value) return fallback;
+  if (Array.isArray(value)) return value;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function isTruthyGrantMode(mode = "") {
+  return ["default_permissive", "auto_approved"].includes(String(mode || "").trim());
+}
+
 /**
  * Returns an array of safe app-connection descriptors for a workspace.
  * Each descriptor lists the app_key, connection metadata, and allowed actions.
@@ -26,12 +41,22 @@ export async function loadWorkspaceAppContext(workspace_key, tenant_id, agent_id
   const workspace_id = wsRows[0]?.workspace_id;
   if (!workspace_id) return { connected_apps: [], workspace_key };
 
-  // 2. Load all active workspace→connection links
+  // 2. Load all active workspace→connection links. Keep this query aligned with
+  // Sprint 25 table schema: app_integrations has `category`, while permission
+  // mode lives on workspace_app_links only after Sprint 53 migration.
   const [linkRows] = await getPool().query(
-    `SELECT wal.link_id, wal.connection_id, wal.permission_mode,
-            uac.app_key, uac.account_label, uac.account_metadata,
-            uac.is_primary, uac.status AS conn_status,
-            ai.display_name AS app_name, ai.auth_type, ai.app_category
+    `SELECT wal.link_id,
+            wal.connection_id,
+            COALESCE(wal.permission_mode, 'strict') AS permission_mode,
+            uac.app_key,
+            uac.account_label,
+            uac.account_metadata,
+            uac.is_primary,
+            uac.status AS conn_status,
+            ai.display_name AS app_name,
+            ai.auth_type,
+            ai.category AS app_category,
+            ai.default_action_grants
      FROM \`workspace_app_links\` wal
      JOIN \`user_app_connections\` uac ON uac.connection_id = wal.connection_id
      JOIN \`app_integrations\`     ai  ON ai.app_key = uac.app_key
@@ -44,38 +69,34 @@ export async function loadWorkspaceAppContext(workspace_key, tenant_id, agent_id
 
   const connectionIds = linkRows.map(r => r.connection_id);
 
-  // 3. Load explicit grants for these connections (strict-mode grants)
+  // 3. Load explicit/default grants for these connections. The live
+  // app_action_grants schema has `grant_mode`, not `auto_approve`.
   const [grantRows] = await getPool().query(
-    `SELECT connection_id, action_key, auto_approve
+    `SELECT connection_id, action_key, grant_mode
      FROM \`app_action_grants\`
      WHERE connection_id IN (${connectionIds.map(() => "?").join(",")})
+       AND status = 'active'
        AND (expires_at IS NULL OR expires_at > NOW())`,
     connectionIds
   ).catch(() => [[]]);
 
-  // 4. Load default_action_grants from the link (permissive-mode)
-  const [linkGrantRows] = await getPool().query(
-    `SELECT connection_id, default_action_grants
-     FROM \`workspace_app_links\`
-     WHERE workspace_id = ? AND status = 'active'`,
-    [workspace_id]
-  ).catch(() => [[]]);
-
-  // Build lookup maps
+  // Build lookup maps.
   const grantMap = {};
   for (const g of grantRows) {
     if (!grantMap[g.connection_id]) grantMap[g.connection_id] = [];
-    grantMap[g.connection_id].push({ action_key: g.action_key, auto_approve: Boolean(g.auto_approve) });
+    grantMap[g.connection_id].push({
+      action_key: g.action_key,
+      auto_approve: isTruthyGrantMode(g.grant_mode),
+      source: g.grant_mode || "grant"
+    });
   }
 
   const defaultGrantMap = {};
-  for (const lg of linkGrantRows) {
-    let defaults = [];
-    try { defaults = JSON.parse(lg.default_action_grants || "[]"); } catch { defaults = []; }
-    defaultGrantMap[lg.connection_id] = defaults;
+  for (const row of linkRows) {
+    defaultGrantMap[row.connection_id] = parseJsonArray(row.default_action_grants);
   }
 
-  // 5. Build safe context entries (no tokens)
+  // 4. Build safe context entries (no tokens).
   const connected_apps = linkRows.map(row => {
     let meta = {};
     try { meta = JSON.parse(row.account_metadata || "{}"); } catch { meta = {}; }
@@ -84,13 +105,25 @@ export async function loadWorkspaceAppContext(workspace_key, tenant_id, agent_id
     const defaultGrants   = defaultGrantMap[row.connection_id] || [];
     const permissionMode  = row.permission_mode || "strict";
 
-    // Merge: explicit grants take precedence; permissive mode also includes defaults
+    // Merge: explicit grants take precedence; permissive mode also includes defaults.
     const allAllowed = new Map();
-    for (const dg of defaultGrants) {
-      allAllowed.set(dg.action_key, { action_key: dg.action_key, source: "default", auto_approve: true });
+    if (permissionMode === "permissive") {
+      for (const dg of defaultGrants) {
+        if (!dg?.action_key) continue;
+        allAllowed.set(dg.action_key, {
+          action_key: dg.action_key,
+          source: "default",
+          auto_approve: Boolean(dg.auto_approve)
+        });
+      }
     }
     for (const eg of explicitGrants) {
-      allAllowed.set(eg.action_key, { action_key: eg.action_key, source: "grant", auto_approve: Boolean(eg.auto_approve) });
+      if (!eg?.action_key) continue;
+      allAllowed.set(eg.action_key, {
+        action_key: eg.action_key,
+        source: eg.source || "grant",
+        auto_approve: Boolean(eg.auto_approve)
+      });
     }
 
     return {
@@ -117,29 +150,37 @@ export async function loadWorkspaceAppContext(workspace_key, tenant_id, agent_id
 export async function checkActionPermission(connection_id, action_key) {
   if (!connection_id || !action_key) return { allowed: false, mode: "denied", auto_approve: false };
 
-  // Check explicit grant first
+  // Check explicit/default grant first.
   const [grantRows] = await getPool().query(
-    `SELECT auto_approve FROM \`app_action_grants\`
-     WHERE connection_id = ? AND action_key = ?
+    `SELECT grant_mode FROM \`app_action_grants\`
+     WHERE connection_id = ? AND action_key = ? AND status = 'active'
        AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1`,
     [connection_id, action_key]
   ).catch(() => [[]]);
 
   if (grantRows[0]) {
-    return { allowed: true, mode: "grant", auto_approve: Boolean(grantRows[0].auto_approve) };
+    const grantMode = grantRows[0].grant_mode || "grant";
+    return {
+      allowed: true,
+      mode: grantMode,
+      auto_approve: isTruthyGrantMode(grantMode)
+    };
   }
 
-  // Check permissive default grants on any workspace link for this connection
+  // Check permissive defaults through the linked workspace + app catalog.
   const [linkRows] = await getPool().query(
-    `SELECT default_action_grants, permission_mode
-     FROM \`workspace_app_links\`
-     WHERE connection_id = ? AND status = 'active' LIMIT 1`,
+    `SELECT COALESCE(wal.permission_mode, 'strict') AS permission_mode,
+            ai.default_action_grants
+     FROM \`workspace_app_links\` wal
+     JOIN \`user_app_connections\` uac ON uac.connection_id = wal.connection_id
+     JOIN \`app_integrations\` ai ON ai.app_key = uac.app_key
+     WHERE wal.connection_id = ? AND wal.status = 'active' AND uac.status = 'active'
+     LIMIT 1`,
     [connection_id]
   ).catch(() => [[]]);
 
   if (linkRows[0]?.permission_mode === "permissive") {
-    let defaults = [];
-    try { defaults = JSON.parse(linkRows[0].default_action_grants || "[]"); } catch { defaults = []; }
+    const defaults = parseJsonArray(linkRows[0].default_action_grants);
     const match = defaults.find(d => d.action_key === action_key);
     if (match) return { allowed: true, mode: "default", auto_approve: Boolean(match.auto_approve) };
   }
