@@ -96,6 +96,35 @@ export function buildConnectorTaxonomyRoutes(deps = {}) {
     }
   });
 
+  router.get("/admin/connector-taxonomy/tool-map", requireBackendApiKey, requireAdmin, async (req, res) => {
+    try {
+      const clauses = [];
+      const params = [];
+      optionalFilter(clauses, params, "app_key", req.query.app_key);
+      optionalFilter(clauses, params, "app_category", req.query.app_category);
+      optionalFilter(clauses, params, "tool_key", req.query.tool_key);
+      optionalFilter(clauses, params, "tool_surface", req.query.tool_surface);
+      optionalFilter(clauses, params, "binding_role", req.query.binding_role);
+      optionalFilter(clauses, params, "credential_source", req.query.credential_source);
+      optionalFilter(clauses, params, "exposure_scope", req.query.exposure_scope);
+      if (String(req.query.only_bound || "").trim() === "true") clauses.push("tool_key IS NOT NULL");
+      if (String(req.query.only_connected || "").trim() === "true") clauses.push("active_user_connections > 0");
+      const limit = clampLimit(req.query.limit, 100, 500);
+      const sql = `SELECT app_key, app_display_name, app_category, app_auth_type, app_status,
+                          tool_key, tool_surface, binding_role, credential_source, exposure_scope,
+                          binding_status, tool_display_name, http_method, http_path, tags,
+                          active_user_connections
+                     FROM v_app_integration_tool_map
+                    ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}
+                    ORDER BY app_key, tool_key
+                    LIMIT ${limit}`;
+      const [rows] = await getPool().query(sql, params);
+      return res.status(200).json({ ok: true, count: rows.length, items: rows });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "connector_taxonomy_tool_map_failed", message: err.message } });
+    }
+  });
+
   router.get("/admin/connector-taxonomy/family-coverage", requireBackendApiKey, requireAdmin, async (req, res) => {
     try {
       const clauses = [];
