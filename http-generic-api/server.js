@@ -1482,7 +1482,27 @@ async function performUniversalServerWriteback(input = {}) {
       assertGovernedSinkSheetsExist,
       toExecutionLogUnifiedRow,
       assertExecutionLogRowIsSpillSafe: assertExecutionLogRowIsSpillSafeCore,
-      writeExecutionLogUnifiedRow: (row) => DATA_SOURCE_MODE === "sql" ? Promise.resolve(null) : writeExecutionLogUnifiedRowCore(
+      writeExecutionLogUnifiedRow: async (row) => {
+        if (DATA_SOURCE_MODE === "sql") {
+          try {
+            const sqlResult = await sqlAdapter.appendRow("Execution Log Unified", row);
+            return {
+              headerSignature: "sql_runtime_authority",
+              expectedHeaderSignature: "sql_runtime_authority",
+              row2Read: false,
+              formulaManagedColumnsProtected: true,
+              preflight: { source: "sql", table: "execution_log" },
+              safeColumns: Object.keys(row || {}),
+              unsafeColumns: [],
+              sql_insert_id: sqlResult?.insertId ?? null,
+              data_source: "sql",
+            };
+          } catch (err) {
+            console.error("[sinkOrchestration] SQL execution_log append failed — fail-open:", err.message);
+            return null;
+          }
+        }
+        return writeExecutionLogUnifiedRowCore(
         row,
         {
           getGoogleClients,
@@ -1506,7 +1526,8 @@ async function performUniversalServerWriteback(input = {}) {
             }
           )
         }
-      ),
+        );
+      },
       writeJsonAssetRegistryRow: (row) => writeJsonAssetRegistryRowCore(
         row,
         {
