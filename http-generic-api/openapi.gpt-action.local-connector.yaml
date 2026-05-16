@@ -306,7 +306,7 @@ paths:
       tags: [connector]
       operationId: connectorFiles
       summary: Read or write allowlisted files on the local device
-      description: "File access restricted to CONNECTOR_FILE_PATHS. action=list shows allowed paths, action=read returns content, action=write overwrites. Use to stage recovery files before pushing via /github."
+      description: "File access restricted to CONNECTOR_FILE_PATHS. action=list without path shows roots; with path lists an allowlisted directory. read/write support allowlisted files and files below allowlisted directories."
       security:
         - backendBearerAuth: []
       requestBody:
@@ -322,10 +322,16 @@ paths:
                   enum: [list, read, write]
                 path:
                   type: string
-                  description: "Absolute file path. Must be in CONNECTOR_FILE_PATHS allowlist."
+                  description: "Absolute file or directory path. Must equal an allowlisted path or stay below an allowlisted directory."
                 content:
                   type: string
                   description: "File content for write action."
+                max_entries:
+                  type: integer
+                  minimum: 1
+                  maximum: 500
+                  default: 200
+                  description: "Max directory entries for action=list with path."
       responses:
         '200':
           description: File operation result
@@ -343,6 +349,18 @@ paths:
                   allowed_paths:
                     type: array
                     items: { type: string }
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      properties:
+                        name: { type: string }
+                        path: { type: string }
+                        type: { type: string, enum: [dir, file] }
+                        size: { type: integer, nullable: true }
+                        modified: { type: string }
+                  count: { type: integer }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403':
           description: Path not in allowlist or files disabled

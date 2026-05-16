@@ -141,7 +141,13 @@ CONNECTOR_FILES_ENABLED=true
 CONNECTOR_FILE_PATHS=C:\path\to\file.txt,C:\another\config.json
 ```
 
-Actions: `list` (returns allowlist), `read` (returns file content), `write` (creates or overwrites).
+Actions:
+- `list` without `path` returns the allowlist.
+- `list` with an allowlisted directory `path` returns directory entries.
+- `read` returns file content.
+- `write` creates or overwrites a file.
+
+When an allowlisted path is a directory, `read` and `write` may target files under that directory.
 
 ---
 

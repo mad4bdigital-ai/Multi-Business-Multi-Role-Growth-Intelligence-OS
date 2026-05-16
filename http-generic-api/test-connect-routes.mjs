@@ -255,6 +255,10 @@ try {
     assert("local connector /shell requires action field",
       Array.isArray(shellCallSchema?.required) && shellCallSchema.required.includes("action"));
 
+    const filesSchema = doc.paths?.["/files"]?.post?.requestBody?.content?.["application/json"]?.schema;
+    assert("local connector /files supports bounded directory listing",
+      Boolean(filesSchema?.properties?.max_entries) && Boolean(doc.paths?.["/files"]?.post?.responses?.["200"]?.content?.["application/json"]?.schema?.properties?.entries));
+
     const uploadPaths = ["/fetch-upload", "/shell-fetch-upload"];
     for (const p of uploadPaths) {
       const s = doc.paths?.[p]?.post?.requestBody?.content?.["application/json"]?.schema;

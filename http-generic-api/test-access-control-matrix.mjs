@@ -2,6 +2,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import { createBackendApiKeyMiddleware } from "./runtimeGuards.js";
 import { requireAdminPrincipal } from "./routes/adminCliRoutes.js";
+import { buildInternalToolDispatchHeaders } from "./routes/gptToolsRoutes.js";
 
 let passed = 0;
 let failed = 0;
@@ -149,6 +150,32 @@ try {
     const result = await request(baseUrl, "POST", "/admin-only", { "x-api-key": "backend-secret" });
     assert("admin route accepts backend x-api-key", result.status === 200);
     assert("admin backend x-api-key stays backend mode", result.body?.auth?.mode === "backend_api_key" && result.body?.auth?.is_admin === true, JSON.stringify(result.body));
+  }
+
+  console.log("\n== internal GPT tool dispatch auth");
+
+  {
+    const headers = buildInternalToolDispatchHeaders(
+      {
+        auth: { mode: "backend_api_key", is_admin: true },
+        headers: { "x-api-key": "backend-secret" },
+        ip: "127.0.0.1",
+      },
+      env
+    );
+    assert("admin internal tool dispatch forwards backend bearer", headers.Authorization === "Bearer backend-secret", JSON.stringify(headers));
+  }
+
+  {
+    const headers = buildInternalToolDispatchHeaders(
+      {
+        auth: { mode: "user_jwt", is_admin: false },
+        headers: { authorization: `Bearer ${userJwt}` },
+        ip: "127.0.0.1",
+      },
+      env
+    );
+    assert("user internal tool dispatch preserves user bearer", headers.Authorization === `Bearer ${userJwt}`, JSON.stringify(headers));
   }
 } finally {
   await new Promise((resolve, reject) => {

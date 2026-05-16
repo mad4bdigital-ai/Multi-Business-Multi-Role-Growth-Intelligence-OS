@@ -75,6 +75,49 @@ const FILE_ALLOWLIST = (process.env.CONNECTOR_FILE_PATHS ?? '')
   .map(p => p.trim())
   .filter(Boolean);
 
+function isSubPath(parent, child) {
+  const relative = path.relative(parent, child);
+  return Boolean(relative) && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
+function isExistingDirectory(candidate) {
+  try {
+    return fs.statSync(candidate).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function resolveAllowedFilePath(inputPath) {
+  const resolved = path.resolve(String(inputPath || ''));
+  const allowedRoots = FILE_ALLOWLIST.map(p => path.resolve(p));
+
+  for (const root of allowedRoots) {
+    if (resolved === root) return { resolved, root };
+    if (isExistingDirectory(root) && isSubPath(root, resolved)) {
+      return { resolved, root };
+    }
+  }
+
+  return null;
+}
+
+function directoryEntries(dirPath, maxEntries = 200) {
+  const limit = Math.min(Math.max(parseInt(maxEntries, 10) || 200, 1), 500);
+  const children = fs.readdirSync(dirPath, { withFileTypes: true }).slice(0, limit);
+  return children.map((entry) => {
+    const fullPath = path.join(dirPath, entry.name);
+    const stat = fs.statSync(fullPath);
+    return {
+      name: entry.name,
+      path: fullPath,
+      type: entry.isDirectory() ? 'dir' : 'file',
+      size: entry.isFile() ? stat.size : null,
+      modified: stat.mtime.toISOString(),
+    };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Minimal HTTP framework (no Express dependency)
 // Uses Node's built-in http module + manual routing
@@ -471,23 +514,52 @@ async function handleFiles(req, res) {
   let body;
   try { body = await readBody(req); } catch { return err(res, 400, 'BAD_BODY', 'Invalid JSON'); }
 
-  const { action, path: filePath, content } = body;
+  const { action, path: filePath, content, max_entries } = body;
 
   if (action === 'list') {
-    audit(req, { action: 'files:list' });
-    return ok(res, { allowed_paths: FILE_ALLOWLIST });
+    if (!filePath) {
+      audit(req, { action: 'files:list_roots' });
+      return ok(res, { allowed_paths: FILE_ALLOWLIST });
+    }
+
+    const allowed = resolveAllowedFilePath(filePath);
+    if (!allowed) {
+      return err(res, 403, 'PATH_NOT_ALLOWED', 'Path is not in the allowed list');
+    }
+
+    audit(req, { action: 'files:list', path: allowed.resolved });
+    try {
+      const stat = fs.statSync(allowed.resolved);
+      if (!stat.isDirectory()) {
+        return err(res, 400, 'NOT_DIRECTORY', 'path must be an allowed directory for action=list');
+      }
+      const entries = directoryEntries(allowed.resolved, max_entries);
+      return ok(res, {
+        path: allowed.resolved,
+        root: allowed.root,
+        entries,
+        count: entries.length,
+        allowed_paths: FILE_ALLOWLIST,
+      });
+    } catch (e) {
+      return err(res, 500, 'LIST_ERROR', e.message);
+    }
   }
 
   if (action === 'read') {
     if (!filePath) return err(res, 400, 'MISSING_PATH', 'path is required for action=read');
-    const resolved = path.resolve(filePath);
-    if (!FILE_ALLOWLIST.map(p => path.resolve(p)).includes(resolved)) {
+    const allowed = resolveAllowedFilePath(filePath);
+    if (!allowed) {
       return err(res, 403, 'PATH_NOT_ALLOWED', 'Path is not in the allowed list');
     }
-    audit(req, { action: 'files:read', path: resolved });
+    audit(req, { action: 'files:read', path: allowed.resolved });
     try {
-      const data = fs.readFileSync(resolved, 'utf8');
-      return ok(res, { path: resolved, content: data, size: Buffer.byteLength(data) });
+      const stat = fs.statSync(allowed.resolved);
+      if (!stat.isFile()) {
+        return err(res, 400, 'NOT_FILE', 'path must be an allowed file for action=read');
+      }
+      const data = fs.readFileSync(allowed.resolved, 'utf8');
+      return ok(res, { path: allowed.resolved, root: allowed.root, content: data, size: Buffer.byteLength(data) });
     } catch (e) {
       return err(res, 500, 'READ_ERROR', e.message);
     }
@@ -496,15 +568,15 @@ async function handleFiles(req, res) {
   if (action === 'write') {
     if (!filePath) return err(res, 400, 'MISSING_PATH', 'path is required for action=write');
     if (content === undefined || content === null) return err(res, 400, 'MISSING_CONTENT', 'content is required for action=write');
-    const resolved = path.resolve(filePath);
-    if (!FILE_ALLOWLIST.map(p => path.resolve(p)).includes(resolved)) {
+    const allowed = resolveAllowedFilePath(filePath);
+    if (!allowed) {
       return err(res, 403, 'PATH_NOT_ALLOWED', 'Path is not in the allowed list');
     }
-    audit(req, { action: 'files:write', path: resolved, bytes: Buffer.byteLength(String(content)) });
+    audit(req, { action: 'files:write', path: allowed.resolved, bytes: Buffer.byteLength(String(content)) });
     try {
-      fs.mkdirSync(path.dirname(resolved), { recursive: true });
-      fs.writeFileSync(resolved, String(content), 'utf8');
-      return ok(res, { path: resolved, bytes_written: Buffer.byteLength(String(content)) });
+      fs.mkdirSync(path.dirname(allowed.resolved), { recursive: true });
+      fs.writeFileSync(allowed.resolved, String(content), 'utf8');
+      return ok(res, { path: allowed.resolved, root: allowed.root, bytes_written: Buffer.byteLength(String(content)) });
     } catch (e) {
       return err(res, 500, 'WRITE_ERROR', e.message);
     }
@@ -879,4 +951,3 @@ server.listen(PORT, '127.0.0.1', () => {
   console.log(`[connector] PowerShell enabled: ${PS_ENABLED}, Win control: ${WIN_ENABLED}`);
   console.log(`[connector] n8n enabled: ${N8N_ENABLED} (${N8N_BASE}), CF enabled: ${CF_ENABLED}`);
 });
-

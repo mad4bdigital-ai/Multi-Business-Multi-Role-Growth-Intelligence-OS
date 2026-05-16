@@ -250,6 +250,21 @@ async function dispatchTool(callerType, toolKey, args, req) {
   return result;
 }
 
+export function buildInternalToolDispatchHeaders(req, env = process.env) {
+  const headers = {
+    "Content-Type": "application/json",
+    "X-Forwarded-For": req?.ip || "",
+  };
+
+  if ((req?.auth?.mode === "backend_api_key" || req?.auth?.is_admin === true) && env.BACKEND_API_KEY) {
+    headers.Authorization = `Bearer ${env.BACKEND_API_KEY}`;
+    return headers;
+  }
+
+  headers.Authorization = req?.headers?.authorization || "";
+  return headers;
+}
+
 async function dispatchToolImpl(callerType, toolKey, args, req) {
   if (callerType === "admin" && toolKey === "repo_inspect") {
     return { status: 200, body: { ok: true, name: toolKey, result: await inspectRepoReadOnly(args) } };
@@ -302,11 +317,7 @@ async function dispatchToolImpl(callerType, toolKey, args, req) {
 
   const fetchOpts = {
     method: httpMethod,
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": req.headers.authorization || "",
-      "X-Forwarded-For": req.ip || "",
-    },
+    headers: buildInternalToolDispatchHeaders(req),
     signal: AbortSignal.timeout(300_000),
   };
 
