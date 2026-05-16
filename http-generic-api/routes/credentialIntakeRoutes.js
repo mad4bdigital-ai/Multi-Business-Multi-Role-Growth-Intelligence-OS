@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { randomUUID, createHash } from "node:crypto";
+import { randomUUID, createHash, randomBytes } from "node:crypto";
 import { getPool } from "../db.js";
 import { encryptCredentials } from "../tokenEncryption.js";
 import { writeAuditLogAsync } from "../auditLogger.js";
