@@ -294,11 +294,25 @@ function normalizePlatformEndpointInputSchema(schemaJson) {
 
 async function listPlatformEndpointToolsForPrincipal(auth, existingNames = new Set()) {
   try {
-    const viewName = platformEndpointToolViewForPrincipal(auth);
+    const scopeClasses = platformEndpointToolScopeClassesForPrincipal(auth);
+    const tenantClause = platformEndpointToolTenantClauseForPrincipal(auth, "x");
     const [rows] = await getPool().query(
-      `SELECT tool_name, parent_action_key, endpoint_key, scope_class, input_schema_json
-         FROM ${viewName}
-        ORDER BY tool_name`
+      `SELECT x.tool_name,
+              x.parent_action_key,
+              x.endpoint_key,
+              x.scope_class,
+              x.input_schema_json,
+              e.method
+         FROM platform_endpoint_tool_exports x
+         LEFT JOIN endpoints e
+           ON e.parent_action_key = x.parent_action_key
+          AND e.endpoint_key = x.endpoint_key
+          AND e.status = 'active'
+        WHERE x.status = 'active'
+          AND x.scope_class IN (?, ?)
+          ${tenantClause.sql}
+        ORDER BY x.tool_name`,
+      [...scopeClasses, ...tenantClause.params]
     );
 
     return rows
@@ -314,7 +328,8 @@ async function listPlatformEndpointToolsForPrincipal(auth, existingNames = new S
           source: "platform_endpoint_tool_exports",
         },
       }));
-  } catch {
+  } catch (err) {
+    console.error("[systemLayerTools] Failed to list platform endpoint exports:", err?.message || err);
     return [];
   }
 }
