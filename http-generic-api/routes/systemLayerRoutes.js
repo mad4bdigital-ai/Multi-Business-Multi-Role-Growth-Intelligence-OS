@@ -57,19 +57,19 @@ const SYSTEM_LAYER_TOOLS = [
   },
   {
     name: "activation_drive_probe",
-    description: "Admin-only Google Drive bootstrap transport probe for hard activation evidence.",
+    description: "Admin-only Drive provider-connectivity diagnostic. Proves Google auth and Drive API are reachable; does NOT load registry data — SQL is the runtime authority. Use for same-cycle activation evidence or break-glass recovery.",
     requires_admin: true,
     inputSchema: { type: "object", properties: {}, required: [] },
   },
   {
     name: "activation_sheets_bootstrap_read",
-    description: "Admin-only Sheets bootstrap workbook and Activation Bootstrap Config row read.",
+    description: "Admin-only Sheets-mirror parity check that reads the Activation Bootstrap Config row from the legacy workbook. Use to compare against /activation/bootstrap-config (the SQL authority) during recovery or migration verification. Sheets is an async mirror, not the runtime registry.",
     requires_admin: true,
     inputSchema: { type: "object", properties: {}, required: [] },
   },
   {
     name: "activation_github_validate",
-    description: "Admin-only GitHub validation using bootstrap-resolved repository binding.",
+    description: "Admin-only GitHub validation using bootstrap-resolved repository binding (read from SQL via /activation/bootstrap-config).",
     requires_admin: true,
     inputSchema: {
       type: "object",
@@ -83,7 +83,7 @@ const SYSTEM_LAYER_TOOLS = [
   },
   {
     name: "activation_provider_bootstrap_validate",
-    description: "Admin-only same-cycle Drive, Sheets bootstrap, and GitHub activation validation chain.",
+    description: "Admin-only same-cycle Drive, Sheets mirror, and GitHub provider-connectivity validation chain. Proves all three providers are reachable; does NOT replace /activation/bootstrap-config (SQL runtime authority). Use for hard activation evidence.",
     requires_admin: true,
     inputSchema: { type: "object", properties: {}, required: [] },
   },
