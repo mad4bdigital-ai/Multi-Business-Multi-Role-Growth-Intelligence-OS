@@ -566,6 +566,12 @@ function buildConnectorEnv({ connectorSecret, aliases, port }) {
     "CONNECTOR_SHELL_ENABLED=true",
     "CONNECTOR_FILES_ENABLED=false",
     "CONNECTOR_FETCH_UPLOAD_ENABLED=true",
+    "CONNECTOR_N8N_ENABLED=true",
+    "N8N_COMMAND=D:\\npm-global\\n8n.cmd",
+    "N8N_USER_FOLDER=D:\\n8n-data",
+    "N8N_PORT=5678",
+    "N8N_LISTEN_ADDRESS=127.0.0.1",
+    "N8N_PUBLIC_URL=https://n8n.mad4b.com/",
     `CONNECTOR_SHELL_ALLOWLIST=${allowlistVal}`,
   ].join("\r\n");
 }
