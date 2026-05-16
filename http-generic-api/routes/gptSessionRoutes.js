@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
 import { getPool } from "../db.js";
 import { exportSessionToDrive } from "../sessionExportPipeline.js";
 import { closeGptSessionArchive, recordGptSessionTurn } from "../sessionArchiveService.js";
@@ -95,8 +96,20 @@ export function buildGptSessionRoutes(deps) {
 
       if (summary) {
         await pool.query(
-          "INSERT INTO `session_summaries` (session_id, summary_text, created_at) VALUES (?, ?, NOW())",
-          [session.session_id, summary]
+          `INSERT INTO \`session_summaries\`
+             (summary_id, session_id, tenant_id, user_id, workspace_key,
+              summary_text, session_model, turn_count, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+          [
+            randomUUID(),
+            session.session_id,
+            session.tenant_id,
+            session.user_id || null,
+            session.workspace_key || null,
+            summary,
+            session.model_name || null,
+            session.turn_count || null,
+          ]
         );
       }
 
