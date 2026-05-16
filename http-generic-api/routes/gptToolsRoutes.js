@@ -6,6 +6,11 @@ import { getGitHubAppInstallationToken } from "../githubAppAuth.js";
 import { resolveActivationBootstrapConfig } from "../activationBootstrapConfig.js";
 import { writeAuditLogAsync } from "../auditLogger.js";
 import { recordGptSessionTurn } from "../sessionArchiveService.js";
+import {
+  findActiveGrantForTool,
+  validateArgsAgainstGrant,
+  recordGrantUse,
+} from "../scopeGrantsService.js";
 
 const PLATFORM_TENANT_ID = "00000000-0000-0000-0000-000000000000";
 const SENSITIVE_ARG_SUBSTRINGS = [
@@ -282,7 +287,41 @@ async function dispatchToolImpl(callerType, toolKey, args, req) {
     }
   }
 
-  const table = TOOLS_TABLE[callerType] || TOOLS_TABLE.tenant;
+  let effectiveCallerType = callerType;
+  let grantContext = null;
+
+  if (callerType === "tenant") {
+    const [tenantRowExists] = await getPool().query(
+      `SELECT 1 FROM \`${TOOLS_TABLE.tenant}\` WHERE tool_key = ? AND is_enabled = 1 LIMIT 1`,
+      [toolKey]
+    );
+    if (!tenantRowExists.length) {
+      const tenantId = req?.auth?.tenant_id || null;
+      const userId = req?.auth?.user_id || null;
+      const grant = tenantId && userId ? await findActiveGrantForTool(tenantId, userId, toolKey) : null;
+      if (grant) {
+        const check = validateArgsAgainstGrant(grant, args);
+        if (!check.ok) {
+          return {
+            status: 403,
+            body: {
+              ok: false,
+              error: {
+                code: check.reason || "grant_arg_violation",
+                message: check.message || `Grant ${grant.grant_id} does not authorise these args.`,
+                details: check.details || null,
+              },
+              grant_id: grant.grant_id,
+            },
+          };
+        }
+        effectiveCallerType = "admin";
+        grantContext = grant;
+      }
+    }
+  }
+
+  const table = TOOLS_TABLE[effectiveCallerType] || TOOLS_TABLE.tenant;
   const [rows] = await getPool().query(
     `SELECT http_method, http_path, path_param_keys, fixed_body
      FROM \`${table}\`
@@ -337,7 +376,27 @@ async function dispatchToolImpl(callerType, toolKey, args, req) {
 
   const response = await fetch(url, fetchOpts);
   const body = await response.json().catch(() => ({}));
-  return { status: response.status, body };
+
+  if (grantContext) {
+    await recordGrantUse(grantContext.grant_id);
+    writeAuditLogAsync({
+      tenant_id: grantContext.tenant_id,
+      actor_id: req?.auth?.user_id || null,
+      actor_type: req?.auth?.mode || "user_jwt",
+      action: "admin_scope_grant_dispatch",
+      resource_type: "admin_scope_grant",
+      resource_id: grantContext.grant_id,
+      after_json: {
+        source_tool_key: toolKey,
+        upstream_status: response.status,
+        upstream_ok: body?.ok !== false,
+      },
+      ip_address: req?.ip || null,
+      user_agent: req?.headers?.["user-agent"] || null,
+    });
+  }
+
+  return { status: response.status, body, grant_id: grantContext?.grant_id };
 }
 
 function repoInspectRoot() {

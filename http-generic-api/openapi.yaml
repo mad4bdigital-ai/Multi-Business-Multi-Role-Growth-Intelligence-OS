@@ -4032,6 +4032,157 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "500": { description: Cloudflare API call failure, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
 
+  /admin/scope-grants:
+    post:
+      tags: [admin-control]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
+      operationId: createAdminScopeGrant
+      summary: Issue a scope grant lending a tenant user a normally admin-only DB tool
+      description: "Records a time-bounded scope grant in admin_scope_grants. When the named tenant user calls /gpt/tools/call with source_tool_key, the dispatcher consults this row before returning tool_not_found, validates args against allowed_actions and allowed_args, and dispatches the admin tool. Every dispatch is written to audit_log with grant_id as resource_id."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, user_id, source_tool_key]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                user_id: { type: string, format: uuid }
+                source_tool_key:
+                  type: string
+                  description: "tool_key from admin_platform_endpoint_tools to lend, e.g. connector_ps or admin_control."
+                allowed_actions:
+                  type: array
+                  items: { type: string }
+                  description: "Optional whitelist of action enum values inside the called tool. Omit or pass empty array to allow all actions defined in the tool input schema."
+                allowed_args:
+                  type: object
+                  additionalProperties: true
+                  description: "Optional pinned arg constraints. Scalar values pin exact match; array values whitelist any of the listed values."
+                reason: { type: string }
+                expires_at:
+                  type: string
+                  format: date-time
+                  description: "Optional grant expiry. Grants with no expires_at remain active until revoked."
+      responses:
+        "201":
+          description: Scope grant created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [ok, grant]
+                properties:
+                  ok: { type: boolean }
+                  grant:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      grant_id: { type: string, format: uuid }
+                      tenant_id: { type: string, format: uuid }
+                      user_id: { type: string, format: uuid }
+                      source_tool_key: { type: string }
+                      allowed_actions: { type: array, items: { type: string } }
+                      allowed_args: { type: object, additionalProperties: true }
+                      reason: { type: string }
+                      granted_by: { type: string }
+                      expires_at: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { description: source_tool_key not found in admin_platform_endpoint_tools, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+    get:
+      tags: [admin-control]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
+      operationId: listAdminScopeGrants
+      summary: List admin scope grants with optional filters
+      description: "Lists rows from admin_scope_grants. By default returns only active grants. Use active_only=false to include revoked or expired rows."
+      parameters:
+        - { name: tenant_id, in: query, schema: { type: string } }
+        - { name: user_id, in: query, schema: { type: string } }
+        - { name: source_tool_key, in: query, schema: { type: string } }
+        - { name: active_only, in: query, schema: { type: boolean, default: true } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses:
+        "200":
+          description: Scope grant list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [ok, grants, count]
+                properties:
+                  ok: { type: boolean }
+                  count: { type: integer }
+                  grants:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /admin/scope-grants/{grant_id}:
+    delete:
+      tags: [admin-control]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
+      operationId: revokeAdminScopeGrant
+      summary: Revoke an active scope grant
+      description: "Sets revoked_at and revoked_by on admin_scope_grants. The row is not deleted so audit history stays intact. Subsequent dispatches matching this grant will fall back to tool_not_found."
+      parameters:
+        - { name: grant_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        "200":
+          description: Scope grant revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [ok, grant_id]
+                properties:
+                  ok: { type: boolean }
+                  grant_id: { type: string }
+                  revoked_at: { type: string, format: date-time }
+                  revoked_by: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { description: Grant not found, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "409": { description: Grant already revoked, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+
+  /me/scope-grants:
+    get:
+      tags: [identity]
+      security: [backendBearerAuth: [], backendApiKeyAuth: []]
+      operationId: listMyScopeGrants
+      summary: List scope grants issued to the signed-in user
+      description: "Returns admin_scope_grants rows where tenant_id and user_id match the signed-in principal. Active grants only by default. Requires user JWT or api_credential auth; admin BACKEND_API_KEY callers get 400 because the route is per-user."
+      parameters:
+        - { name: active_only, in: query, schema: { type: boolean, default: true } }
+      responses:
+        "200":
+          description: Self scope grant list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [ok, grants, count]
+                properties:
+                  ok: { type: boolean }
+                  count: { type: integer }
+                  grants:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+        "400": { description: Token missing tenant_id or user_id, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /admin/cli/local-connector/install-bundle:
     get:
       tags: [admin-control]

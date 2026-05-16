@@ -288,6 +288,59 @@ section("DB tool registry fixtures");
     !migration.includes('"minimum":25,"maximum":200') && !seed.includes('"minimum":25,"maximum":200'));
 }
 
+section("Sprint 55: admin scope-sharing controller");
+{
+  const migrationPath = resolve(__dirname, "migrations/060_sprint55_admin_scope_grants.sql");
+  assert("migration 060 exists", existsSync(migrationPath));
+  const migration060 = readFileSync(migrationPath, "utf8");
+  const seed = readFileSync(resolve(__dirname, "seed-tool-registry.ps1"), "utf8");
+  const parentSchema = readFileSync(resolve(__dirname, "openapi.yaml"), "utf8");
+
+  assert("migration 060 creates admin_scope_grants table",
+    migration060.includes("CREATE TABLE IF NOT EXISTS `admin_scope_grants`"));
+  assert("admin_scope_grants table has audit-friendly columns",
+    migration060.includes("`granted_by`") && migration060.includes("`revoked_at`") &&
+    migration060.includes("`use_count`") && migration060.includes("`last_used_at`"));
+  for (const toolKey of ["admin_scope_grant_create", "admin_scope_grant_list", "admin_scope_grant_revoke"]) {
+    assert(`migration 060 registers admin tool ${toolKey}`, migration060.includes(`'${toolKey}'`));
+    assert(`seed registers admin tool ${toolKey}`, seed.includes(`'${toolKey}'`));
+  }
+  assert("migration 060 registers tenant tool me_scope_grants_list",
+    migration060.includes("'me_scope_grants_list'"));
+  assert("seed registers tenant tool me_scope_grants_list",
+    seed.includes("'me_scope_grants_list'"));
+
+  assert("parent OpenAPI exposes /admin/scope-grants",
+    parentSchema.includes("/admin/scope-grants:") && parentSchema.includes("createAdminScopeGrant") && parentSchema.includes("listAdminScopeGrants"));
+  assert("parent OpenAPI exposes /admin/scope-grants/{grant_id} DELETE",
+    parentSchema.includes("/admin/scope-grants/{grant_id}:") && parentSchema.includes("revokeAdminScopeGrant"));
+  assert("parent OpenAPI exposes /me/scope-grants",
+    parentSchema.includes("/me/scope-grants:") && parentSchema.includes("listMyScopeGrants"));
+
+  const service = readFileSync(resolve(__dirname, "scopeGrantsService.js"), "utf8");
+  assert("scopeGrantsService exports the dispatcher integration surface",
+    service.includes("export async function findActiveGrantForTool") &&
+    service.includes("export function validateArgsAgainstGrant") &&
+    service.includes("export async function recordGrantUse"));
+  assert("scopeGrantsService enforces revoked_at IS NULL AND expires_at gate",
+    service.includes("revoked_at IS NULL") && service.includes("expires_at IS NULL OR expires_at > NOW()"));
+
+  const dispatcher = readFileSync(resolve(__dirname, "routes/gptToolsRoutes.js"), "utf8");
+  assert("dispatcher consults findActiveGrantForTool when tenant tool is missing",
+    dispatcher.includes("findActiveGrantForTool") &&
+    dispatcher.includes("validateArgsAgainstGrant") &&
+    dispatcher.includes("recordGrantUse"));
+  assert("dispatcher emits audit_log entry on grant dispatch",
+    dispatcher.includes("admin_scope_grant_dispatch"));
+
+  const routesFile = readFileSync(resolve(__dirname, "routes/adminScopeGrantsRoutes.js"), "utf8");
+  assert("admin scope-grant routes are guarded by admin-only middleware",
+    routesFile.includes("requireAdminPrincipal") && routesFile.includes("adminOnly"));
+  assert("admin scope-grant routes never expose /me/scope-grants under admin-only guard",
+    routesFile.includes('router.get("/me/scope-grants"') &&
+    /router\.get\("\/me\/scope-grants",[^)]*userScopeOnly/.test(routesFile));
+}
+
 console.log(`\nResults: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
 console.log("ALL CUSTOM GPT SCHEMA TESTS PASS");
