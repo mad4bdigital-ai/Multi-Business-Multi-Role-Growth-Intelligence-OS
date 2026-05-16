@@ -94,7 +94,7 @@ async function createArchiveFiles(session, deps) {
   ].join("\n");
 
   const transcript = await deps.createGoogleDocInDrive("Session Transcript", parentId, heading);
-  const jsonl = await deps.uploadContentToDrive("", "Tool Calls.jsonl", "application/jsonl", null, parentId);
+  const jsonl = await deps.uploadContentToDrive("", "Tool_Calls.jsonl", "application/x-ndjson", null, parentId);
 
   return {
     drive_folder_id: parentId,
@@ -152,15 +152,47 @@ async function appendJsonlLine(archive, line, deps) {
   if (!archive?.drive_jsonl_id) return;
   const current = await deps.fetchDriveContent(archive.drive_jsonl_id).catch(() => "");
   const next = `${String(current || "").replace(/\s*$/, "")}${current ? "\n" : ""}${line}\n`;
-  await deps.updateDriveFileContent(archive.drive_jsonl_id, next, "application/jsonl");
+  await deps.updateDriveFileContent(archive.drive_jsonl_id, next, "application/x-ndjson");
 }
 
-function buildTranscriptSection({ role, content, turnIndex, timestamp }) {
+function buildRuntimeEvent({
+  eventId,
+  sessionId,
+  turnId,
+  turnIndex,
+  role,
+  actionKey,
+  contentHash,
+  content,
+  timestamp,
+  includeContent = false,
+}) {
+  return {
+    event_id: eventId,
+    session_id: sessionId,
+    turn_id: turnId,
+    turn_index: turnIndex,
+    event_type: role,
+    role,
+    action_key: actionKey,
+    content_sha256: contentHash,
+    ...(includeContent ? { content } : {}),
+    created_at: timestamp,
+  };
+}
+
+function buildTranscriptSection({ role, content, turnIndex, timestamp, runtimeEvent }) {
   return [
     "",
     `## Turn ${turnIndex} - ${String(role).toUpperCase()} - ${timestamp}`,
     "",
     String(content || ""),
+    "",
+    "### Runtime Event",
+    "",
+    "```json",
+    JSON.stringify(runtimeEvent, null, 2),
+    "```",
     "",
   ].join("\n");
 }
@@ -181,6 +213,30 @@ export async function recordGptSessionTurn({
   const contentHash = sha256(content);
   const contentPreview = previewText(content);
   const driveAnchor = `turn-${turnIndex}`;
+  const docRuntimeEvent = buildRuntimeEvent({
+    eventId,
+    sessionId: session.session_id,
+    turnId,
+    turnIndex,
+    role,
+    actionKey: action_key,
+    contentHash,
+    content,
+    timestamp,
+    includeContent: false,
+  });
+  const jsonlRuntimeEvent = buildRuntimeEvent({
+    eventId,
+    sessionId: session.session_id,
+    turnId,
+    turnIndex,
+    role,
+    actionKey: action_key,
+    contentHash,
+    content,
+    timestamp,
+    includeContent: true,
+  });
   let archiveResult = { configured: false, archive: null };
   let archiveError = null;
 
@@ -189,22 +245,11 @@ export async function recordGptSessionTurn({
     if (archiveResult.configured) {
       await deps.appendTextToGoogleDoc(
         archiveResult.archive.drive_doc_id,
-        buildTranscriptSection({ role, content, turnIndex, timestamp })
+        buildTranscriptSection({ role, content, turnIndex, timestamp, runtimeEvent: docRuntimeEvent })
       );
       await appendJsonlLine(
         archiveResult.archive,
-        JSON.stringify({
-          event_id: eventId,
-          session_id: session.session_id,
-          turn_id: turnId,
-          turn_index: turnIndex,
-          event_type: role,
-          role,
-          action_key,
-          content_sha256: contentHash,
-          content,
-          created_at: timestamp,
-        }),
+        JSON.stringify(jsonlRuntimeEvent),
         deps
       );
     }

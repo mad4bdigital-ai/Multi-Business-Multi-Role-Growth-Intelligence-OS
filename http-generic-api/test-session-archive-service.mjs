@@ -101,7 +101,11 @@ function flattenParams(value) {
   assert.equal(result.archive_status, "ready");
   assert.equal(result.drive_doc_id, "doc-1");
   assert(driveWrites.docText.includes(fullContent), "full content should be written to Drive doc");
+  assert(driveWrites.docText.includes("### Runtime Event"), "Drive doc should include runtime event metadata");
+  assert(driveWrites.docText.includes('"action_key": "example_action"'), "Drive doc should include action metadata");
+  assert(!driveWrites.docText.includes(`"content": "${fullContent}`), "Drive doc metadata should not duplicate full content JSON");
   assert(driveWrites.jsonl.includes(fullContent), "full content should be written to Drive JSONL");
+  assert.equal(JSON.parse(driveWrites.jsonl.trim()).content, fullContent, "JSONL should remain parseable full-fidelity content");
 
   const sqlParamStrings = pool.calls.flatMap((call) => flattenParams(call.params)).filter((value) => typeof value === "string");
   assert(!sqlParamStrings.includes(fullContent), "SQL params must not contain the full turn content");
