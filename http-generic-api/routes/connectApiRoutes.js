@@ -43,7 +43,7 @@ export function buildConnectApiRoutes(deps = {}) {
   const encrypt = deps.encryptCredentials || encryptCredentials;
   const fetchImpl = deps.fetchImpl || globalThis.fetch;
 
-  router.use(requireUserJwt);
+  router.use("/connect/api", requireUserJwt);
 
   // GET /connect/api/app-integrations — discover apps the user can connect.
   router.get("/connect/api/app-integrations", async (_req, res, next) => {

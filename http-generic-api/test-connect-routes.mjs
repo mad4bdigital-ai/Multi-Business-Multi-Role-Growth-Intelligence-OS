@@ -11,6 +11,7 @@ import express from "express";
 import { readFileSync } from "node:fs";
 import yaml from "js-yaml";
 import { buildConnectRoutes, _testingSanitizeMetadataPayload, _testingAllowlists } from "./routes/connectRoutes.js";
+import { buildConnectApiRoutes } from "./routes/connectApiRoutes.js";
 import { buildOnboardingRoutes } from "./routes/onboardingRoutes.js";
 
 const TENANT_SCOPE_LINKS = [
@@ -203,6 +204,29 @@ try {
   }
 } finally {
   server.close();
+}
+
+section("connect api auth scope");
+
+{
+  const scopedApp = express();
+  scopedApp.use(express.json());
+  scopedApp.use(buildConnectApiRoutes());
+  scopedApp.get("/gpt/tools", (_req, res) => res.json({ ok: true, reached: "gpt-tools" }));
+  const scoped = await startServer(scopedApp);
+  try {
+    const connectResponse = await fetch(`${scoped.baseUrl}/connect/api/app-integrations`);
+    const connectBody = await readJson(connectResponse);
+    assert("connect api still requires user JWT", connectResponse.status === 401, JSON.stringify(connectBody));
+    assert("connect api missing JWT code is stable", connectBody?.error?.code === "user_jwt_required", JSON.stringify(connectBody));
+
+    const toolsResponse = await fetch(`${scoped.baseUrl}/gpt/tools`);
+    const toolsBody = await readJson(toolsResponse);
+    assert("connect api middleware does not shadow GPT tools", toolsResponse.status === 200, JSON.stringify(toolsBody));
+    assert("GPT tools fallthrough reaches next router", toolsBody?.reached === "gpt-tools", JSON.stringify(toolsBody));
+  } finally {
+    scoped.server.close();
+  }
 }
 
   section("local connector GPT action schema");
