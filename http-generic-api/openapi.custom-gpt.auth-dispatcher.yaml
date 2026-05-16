@@ -2594,3 +2594,127 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /device/tools:
+    get:
+      tags:
+        - admin-control
+      security:
+        - backendBearerAuth: []
+      operationId: listDeviceTools
+      summary: List device-tagged tools (MCP-style local device control surface)
+      description: Returns the device-tagged subset of admin_platform_endpoint_tools. Use this MCP-style facade for local device apps like n8n, browser, files, and Windows control instead of the direct connector.mad4b.com schema.
+      responses:
+        '200':
+          description: Device tool catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required:
+                  - ok
+                  - tools
+                properties:
+                  ok:
+                    type: boolean
+                  protocol:
+                    type: string
+                    example: openapi-mcp-facade
+                  surface:
+                    type: string
+                    example: device
+                  caller_type:
+                    type: string
+                  count:
+                    type: integer
+                  tools:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      properties:
+                        name:
+                          type: string
+                        displayName:
+                          type: string
+                        description:
+                          type: string
+                        method:
+                          type: string
+                        path:
+                          type: string
+                        tags:
+                          type: array
+                          items:
+                            type: string
+                        inputSchema:
+                          type: object
+                          additionalProperties: true
+                          properties: {}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: Device tool list failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /device/tools/call:
+    post:
+      tags:
+        - admin-control
+      security:
+        - backendBearerAuth: []
+      operationId: callDeviceTool
+      x-openai-isConsequential: false
+      summary: Execute a device-tagged tool by name (MCP-style dispatch)
+      description: Dispatches a device-tagged tool through the auth.mad4b.com facade. Rejects tool keys not tagged 'device' with 403 tool_not_in_device_surface. Reuses the gpt/tools dispatcher so audit, scope-grant resolution, and grant_dispatch logging still apply.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Device tool key from listDeviceTools, e.g. connector_n8n, connector_browser, connector_win, connector_files.
+                tool_args:
+                  type: object
+                  additionalProperties: true
+                  description: Arguments matching the device tool inputSchema.
+                  properties: {}
+      responses:
+        '200':
+          description: Upstream device tool response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                properties: {}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Tool exists but is not in the device-tools surface
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Tool not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Device tool call failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

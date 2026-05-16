@@ -196,6 +196,18 @@ function parseJson(value) {
   try { return JSON.parse(value); } catch { return null; }
 }
 
+export function resolveCallerTypeForRequest(req) {
+  return resolveCallerType(req);
+}
+
+export async function fetchToolsForCaller(callerType) {
+  return fetchTools(callerType);
+}
+
+export async function dispatchToolForCaller(callerType, toolKey, args, req) {
+  return dispatchTool(callerType, toolKey, args, req);
+}
+
 async function fetchTools(callerType) {
   const table = TOOLS_TABLE[callerType] || TOOLS_TABLE.tenant;
   const [rows] = await getPool().query(

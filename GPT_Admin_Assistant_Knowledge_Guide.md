@@ -15,8 +15,8 @@ Use this guide together with:
 1. `Top Level Instructions.md`
 2. `AI_Agent_Knowledge_Guide.md`
 3. `http-generic-api/openapi.yaml`
-4. `http-generic-api/openapi.custom-gpt.auth-dispatcher.yaml` (platform connector — 19 ops, generated from `openapi.yaml`)
-5. `http-generic-api/openapi.gpt-action.local-connector.yaml` (local connector — 11 ops, hand-maintained)
+4. `http-generic-api/openapi.custom-gpt.auth-dispatcher.yaml` (platform connector — 22 ops, generated from `openapi.yaml`; includes the device-tools MCP facade)
+5. `http-generic-api/openapi.gpt-action.local-connector.yaml` (local connector — 14 ops, hand-maintained, break-glass only)
 
 ## GPT Action Auth
 
@@ -613,6 +613,30 @@ After hard activation, report:
 - Suggested entry points
 
 Keep reports compact and evidence-based. Do not treat narrative confidence as activation evidence.
+
+## Device-Tools MCP Facade (auth.mad4b.com is the primary control surface)
+
+Local device control runs primarily through `auth.mad4b.com`, not through the direct `connector.mad4b.com` schema. Two new operations in the auth-dispatcher schema expose the device-tagged subset of the tool registry as an MCP-style facade:
+
+- `listDeviceTools` — `GET /device/tools` returns every row in `admin_platform_endpoint_tools` (or `tenant_platform_endpoint_tools` for tenant callers) whose tags contain `device`. Response shape mirrors `listAdminTools` plus `protocol: openapi-mcp-facade` and `surface: device`.
+- `callDeviceTool` — `POST /device/tools/call` dispatches a device-tagged tool by name. Rejects non-device tool keys with 403 `tool_not_in_device_surface`. Reuses the `/gpt/tools/call` dispatcher under the hood so admin scope-grant resolution, grant-dispatch audit, and tenant tunnel resolution all keep working.
+
+**Typical device-control session:**
+
+1. `listDeviceTools` to discover what is available for the current principal (admin sees `connector_n8n`, `connector_browser`, `connector_files`, `connector_apps`, `connector_ps`, `connector_win`, `connector_cf`, `connector_dependencies`; tenant sees `connector_files`, `connector_apps`, `connector_browser`, and any tools they hold a scope grant for).
+2. `callDeviceTool` with `{ "name": "connector_n8n", "tool_args": { "device_id": "mohammedlap", "action": "list_workflows" } }` for example.
+3. Audit log row written automatically; on tenant calls passing through a scope grant, `admin_scope_grant_dispatch` is written with the `grant_id`.
+
+**Why this is preferred over the direct connector schema:**
+
+- One auth host (`auth.mad4b.com`) handles auth, principal resolution, tenant scoping, audit, and proxy to the device tunnel. Direct `connector.mad4b.com` calls bypass platform-side auth governance.
+- Admin GPT only needs to attach `openapi.custom-gpt.auth-dispatcher.yaml`. The `openapi.gpt-action.local-connector.yaml` schema stays available as break-glass only.
+- New device tools surface automatically — tag a new row `device,...` in `admin_platform_endpoint_tools` and it appears in `listDeviceTools` without touching the GPT schema.
+
+**When to fall back to the direct local-connector schema:**
+
+- Platform `auth.mad4b.com` is fully down. Use `connector.mad4b.com/health` to confirm the device is reachable, then break-glass operations through that schema until platform-host recovery completes.
+- Otherwise, prefer `callDeviceTool` for every device operation.
 
 ## Architecture Roadmap — Future Controllers (Sprint 55+, not yet built)
 

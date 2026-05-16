@@ -341,6 +341,40 @@ section("Sprint 55: admin scope-sharing controller");
     /router\.get\("\/me\/scope-grants",[^)]*userScopeOnly/.test(routesFile));
 }
 
+section("Sprint 56: device-tools MCP facade");
+{
+  const routesFile = readFileSync(resolve(__dirname, "routes/deviceToolsRoutes.js"), "utf8");
+  const dispatcherSchema = readFileSync(resolve(__dirname, "openapi.custom-gpt.auth-dispatcher.yaml"), "utf8");
+  const parentSchema = readFileSync(resolve(__dirname, "openapi.yaml"), "utf8");
+  const gptToolsFile = readFileSync(resolve(__dirname, "routes/gptToolsRoutes.js"), "utf8");
+
+  assert("device-tools route file exists with both endpoints",
+    routesFile.includes('router.get("/device/tools"') &&
+    routesFile.includes('router.post("/device/tools/call"'));
+  assert("device-tools route enforces device-tag filter on dispatch",
+    routesFile.includes("tool_not_in_device_surface") &&
+    /isDeviceTagged/.test(routesFile));
+  assert("device-tools route reuses gptToolsRoutes dispatcher",
+    routesFile.includes("dispatchToolForCaller") &&
+    routesFile.includes("fetchToolsForCaller") &&
+    routesFile.includes("resolveCallerTypeForRequest"));
+  assert("gptToolsRoutes exports the helpers used by deviceToolsRoutes",
+    gptToolsFile.includes("export async function dispatchToolForCaller") &&
+    gptToolsFile.includes("export async function fetchToolsForCaller") &&
+    gptToolsFile.includes("export function resolveCallerTypeForRequest"));
+
+  const dispatcherDoc = loadSchema("openapi.custom-gpt.auth-dispatcher.yaml");
+  const dispatcherOps = collectOperations(dispatcherDoc);
+  const dispatcherOpIds = new Set(dispatcherOps.map((op) => op.operation.operationId).filter(Boolean));
+  assert("auth-dispatcher schema exposes listDeviceTools", dispatcherOpIds.has("listDeviceTools"));
+  assert("auth-dispatcher schema exposes callDeviceTool", dispatcherOpIds.has("callDeviceTool"));
+  assert("auth-dispatcher op count stays under 30 cap", dispatcherOps.length <= 30, `got ${dispatcherOps.length}`);
+
+  assert("parent OpenAPI exposes /device/tools and /device/tools/call",
+    parentSchema.includes("/device/tools:") && parentSchema.includes("/device/tools/call:") &&
+    parentSchema.includes("listDeviceTools") && parentSchema.includes("callDeviceTool"));
+}
+
 console.log(`\nResults: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
 console.log("ALL CUSTOM GPT SCHEMA TESTS PASS");

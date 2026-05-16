@@ -345,6 +345,16 @@ section("connect api auth scope");
       browserScale?.type === "number" && browserScale?.minimum === 0.1 && browserScale?.maximum === 1.0);
   }
 
+  section("device-tools route mounting");
+
+  {
+    const indexSource = readFileSync("routes/index.js", "utf8");
+    assert("device-tools routes imported in routes/index.js",
+      indexSource.includes("buildDeviceToolsRoutes") && indexSource.includes("./deviceToolsRoutes.js"));
+    assert("device-tools routes mounted via app.use",
+      /app\.use\(buildDeviceToolsRoutes\(/.test(indexSource));
+  }
+
   section("auth-host connector proxy admin-only enforcement");
 
   {
