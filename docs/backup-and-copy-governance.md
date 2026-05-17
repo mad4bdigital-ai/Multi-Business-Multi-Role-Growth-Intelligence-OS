@@ -147,7 +147,7 @@ Current draft templates:
 ```text
 policy:platform-db-primary:manual-draft
 source = database:mysql:auth-runtime-primary
-destination = object-storage:pending:encrypted-backups
+destination = local:Essam:growth-os-backups
 backup_kind = database
 status = draft
 allowed_executor = none
