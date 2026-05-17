@@ -229,6 +229,31 @@ validated_checksum_sha256
 status = passed | failed
 ```
 
+## Approval and restore-test gates
+
+Current approval requests:
+
+```text
+policy:platform-db-primary:manual-draft -> policy_activation/requested
+policy:platform-code-main:snapshot-draft -> policy_activation/requested
+```
+
+Current planned restore-test records:
+
+```text
+policy:platform-db-primary:manual-draft -> pending://isolated-restore-db-target
+policy:platform-code-main:snapshot-draft -> pending://clean-checkout-or-release-restore-target
+```
+
+These are only approval requests and planned restore targets. They do not approve or execute a backup.
+
+Helper actions:
+
+```text
+list-approvals
+list-restore-tests
+```
+
 ## Approval boundary
 
 No backup apply-mode operation should run until:
