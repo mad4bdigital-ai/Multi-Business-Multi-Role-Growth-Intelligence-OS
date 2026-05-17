@@ -599,6 +599,7 @@ export async function buildActivationSessionContext(req) {
       ["installations", installations],
       ["execution_log", executionTranscript],
       ["gpt_sessions", gptSessions],
+      ["pending_tasks", pendingTasks],
       ["platform_access", { ok: platformAccess.degraded_surfaces.length === 0, error: { code: "platform_access_degraded", details: platformAccess.degraded_surfaces } }]
     ]
       .filter(([, result]) => !result.ok)
