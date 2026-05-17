@@ -472,7 +472,7 @@ function builtInShellAllowlist() {
   return {
     session_archive_relink_repair_dry_run: {
       command: process.execPath,
-      args: ["session-archive-relink-repair.mjs", "--dry-run"],
+      args: ["http-generic-api/session-archive-relink-repair.mjs", "--dry-run"],
       display_name: "Session archive relink repair dry-run",
       allow_extra_args: true,
       max_extra_args: 12,
