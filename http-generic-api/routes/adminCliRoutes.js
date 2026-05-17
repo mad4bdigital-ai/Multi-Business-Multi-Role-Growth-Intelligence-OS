@@ -568,13 +568,13 @@ function builtInShellAllowlist() {
       timeout_ms: 600000,
       built_in: true
     },
-    db_backup_exporter_create: {
+    db_backup_export_cleanup: {
       command: process.execPath,
-      args: ["http-generic-api/scripts/db-backup-exporter.mjs", "--action=create"],
-      display_name: "Encrypted DB backup exporter create",
+      args: ["http-generic-api/scripts/db-backup-export-cleanup.mjs"],
+      display_name: "Temporary DB backup export cleanup",
       allow_extra_args: true,
       max_extra_args: 4,
-      timeout_ms: 600000,
+      timeout_ms: 300000,
       built_in: true
     }
   };
