@@ -216,6 +216,56 @@ user private data exports
 large generated node_modules/cache directories
 ```
 
+## Artifact contract and preflight
+
+Every future apply-mode backup must define and pass a preflight contract before execution.
+
+Policy contract fields:
+
+```text
+artifact_format
+encryption_scheme
+checksum_algorithm
+manifest_schema_version
+preflight_required
+```
+
+Current contracts:
+
+```text
+policy:platform-db-primary:manual-draft
+artifact_format = sql_dump
+encryption_scheme = platform_managed
+checksum_algorithm = sha256
+manifest_schema_version = backup-manifest/v1
+preflight_status = blocked
+blockers = policy_not_active, approval_not_granted, executor_not_enabled
+```
+
+```text
+policy:platform-code-main:snapshot-draft
+artifact_format = zip
+encryption_scheme = zip_aes256
+checksum_algorithm = sha256
+manifest_schema_version = backup-manifest/v1
+preflight_status = blocked
+blockers = policy_not_active, approval_not_granted
+```
+
+Manifest records, when an actual artifact exists, are stored in:
+
+```text
+platform_backup_artifact_manifests
+```
+
+Preflight helper action:
+
+```text
+preflight-policy
+```
+
+Preflight is a gate. It never creates a backup artifact.
+
 ## Mandatory run lifecycle
 
 Every official backup run must be recorded in `platform_backup_runs`:
