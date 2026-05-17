@@ -266,6 +266,28 @@ preflight-policy
 
 Preflight is a gate. It never creates a backup artifact.
 
+## Local destination layout
+
+The Essam local destination is prepared with governance folders only:
+
+```text
+D:\\Nagy\\Growth-0s-Backups\\artifacts
+D:\\Nagy\\Growth-0s-Backups\\manifests
+D:\\Nagy\\Growth-0s-Backups\\restore-tests
+D:\\Nagy\\Growth-0s-Backups\\restore-tests\\db-isolated
+D:\\Nagy\\Growth-0s-Backups\\restore-tests\\code-clean-checkout
+D:\\Nagy\\Growth-0s-Backups\\logs
+D:\\Nagy\\Growth-0s-Backups\\.growth-os-backup-destination.json
+```
+
+Reusable helper:
+
+```text
+http-generic-api/scripts/local-backup-destination-prepare.mjs
+```
+
+This helper creates or validates folders and writes a destination marker only. It does not create backup artifacts.
+
 ## Executor guard
 
 Server-side guard:
