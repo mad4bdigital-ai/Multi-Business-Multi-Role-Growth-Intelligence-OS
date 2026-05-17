@@ -1224,3 +1224,61 @@ n8n local data is sensitive because it can contain encrypted credentials and enc
 The recovery key file is required to decrypt the artifact.
 No plaintext ZIP remains after validation.
 ```
+
+---
+
+## Patch 25 — Backup and DR Baseline Finalization
+
+- Status: finalized local DR baseline
+- Date: 2026-05-17
+- Finalization report: `docs/backup-finalization-2026-05-17.md`
+- DR runbook: `docs/platform-disaster-recovery-runbook.md`
+
+### Scope
+
+Closed the remaining backup/DR baseline items after the first successful code, database, n8n, and local connector backups.
+
+### Completed
+
+```text
+Recovery key ACL hardening applied
+Local connector runtime backup executed and verified
+Runtime/platform manifest created
+DNS/Cloudflare blocker manifest created
+Retention policy manifest created
+Automation plan manifest created, not enabled
+Off-device transfer plan manifest created, pending destination
+Temporary DB export cleanup helper added and executed
+Temporary server-side DB export directories removed
+Platform disaster recovery runbook added
+```
+
+### Additional backup artifact
+
+```text
+policy = policy:local-connector-runtime:manual
+source = C:\\mad4b-connector
+artifact = D:\\Nagy\\Growth-0s-Backups\\artifacts\\growth-os-local-connector-2026-05-17T18-48-34-422Z.zip.aes256gcm
+checksum_sha256 = 1d3a0a41c77686ff77be358ea6097d1f44a6fb120a557633aa660e7c877747f2
+restore_status = passed
+```
+
+### Local manifests created
+
+```text
+D:\\Nagy\\Growth-0s-Backups\\manifests\\runtime-manifest-2026-05-17.json
+D:\\Nagy\\Growth-0s-Backups\\manifests\\dns-cloudflare-manifest-2026-05-17.json
+D:\\Nagy\\Growth-0s-Backups\\manifests\\backup-retention-policy-2026-05-17.json
+D:\\Nagy\\Growth-0s-Backups\\manifests\\backup-automation-plan-2026-05-17.json
+D:\\Nagy\\Growth-0s-Backups\\manifests\\off-device-transfer-plan-2026-05-17.json
+```
+
+### Remaining external blockers
+
+```text
+Off-device destination still pending
+Recovery-key escrow still pending
+Cloudflare/DNS export requires authenticated Cloudflare surface
+Full isolated DB import and isolated n8n boot test are recommended for full DR certification
+Automation intentionally disabled until off-device/key escrow are finalized
+```
