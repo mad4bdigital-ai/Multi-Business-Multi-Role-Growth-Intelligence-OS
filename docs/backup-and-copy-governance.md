@@ -266,6 +266,38 @@ preflight-policy
 
 Preflight is a gate. It never creates a backup artifact.
 
+## Executor guard
+
+Server-side guard:
+
+```text
+http-generic-api/scripts/backup-executor-guard.mjs
+```
+
+Governed `admin_control` aliases:
+
+```text
+backup_executor_guard_dry_run
+backup_executor_guard_apply
+```
+
+Actions:
+
+```text
+plan-run
+prepare-run-record
+execute
+```
+
+The executor guard evaluates whether a policy is allowed to execute. It can produce a plan and record metadata, but it does not implement backup artifact creation. Apply-mode `execute` remains blocked until a reviewed executor implementation is added.
+
+Current expected blockers:
+
+```text
+policy:platform-db-primary:manual-draft -> policy_not_active, activation_gate_not_ready, preflight_not_promoted_to_active, approval_not_granted, executor_not_enabled, database_executor_must_be_local_connector_or_explicitly_changed
+policy:platform-code-main:snapshot-draft -> policy_not_active, activation_gate_not_ready, preflight_not_promoted_to_active, approval_not_granted
+```
+
 ## Mandatory run lifecycle
 
 Every official backup run must be recorded in `platform_backup_runs`:
