@@ -3,17 +3,26 @@ import { getPool } from "./db.js";
 
 function parseArgs(argv = process.argv.slice(2)) {
   const args = { apply: false };
+  let applyFlagSeen = false;
+  let dryRunFlagSeen = false;
   for (const arg of argv) {
     if (arg === "--apply") {
+      applyFlagSeen = true;
       args.apply = true;
       continue;
     }
     if (arg === "--dry-run") {
+      dryRunFlagSeen = true;
       args.apply = false;
       continue;
     }
     const match = arg.match(/^--([^=]+)=(.*)$/);
     if (match) args[match[1].replace(/-/g, "_")] = match[2];
+  }
+  if (applyFlagSeen && dryRunFlagSeen) {
+    const err = new Error("Conflicting mode flags: use either --dry-run or --apply, not both.");
+    err.code = "conflicting_mode_flags";
+    throw err;
   }
   return args;
 }
