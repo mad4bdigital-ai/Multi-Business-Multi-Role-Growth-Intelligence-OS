@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, urlencoded } from "express";
 import { randomUUID, createHash, randomBytes } from "node:crypto";
 import { getPool } from "../db.js";
 import { encryptCredentials } from "../tokenEncryption.js";
