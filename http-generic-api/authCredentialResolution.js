@@ -2,6 +2,7 @@ import { inferAuthMode } from "./authInjection.js";
 import { policyValue } from "./registryResolution.js";
 import { getGoogleAccessToken } from "./googleAuthTokenResolver.js";
 import { getGitHubAppInstallationToken } from "./githubAppAuth.js";
+import { findUserAppConnection, extractCredentialValue, extractCredentialHeaders } from "./userAppConnectionCredentials.js";
 
 // ── Storage-mode-aware secret resolvers ───────────────────────────────────────
 
