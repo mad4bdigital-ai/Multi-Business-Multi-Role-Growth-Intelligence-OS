@@ -279,7 +279,16 @@ async function _buildAuthContract({
 
   if (mode === "github_app") {
     contract.header_name = "Authorization";
+    const scoped = await resolveScopedConnection({ action, endpoint, mode, user_id, tenant_id, auth_context, credential_scope, allow_platform_fallback });
+    if (applyConnectionToContract(contract, scoped, mode)) return contract;
     contract.secret = await getGitHubAppInstallationToken({ action });
+    return contract;
+  }
+
+  if (mode === "custom_headers") {
+    const scoped = await resolveScopedConnection({ action, endpoint, mode, user_id, tenant_id, auth_context, credential_scope, allow_platform_fallback });
+    if (applyConnectionToContract(contract, scoped, mode)) return contract;
+    contract.custom_headers = {};
     return contract;
   }
 
