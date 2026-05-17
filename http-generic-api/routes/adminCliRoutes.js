@@ -621,6 +621,7 @@ async function executeShellControl(body = {}) {
         const e = new Error("apply local project path alias must not receive --dry-run in extra_args."); e.status = 400; e.code = "conflicting_mode_flags"; throw e;
       }
       for (const arg of extraArgs) {
+        if (isLocalProjectPathHelperAlias(alias) && isSafeLocalProjectPathArg(arg)) continue;
         if (EXTRA_ARG_UNSAFE_PATTERN.test(arg)) {
           const e = new Error(`extra_args contains disallowed shell metacharacter: ${JSON.stringify(arg)}`);
           e.status = 400; e.code = "unsafe_extra_arg"; throw e;
