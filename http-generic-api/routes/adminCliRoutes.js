@@ -11,6 +11,23 @@ const LOCAL_WINDOWS_APP_CONTROL_ENABLED_ENV = "LOCAL_WINDOWS_APP_CONTROL_ENABLED
 const ADMIN_SHELL_ALLOWLIST_ENV = "ADMIN_SHELL_ALLOWLIST";
 const ADMIN_SHELL_ENABLED_ENV   = "ADMIN_SHELL_ENABLED";
 const EXTRA_ARG_UNSAFE_PATTERN  = /[;&|`$<>\\!{}()\n\r]/;
+const WINDOWS_PATH_ARG_KEYS = new Set([
+  "--current-path",
+  "--new-path",
+  "--source-path",
+  "--target-path",
+  "--manifest-path"
+]);
+function isLocalProjectPathHelperAlias(alias = "") {
+  return alias === "local_project_path_helper_dry_run" || alias === "local_project_path_helper_apply";
+}
+function isSafeLocalProjectPathArg(arg = "") {
+  const value = String(arg || "");
+  const [key] = value.split("=", 1);
+  if (!WINDOWS_PATH_ARG_KEYS.has(key)) return false;
+  if (/[\0\n\r;&|`$<>!{}]/.test(value)) return false;
+  return /^[\w:\\.\-\s\/()=]+$/.test(value);
+}
 
 export function parseArgs(input) {
   if (Array.isArray(input)) return input.map((arg) => String(arg));
