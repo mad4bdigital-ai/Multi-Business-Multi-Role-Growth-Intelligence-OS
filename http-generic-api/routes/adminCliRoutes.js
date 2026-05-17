@@ -522,6 +522,24 @@ function builtInShellAllowlist() {
       max_extra_args: 20,
       timeout_ms: 120000,
       built_in: true
+    },
+    backup_copy_governance_helper_dry_run: {
+      command: process.execPath,
+      args: ["http-generic-api/scripts/backup-copy-governance-helper.mjs", "--dry-run"],
+      display_name: "Backup and copy governance helper dry-run",
+      allow_extra_args: true,
+      max_extra_args: 24,
+      timeout_ms: 120000,
+      built_in: true
+    },
+    backup_copy_governance_helper_apply: {
+      command: process.execPath,
+      args: ["http-generic-api/scripts/backup-copy-governance-helper.mjs", "--apply"],
+      display_name: "Backup and copy governance helper apply",
+      allow_extra_args: true,
+      max_extra_args: 24,
+      timeout_ms: 120000,
+      built_in: true
     }
   };
 }
