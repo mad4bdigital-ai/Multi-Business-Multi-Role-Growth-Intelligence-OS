@@ -397,13 +397,7 @@ function normalizePlatformEndpointCallArgs(row, args = {}) {
     readback: args.readback || { required: false, mode: "none" },
   };
 
-  for (const optionalAuthField of ["user_id", "tenant_id", "credential_scope", "allow_platform_fallback", "auth_context"]) {
-    if (Object.prototype.hasOwnProperty.call(args, optionalAuthField)) {
-      payload[optionalAuthField] = args[optionalAuthField];
-    }
-  }
-
-  for (const optionalAuthField of ["user_id", "tenant_id", "credential_scope", "allow_platform_fallback", "auth_context"]) {
+  for (const optionalAuthField of ["user_id", "tenant_id", "credential_scope", "connection_id", "app_key", "scopes", "auth_type", "allow_platform_fallback", "auth_context"]) {
     if (Object.prototype.hasOwnProperty.call(args, optionalAuthField)) {
       payload[optionalAuthField] = args[optionalAuthField];
     }
