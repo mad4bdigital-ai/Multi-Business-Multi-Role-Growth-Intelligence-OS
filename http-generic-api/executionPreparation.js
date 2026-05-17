@@ -84,7 +84,19 @@ export async function prepareExecutionRequest(input = {}, deps = {}) {
     targetKey: requestBody.target_key || resolvedTargetKey || "",
     user_id: requestBody.user_id || requestBody.auth_context?.user_id || "",
     tenant_id: requestBody.tenant_id || requestBody.auth_context?.tenant_id || "",
-    auth_context: requestBody.auth_context || null,
+    auth_context: {
+      ...(requestBody.auth_context || {}),
+      user_id: requestBody.user_id || requestBody.auth_context?.user_id || "",
+      tenant_id: requestBody.tenant_id || requestBody.auth_context?.tenant_id || "",
+      credential_scope: requestBody.credential_scope || requestBody.auth_context?.credential_scope || "",
+      connection_id: requestBody.connection_id || requestBody.auth_context?.connection_id || "",
+      app_key: requestBody.app_key || requestBody.auth_context?.app_key || "",
+      scopes: requestBody.scopes || requestBody.auth_context?.scopes || "",
+      auth_type: requestBody.auth_type || requestBody.auth_context?.auth_type || "",
+      allow_platform_fallback: Object.prototype.hasOwnProperty.call(requestBody, "allow_platform_fallback")
+        ? requestBody.allow_platform_fallback
+        : requestBody.auth_context?.allow_platform_fallback,
+    },
     credential_scope: requestBody.credential_scope || requestBody.auth_context?.credential_scope || "",
     allow_platform_fallback: Object.prototype.hasOwnProperty.call(requestBody, "allow_platform_fallback")
       ? requestBody.allow_platform_fallback
