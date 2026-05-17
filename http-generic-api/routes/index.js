@@ -78,6 +78,10 @@ function registerOptionalSqlEndpointRegistryRoutes(app, deps) {
 
 export function registerRoutes(app, deps) {
   app.use(buildConnectorAgentRoutes());
+  // Public token-gated credential intake pages must mount before any root-level
+  // protected routers that call router.use(requireBackendApiKey).
+  // The session creation route inside this router remains admin-protected.
+  app.use(buildCredentialIntakeRoutes(deps));
   app.use(buildLegalRoutes(deps));
   app.use(buildRootDiscoveryRoutes());
   app.use(buildConnectRoutes(deps));
