@@ -403,6 +403,12 @@ function normalizePlatformEndpointCallArgs(row, args = {}) {
     }
   }
 
+  for (const optionalAuthField of ["user_id", "tenant_id", "credential_scope", "allow_platform_fallback", "auth_context"]) {
+    if (Object.prototype.hasOwnProperty.call(args, optionalAuthField)) {
+      payload[optionalAuthField] = args[optionalAuthField];
+    }
+  }
+
   const method = String(row.method || "").toUpperCase();
   const hasBody = args.body && Object.keys(args.body).length > 0;
 
