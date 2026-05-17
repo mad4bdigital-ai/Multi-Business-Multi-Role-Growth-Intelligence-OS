@@ -214,16 +214,54 @@ docs/backup-run-2026-05-17-db-primary.md
 docs/backup-run-2026-05-17-n8n-local.md
 ```
 
+## Off-device Google Drive upload
+
+Status:
+
+```text
+succeeded
+```
+
+Destination:
+
+```text
+parent_folder_id = 1enrrI7OU3_R0vAaCyfm-N7Ii7IU5Q3AG
+root_folder = Growth-OS-Backups-Offsite
+subfolders = artifacts, manifests, keys
+```
+
+Uploaded:
+
+```text
+artifacts = 4
+manifests = 10
+keys = 3
+total_files = 17
+```
+
+Registry:
+
+```text
+platform_copy_locations.location_key = google-drive:growth-os-backups-offsite
+offsite_drive_upload_sessions.session_id = offsite-491d395be917479d908634997e1de4d4
+```
+
+Final manifest:
+
+```text
+D:\\Nagy\\Growth-0s-Backups\\manifests\\off-device-google-drive-upload-2026-05-17.json
+Drive file id = 1WMjzzPovPPgZliI6syBQvI6-JuVOVM9-
+```
+
 ## Current blockers that require external decision/access
 
 ```text
-1. Off-device destination is not selected/confirmed.
-2. Recovery keys are protected locally but not escrowed off-device.
-3. Cloudflare/DNS export requires authenticated Cloudflare surface.
-4. Automation is intentionally not enabled until off-device destination and key escrow are finalized.
-5. Full DB import into isolated MySQL and isolated n8n boot test remain recommended.
+1. Cloudflare token has been requested through secure credential intake and is pending submission.
+2. Cloudflare/DNS export should run after token submission and validation.
+3. Automation is intentionally not enabled until Cloudflare export and final retention review are confirmed.
+4. Full DB import into isolated MySQL and isolated n8n boot test remain recommended.
 ```
 
 ## Final baseline conclusion
 
-The platform now has a verified local backup baseline for code, DB, n8n, and connector runtime. It is suitable for local recovery and protected against accidental plaintext retention. It is not yet complete against device loss until encrypted artifacts and recovery keys are copied to separate secure off-device locations.
+The platform now has a verified local backup baseline for code, DB, n8n, and connector runtime, plus an off-device Google Drive copy of artifacts, manifests, and recovery keys. It is suitable for local recovery and off-device artifact recovery. Full DR certification still requires isolated DB import and isolated n8n boot tests.
