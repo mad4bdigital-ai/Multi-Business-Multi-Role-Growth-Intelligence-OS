@@ -5,7 +5,7 @@
 --
 -- Visibility rule:
 -- - owner_scope='platform' is admin-only.
--- - tenant/user/device scopes are only visible to the matching principal.
+-- - tenant/user/device scopes are visible only to the matching principal.
 --
 -- Idempotent. No DELETE/TRUNCATE/DROP.
 
