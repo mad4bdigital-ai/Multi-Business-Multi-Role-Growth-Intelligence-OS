@@ -1,98 +1,90 @@
-# Hostinger Node.js App Deployment
+# Hostinger Node.js Auto Deploy
 
 ## Purpose
 
-This runbook describes the GitHub Actions deployment path for Hostinger Node.js apps used by the platform.
+Hostinger hPanel supports Auto Deploy from a Git repository. This is the preferred deployment mode for the platform Node.js apps. Manual ZIP uploads such as `connector-api.zip` should be treated as legacy fallback only.
 
-The previous Hostinger hPanel mode was manual upload, such as `connector-api.zip`. The intended target state is:
+Target state:
 
 ```text
-push to main -> GitHub Actions -> build artifact -> SSH/rsync to Hostinger app path -> install production dependencies -> restart Node app -> verify runtime
+push to main -> Hostinger Auto Deploy pulls GitHub repo -> npm install/postinstall -> npm start -> runtime verification
 ```
 
 ## Apps
 
-| Hostname | Role | Deployment target secret |
+| Hostname | Role | Preferred deploy source |
 |---|---|---|
-| `auth.mad4b.com` | Platform control plane and `/connector-agent/server.mjs` distributor | `HOSTINGER_AUTH_NODE_PATH` |
-| `connector.mad4b.com` | Optional Hostinger Node app mirror / legacy hPanel app. The live DNS currently points to the Cloudflare Tunnel for the local connector. | `HOSTINGER_CONNECTOR_NODE_PATH` |
+| `auth.mad4b.com` | Platform control plane and `/connector-agent/server.mjs` distributor | GitHub repo `main` |
+| `connector.mad4b.com` | Hostinger Node app entry if kept in hPanel. Note: live DNS currently points to the Cloudflare Tunnel for the local connector. | GitHub repo `main` or disabled if unused |
 
-`auth.mad4b.com` is the critical app for distributing the current local connector agent. The route `/connector-agent/version` verifies whether the deployed app is serving a connector agent with n8n lifecycle support.
+`auth.mad4b.com` is the critical app for distributing the local connector agent. After deploy, `/connector-agent/version` must report `has_n8n_lifecycle: true`.
 
-## GitHub workflow
+## Repository readiness
 
-Workflow file:
+The repository root is Hostinger-ready:
 
-```text
-.github/workflows/deploy-hostinger-node.yml
+```json
+{
+  "scripts": {
+    "start": "cd http-generic-api && npm start",
+    "postinstall": "cd http-generic-api && npm ci --omit=dev"
+  }
+}
 ```
 
-Triggers:
+`http-generic-api/package-lock.json` exists, so `postinstall` can install production API dependencies deterministically.
 
-- `push` to `main`
-- manual `workflow_dispatch` with target `auth`, `connector`, or `both`
+## Hostinger hPanel setup
 
-On push, both Hostinger Node app deploy jobs are eligible. If the connector Hostinger app is not used, either provide its path secret anyway or adjust the workflow target policy.
+For each Node.js app that should auto-deploy:
 
-## Required GitHub secrets
-
-Set these in GitHub repository or environment secrets.
-
-```text
-HOSTINGER_SSH_HOST
-HOSTINGER_SSH_PORT
-HOSTINGER_SSH_USER
-HOSTINGER_SSH_PRIVATE_KEY
-HOSTINGER_AUTH_NODE_PATH
-HOSTINGER_CONNECTOR_NODE_PATH
-BACKEND_API_KEY
-```
-
-Optional restart command secrets:
+1. Open hPanel.
+2. Go to the website/app, for example `auth.mad4b.com`.
+3. Open **Deployments** or **Settings and redeploy**.
+4. Choose Git/GitHub repository deployment instead of manual upload.
+5. Connect repository:
 
 ```text
-HOSTINGER_AUTH_RESTART_CMD
-HOSTINGER_CONNECTOR_RESTART_CMD
+mad4bdigital-ai/multi-business-multi-role-growth-intelligence-os
 ```
 
-If no restart command is configured, the workflow creates or touches:
+6. Select branch:
 
 ```text
-tmp/restart.txt
+main
 ```
 
-This is a common Node/Passenger restart trigger. If the Hostinger Node.js runtime requires a different restart mechanism, store it in the corresponding restart command secret.
-
-## Expected remote layout
-
-The workflow deploys the repository root into the Node app path, excluding secrets, `.git`, `node_modules`, logs, and transient folders.
-
-Expected runtime paths:
-
-```text
-<HOSTINGER_AUTH_NODE_PATH>/http-generic-api/server.js
-<HOSTINGER_AUTH_NODE_PATH>/local-connector/server.mjs
-<HOSTINGER_CONNECTOR_NODE_PATH>/http-generic-api/server.js
-<HOSTINGER_CONNECTOR_NODE_PATH>/local-connector/server.mjs
-```
-
-Production dependencies are installed with:
+7. Use repository root as app root unless Hostinger explicitly supports separate app root and install/start commands.
+8. Use start command:
 
 ```bash
-cd <APP_PATH>/http-generic-api
-npm ci --omit=dev
+npm start
 ```
 
-## Verification
+9. Keep environment variables in hPanel only. Do not commit `.env`.
+10. Enable Auto deploy on push to `main`.
 
-After auth deploy, the workflow checks:
+## Required hPanel environment variables
+
+Keep the existing production variables configured in hPanel for `auth.mad4b.com`. The repo must not contain secrets.
+
+At minimum, the runtime needs the existing DB/auth/provider variables already used by the deployed app. For connector-agent distribution, no extra secret is required, but the deployed repository must include:
+
+```text
+local-connector/server.mjs
+http-generic-api/routes/connectorAgentRoutes.js
+```
+
+## Verification after auto deploy
+
+After Hostinger completes the deployment, verify:
 
 ```text
 https://auth.mad4b.com/health
 https://auth.mad4b.com/connector-agent/version
 ```
 
-The connector agent version response must include:
+Expected connector-agent version response:
 
 ```json
 {
@@ -103,23 +95,50 @@ The connector agent version response must include:
 }
 ```
 
-This proves that the deployed `auth.mad4b.com` app is serving the new `local-connector/server.mjs` with n8n lifecycle support.
+This proves `auth.mad4b.com` is serving the current `local-connector/server.mjs` with the governed n8n lifecycle actions.
+
+## Local connector update flow
+
+Once `auth.mad4b.com/connector-agent/version` is correct, update the Windows connector machine with:
+
+```powershell
+cd C:\mad4b-connector
+Invoke-WebRequest `
+  -Uri "https://auth.mad4b.com/connector-agent/server.mjs?cacheBust=$(Get-Date -UFormat %s)" `
+  -OutFile "C:\mad4b-connector\server.mjs" `
+  -UseBasicParsing
+Restart-Service local-connector
+```
+
+Then verify via platform device tool:
+
+```json
+{
+  "device_id": "mohammedlap",
+  "user_id": "f242960c-2857-4b4d-a504-ee50f8a278b4",
+  "action": "diagnose"
+}
+```
+
+## Fallback workflow
+
+The repository contains:
+
+```text
+.github/workflows/deploy-hostinger-node.yml
+```
+
+This workflow is manual-only. It is not triggered by push and should be used only if Hostinger Auto Deploy is degraded.
 
 ## Security notes
 
-- Never commit `.env`, private keys, API tokens, or Hostinger credentials.
-- Use GitHub Secrets or environment secrets only.
-- Do not deploy `node_modules`; install production dependencies on the remote target.
-- Keep restart commands narrow and deterministic.
-- Do not use arbitrary shell or user-provided commands in the workflow.
+- Do not commit `.env`, API keys, private keys, Hostinger credentials, or Cloudflare tokens.
+- Keep secrets in hPanel environment variables or GitHub Secrets for fallback only.
+- Avoid manual ZIP uploads except for emergency rollback.
+- Verify `/connector-agent/version` after every deployment that affects local connector behavior.
 
 ## Rollback
 
-Use Hostinger hPanel deployment history if needed, or rerun the workflow for a known-good commit.
+Preferred rollback is Hostinger hPanel deployment history.
 
-Manual rollback from GitHub Actions:
-
-1. Open the workflow run page.
-2. Use `workflow_dispatch` on the known-good branch or commit ref if available.
-3. Choose target `auth` or `both`.
-4. Confirm `/connector-agent/version` and `/health` after deployment.
+If the fallback workflow was used, rerun it against a known-good ref or restore through hPanel.
