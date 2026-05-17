@@ -597,6 +597,12 @@ async function executeShellControl(body = {}) {
       if (alias === "session_archive_relink_repair_apply" && extraArgs.includes("--dry-run")) {
         const e = new Error("apply relink alias must not receive --dry-run in extra_args."); e.status = 400; e.code = "conflicting_mode_flags"; throw e;
       }
+      if (alias === "local_project_path_helper_dry_run" && extraArgs.includes("--apply")) {
+        const e = new Error("dry-run local project path alias must not receive --apply in extra_args."); e.status = 400; e.code = "conflicting_mode_flags"; throw e;
+      }
+      if (alias === "local_project_path_helper_apply" && extraArgs.includes("--dry-run")) {
+        const e = new Error("apply local project path alias must not receive --dry-run in extra_args."); e.status = 400; e.code = "conflicting_mode_flags"; throw e;
+      }
       for (const arg of extraArgs) {
         if (EXTRA_ARG_UNSAFE_PATTERN.test(arg)) {
           const e = new Error(`extra_args contains disallowed shell metacharacter: ${JSON.stringify(arg)}`);
