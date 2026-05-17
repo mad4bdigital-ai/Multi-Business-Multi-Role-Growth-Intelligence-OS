@@ -332,9 +332,10 @@ async function loadActivationPendingTasks(subject = {}, maxLimit = 20) {
   }
 
   const result = await safeQuery(
-    `SELECT task_id, task_key, title, description, task_type, priority, status,
-            blocker_level, owner_scope, tenant_id, user_id, device_id,
-            source_surface, source_ref, activation_visibility, context_json,
+    `SELECT task_id, task_key, title, description, brief, activation_prompt,
+            task_type, priority, status, blocker_level, owner_scope,
+            tenant_id, user_id, device_id, source_surface, source_ref,
+            conversation_context_ref, activation_visibility, context_json,
             due_at, completed_at, created_at, updated_at
        FROM \`platform_pending_tasks\`
       WHERE activation_visibility = 1
