@@ -495,66 +495,45 @@ auth_context
 
 ---
 
-## Patch 10 — Parent Action External Auth Strategy
+## Patch 11 — Session Archive Relink After Restore
 
-- Status: committed
+- Status: applied and documented
 - Date: 2026-05-17
-- Migration: `http-generic-api/migrations/076_sprint61_parent_action_auth_strategy.sql`
+- Runbook: `docs/session-archive-relink-2026-05-17.md`
 
 ### Scope
 
-External endpoint credential selection is now governed from the parent action row instead of duplicated per endpoint.
-
-Authoritative policy location:
+A database restore removed the active `customer_sessions` row for the official session folder:
 
 ```text
-actions.runtime_binding_profile.auth_strategy
+session_f0132008-edae-44d0-8668-87b44b2fde26
+folder_id = 1enrrI7OU3_R0vAaCyfm-N7Ii7IU5Q3AG
 ```
 
-Optional endpoint override location:
+The GPT tool dispatcher continued archiving to a superseded active SQL session:
 
 ```text
-endpoints.runtime_binding_profile.auth_strategy_override
+session_5dee2542-80e3-45f2-8bef-087c59d5def5
+folder_id = 1cYCHu2pAX8_EGa11jCQH62kbAcvSrDza
 ```
 
-Runtime selector fields exposed through endpoint tools:
+### Actions
 
-```text
-credential_scope = platform | user | tenant | connection | auto
-user_id
-tenant_id
-connection_id
-app_key
-scopes
-auth_type
-allow_platform_fallback
-auth_context
-```
+- Recreated the missing `customer_sessions` row for the official `f013...` session.
+- Rebound it to the official Drive folder, transcript Doc, JSONL, and Exports folder.
+- Copied bounded SQL `gpt_session_turns` rows from the superseded `5dee...` session back under the official `f013...` session.
+- Copied target turn range: `114..291`.
+- Marked the superseded `5dee...` session as completed/superseded.
+- Added a `Restore Relink Backfill — 2026-05-17` note to the official Google Doc.
+- Verified the official folder resumed updates.
 
-### Files changed
+### Guardrail added
 
-- `http-generic-api/userAppConnectionCredentials.js` — generic `user_app_connections` resolver for user/tenant/connection credentials.
-- `http-generic-api/authCredentialResolution.js` — parent action auth strategy resolver and scoped credential contract builder.
-- `http-generic-api/authInjection.js` — recognizes `custom_headers` auth mode.
-- `http-generic-api/executionPreparation.js` — merges runtime auth selector fields into `auth_context`.
-- `http-generic-api/routes/systemLayerRoutes.js` — forwards the external auth selector set from exported tool calls to the runtime facade.
-- `http-generic-api/migrations/076_sprint61_parent_action_auth_strategy.sql` — idempotent DB reconciliation for parent auth policies and exported tool schemas.
-- `docs/external-endpoint-auth-strategy.md` — operating guide.
-- `docs/registry-taxonomy.md`, `README.md`, `AI_Agent_Knowledge_Guide.md`, `connector_contracts.md`, `deployment_parity_checklist.md` — documentation alignment.
-
-### Runtime behavior
-
-- Parent actions default to platform credentials unless runtime scope requests user, tenant, connection, or auto.
-- Scoped credentials resolve from `user_app_connections.encrypted_credentials`.
-- Secret material remains encrypted or referenced. It is not copied into `actions`, `endpoints`, or tool export rows.
-- If `credential_scope` is `user`, `tenant`, or `connection` and `allow_platform_fallback=false`, the runtime must return a scoped credential error rather than using a platform secret.
-- `github_actions_status` and `github_git_data` now use GitHub App auth instead of an expiring `GITHUB_TOKEN` bearer token.
+After any DB restore or replay, verify that the active `customer_sessions` row selected by `routes/gptToolsRoutes.js` points to the intended Drive folder before continuing platform work.
 
 ### Verification
 
-- `cloudflare_api__cf_list_zones` with `credential_scope=platform` returned `200`.
-- `cloudflare_api__cf_list_zones` with `credential_scope=user`, admin user id, and `allow_platform_fallback=false` returned `403 external_credential_connection_not_found` as expected.
-- `google_drive_api__listDriveFiles` platform scope returned `200` after the Google resolver fix.
-- User-scoped Google Drive without an active OAuth connection and without fallback returned the scoped auth error as expected.
-- GitHub Actions status query now resolves through `github_app` and returns `200`.
-- CI verification after push completed successfully.
+- Official `Tool_Calls.jsonl` modified at approximately `2026-05-17T09:55:41Z`.
+- Official `Session Transcript` modified at approximately `2026-05-17T09:53:14Z`.
+- `customer_sessions.archive_status` for `f013...` is `ready`.
+- `5dee...` is marked completed/superseded.
