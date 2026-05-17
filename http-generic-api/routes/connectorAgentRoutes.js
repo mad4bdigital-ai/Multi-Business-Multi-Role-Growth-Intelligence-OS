@@ -6,6 +6,15 @@ import { createHash } from "crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const AGENT_PATH = resolve(__dirname, "../../local-connector/server.mjs");
+const EXPORT_ROOT = process.env.DB_BACKUP_EXPORT_ROOT || "/tmp/growth-os-db-backups";
+
+function safeName(value = "") {
+  const name = String(value || "");
+  return /^[A-Za-z0-9._-]+$/.test(name) ? name : "";
+}
+function tokenHash(token = "") {
+  return createHash("sha256").update(String(token || "")).digest("hex");
+}
 
 function getAgentSource() {
   return readFileSync(AGENT_PATH, "utf8");
