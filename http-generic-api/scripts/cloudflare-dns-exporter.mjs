@@ -34,7 +34,7 @@ async function cfFetch(baseUrl, token, pathAndQuery) {
   return data;
 }
 async function loadConnection(connectionId) {
-  const [rows] = await getPool().query(
+  const [rows] = await pool.query(
     `SELECT connection_id, user_id, tenant_id, app_key, display_label, auth_type,
             encrypted_credentials, api_base_url, account_metadata
        FROM user_app_connections
