@@ -100,24 +100,43 @@ All intermediate evidence construction and status-string normalization are priva
 
 ### Public exports
 
-#### `getGoogleAccessToken()`
+#### `getGoogleAccessToken(options)`
 - **Purpose:** Async — return a valid Google OAuth2 access token, fetching fresh if cache is stale.
-- **Credential chain (priority order):**
-  1. `GOOGLE_APPLICATION_CREDENTIALS` — path to service account JSON file
-  2. `GOOGLE_SA_JSON` — inline service account JSON (raw or base64)
-  3. `GOOGLE_REFRESH_TOKEN` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` — user OAuth2
-- **Scopes covered:** Sheets, Docs, Drive, Analytics (readonly), Search Ads 360, Search Console, Tag Manager
-- **Cache:** 55-minute TTL; auto-refreshes every 50 minutes via `setInterval().unref()`
-- **Pre-warms** at module import (non-blocking)
-- **Returns:** access token string, or `""` if no credentials are configured
-
-#### `getGoogleAccessTokenSync()`
-- **Purpose:** Sync — return cached token if fresh; trigger background refresh if stale; return stale token or `""` if cache is empty.
-- **Caller:** `authCredentialResolution.normalizeAuthContract()` — used for `google_oauth2` and `google_ads_oauth2` auth modes
-- **Returns:** cached token string or `""` (never throws)
+- **Parent-action integration:** Called by `authCredentialResolution.normalizeAuthContract()` for `google_oauth2` and `google_ads_oauth2` auth modes.
+- **Scoped inputs:** `options` may include `action`, `brand`, `targetKey`, `user_id`, `tenant_id`, `credential_scope`, `allow_platform_fallback`, and `auth_context`.
+- **Credential chain:**
+  1. User/tenant scoped OAuth from `user_app_connections` when explicitly requested through `credential_scope` or `auth_context`.
+  2. Platform Google identity using service account ADC / `GOOGLE_APPLICATION_CREDENTIALS` / `GOOGLE_SA_JSON`.
+  3. Platform refresh-token credentials via `GOOGLE_REFRESH_TOKEN` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`.
+- **Fallback rule:** If caller requests user/tenant auth and `allow_platform_fallback=false`, missing scoped credentials must throw a scoped auth error rather than using platform identity.
+- **Cache:** 55-minute TTL keyed by action plus effective OAuth ref.
+- **Returns:** access token string, or `""` only when no allowed credential path is configured.
 
 ### Internal (not exported)
-`fetchGoogleToken()`, `parseSaJson()`, module-level cache variables.
+Global token fetch, member-scoped token fetch, OAuth ref parsing, and cache helpers.
+
+---
+
+## authCredentialResolution.js / userAppConnectionCredentials.js
+
+### Public exports
+
+#### `normalizeAuthContract(args)`
+- **Purpose:** Build the auth contract used by schema validation and outbound HTTP execution.
+- **Caller:** `executionPreparation.prepareExecutionRequest()`.
+- **Parent strategy:** Reads `actions.runtime_binding_profile.auth_strategy` and optional `endpoints.runtime_binding_profile.auth_strategy_override` to choose credential scope and fallback behavior.
+- **Supported runtime scopes:** `platform`, `user`, `tenant`, `connection`, `auto`.
+- **Supported scoped credential types:** OAuth2, API key, bearer token, basic auth, custom headers, and provider-specific client credentials.
+- **Fallback rule:** For user/tenant/connection requests with `allow_platform_fallback=false`, throw `external_credential_connection_not_found` if no active `user_app_connections` row resolves.
+
+#### `findUserAppConnection(args)`
+- **Purpose:** Resolve an active encrypted `user_app_connections` row for user, tenant, or explicit connection auth.
+- **Inputs:** `action`, `authContext`, `credentialScope`, `userId`, `tenantId`, `appKey`, `authType`, `connectionId`, `requiredScopes`.
+- **Returns:** `{ row, credentials, scope, authContext }` or `null`.
+- **Security:** Secret material stays encrypted at rest and is not copied into `actions`, `endpoints`, or exported tool rows.
+
+### Internal (not exported)
+AES-GCM decryption helpers, credential field extraction, scope matching, and last-used telemetry helpers.
 
 ---
 
