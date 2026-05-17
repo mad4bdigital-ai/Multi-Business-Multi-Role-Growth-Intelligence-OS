@@ -7,6 +7,10 @@
 -- - owner_scope='platform' is admin-only.
 -- - tenant/user/device scopes are visible only to the matching principal.
 --
+-- The brief, activation_prompt, and conversation_context_ref fields are used
+-- by hard activation to give the admin a compact task summary, detailed
+-- execution prompt, and pointer to the full conversation/context record.
+--
 -- Idempotent. No DELETE/TRUNCATE/DROP.
 
 CREATE TABLE IF NOT EXISTS platform_pending_tasks (
@@ -14,6 +18,8 @@ CREATE TABLE IF NOT EXISTS platform_pending_tasks (
   task_key VARCHAR(191) NOT NULL UNIQUE,
   title VARCHAR(255) NOT NULL,
   description TEXT NULL,
+  brief TEXT NULL,
+  activation_prompt LONGTEXT NULL,
   task_type ENUM('improvement','blocker','maintenance','certification','automation','security','documentation') NOT NULL DEFAULT 'improvement',
   priority ENUM('low','medium','high','critical') NOT NULL DEFAULT 'medium',
   status ENUM('pending','in_progress','blocked','done','cancelled','deferred') NOT NULL DEFAULT 'pending',
@@ -24,6 +30,7 @@ CREATE TABLE IF NOT EXISTS platform_pending_tasks (
   device_id VARCHAR(191) NULL,
   source_surface VARCHAR(191) NULL,
   source_ref VARCHAR(500) NULL,
+  conversation_context_ref VARCHAR(500) NULL,
   activation_visibility TINYINT(1) NOT NULL DEFAULT 1,
   show_until_status_json JSON NULL,
   context_json JSON NULL,
@@ -37,3 +44,8 @@ CREATE TABLE IF NOT EXISTS platform_pending_tasks (
   KEY idx_platform_pending_tasks_scope (owner_scope, tenant_id, user_id, device_id),
   KEY idx_platform_pending_tasks_type (task_type, blocker_level, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE platform_pending_tasks
+  ADD COLUMN IF NOT EXISTS brief TEXT NULL AFTER description,
+  ADD COLUMN IF NOT EXISTS activation_prompt LONGTEXT NULL AFTER brief,
+  ADD COLUMN IF NOT EXISTS conversation_context_ref VARCHAR(500) NULL AFTER source_ref;
