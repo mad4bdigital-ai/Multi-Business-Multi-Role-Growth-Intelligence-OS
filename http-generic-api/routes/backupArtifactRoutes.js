@@ -16,7 +16,7 @@ function tokenHash(token = "") {
 export function buildBackupArtifactRoutes() {
   const router = express.Router();
 
-  router.get("/admin/backup-artifacts/export/:exportId/:fileName", async (req, res) => {
+  router.get("/backup-artifacts/export/:exportId/:fileName", async (req, res) => {
     try {
       const exportId = safeName(req.params.exportId);
       const fileName = safeName(req.params.fileName);
