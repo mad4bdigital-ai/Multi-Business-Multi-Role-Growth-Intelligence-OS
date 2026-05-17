@@ -130,6 +130,50 @@ Shell request body for `action=run`:
 { "action": "run", "alias": "git_status", "extra_args": ["--short"], "timeout_ms": 15000 }
 ```
 
+### Required local verification aliases
+
+Every local connector installation used for platform administration should support these governed aliases, either as built-in aliases or via `CONNECTOR_SHELL_ALLOWLIST`:
+
+| Alias | Purpose |
+|---|---|
+| `local_disk_list` | List local fixed/removable/network volumes. |
+| `local_dir_list` | List a bounded directory path, used to validate registered project paths. |
+| `local_file_search` | Search for a bounded file pattern under a path, used to validate markers such as `package.json`. |
+
+The active Essam connector was upgraded to expose these aliases through `/shell` without opening arbitrary command execution. `local_dir_list` and `local_file_search` accept bounded PowerShell parameters through `extra_args`; they must not delete, overwrite, or move files.
+
+Example directory validation:
+
+```json
+{
+  "action": "run",
+  "alias": "local_dir_list",
+  "extra_args": [
+    "-Path",
+    "D:\\Nagy\\Multi-Business-Multi-Role-Growth-Intelligence-OS",
+    "-Limit",
+    "20"
+  ]
+}
+```
+
+Example marker search:
+
+```json
+{
+  "action": "run",
+  "alias": "local_file_search",
+  "extra_args": [
+    "-Path",
+    "D:\\Nagy\\Multi-Business-Multi-Role-Growth-Intelligence-OS",
+    "-Pattern",
+    "package.json",
+    "-Limit",
+    "10"
+  ]
+}
+```
+
 ---
 
 ## File endpoint
