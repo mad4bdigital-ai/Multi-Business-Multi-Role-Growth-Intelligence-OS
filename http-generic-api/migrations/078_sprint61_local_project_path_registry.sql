@@ -84,6 +84,5 @@ SET input_schema = JSON_SET(
       'For tool=shell/action=run, use an allowlisted alias. Built-in aliases include session_archive_relink_repair_dry_run, session_archive_relink_repair_apply, local_project_path_helper_dry_run, and local_project_path_helper_apply.',
       '$.properties.extra_args.description',
       'Additional arguments passed only to allowlisted shell aliases that permit them. Use local_project_path_helper_* for DB path registry actions and session_archive_relink_repair_* for session archive relink repair.'
-    ),
-    updated_at = CURRENT_TIMESTAMP
+    )
 WHERE tool_key = 'admin_control';
