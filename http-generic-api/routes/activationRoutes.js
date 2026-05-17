@@ -314,14 +314,19 @@ async function loadActivationPendingTasks(subject = {}, maxLimit = 20) {
   let scopeWhere = "";
 
   if (!subject.is_admin) {
-    const scopeParts = ["owner_scope = 'platform'"];
+    // Platform-scoped pending tasks are admin-only. Tenant/user/device callers
+    // may only see tasks explicitly assigned to their tenant/user/device scope.
+    const scopeParts = [];
     if (subject.tenant_id) {
-      scopeParts.push("tenant_id = ?");
+      scopeParts.push("(owner_scope = 'tenant' AND tenant_id = ?)");
       params.push(subject.tenant_id);
     }
     if (subject.user_id) {
-      scopeParts.push("user_id = ?");
+      scopeParts.push("(owner_scope = 'user' AND user_id = ?)");
       params.push(subject.user_id);
+    }
+    if (!scopeParts.length) {
+      scopeParts.push("1 = 0");
     }
     scopeWhere = `AND (${scopeParts.join(" OR ")})`;
   }
