@@ -487,6 +487,24 @@ function builtInShellAllowlist() {
       max_extra_args: 12,
       timeout_ms: 120000,
       built_in: true
+    },
+    local_project_path_helper_dry_run: {
+      command: process.execPath,
+      args: ["http-generic-api/scripts/local-project-path-helper.mjs", "--dry-run"],
+      display_name: "Local project path registry helper dry-run",
+      allow_extra_args: true,
+      max_extra_args: 20,
+      timeout_ms: 120000,
+      built_in: true
+    },
+    local_project_path_helper_apply: {
+      command: process.execPath,
+      args: ["http-generic-api/scripts/local-project-path-helper.mjs", "--apply"],
+      display_name: "Local project path registry helper apply",
+      allow_extra_args: true,
+      max_extra_args: 20,
+      timeout_ms: 120000,
+      built_in: true
     }
   };
 }
