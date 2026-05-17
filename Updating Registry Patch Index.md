@@ -1035,3 +1035,69 @@ required_subdirectories = artifacts, manifests, restore-tests, restore-tests/db-
 ### Boundary
 
 The marker file certifies the folder as a governed destination only. It is not a backup artifact.
+
+---
+
+## Patch 22 — First Actual Code Backup Run
+
+- Status: code backup executed and verified
+- Date: 2026-05-17
+- Runbook: `docs/backup-run-2026-05-17-code-main.md`
+- Guide: `docs/backup-and-copy-governance.md`
+
+### Scope
+
+Executed the first actual code backup from the Essam local repo path into the governed local backup destination. This patch created a code ZIP artifact, manifest JSON, and restore-test extraction. No database dump was created.
+
+### Backup artifact
+
+```text
+policy = policy:platform-code-main:snapshot-draft
+run_id = fa521736-5217-11f1-b256-614c56cd019b
+artifact = D:\\Nagy\\Growth-0s-Backups\\artifacts\\growth-os-code-main-85ea6e4f7894-20260517T174320Z.zip
+manifest = D:\\Nagy\\Growth-0s-Backups\\manifests\\growth-os-code-main-85ea6e4f7894-20260517T174320Z.manifest.json
+checksum_sha256 = 6c99cf7dccdbc8a2f78c9d2971c7056cadebe19a02f2f87e3ed32d0559bd110f
+size_bytes = 1907954
+file_count = 555
+```
+
+### Source
+
+```text
+source_path = D:\\Nagy\\Multi-Business-Multi-Role-Growth-Intelligence-OS
+source_branch = main
+source_commit = 85ea6e4f7894e72e5c35558ceaac13d3f2476932
+```
+
+### Restore test
+
+```text
+restore_target = D:\\Nagy\\Growth-0s-Backups\\restore-tests\\code-clean-checkout\\growth-os-code-main-85ea6e4f7894-20260517T174320Z
+restore_status = passed
+validated markers = package.json, http-generic-api, local-connector
+```
+
+### DB records
+
+Recorded in:
+
+```text
+platform_backup_runs
+platform_backup_artifact_manifests
+platform_restore_tests
+```
+
+### Exclusions
+
+```text
+No DB dump
+No untracked local files
+No plaintext .env
+No provider credentials
+No OAuth refresh tokens
+No service account JSON
+```
+
+### Remaining blocked scope
+
+The DB backup policy remains blocked until a reviewed DB executor is implemented with encryption, checksum, manifest, and restore-test flow.
