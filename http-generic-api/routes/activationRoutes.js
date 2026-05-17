@@ -587,6 +587,10 @@ export async function buildActivationSessionContext(req) {
     },
     gpt_sessions: gptSessions.rows,
     platform_access: platformAccess,
+    pending_tasks: {
+      summary: pendingTaskSummary,
+      items: pendingTaskRows
+    },
     degraded_surfaces: [
       ["request_envelopes", envelopes],
       ["audit_log", audit],
