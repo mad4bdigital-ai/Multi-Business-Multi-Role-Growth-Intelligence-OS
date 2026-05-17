@@ -6,6 +6,47 @@ Admins can manage the local project path for each user/device/project without re
 
 This is not a backup process. It is a local working-copy path registry and repair workflow.
 
+## Access policy
+
+A local path is not automatically tenant/user-accessible just because it exists on a device.
+
+Rules:
+
+```text
+platform repo path = platform/admin only
+tenant access = allowed only for a separately registered tenant-owned path
+user access = allowed only for a separately registered user/device-owned path
+```
+
+The platform admin repo path on Essam:
+
+```text
+D:\\Nagy\\Multi-Business-Multi-Role-Growth-Intelligence-OS
+```
+
+must remain:
+
+```text
+owner_scope = platform
+allowed_subject_scope = admin
+```
+
+A tenant may use a similar path only when registered as a distinct tenant-owned row:
+
+```text
+owner_scope = tenant
+allowed_subject_scope = tenant_admin
+tenant_id = <tenant id>
+project_key = <tenant project key>
+```
+
+Users may use only their own device/user-owned rows:
+
+```text
+owner_scope = user | device
+allowed_subject_scope = user_owner
+```
+
 ## SQL authority
 
 Tables:
