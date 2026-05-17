@@ -412,6 +412,27 @@ tenant location = tenant_id scoped and owner_scope=tenant
 user/device location = user_id/device_id scoped and owner_scope=user|device
 ```
 
+## Actual backup runs
+
+First actual backup run:
+
+```text
+docs/backup-run-2026-05-17-code-main.md
+```
+
+Summary:
+
+```text
+policy = policy:platform-code-main:snapshot-draft
+run_mode = apply
+status = succeeded
+artifact = D:\\Nagy\\Growth-0s-Backups\\artifacts\\growth-os-code-main-85ea6e4f7894-20260517T174320Z.zip
+checksum_sha256 = 6c99cf7dccdbc8a2f78c9d2971c7056cadebe19a02f2f87e3ed32d0559bd110f
+restore_status = passed
+```
+
+This was a code backup only. DB backup remains blocked until a DB executor is implemented and approved.
+
 ## Non-goals in this phase
 
 This phase does not:
