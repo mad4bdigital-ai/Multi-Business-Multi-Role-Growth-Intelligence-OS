@@ -1,0 +1,185 @@
+#!/usr/bin/env node
+import { randomUUID } from "node:crypto";
+import { getPool } from "../db.js";
+
+function clean(value = "") { return String(value ?? "").trim(); }
+function parseArgs(argv = process.argv.slice(2)) {
+  const args = { mode: "dry_run", action: "list-locations" };
+  let applySeen = false;
+  let drySeen = false;
+  for (const arg of argv) {
+    if (arg === "--apply") { args.mode = "apply"; applySeen = true; continue; }
+    if (arg === "--dry-run") { args.mode = "dry_run"; drySeen = true; continue; }
+    const m = arg.match(/^--([^=]+)=(.*)$/);
+    if (m) args[m[1].replace(/-/g, "_")] = m[2];
+  }
+  if (applySeen && drySeen) throw new Error("Conflicting mode flags: use either --dry-run or --apply, not both.");
+  return args;
+}
+function required(args, key) {
+  const value = clean(args[key]);
+  if (!value) throw new Error(`Missing required argument --${key.replace(/_/g, "-")}`);
+  if (/[\0\r\n]/.test(value)) throw new Error(`${key} contains invalid control characters`);
+  return value;
+}
+function parseJson(value, fallback = null) {
+  if (!clean(value)) return fallback;
+  try { return JSON.parse(value); } catch (err) { throw new Error(`Invalid JSON for argument: ${err.message}`); }
+}
+function assertEnum(value, allowed, label) {
+  if (!allowed.includes(value)) throw new Error(`Invalid ${label}: ${value}. Allowed: ${allowed.join(", ")}`);
+  return value;
+}
+function print(payload) { console.log(JSON.stringify(payload, null, 2)); }
+function usage() {
+  return `Usage:\n\nbackup-copy-governance-helper.mjs --action=list-locations [--location-type=...] [--owner-scope=...]\nbackup-copy-governance-helper.mjs --action=register-location --location-key=... --location-type=repo_branch|hostinger_runtime|local_device_path|drive_folder|object_storage|database|other --path-or-ref=... [--apply]\nbackup-copy-governance-helper.mjs --action=list-policies [--status=draft|active|paused|archived]\nbackup-copy-governance-helper.mjs --action=draft-policy --policy-key=... --source-location-key=... --backup-kind=code|database|env_manifest|artifacts|drive_archive|full_bundle|metadata_only|other [--destination-location-key=...] [--apply]\nbackup-copy-governance-helper.mjs --action=record-dry-run --policy-key=... [--manifest-json='{}'] [--apply]\n\nThis helper never copies files, dumps DBs, or uploads artifacts.`;
+}
+async function getLocation(conn, key) {
+  const [rows] = await conn.query(`SELECT * FROM platform_copy_locations WHERE location_key=? LIMIT 1`, [key]);
+  return rows?.[0] || null;
+}
+async function getPolicy(conn, key) {
+  const [rows] = await conn.query(`SELECT * FROM platform_backup_policies WHERE policy_key=? LIMIT 1`, [key]);
+  return rows?.[0] || null;
+}
+async function main() {
+  const args = parseArgs();
+  const action = clean(args.action || "list-locations");
+  const apply = args.mode === "apply";
+  const conn = await getPool().getConnection();
+  try {
+    if (action === "list-locations") {
+      const filters = [];
+      const params = [];
+      if (clean(args.location_type)) { filters.push("location_type=?"); params.push(clean(args.location_type)); }
+      if (clean(args.owner_scope)) { filters.push("owner_scope=?"); params.push(clean(args.owner_scope)); }
+      if (clean(args.status)) { filters.push("status=?"); params.push(clean(args.status)); }
+      const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+      const [rows] = await conn.query(
+        `SELECT location_id, location_key, location_type, owner_scope, tenant_id, user_id, device_id,
+                provider, path_or_ref, branch_name, host_name, is_source_of_truth,
+                allowed_operations_json, risk_level, status, last_validated_at, notes
+           FROM platform_copy_locations ${where}
+          ORDER BY location_type, location_key
+          LIMIT 200`, params);
+      print({ ok: true, action, count: rows.length, rows });
+      return;
+    }
+
+    if (action === "register-location") {
+      const locationKey = required(args, "location_key");
+      const locationType = assertEnum(clean(args.location_type), ['repo_branch','hostinger_runtime','local_device_path','drive_folder','object_storage','database','other'], 'location-type');
+      const ownerScope = assertEnum(clean(args.owner_scope || 'platform'), ['platform','tenant','user','device'], 'owner-scope');
+      const pathOrRef = required(args, "path_or_ref");
+      const riskLevel = assertEnum(clean(args.risk_level || 'medium'), ['low','medium','high','critical'], 'risk-level');
+      const status = assertEnum(clean(args.status || 'pending_validation'), ['active','pending_validation','degraded','archived'], 'status');
+      const plan = { ok: true, action, mode: args.mode, locationKey, locationType, ownerScope, pathOrRef, riskLevel, status };
+      if (!apply) { print(plan); return; }
+      await conn.query(
+        `INSERT INTO platform_copy_locations
+          (location_id, location_key, location_type, owner_scope, tenant_id, user_id, device_id, provider,
+           path_or_ref, branch_name, host_name, is_source_of_truth, allowed_operations_json, risk_level,
+           status, notes, created_by, updated_by)
+         VALUES (?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, ?, NULLIF(?, ''), ?, ?)
+         ON DUPLICATE KEY UPDATE
+           location_type=VALUES(location_type), owner_scope=VALUES(owner_scope), tenant_id=VALUES(tenant_id),
+           user_id=VALUES(user_id), device_id=VALUES(device_id), provider=VALUES(provider), path_or_ref=VALUES(path_or_ref),
+           branch_name=VALUES(branch_name), host_name=VALUES(host_name), is_source_of_truth=VALUES(is_source_of_truth),
+           allowed_operations_json=VALUES(allowed_operations_json), risk_level=VALUES(risk_level), status=VALUES(status),
+           notes=VALUES(notes), updated_by=VALUES(updated_by)`,
+        [randomUUID(), locationKey, locationType, ownerScope, clean(args.tenant_id), clean(args.user_id), clean(args.device_id), clean(args.provider),
+          pathOrRef, clean(args.branch_name), clean(args.host_name), clean(args.is_source_of_truth) === 'true' ? 1 : 0,
+          JSON.stringify(parseJson(args.allowed_operations_json, [])), riskLevel, status, clean(args.notes), clean(args.actor || 'backup_copy_governance_helper'), clean(args.actor || 'backup_copy_governance_helper')]
+      );
+      print({ ...plan, applied: true });
+      return;
+    }
+
+    if (action === "list-policies") {
+      const filters = [];
+      const params = [];
+      if (clean(args.status)) { filters.push("p.status=?"); params.push(clean(args.status)); }
+      if (clean(args.scope)) { filters.push("p.scope=?"); params.push(clean(args.scope)); }
+      const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+      const [rows] = await conn.query(
+        `SELECT p.policy_id, p.policy_key, p.policy_label, p.scope, p.backup_kind, p.mode,
+                p.retention_days, p.encryption_required, p.checksum_required, p.approval_required,
+                p.restore_test_required, p.allowed_executor, p.status,
+                s.location_key AS source_location_key, d.location_key AS destination_location_key
+           FROM platform_backup_policies p
+           JOIN platform_copy_locations s ON s.location_id=p.source_location_id
+           LEFT JOIN platform_copy_locations d ON d.location_id=p.destination_location_id
+           ${where}
+          ORDER BY p.created_at DESC
+          LIMIT 200`, params);
+      print({ ok: true, action, count: rows.length, rows });
+      return;
+    }
+
+    if (action === "draft-policy") {
+      const policyKey = required(args, "policy_key");
+      const sourceLocationKey = required(args, "source_location_key");
+      const source = await getLocation(conn, sourceLocationKey);
+      if (!source) throw new Error(`source_location_key not found: ${sourceLocationKey}`);
+      const destinationLocationKey = clean(args.destination_location_key);
+      const destination = destinationLocationKey ? await getLocation(conn, destinationLocationKey) : null;
+      if (destinationLocationKey && !destination) throw new Error(`destination_location_key not found: ${destinationLocationKey}`);
+      const backupKind = assertEnum(clean(args.backup_kind), ['code','database','env_manifest','artifacts','drive_archive','full_bundle','metadata_only','other'], 'backup-kind');
+      const plan = { ok: true, action, mode: args.mode, policyKey, sourceLocationKey, destinationLocationKey: destinationLocationKey || null, backupKind, status: 'draft' };
+      if (!apply) { print(plan); return; }
+      await conn.query(
+        `INSERT INTO platform_backup_policies
+          (policy_id, policy_key, policy_label, scope, source_location_id, destination_location_id, backup_kind,
+           mode, retention_days, encryption_required, checksum_required, approval_required, restore_test_required,
+           allowed_executor, forbidden_content_json, policy_json, status, created_by, updated_by)
+         VALUES (?, ?, NULLIF(?, ''), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)
+         ON DUPLICATE KEY UPDATE
+           policy_label=VALUES(policy_label), scope=VALUES(scope), source_location_id=VALUES(source_location_id),
+           destination_location_id=VALUES(destination_location_id), backup_kind=VALUES(backup_kind), mode=VALUES(mode),
+           retention_days=VALUES(retention_days), encryption_required=VALUES(encryption_required),
+           checksum_required=VALUES(checksum_required), approval_required=VALUES(approval_required),
+           restore_test_required=VALUES(restore_test_required), allowed_executor=VALUES(allowed_executor),
+           forbidden_content_json=VALUES(forbidden_content_json), policy_json=VALUES(policy_json), status='draft', updated_by=VALUES(updated_by)`,
+        [randomUUID(), policyKey, clean(args.policy_label), clean(args.scope || source.owner_scope || 'platform'), source.location_id, destination?.location_id || null,
+          backupKind, clean(args.backup_mode || 'manual'), clean(args.retention_days) ? Number(args.retention_days) : null,
+          clean(args.encryption_required || 'true') !== 'false' ? 1 : 0,
+          clean(args.checksum_required || 'true') !== 'false' ? 1 : 0,
+          clean(args.approval_required || 'true') !== 'false' ? 1 : 0,
+          clean(args.restore_test_required || 'true') !== 'false' ? 1 : 0,
+          assertEnum(clean(args.allowed_executor || 'none'), ['none','admin_tool','hostinger_ssh','local_connector','github_actions','manual'], 'allowed-executor'),
+          JSON.stringify(parseJson(args.forbidden_content_json, ['plaintext_env','provider_credentials','oauth_refresh_tokens','api_keys','unencrypted_db_dump'])),
+          JSON.stringify(parseJson(args.policy_json, {})), clean(args.actor || 'backup_copy_governance_helper'), clean(args.actor || 'backup_copy_governance_helper')]
+      );
+      print({ ...plan, applied: true });
+      return;
+    }
+
+    if (action === "record-dry-run") {
+      const policyKey = required(args, "policy_key");
+      const policy = await getPolicy(conn, policyKey);
+      if (!policy) throw new Error(`policy_key not found: ${policyKey}`);
+      const plan = { ok: true, action, mode: args.mode, policyKey, runMode: 'dry_run', status: 'planned' };
+      if (!apply) { print(plan); return; }
+      const [result] = await conn.query(
+        `INSERT INTO platform_backup_runs
+          (run_id, policy_id, run_mode, status, manifest_json, initiated_by, created_at)
+         VALUES (?, ?, 'dry_run', 'planned', ?, ?, NOW())`,
+        [randomUUID(), policy.policy_id, JSON.stringify(parseJson(args.manifest_json, { note: 'dry-run record only; no backup executed' })), clean(args.actor || 'backup_copy_governance_helper')]
+      );
+      print({ ...plan, applied: true, affectedRows: result.affectedRows });
+      return;
+    }
+
+    throw new Error(`Unsupported --action=${action}\n${usage()}`);
+  } catch (err) {
+    console.error(JSON.stringify({ ok: false, error: { code: err.code || 'backup_copy_governance_helper_failed', message: err.message }, usage: usage() }, null, 2));
+    process.exitCode = 1;
+  } finally {
+    conn.release();
+    await getPool().end();
+  }
+}
+main().catch((err) => {
+  console.error(JSON.stringify({ ok: false, error: { code: err.code || 'fatal', message: err.message }, usage: usage() }, null, 2));
+  process.exitCode = 1;
+});
