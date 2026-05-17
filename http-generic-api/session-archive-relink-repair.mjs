@@ -114,7 +114,8 @@ async function main() {
       targetSummaryBefore,
       planned: {
         recreateCustomerSession: true,
-        copyMissingTurns: Number(sourceSummary?.source_rows || 0),
+        copyMissingTurns: Number(missingSummary?.missing_rows || 0),
+        sourceRowsAfterCutoff: Number(sourceSummary?.source_rows || 0),
         closeSupersededSession: true
       }
     }, null, 2));
