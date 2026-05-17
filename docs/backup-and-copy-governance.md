@@ -161,7 +161,7 @@ restore_test_required = true
 ```text
 policy:platform-code-main:snapshot-draft
 source = repo:main:growth-intelligence-os
-destination = null until approved snapshot destination is selected
+destination = local:Essam:growth-os-backups
 backup_kind = code
 status = draft
 allowed_executor = github_actions
