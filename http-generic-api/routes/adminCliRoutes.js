@@ -638,6 +638,12 @@ async function executeShellControl(body = {}) {
       if (alias === "local_project_path_helper_apply" && extraArgs.includes("--dry-run")) {
         const e = new Error("apply local project path alias must not receive --dry-run in extra_args."); e.status = 400; e.code = "conflicting_mode_flags"; throw e;
       }
+      if (alias === "backup_copy_governance_helper_dry_run" && extraArgs.includes("--apply")) {
+        const e = new Error("dry-run backup governance alias must not receive --apply in extra_args."); e.status = 400; e.code = "conflicting_mode_flags"; throw e;
+      }
+      if (alias === "backup_copy_governance_helper_apply" && extraArgs.includes("--dry-run")) {
+        const e = new Error("apply backup governance alias must not receive --dry-run in extra_args."); e.status = 400; e.code = "conflicting_mode_flags"; throw e;
+      }
       for (const arg of extraArgs) {
         if (isLocalProjectPathHelperAlias(alias) && isSafeLocalProjectPathArg(arg)) continue;
         if (EXTRA_ARG_UNSAFE_PATTERN.test(arg)) {
