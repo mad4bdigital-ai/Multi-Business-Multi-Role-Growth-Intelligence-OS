@@ -308,6 +308,50 @@ export function resolveSessionContextSubject(req) {
 
 const PLATFORM_TENANT_ID = "00000000-0000-0000-0000-000000000000";
 
+async function loadActivationPendingTasks(subject = {}, maxLimit = 20) {
+  const limit = Math.min(Math.max(Number(maxLimit) || 20, 1), 50);
+  const params = [];
+  let scopeWhere = "";
+
+  if (!subject.is_admin) {
+    const scopeParts = ["owner_scope = 'platform'"];
+    if (subject.tenant_id) {
+      scopeParts.push("tenant_id = ?");
+      params.push(subject.tenant_id);
+    }
+    if (subject.user_id) {
+      scopeParts.push("user_id = ?");
+      params.push(subject.user_id);
+    }
+    scopeWhere = `AND (${scopeParts.join(" OR ")})`;
+  }
+
+  const result = await safeQuery(
+    `SELECT task_id, task_key, title, description, task_type, priority, status,
+            blocker_level, owner_scope, tenant_id, user_id, device_id,
+            source_surface, source_ref, activation_visibility, context_json,
+            due_at, completed_at, created_at, updated_at
+       FROM \`platform_pending_tasks\`
+      WHERE activation_visibility = 1
+        AND status IN ('pending','in_progress','blocked','deferred')
+        ${scopeWhere}
+      ORDER BY FIELD(priority, 'critical', 'high', 'medium', 'low'),
+               FIELD(status, 'blocked', 'in_progress', 'pending', 'deferred'),
+               updated_at DESC
+      LIMIT ${limit}`,
+    params
+  );
+
+  return {
+    ...result,
+    rows: result.rows.map((row) => ({
+      ...row,
+      context_json: parseJsonSafe(row.context_json) || row.context_json || null,
+      non_blocking: row.blocker_level === "none" && row.task_type !== "blocker"
+    }))
+  };
+}
+
 async function autoOpenGptSession(pool, subject) {
   const userId = subject.user_id || null;
   const tenantId = subject.tenant_id || PLATFORM_TENANT_ID;
