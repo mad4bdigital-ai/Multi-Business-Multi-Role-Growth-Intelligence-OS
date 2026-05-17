@@ -8,7 +8,7 @@ const pool = getPool();
 
 function clean(value = "") { return String(value ?? "").trim(); }
 function parseArgs(argv = process.argv.slice(2)) {
-  const args = { action: "export", zone_name: "mad4b.com", output_dir: "" };
+  const args = { action: "export", zone_name: "mad4b.com", output_dir: "", summary_only: "false" };
   for (const arg of argv) {
     const m = arg.match(/^--([^=]+)=(.*)$/);
     if (m) args[m[1].replace(/-/g, "_")] = m[2];
@@ -60,8 +60,10 @@ function redactRecord(record) {
     modified_on: record.modified_on,
   };
 }
-async function main() {
-  const args = parseArgs();
+function expected(records, name) {
+  return records.filter((r) => r.name === name).map(redactRecord);
+}
+async function exportManifest(args) {
   if (args.action !== "export") throw new Error("Only --action=export is supported.");
   const connectionId = requireArg(args, "connection_id");
   const zoneName = clean(args.zone_name || "mad4b.com");
@@ -73,31 +75,28 @@ async function main() {
   if (!token) throw new Error("Cloudflare bearer token not found in encrypted credentials.");
   const baseUrl = conn.api_base_url || "https://api.cloudflare.com/client/v4";
 
-  const user = await cfFetch(baseUrl, token, "/user/tokens/verify");
+  const tokenVerification = await cfFetch(baseUrl, token, "/user/tokens/verify");
   const zones = await cfFetch(baseUrl, token, `/zones?name=${encodeURIComponent(zoneName)}&per_page=50`);
   const zone = zones.result?.[0];
   if (!zone?.id) throw new Error(`Cloudflare zone not found or not readable: ${zoneName}`);
-  const zoneId = zone.id;
 
   const dnsRecords = [];
-  let page = 1;
-  while (true) {
-    const dns = await cfFetch(baseUrl, token, `/zones/${zoneId}/dns_records?per_page=100&page=${page}`);
+  for (let page = 1; page <= 50; page += 1) {
+    const dns = await cfFetch(baseUrl, token, `/zones/${zone.id}/dns_records?per_page=100&page=${page}`);
     dnsRecords.push(...(dns.result || []));
     const info = dns.result_info || {};
     if (!info.total_pages || page >= info.total_pages) break;
-    page += 1;
   }
 
-  let tunnels = [];
   let accounts = [];
+  let tunnels = [];
   try {
     const accountResp = await cfFetch(baseUrl, token, "/accounts?per_page=50");
     accounts = accountResp.result || [];
     for (const account of accounts) {
       try {
-        const t = await cfFetch(baseUrl, token, `/accounts/${account.id}/cfd_tunnel?per_page=100`);
-        tunnels.push(...(t.result || []).map((item) => ({
+        const tunnelResp = await cfFetch(baseUrl, token, `/accounts/${account.id}/cfd_tunnel?per_page=100`);
+        tunnels.push(...(tunnelResp.result || []).map((item) => ({
           id: item.id,
           name: item.name,
           account_id: account.id,
@@ -115,6 +114,7 @@ async function main() {
     accounts = [{ export_status: "blocked", error: err.message }];
   }
 
+  const redactedRecords = dnsRecords.map(redactRecord).sort((a, b) => `${a.name}:${a.type}`.localeCompare(`${b.name}:${b.type}`));
   const manifest = {
     schema: "cloudflare-dns-manifest/v1",
     status: "succeeded",
@@ -131,15 +131,15 @@ async function main() {
       original_name_servers: zone.original_name_servers || [],
     },
     token_validation: {
-      status: user.result?.status || "verified",
-      id: user.result?.id || null,
+      status: tokenVerification.result?.status || "verified",
+      id: tokenVerification.result?.id || null,
     },
-    dns_record_count: dnsRecords.length,
-    dns_records: dnsRecords.map(redactRecord).sort((a, b) => `${a.name}:${a.type}`.localeCompare(`${b.name}:${b.type}`)),
+    dns_record_count: redactedRecords.length,
+    dns_records: redactedRecords,
     expected_records: {
-      auth_mad4b_com: dnsRecords.filter((r) => r.name === "auth.mad4b.com").map(redactRecord),
-      connector_mad4b_com: dnsRecords.filter((r) => r.name === "connector.mad4b.com").map(redactRecord),
-      n8n_mad4b_com: dnsRecords.filter((r) => r.name === "n8n.mad4b.com").map(redactRecord),
+      auth_mad4b_com: expected(dnsRecords, "auth.mad4b.com"),
+      connector_mad4b_com: expected(dnsRecords, "connector.mad4b.com"),
+      n8n_mad4b_com: expected(dnsRecords, "n8n.mad4b.com"),
     },
     accounts: accounts.map((a) => ({ id: a.id || null, name: a.name || null, export_status: a.export_status || "read" })),
     tunnels,
@@ -147,25 +147,52 @@ async function main() {
     txt_content_redacted: true,
   };
 
+  let outputPath = null;
   if (outputDir) {
     await fs.mkdir(outputDir, { recursive: true });
-    const outPath = path.join(outputDir, `cloudflare-dns-manifest-${new Date().toISOString().slice(0, 10)}.json`);
-    await fs.writeFile(outPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
-    manifest.output_path = outPath;
+    outputPath = path.join(outputDir, `cloudflare-dns-manifest-${new Date().toISOString().slice(0, 10)}.json`);
+    await fs.writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    manifest.output_path = outputPath;
   }
 
-  await getPool().query(
+  const summary = {
+    zone_name: zone.name,
+    zone_id: zone.id,
+    dns_record_count: redactedRecords.length,
+    tunnel_count: tunnels.length,
+    auth_records: manifest.expected_records.auth_mad4b_com.length,
+    connector_records: manifest.expected_records.connector_mad4b_com.length,
+    n8n_records: manifest.expected_records.n8n_mad4b_com.length,
+    output_path: outputPath,
+    exported_at: manifest.exported_at,
+  };
+
+  await pool.query(
     `UPDATE user_app_connections
         SET validation_status='validated', last_validated_at=NOW(),
             account_metadata=JSON_SET(COALESCE(account_metadata, JSON_OBJECT()), '$.cloudflare_export', CAST(? AS JSON))
       WHERE connection_id=?`,
-    [JSON.stringify({ zone_name: zone.name, zone_id: zone.id, dns_record_count: dnsRecords.length, tunnel_count: tunnels.length, exported_at: manifest.exported_at }), connectionId]
+    [JSON.stringify(summary), connectionId]
   );
 
-  console.log(JSON.stringify({ ok: true, manifest }, null, 2));
+  return { manifest, summary };
 }
 
-main().catch((err) => {
+async function main() {
+  const args = parseArgs();
+  try {
+    const { manifest, summary } = await exportManifest(args);
+    const payload = String(args.summary_only).toLowerCase() === "true"
+      ? { ok: true, summary }
+      : { ok: true, summary, manifest };
+    console.log(JSON.stringify(payload, null, 2));
+  } finally {
+    await pool.end();
+  }
+}
+
+main().catch(async (err) => {
+  try { await pool.end(); } catch {}
   console.error(JSON.stringify({ ok: false, error: { code: err.code || "cloudflare_dns_export_failed", message: err.message, status: err.status || null, details: err.details || null } }, null, 2));
   process.exitCode = 1;
 });
