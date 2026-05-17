@@ -134,8 +134,36 @@ function defaultCredentialSchema(authType) {
   return [];
 }
 
+function fieldsFromJsonSchema(schema = {}) {
+  const props = schema && typeof schema === "object" && !Array.isArray(schema) ? schema.properties || {} : {};
+  const required = new Set(Array.isArray(schema?.required) ? schema.required.map((v) => String(v || "")) : []);
+  return Object.entries(props).map(([name, prop = {}]) => {
+    const format = String(prop.format || "").trim().toLowerCase();
+    const type = format === "password" ? "password" : prop.type === "boolean" ? "checkbox" : prop.type === "number" || prop.type === "integer" ? "number" : format === "uri" || format === "url" ? "url" : "text";
+    const lowered = String(name || "").toLowerCase();
+    const target = ["api_base_url", "mcp_endpoint", "webhook_url"].includes(name) ? "connection" : lowered.includes("scope") || lowered.includes("zone") || lowered.includes("label") ? "metadata" : "credentials";
+    return {
+      name,
+      label: prop.title || name,
+      type,
+      target,
+      required: required.has(name),
+      secret: format === "password" || lowered.includes("token") || lowered.includes("secret") || lowered.includes("key"),
+      placeholder: prop.description || "",
+      help: prop.description || "",
+      options: Array.isArray(prop.enum) ? prop.enum.map((value) => ({ value, label: value })) : [],
+    };
+  });
+}
+
 function normalizeCredentialSchema(authType, schema) {
-  const rawFields = Array.isArray(schema?.fields) ? schema.fields : Array.isArray(schema) ? schema : defaultCredentialSchema(authType);
+  const rawFields = Array.isArray(schema?.fields)
+    ? schema.fields
+    : Array.isArray(schema)
+      ? schema
+      : schema?.properties
+        ? fieldsFromJsonSchema(schema)
+        : defaultCredentialSchema(authType);
   const fields = rawFields.map(sanitizeField).filter(Boolean);
   const seen = new Set();
   return fields.filter((field) => {
