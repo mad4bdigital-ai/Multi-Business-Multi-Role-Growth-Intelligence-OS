@@ -540,6 +540,24 @@ function builtInShellAllowlist() {
       max_extra_args: 24,
       timeout_ms: 120000,
       built_in: true
+    },
+    backup_executor_guard_dry_run: {
+      command: process.execPath,
+      args: ["http-generic-api/scripts/backup-executor-guard.mjs", "--dry-run"],
+      display_name: "Backup executor guard dry-run",
+      allow_extra_args: true,
+      max_extra_args: 16,
+      timeout_ms: 120000,
+      built_in: true
+    },
+    backup_executor_guard_apply: {
+      command: process.execPath,
+      args: ["http-generic-api/scripts/backup-executor-guard.mjs", "--apply"],
+      display_name: "Backup executor guard apply metadata",
+      allow_extra_args: true,
+      max_extra_args: 16,
+      timeout_ms: 120000,
+      built_in: true
     }
   };
 }
