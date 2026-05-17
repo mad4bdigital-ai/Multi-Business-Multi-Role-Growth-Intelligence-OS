@@ -136,6 +136,9 @@ async function main() {
     if (action === "upsert") {
       const currentPath = safePath(required(args, "current_path"), "current_path");
       const expectedMarkers = parseJson(args.expected_markers_json, [".git", "package.json"]);
+      const ownerScope = normalizeOwnerScope(args.owner_scope || existing?.owner_scope || "platform");
+      const allowedSubjectScope = normalizeAllowedSubjectScope(args.allowed_subject_scope || existing?.allowed_subject_scope || "", ownerScope);
+      const allowedOperations = parseJson(args.allowed_operations_json, existing?.allowed_operations_json || defaultAllowedOperations(ownerScope, projectKey));
       const plan = {
         action,
         mode: apply ? "apply" : "dry-run",
@@ -143,6 +146,9 @@ async function main() {
         userId: userId || null,
         deviceId,
         projectKey,
+        ownerScope,
+        allowedSubjectScope,
+        allowedOperations,
         currentPath,
         previousPath: existing?.current_path || null,
         existing: Boolean(existing)
