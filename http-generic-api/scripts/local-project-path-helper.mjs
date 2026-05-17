@@ -116,6 +116,7 @@ async function main() {
       if (userId) { filters.push("user_id=?"); params.push(userId); }
       const [rows] = await conn.query(
         `SELECT path_id, tenant_id, user_id, device_id, project_key, project_label,
+                owner_scope, allowed_subject_scope, allowed_operations_json,
                 current_path, previous_path, repo_remote, repo_branch, path_status,
                 validation_status, last_validated_at, last_repair_run_id, created_at, updated_at
            FROM local_project_path_registry
