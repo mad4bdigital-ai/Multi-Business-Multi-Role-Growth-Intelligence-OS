@@ -1163,3 +1163,64 @@ DB credentials were not written to the artifact manifest or runbook.
 The recovery key file is required to decrypt the artifact.
 The plaintext SQL restore-check file was removed after validation.
 ```
+
+---
+
+## Patch 24 — First Actual Local n8n Backup Run
+
+- Status: encrypted n8n local backup executed and verified
+- Date: 2026-05-17
+- Runbook: `docs/backup-run-2026-05-17-n8n-local.md`
+- Guide: `docs/backup-and-copy-governance.md`
+
+### Scope
+
+Executed the first actual encrypted backup for the local n8n user data path on the Essam device. The artifact includes `D:\\n8n-data`, including `.n8n/database.sqlite`, `.n8n/database.sqlite-wal`, `.n8n/config`, nodes, storage, and related files. The durable artifact is encrypted with AES-256-GCM. A decrypt + ZIP structure validation was performed, and plaintext validation ZIP was removed afterward.
+
+### Backup artifact
+
+```text
+policy = policy:local-n8n-data:manual
+run_id = 928af7d1-521e-11f1-b256-614c56cd019b
+source = D:\\n8n-data
+artifact = D:\\Nagy\\Growth-0s-Backups\\artifacts\\growth-os-n8n-local-2026-05-17T18-25-41-880Z.zip.aes256gcm
+manifest = D:\\Nagy\\Growth-0s-Backups\\manifests\\growth-os-n8n-local-2026-05-17T18-25-41-880Z.manifest.json
+recovery_key = D:\\Nagy\\Growth-0s-Backups\\keys\\growth-os-n8n-local-2026-05-17T18-25-41-880Z.recovery-key.json
+checksum_sha256 = cc3b4819a6c984d51a121446779d8110bedf15f43321deda9785676c5387fbb7
+artifact_size_bytes = 13098316
+source_size_bytes = 59087745
+file_count = 851
+```
+
+### Restore validation
+
+```text
+restore_target = D:\\Nagy\\Growth-0s-Backups\\restore-tests\\n8n-local\\growth-os-n8n-local-2026-05-17T18-25-41-880Z
+restore_status = passed
+has_n8n_root = true
+has_database_sqlite = true
+has_config = true
+has_nodes_dir = true
+plaintext_validation_zip_removed = true
+```
+
+### DB records
+
+Recorded in:
+
+```text
+platform_copy_locations
+platform_backup_policies
+platform_backup_approvals
+platform_backup_runs
+platform_backup_artifact_manifests
+platform_restore_tests
+```
+
+### Security notes
+
+```text
+n8n local data is sensitive because it can contain encrypted credentials and encryption metadata.
+The recovery key file is required to decrypt the artifact.
+No plaintext ZIP remains after validation.
+```
