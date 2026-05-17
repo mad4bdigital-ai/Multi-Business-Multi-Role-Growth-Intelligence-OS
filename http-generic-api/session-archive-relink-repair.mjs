@@ -87,6 +87,22 @@ async function main() {
       [targetSessionId]
     );
 
+    const missingSummary = await getSingle(
+      conn,
+      `SELECT COUNT(*) AS missing_rows
+         FROM gpt_session_turns src
+        WHERE src.session_id=?
+          AND src.created_at > ?
+          AND NOT EXISTS (
+            SELECT 1
+              FROM gpt_session_turns existing
+             WHERE existing.session_id=?
+               AND existing.content_sha256=src.content_sha256
+               AND existing.created_at=src.created_at
+          )`,
+      [supersededSessionId, copyAfter, targetSessionId]
+    );
+
     console.log(JSON.stringify({
       ok: true,
       mode: apply ? "apply" : "dry-run",
