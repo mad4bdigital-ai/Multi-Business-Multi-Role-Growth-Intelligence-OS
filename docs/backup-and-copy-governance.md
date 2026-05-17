@@ -120,6 +120,47 @@ Example list:
 
 The dry-run alias rejects `--apply`; the apply alias rejects `--dry-run`.
 
+## Draft policy templates
+
+Current draft templates:
+
+```text
+policy:platform-db-primary:manual-draft
+source = database:mysql:auth-runtime-primary
+destination = object-storage:pending:encrypted-backups
+backup_kind = database
+status = draft
+allowed_executor = none
+retention_days = 7
+encryption_required = true
+checksum_required = true
+approval_required = true
+restore_test_required = true
+```
+
+```text
+policy:platform-code-main:snapshot-draft
+source = repo:main:growth-intelligence-os
+destination = null until approved snapshot destination is selected
+backup_kind = code
+status = draft
+allowed_executor = github_actions
+retention_days = 30
+encryption_required = false
+checksum_required = true
+approval_required = true
+restore_test_required = true
+```
+
+Current dry-run governance records:
+
+```text
+policy:platform-db-primary:manual-draft -> dry_run/planned
+policy:platform-code-main:snapshot-draft -> dry_run/planned
+```
+
+These records prove policy planning only. They do not represent executed backups.
+
 ## Backup policy requirements
 
 A backup policy must define:
