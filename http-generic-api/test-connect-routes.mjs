@@ -359,11 +359,11 @@ section("connect api auth scope");
 
   {
     const source = readFileSync("routes/connectorProxyRoutes.js", "utf8");
-    for (const workaround of ["/connector/:device_id/ps", "/connector/:device_id/win", "/connector/:device_id/n8n", "/connector/:device_id/cf"]) {
+    for (const workaround of ["/connector/:device_id/ps", "/connector/:device_id/win", "/connector/:device_id/cf"]) {
       const routePattern = new RegExp(`router\\.post\\("${workaround.replace(/[/]/g, "\\/").replace(/:/g, ":")}",[^)]*adminOnly`);
       assert(`workaround route ${workaround} requires adminOnly guard`, routePattern.test(source), `missing adminOnly on ${workaround}`);
     }
-    for (const tenantSafe of ["/connector/:device_id/files", "/connector/:device_id/apps", "/connector/:device_id/browser", "/connector/:device_id/dependencies"]) {
+    for (const tenantSafe of ["/connector/:device_id/files", "/connector/:device_id/apps", "/connector/:device_id/browser", "/connector/:device_id/dependencies", "/connector/:device_id/n8n"]) {
       const routePattern = new RegExp(`router\\.post\\("${tenantSafe.replace(/[/]/g, "\\/").replace(/:/g, ":")}",[^)]*adminOnly`);
       assert(`tenant-safe route ${tenantSafe} stays open to user JWT (no adminOnly)`, !routePattern.test(source));
     }
