@@ -154,6 +154,34 @@ async function main() {
       return;
     }
 
+    if (action === "list-approvals") {
+      const [rows] = await conn.query(
+        `SELECT a.approval_id, p.policy_key, a.approval_type, a.status, a.requested_by,
+                a.approved_by, a.rejected_by, a.reason, a.requested_at, a.decided_at, a.expires_at
+           FROM platform_backup_approvals a
+           JOIN platform_backup_policies p ON p.policy_id=a.policy_id
+          ORDER BY a.requested_at DESC
+          LIMIT 200`
+      );
+      print({ ok: true, action, count: rows.length, rows });
+      return;
+    }
+
+    if (action === "list-restore-tests") {
+      const [rows] = await conn.query(
+        `SELECT t.test_id, p.policy_key, r.run_mode, r.status AS backup_run_status,
+                t.restore_target, t.status AS restore_test_status, t.validated_commit_sha,
+                t.validated_tables_count, t.validated_checksum_sha256, t.notes, t.created_at
+           FROM platform_restore_tests t
+           JOIN platform_backup_runs r ON r.run_id=t.backup_run_id
+           JOIN platform_backup_policies p ON p.policy_id=r.policy_id
+          ORDER BY t.created_at DESC
+          LIMIT 200`
+      );
+      print({ ok: true, action, count: rows.length, rows });
+      return;
+    }
+
     if (action === "record-dry-run") {
       const policyKey = required(args, "policy_key");
       const policy = await getPolicy(conn, policyKey);
