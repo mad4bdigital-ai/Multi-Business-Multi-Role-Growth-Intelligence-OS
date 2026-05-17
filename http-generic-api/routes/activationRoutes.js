@@ -523,6 +523,21 @@ export async function buildActivationSessionContext(req) {
   );
 
   const platformAccess = await buildActivationPlatformAccess(req);
+  const pendingTasks = await loadActivationPendingTasks(subject, 25);
+  const pendingTaskRows = pendingTasks.rows || [];
+  const pendingTaskSummary = {
+    total_visible: pendingTaskRows.length,
+    blockers: pendingTaskRows.filter((task) => task.blocker_level !== "none" || task.task_type === "blocker").length,
+    non_blocking: pendingTaskRows.filter((task) => task.blocker_level === "none" && task.task_type !== "blocker").length,
+    by_status: pendingTaskRows.reduce((acc, task) => {
+      acc[task.status] = (acc[task.status] || 0) + 1;
+      return acc;
+    }, {}),
+    by_type: pendingTaskRows.reduce((acc, task) => {
+      acc[task.task_type] = (acc[task.task_type] || 0) + 1;
+      return acc;
+    }, {})
+  };
 
   return {
     session_id: newSessionId,
