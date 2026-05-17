@@ -139,8 +139,9 @@ async function exportManifest(args) {
       original_name_servers: zone.original_name_servers || [],
     },
     token_validation: {
-      status: tokenVerification.result?.status || "verified",
+      status: tokenVerification.result?.status || "effective_zone_read",
       id: tokenVerification.result?.id || null,
+      user_verify_warning: tokenVerifyWarning,
     },
     dns_record_count: redactedRecords.length,
     dns_records: redactedRecords,
