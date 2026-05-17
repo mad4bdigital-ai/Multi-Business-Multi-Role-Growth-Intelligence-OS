@@ -272,7 +272,10 @@ tunnel_count = 3
 auth.mad4b.com records = 1
 connector.mad4b.com records = 1
 n8n.mad4b.com records = 1
-manifest_path = /tmp/growth-os-cloudflare-manifests/cloudflare-dns-manifest-2026-05-17.json
+server_manifest_path = /tmp/growth-os-cloudflare-manifests/cloudflare-dns-manifest-2026-05-17.json
+local_manifest_path = D:\\Nagy\\Growth-0s-Backups\\manifests\\cloudflare-dns-manifest-2026-05-17.json
+drive_manifest_file_id = 1dF6cMcwh4Sy2ebVatGJqTYReBjfJbkbU
+manifest_sha256 = 2db10b875123f964b40fc4dc7657cfb1c1bb1d2a4da26ceb0f6d2c6d744f1c93
 ```
 
 Registry:
