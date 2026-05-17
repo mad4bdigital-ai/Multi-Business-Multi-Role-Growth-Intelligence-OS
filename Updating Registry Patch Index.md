@@ -540,3 +540,55 @@ After any DB restore or replay, verify that the active `customer_sessions` row s
 - Official `Session Transcript` modified at approximately `2026-05-17T09:53:14Z`.
 - `customer_sessions.archive_status` for `f013...` is `ready`.
 - `5dee...` is marked completed/superseded.
+
+---
+
+## Patch 12 — Local Project Path Registry and Repair Helpers
+
+- Status: applied and documented
+- Date: 2026-05-17
+- Migration: `http-generic-api/migrations/078_sprint61_local_project_path_registry.sql`
+- Guide: `docs/local-project-path-governance.md`
+
+### Scope
+
+Admins can record and update the local project path for each user/device/project in SQL, then use governed helpers to plan a move, confirm it, or mark the path as repair-required. A separate local repair script can correct incomplete manual moves on the user's device.
+
+### SQL tables
+
+```text
+local_project_path_registry
+local_project_path_events
+local_project_path_repair_runs
+```
+
+### Files added
+
+- `http-generic-api/scripts/local-project-path-helper.mjs` — SQL-backed admin helper for list/upsert/plan-move/confirm-move/repair-required/archive.
+- `http-generic-api/scripts/local-project-path-repair.mjs` — device-side local repair script that copies missing files only and never deletes the source path.
+- `docs/local-project-path-governance.md` — operating guide.
+
+### Admin aliases
+
+Built-in `admin_control` shell aliases:
+
+```text
+local_project_path_helper_dry_run
+local_project_path_helper_apply
+```
+
+The dry-run alias rejects `--apply` and the apply alias rejects `--dry-run`.
+
+### Runtime behavior
+
+- DB helper defaults to dry-run.
+- Apply-mode DB helper writes only to `local_project_path_*` tables.
+- Device repair script defaults to dry-run.
+- Device repair apply-mode copies missing files only, reports conflicts, and never deletes the source path.
+- Local path registry is explicitly not a backup certification.
+
+### Verification
+
+- Tables created live in SQL.
+- `admin_control` schema updated to describe local project path aliases.
+- Documentation linked from `deployment_parity_checklist.md`.
