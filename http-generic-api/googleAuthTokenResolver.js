@@ -116,10 +116,68 @@ export function getGoogleAuthCredentialSourcesForEnv(env = process.env) {
   return [...new Set(sources)];
 }
 
+const USER_SCOPED_GOOGLE_REF_MODES = new Set(["member_email", "member_user_id", "tenant_primary"]);
+
+function isUserScopedGoogleRefMode(mode = "") {
+  return USER_SCOPED_GOOGLE_REF_MODES.has(String(mode || "").trim());
+}
+
+function boolOption(value, fallback = false) {
+  if (value === true || value === false) return value;
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (["true", "1", "yes"].includes(normalized)) return true;
+  if (["false", "0", "no"].includes(normalized)) return false;
+  return fallback;
+}
+
+function defaultGoogleAppKey(action = {}) {
+  const actionKey = String(action.action_key || "").trim();
+  if (actionKey === "google_drive_api") return "google_drive";
+  if (actionKey === "google_docs_api") return "google_docs";
+  if (actionKey === "google_sheets_api") return "google_sheets";
+  return String(action.connector_family || actionKey || "google").trim() || "google";
+}
+
+function scopedOauthRefFromRuntimeContext(options = {}) {
+  const action = options.action || {};
+  const ctx = options.auth_context && typeof options.auth_context === "object" ? options.auth_context : {};
+  const credentialScope = String(ctx.credential_scope || options.credential_scope || "").trim().toLowerCase();
+  const userId = String(ctx.user_id || options.user_id || "").trim();
+  const tenantId = String(ctx.tenant_id || options.tenant_id || "").trim();
+  const appKey = String(ctx.app_key || options.app_key || defaultGoogleAppKey(action)).trim();
+  const scopes = String(ctx.scopes || options.scopes || action.required_oauth_scopes || "https://www.googleapis.com/auth/drive").trim();
+  const scopeParam = scopes ? `;scopes=${scopes}` : "";
+
+  if (["user", "member_user_id"].includes(credentialScope) && userId) {
+    return `member_user_id:${userId};app_key=${appKey}${scopeParam}`;
+  }
+  if (["tenant", "tenant_primary"].includes(credentialScope) && tenantId) {
+    return `tenant_primary:${appKey};tenant_id=${tenantId};app_key=${appKey}${scopeParam}`;
+  }
+  return "";
+}
+
+function effectiveOauthConfigRef(options = {}) {
+  const action = options.action || {};
+  return scopedOauthRefFromRuntimeContext(options) || options.oauth_config_ref || action.oauth_config_ref || "";
+}
+
+function allowPlatformFallback(options = {}) {
+  const ctx = options.auth_context && typeof options.auth_context === "object" ? options.auth_context : {};
+  const credentialScope = String(ctx.credential_scope || options.credential_scope || "").trim().toLowerCase();
+  if (["user", "member_user_id", "tenant", "tenant_primary"].includes(credentialScope)) {
+    return boolOption(ctx.allow_platform_fallback ?? options.allow_platform_fallback, false);
+  }
+  return boolOption(ctx.allow_platform_fallback ?? options.allow_platform_fallback, true);
+}
+
 function cacheKey(options = {}) {
   const action = options.action || {};
-  const ref = parseOauthConfigRef(options.oauth_config_ref || action.oauth_config_ref || "");
-  return ref.mode ? `ref:${action.action_key || ""}:${action.oauth_config_ref || ""}` : `global:${action.action_key || ""}`;
+  const oauthRef = effectiveOauthConfigRef(options);
+  const ref = parseOauthConfigRef(oauthRef);
+  return isUserScopedGoogleRefMode(ref.mode)
+    ? `ref:${action.action_key || ""}:${oauthRef}`
+    : `global:${action.action_key || ""}`;
 }
 
 async function getMemberScopedToken(options = {}) {
