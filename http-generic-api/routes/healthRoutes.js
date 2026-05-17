@@ -40,7 +40,11 @@ export function buildHealthRoutes(deps) {
           error: err?.code || err?.message || "db_connection_failed"
         }))
       : { connected: null, skipped: true };
-    const dependencyStatus = redisHealth.connected && queueHealth.ok && dbHealth.connected !== false
+    const queueDisabledByConfig = !QUEUE_WORKER_ENABLED
+      && redisHealth?.status === "disabled"
+      && queueHealth?.error?.code === "queue_disabled";
+    const queueDependencyHealthy = queueDisabledByConfig || (redisHealth.connected && queueHealth.ok);
+    const dependencyStatus = queueDependencyHealthy && dbHealth.connected !== false
       ? "healthy"
       : "degraded";
 
