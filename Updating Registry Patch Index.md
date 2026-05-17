@@ -751,3 +751,47 @@ policy:platform-code-main:snapshot-draft -> dry_run/planned
 ### Execution boundary
 
 The database policy is intentionally blocked with `allowed_executor=none` until an encrypted destination, approval flow, and restore-test target are selected.
+
+---
+
+## Patch 16 — Backup Approval and Restore-Test Gates
+
+- Status: governance-only applied; no backup or restore executed
+- Date: 2026-05-17
+- Migration: `http-generic-api/migrations/083_sprint61_backup_approval_restore_gates.sql`
+- Guide: `docs/backup-and-copy-governance.md`
+
+### Scope
+
+Added explicit approval tracking and planned restore-test rows for the current draft backup policies. This patch does not approve, execute, or restore any backup.
+
+### SQL table added
+
+```text
+platform_backup_approvals
+```
+
+### Planned restore tests added
+
+```text
+policy:platform-db-primary:manual-draft -> pending://isolated-restore-db-target
+policy:platform-code-main:snapshot-draft -> pending://clean-checkout-or-release-restore-target
+```
+
+### Approval requests added
+
+```text
+policy:platform-db-primary:manual-draft -> policy_activation/requested
+policy:platform-code-main:snapshot-draft -> policy_activation/requested
+```
+
+### Helper actions added
+
+```text
+list-approvals
+list-restore-tests
+```
+
+### Execution boundary
+
+Requested approval is not approval. Both policies remain `draft`; no apply-mode backup may run until destination, approval, checksum, retention, and restore-test target are finalized.
