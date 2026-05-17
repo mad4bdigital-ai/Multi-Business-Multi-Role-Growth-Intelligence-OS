@@ -1101,3 +1101,65 @@ No service account JSON
 ### Remaining blocked scope
 
 The DB backup policy remains blocked until a reviewed DB executor is implemented with encryption, checksum, manifest, and restore-test flow.
+
+---
+
+## Patch 23 — First Actual Database Backup Run
+
+- Status: encrypted DB backup executed and verified
+- Date: 2026-05-17
+- Runbook: `docs/backup-run-2026-05-17-db-primary.md`
+- Guide: `docs/backup-and-copy-governance.md`
+
+### Scope
+
+Executed the first actual encrypted database backup from the runtime MySQL database into the governed Essam local backup destination. The durable artifact is encrypted with AES-256-GCM and compressed with gzip. A structural restore validation was performed locally, and the plaintext restore-check SQL was removed afterward.
+
+### Backup artifact
+
+```text
+policy = policy:platform-db-primary:manual-draft
+run_id = 32658583-521c-11f1-b256-614c56cd019b
+artifact = D:\\Nagy\\Growth-0s-Backups\\artifacts\\growth-os-db-primary-2026-05-17T18-10-17-164Z.sql.gz.aes256gcm
+manifest = D:\\Nagy\\Growth-0s-Backups\\manifests\\growth-os-db-primary-2026-05-17T18-10-17-164Z.manifest.json
+recovery_key = D:\\Nagy\\Growth-0s-Backups\\keys\\growth-os-db-primary-2026-05-17T18-10-17-164Z.recovery-key.json
+checksum_sha256 = e7ac7a51a4d74d55e31954d55edf659c05ddadbacf73a0f66ea48f902f2f4756
+size_bytes = 4633945
+```
+
+### Source
+
+```text
+database = u338416126_growthOS
+table_count = 155
+row_count = 39515
+```
+
+### Restore validation
+
+```text
+restore_target = D:\\Nagy\\Growth-0s-Backups\\restore-tests\\db-isolated\\growth-os-db-primary-2026-05-17T18-10-17-164Z
+restore_status = passed
+create_table_count = 155
+insert_statement_count = 39561
+sql_size_bytes = 63802376
+plaintext_restore_sql_removed = true
+```
+
+### DB records
+
+Recorded in:
+
+```text
+platform_backup_runs
+platform_backup_artifact_manifests
+platform_restore_tests
+```
+
+### Security notes
+
+```text
+DB credentials were not written to the artifact manifest or runbook.
+The recovery key file is required to decrypt the artifact.
+The plaintext SQL restore-check file was removed after validation.
+```
