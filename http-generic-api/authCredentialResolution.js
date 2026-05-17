@@ -57,7 +57,12 @@ async function _buildAuthContract({
   action,
   brand,
   hostingAccounts = [],
-  targetKey = ""
+  targetKey = "",
+  user_id = "",
+  tenant_id = "",
+  auth_context = null,
+  credential_scope = "",
+  allow_platform_fallback = undefined
 }) {
   const mode = inferAuthMode({ action, brand });
   const contract = {
