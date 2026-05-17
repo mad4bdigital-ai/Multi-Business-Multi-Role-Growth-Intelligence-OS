@@ -658,6 +658,7 @@ tenant_id = <tenant id>
 - Status: governance-only applied; no backup executed
 - Date: 2026-05-17
 - Migration: `http-generic-api/migrations/080_sprint61_backup_copy_governance.sql`
+- Alias schema migration: `http-generic-api/migrations/081_sprint61_backup_governance_alias_schema.sql`
 - Guide: `docs/backup-and-copy-governance.md`
 
 ### Scope
