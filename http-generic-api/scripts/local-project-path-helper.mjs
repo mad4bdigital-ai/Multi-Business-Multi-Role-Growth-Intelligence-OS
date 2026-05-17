@@ -158,15 +158,19 @@ async function main() {
       const pathId = existing?.path_id || randomUUID();
       await conn.query(
         `INSERT INTO local_project_path_registry
-          (path_id, tenant_id, user_id, device_id, project_key, project_label, current_path, previous_path,
-           repo_remote, repo_branch, expected_markers_json, path_status, validation_status, created_by, updated_by)
-         VALUES (?, ?, NULLIF(?, ''), ?, ?, NULLIF(?, ''), ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, 'active', 'unknown', ?, ?)
+          (path_id, tenant_id, user_id, device_id, project_key, project_label, owner_scope, allowed_subject_scope,
+           allowed_operations_json, current_path, previous_path, repo_remote, repo_branch, expected_markers_json,
+           path_status, validation_status, created_by, updated_by)
+         VALUES (?, ?, NULLIF(?, ''), ?, ?, NULLIF(?, ''), ?, ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, 'active', 'unknown', ?, ?)
          ON DUPLICATE KEY UPDATE
-           user_id=VALUES(user_id), project_label=VALUES(project_label), previous_path=current_path,
-           current_path=VALUES(current_path), repo_remote=VALUES(repo_remote), repo_branch=VALUES(repo_branch),
-           expected_markers_json=VALUES(expected_markers_json), path_status='active', validation_status='unknown', updated_by=VALUES(updated_by)`,
-        [pathId, tenantId, userId, deviceId, projectKey, clean(args.project_label), currentPath, existing?.current_path || null,
-          clean(args.repo_remote), clean(args.repo_branch), JSON.stringify(expectedMarkers), actor, actor]
+           user_id=VALUES(user_id), project_label=VALUES(project_label), owner_scope=VALUES(owner_scope),
+           allowed_subject_scope=VALUES(allowed_subject_scope), allowed_operations_json=VALUES(allowed_operations_json),
+           previous_path=current_path, current_path=VALUES(current_path), repo_remote=VALUES(repo_remote),
+           repo_branch=VALUES(repo_branch), expected_markers_json=VALUES(expected_markers_json),
+           path_status='active', validation_status='unknown', updated_by=VALUES(updated_by)`,
+        [pathId, tenantId, userId, deviceId, projectKey, clean(args.project_label), ownerScope, allowedSubjectScope,
+          JSON.stringify(allowedOperations), currentPath, existing?.current_path || null, clean(args.repo_remote),
+          clean(args.repo_branch), JSON.stringify(expectedMarkers), actor, actor]
       );
       await insertEvent(conn, { pathId, eventType: existing ? "path_updated" : "registered", oldPath: existing?.current_path || null, newPath: currentPath, before: existing?.path_status || null, after: "active", actor, event: plan });
       await conn.commit();
