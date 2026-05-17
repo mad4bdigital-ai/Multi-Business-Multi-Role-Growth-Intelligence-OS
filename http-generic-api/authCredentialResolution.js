@@ -294,6 +294,8 @@ async function _buildAuthContract({
 
   if (mode === "bearer_token") {
     contract.header_name = "Authorization";
+    const scoped = await resolveScopedConnection({ action, endpoint, mode, user_id, tenant_id, auth_context, credential_scope, allow_platform_fallback });
+    if (applyConnectionToContract(contract, scoped, mode)) return contract;
 
     const storageMode = String(action.api_key_storage_mode || "").trim().toLowerCase();
 
