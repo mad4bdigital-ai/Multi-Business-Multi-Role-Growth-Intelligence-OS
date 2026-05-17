@@ -795,3 +795,44 @@ list-restore-tests
 ### Execution boundary
 
 Requested approval is not approval. Both policies remain `draft`; no apply-mode backup may run until destination, approval, checksum, retention, and restore-test target are finalized.
+
+---
+
+## Patch 17 — Essam Local Backup Destination
+
+- Status: destination registered; no backup executed
+- Date: 2026-05-17
+- Migration: `http-generic-api/migrations/084_sprint61_local_backup_destination.sql`
+- Guide: `docs/backup-and-copy-governance.md`
+
+### Scope
+
+Registered the admin-selected local backup destination on the Essam device and linked existing draft policies to it. This patch does not dump a database, copy files, upload artifacts, approve a policy, or execute a restore test.
+
+### Destination
+
+```text
+location_key = local:Essam:growth-os-backups
+path = D:\\Nagy\\Growth-0s-Backups
+owner_scope = platform
+risk_level = critical
+status = active
+```
+
+### Policy updates
+
+```text
+policy:platform-db-primary:manual-draft -> destination local:Essam:growth-os-backups
+policy:platform-code-main:snapshot-draft -> destination local:Essam:growth-os-backups
+```
+
+### Restore-test target plans
+
+```text
+policy:platform-db-primary:manual-draft -> D:\\Nagy\\Growth-0s-Backups\\restore-tests\\db-isolated
+policy:platform-code-main:snapshot-draft -> D:\\Nagy\\Growth-0s-Backups\\restore-tests\\code-clean-checkout
+```
+
+### Execution boundary
+
+The policies remain `draft`. The DB policy remains blocked with `allowed_executor=none`; encrypted artifact format, checksum implementation, and explicit approval are still required before any apply-mode backup.
