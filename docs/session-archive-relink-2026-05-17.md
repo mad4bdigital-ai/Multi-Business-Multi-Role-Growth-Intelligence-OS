@@ -125,6 +125,39 @@ node session-archive-relink-repair.mjs \
 
 Only after validating the dry-run output should `--apply` be used. The tool uses a transaction and scoped `INSERT ... ON DUPLICATE KEY UPDATE`, `INSERT ... SELECT`, and scoped `UPDATE` statements. It does not use `DROP`, `TRUNCATE`, or broad `DELETE`.
 
+The same CLI is also exposed through governed `admin_control` shell aliases:
+
+```json
+{
+  "tool": "shell",
+  "action": "run",
+  "alias": "session_archive_relink_repair_dry_run",
+  "extra_args": [
+    "--target-session-id=f0132008-edae-44d0-8668-87b44b2fde26",
+    "--target-drive-folder-id=1enrrI7OU3_R0vAaCyfm-N7Ii7IU5Q3AG",
+    "--target-drive-doc-id=1nrF8h3YREBY3PKFPCXm7-gKkWAsfoebN6K-cWZQHNgI",
+    "--target-drive-jsonl-id=1pdE1d9ODJN5NMnVklB21B-hwzfM-EJc7",
+    "--target-drive-exports-folder-id=1LACKqcTMbLLUQDJNvNajG1pM95bO-hER",
+    "--superseded-session-id=5dee2542-80e3-45f2-8bef-087c59d5def5",
+    "--copy-after=2026-05-17 05:49:55",
+    "--start-turn-index=114"
+  ]
+}
+```
+
+Apply mode uses the separate alias:
+
+```json
+{
+  "tool": "shell",
+  "action": "run",
+  "alias": "session_archive_relink_repair_apply",
+  "extra_args": ["same required --key=value arguments as dry-run"]
+}
+```
+
+The dry-run alias rejects `--apply` in `extra_args`; the apply alias rejects `--dry-run` in `extra_args`.
+
 ## Post-restore archive verification checklist
 
 After every database restore or replay affecting sessions:
