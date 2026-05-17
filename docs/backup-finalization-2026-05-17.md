@@ -253,15 +253,50 @@ D:\\Nagy\\Growth-0s-Backups\\manifests\\off-device-google-drive-upload-2026-05-1
 Drive file id = 1WMjzzPovPPgZliI6syBQvI6-JuVOVM9-
 ```
 
+## Cloudflare / DNS export
+
+Status:
+
+```text
+succeeded
+```
+
+Summary:
+
+```text
+connection_id = 687504ba-0e1e-4c70-b21f-abc00e2e9cd4
+zone_name = mad4b.com
+zone_id = 2e03311efd38d148302f3a85ca5c831e
+dns_record_count = 15
+tunnel_count = 3
+auth.mad4b.com records = 1
+connector.mad4b.com records = 1
+n8n.mad4b.com records = 1
+manifest_path = /tmp/growth-os-cloudflare-manifests/cloudflare-dns-manifest-2026-05-17.json
+```
+
+Registry:
+
+```text
+platform_copy_locations.location_key = cloudflare:mad4b.com:dns-and-tunnels
+user_app_connections.validation_status = validated
+```
+
+Security:
+
+```text
+Cloudflare token is stored encrypted.
+TXT record content is redacted in the manifest.
+No secrets are included in the DNS/tunnel manifest.
+```
+
 ## Current blockers that require external decision/access
 
 ```text
-1. Cloudflare token has been requested through secure credential intake and is pending submission.
-2. Cloudflare/DNS export should run after token submission and validation.
-3. Automation is intentionally not enabled until Cloudflare export and final retention review are confirmed.
-4. Full DB import into isolated MySQL and isolated n8n boot test remain recommended.
+1. Automation remains intentionally disabled until final retention schedule is approved.
+2. Full DB import into isolated MySQL and isolated n8n boot test remain recommended for formal DR certification.
 ```
 
 ## Final baseline conclusion
 
-The platform now has a verified local backup baseline for code, DB, n8n, and connector runtime, plus an off-device Google Drive copy of artifacts, manifests, and recovery keys. It is suitable for local recovery and off-device artifact recovery. Full DR certification still requires isolated DB import and isolated n8n boot tests.
+The platform now has a verified local backup baseline for code, DB, n8n, and connector runtime, an off-device Google Drive copy of artifacts/manifests/keys, and a validated Cloudflare DNS/tunnel export. It is suitable for local recovery and off-device artifact recovery. Full DR certification still requires isolated DB import and isolated n8n boot tests.
