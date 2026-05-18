@@ -1,7 +1,29 @@
 import { Router } from "express";
 import { getPool } from "../db.js";
 
-async function resolveDeviceTunnel(userId, deviceId, { isAdmin = false } = {}) {
+async function resolveCanonicalDeviceId({ deviceId, userId = null, tenantId = null }) {
+  const requested = String(deviceId || "").trim();
+  if (!requested) return "";
+  try {
+    const [rows] = await getPool().query(
+      `SELECT canonical_device_id
+         FROM \`local_connector_device_aliases\`
+        WHERE alias_device_id = ?
+          AND status = 'active'
+          AND (user_id = ? OR user_id IS NULL)
+          AND (tenant_id = ? OR tenant_id IS NULL)
+        ORDER BY (user_id IS NOT NULL) DESC, (tenant_id IS NOT NULL) DESC, updated_at DESC
+        LIMIT 1`,
+      [requested, userId, tenantId]
+    );
+    return rows[0]?.canonical_device_id || requested;
+  } catch {
+    return requested;
+  }
+}
+
+async function resolveDeviceTunnel(userId, deviceId, { isAdmin = false, tenantId = null } = {}) {
+  deviceId = await resolveCanonicalDeviceId({ deviceId, userId, tenantId });
   if (userId) {
     const [rows] = await getPool().query(
       `SELECT tunnel_url, connector_secret, user_id, tenant_id, device_id
