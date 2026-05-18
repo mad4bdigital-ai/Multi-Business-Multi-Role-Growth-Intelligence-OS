@@ -1,0 +1,135 @@
+# system_bootstrap.clean-v1
+
+Clean-room staging overlay for the Growth Intelligence Platform runtime contract.
+
+This file is not runtime authority yet. It is a promotion candidate that reconciles the current SQL-first architecture with the older Drive/Sheets workbook-era instructions.
+
+## 1. Runtime authority
+
+- Hostinger MySQL is the runtime source of truth.
+- Google Sheets workbooks are async mirrors, diagnostic evidence, and recovery helpers only.
+- Drive files are canonical knowledge/document assets when explicitly registered, not implicit runtime authority.
+- Activation bootstrap authority resolves from `platform_runtime_config`, then server environment fallback.
+- Sheets bootstrap row read is provider-connectivity evidence only.
+
+## 2. Canonical file model
+
+Root files are generated compatibility indexes:
+
+- `system_bootstrap.md`
+- `direct_instructions_registry_patch.md`
+- `module_loader.md`
+- `prompt_router.md`
+
+Authoritative markdown bodies live under `canonicals/<family>/`.
+
+Promotion rule: edit source files under `canonicals/`, then run `node build-canonicals.mjs`, then validate with `node validate-canonical-sources.mjs`.
+
+## 3. Activation contract
+
+Activation is active only when the same cycle confirms:
+
+1. session context read succeeds;
+2. DB runtime bootstrap config resolves;
+3. Drive probe succeeds;
+4. Sheets bootstrap diagnostic read succeeds;
+5. GitHub validation succeeds using registry/bootstrap binding;
+6. platform access counts resolve without degraded required surfaces.
+
+Health/status endpoints are diagnostics and never replace activation bootstrap validation.
+
+## 4. Execution path
+
+All AI-driven execution flows through:
+
+`execution_plan -> connectorExecutor.dispatchPlan -> runAgentLoop -> getAgentDeps -> modelAdapterRouter/modelAdapter -> engineExecutorRegistry -> outputSinkRouter`
+
+No route should call a model directly.
+
+## 5. Governance validation enforcement
+
+The platform has `governanceValidationEngine`, but the clean contract requires it to be wired, not merely imported.
+
+Required enforcement points:
+
+| Stage | Enforcement |
+|---|---|
+| pre-execution | workflow authority, agent skill grants, task route authority, governed context resolution |
+| pre-write | target table compatibility, payload schema, duplicate checks, approval holds when applicable |
+| post-write | readback confirmation and sink/audit correlation |
+
+Until these are wired, features must be classified as `validating` or `degraded_contract`, not `fully_enforced`.
+
+## 6. Workflow key authority
+
+Current DB contains repeated `workflow_key` values for workflow families. Clean contract:
+
+- `workflow_id` is the unique execution row key.
+- `workflow_key` may be a stable group key only when explicitly paired with a unique `workflow_id` or `workflow_variant_key`.
+- Any loader using `WHERE workflow_key = ? LIMIT 1` is non-deterministic when duplicates exist and must be repaired.
+
+## 7. Agent and model classes
+
+Canonical execution classes:
+
+- `rule_based`
+- `standard`
+- `complex`
+- `authority`
+- `tool_orchestrated`
+- `governed`
+
+`tool_orchestrated` and `governed` must be normalized by runtime policy instead of falling through silently to `standard`.
+
+## 8. Output sink authority
+
+Every completed governed execution should produce a canonical row in `output_artifacts`, unless explicitly classified as diagnostic-only.
+
+Additional sink behavior:
+
+- `sink_dispatch_log` is append-only router audit.
+- `agent_chain_events` is the event bus for linked workflows.
+- sink writes require pre-write validation and post-write readback.
+- status enum drift (`ok/failed/skipped` vs `dispatched/completed/failed/skipped`) must be normalized before promotion.
+
+## 9. Local connector governance
+
+All local device operations flow through `/dispatch` using `intent_key` from `task_routes`.
+
+Required invariants:
+
+- `device_id` is required for all `local.*` intents.
+- `target_module` must resolve to a registered module executor or return routing advice.
+- when `agent_id` is present, missing skill grant returns `403 skill_not_granted`.
+- local config resolves from `local_connector_user_configs`; caller-supplied tunnel URLs/secrets are ignored.
+- shell/file checks run both on cloud orchestrator and device connector.
+
+## 10. Secret handling
+
+Secrets must not be stored in visible JSON config fields. Runtime config rows must reference secrets using `*_secret_ref` fields.
+
+Known clean-up target: `tenant_gpt.oauth.client` should be migrated from inline `client_secret` to `client_secret_ref`.
+
+## 11. Workbook role
+
+Workbooks in the Production Drive folder are legacy/runtime-mirror evidence. Clean bootstrap must treat them as:
+
+- registry recovery sources;
+- human audit surfaces;
+- historical row evidence;
+- mirror/parity verification targets.
+
+They are not primary runtime read paths.
+
+## 12. Promotion checklist
+
+Before promoting this overlay:
+
+1. Fix `memory_schema.json` parsing.
+2. Decide workflow key uniqueness model.
+3. Wire `governanceValidationEngine` into execution and writes.
+4. Normalize execution classes.
+5. Normalize sink status contract.
+6. Remove inline secrets from runtime config.
+7. Validate Drive/Sheets workbook inventory against SQL mirrors.
+8. Run release readiness and schema validation.
