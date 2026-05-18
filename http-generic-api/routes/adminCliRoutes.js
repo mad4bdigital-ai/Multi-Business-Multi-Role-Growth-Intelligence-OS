@@ -722,10 +722,59 @@ async function executeShellControl(body = {}) {
   err.status = 400; err.code = "unsupported_shell_action"; throw err;
 }
 
+function firstCredentialString(...values) {
+  for (const value of values) {
+    const str = String(value || "").trim();
+    if (str) return str;
+  }
+  return "";
+}
+
+async function resolveHostingerApiKeyForControl(body = {}) {
+  const connectionId = String(body.connection_id || body.hostinger_connection_id || "").trim();
+  if (connectionId) {
+    const [rows] = await getPool().query(
+      `SELECT connection_id, app_key, encrypted_credentials
+         FROM \`user_app_connections\`
+        WHERE connection_id = ? AND app_key = 'hostinger' AND status = 'active'
+        LIMIT 1`,
+      [connectionId]
+    );
+    const connection = rows[0];
+    if (!connection) {
+      const err = new Error(`Active Hostinger app connection not found: ${connectionId}`);
+      err.status = 404; err.code = "hostinger_connection_not_found"; throw err;
+    }
+    const credentials = decryptCredentials(connection.encrypted_credentials) || {};
+    const apiKey = firstCredentialString(
+      credentials.hostinger_api_token,
+      credentials.api_token,
+      credentials.bearer_token,
+      credentials.api_key,
+      credentials.access_token,
+      credentials.token
+    );
+    if (!apiKey) {
+      const err = new Error("Hostinger API token not found in encrypted app connection credentials.");
+      err.status = 403; err.code = "hostinger_connection_missing_token"; throw err;
+    }
+    return { apiKey, source: "user_app_connection", connectionId };
+  }
+
+  const keyRef = String(body.api_key_ref || "cloud_plan").trim();
+  const apiKey = keyRef === "shared_manager"
+    ? process.env.HOSTINGER_SHARED_MANAGER_01_API_KEY
+    : process.env.HOSTINGER_CLOUD_PLAN_01_API_KEY;
+  if (!apiKey) {
+    const err = new Error(`Hostinger API key not configured (api_key_ref: ${keyRef}).`);
+    err.status = 500; err.code = "hostinger_key_missing"; throw err;
+  }
+  return { apiKey, source: `env:${keyRef}`, connectionId: null };
+}
+
 async function executeHostingerControl(body = {}) {
   const apiPath   = String(body.path   || "").trim();
   const method    = String(body.method || "GET").toUpperCase();
-  const keyRef    = String(body.api_key_ref || "cloud_plan").trim();
   const reqParams = body.params && typeof body.params === "object" ? body.params : {};
   const reqBody   = body.request_body;
 
@@ -734,14 +783,8 @@ async function executeHostingerControl(body = {}) {
     err.status = 400; err.code = "missing_path"; throw err;
   }
 
-  const apiKey = keyRef === "shared_manager"
-    ? process.env.HOSTINGER_SHARED_MANAGER_01_API_KEY
-    : process.env.HOSTINGER_CLOUD_PLAN_01_API_KEY;
-
-  if (!apiKey) {
-    const err = new Error(`Hostinger API key not configured (api_key_ref: ${keyRef}).`);
-    err.status = 500; err.code = "hostinger_key_missing"; throw err;
-  }
+  const credentialResolution = await resolveHostingerApiKeyForControl(body);
+  const apiKey = credentialResolution.apiKey;
 
   const url = new URL(apiPath.startsWith("/") ? apiPath : `/${apiPath}`, "https://developers.hostinger.com");
   for (const [k, v] of Object.entries(reqParams)) url.searchParams.set(k, String(v));
