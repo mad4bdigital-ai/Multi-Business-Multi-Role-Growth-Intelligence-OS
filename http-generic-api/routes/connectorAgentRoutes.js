@@ -187,6 +187,107 @@ async function loadAgentFile(fileName) {
   return { ...meta, fileName, fullPath, buffer, size: buffer.length, sha256: sha256(buffer) };
 }
 
+function bearerToken(req) {
+  const header = String(req.headers.authorization || "").trim();
+  const m = header.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1].trim() : "";
+}
+
+function boundedString(value, max = 128) {
+  const str = String(value || "").trim();
+  return str ? str.slice(0, max) : null;
+}
+
+function safeJsonObject(value, maxBytes = 4000) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const out = {};
+  for (const [key, raw] of Object.entries(value)) {
+    if (!/^[a-zA-Z0-9_.-]{1,64}$/.test(key)) continue;
+    if (["token", "secret", "password", "key", "authorization"].some((needle) => key.toLowerCase().includes(needle))) continue;
+    if (["string", "number", "boolean"].includes(typeof raw) || raw === null) out[key] = raw;
+  }
+  const json = JSON.stringify(out);
+  return Buffer.byteLength(json, "utf8") <= maxBytes ? json : JSON.stringify({ truncated: true });
+}
+
+function enumValue(value, allowed, fallback) {
+  const str = String(value || "").trim();
+  return allowed.includes(str) ? str : fallback;
+}
+
+async function resolveHeartbeatConfig(req, body = {}) {
+  const token = bearerToken(req);
+  if (!token) throw httpError(401, "connector_auth_required", "Connector heartbeat requires bearer auth.");
+  const params = [];
+  let sql = "SELECT * FROM `local_connector_user_configs` WHERE is_enabled = 1";
+  if (body.config_id) { sql += " AND config_id = ?"; params.push(body.config_id); }
+  if (body.device_id) { sql += " AND device_id = ?"; params.push(body.device_id); }
+  if (!body.config_id && !body.device_id) throw httpError(400, "connector_identity_required", "config_id or device_id is required.");
+  const backendToken = String(process.env.BACKEND_API_KEY || "").trim();
+  if (backendToken && token === backendToken) {
+    sql += " ORDER BY updated_at DESC LIMIT 1";
+  } else {
+    sql += " AND connector_secret = ? ORDER BY updated_at DESC LIMIT 1";
+    params.push(token);
+  }
+  const [rows] = await getPool().query(sql, params);
+  if (rows[0]) return rows[0];
+  throw httpError(403, "connector_auth_failed", "Connector heartbeat auth failed.");
+}
+
+async function writeHeartbeat(config, body = {}) {
+  const eventType = enumValue(body.event_type, ["health_ok", "health_failed", "service_restart", "cloudflared_restart", "safe_upgrade", "rollback", "repair_bundle", "manual_recovery", "watchdog_install"], body.status === "failed" ? "health_failed" : "health_ok");
+  const status = enumValue(body.status, ["started", "ok", "failed", "skipped"], eventType === "health_failed" ? "failed" : "ok");
+  const source = enumValue(body.source, ["watchdog", "auth_repair", "installer", "admin", "manual"], "watchdog");
+  const activeSlot = enumValue(body.active_slot, ["a", "b", "legacy"], config.active_slot || "legacy");
+  const agentVersion = boundedString(body.agent_version || AGENT_VERSION, 64);
+  const watchdogVersion = boundedString(body.watchdog_version, 64);
+  const errorCode = boundedString(body.error_code, 128);
+  const errorMessage = boundedString(body.error_message, 1000);
+  const repairStatus = enumValue(body.repair_status || (status === "failed" ? "failed" : "ok"), ["ok", "failed", "rollback", "manual_required"], status === "failed" ? "failed" : "ok");
+  const metadataJson = safeJsonObject(body.metadata_json || body.metadata);
+
+  await getPool().query(
+    `UPDATE \`local_connector_user_configs\`
+        SET watchdog_installed = IF(? IS NULL, watchdog_installed, ?),
+            watchdog_version = COALESCE(?, watchdog_version),
+            agent_version = COALESCE(?, agent_version),
+            active_slot = ?,
+            last_health_at = NOW(),
+            last_reconnect_at = IF(? IN ('service_restart','cloudflared_restart'), NOW(), last_reconnect_at),
+            last_repair_at = IF(? IN ('safe_upgrade','rollback','repair_bundle','manual_recovery'), NOW(), last_repair_at),
+            last_repair_status = IF(? IN ('safe_upgrade','rollback','repair_bundle','manual_recovery'), ?, last_repair_status),
+            last_error_code = ?,
+            last_error_message = ?,
+            updated_at = NOW()
+      WHERE config_id = ?`,
+    [
+      body.watchdog_installed === undefined ? null : 1,
+      body.watchdog_installed ? 1 : 0,
+      watchdogVersion,
+      agentVersion,
+      activeSlot,
+      eventType,
+      eventType,
+      eventType,
+      repairStatus,
+      errorCode,
+      errorMessage,
+      config.config_id,
+    ]
+  );
+
+  const eventId = crypto.randomUUID();
+  await getPool().query(
+    `INSERT INTO \`local_connector_recovery_events\`
+       (event_id, config_id, user_id, tenant_id, device_id, event_type, status, source, agent_version, active_slot, error_code, error_message, metadata_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [eventId, config.config_id, config.user_id, config.tenant_id, config.device_id, eventType, status, source, agentVersion, activeSlot, errorCode, errorMessage, metadataJson]
+  );
+
+  return { event_id: eventId, event_type: eventType, status, source, agent_version: agentVersion, active_slot: activeSlot };
+}
+
 export function buildConnectorAgentRoutes() {
   const router = Router();
 
