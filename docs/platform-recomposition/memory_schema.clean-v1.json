@@ -49,6 +49,41 @@
         "sheets_required_for_runtime": { "const": false }
       }
     },
+    "multi_business_activity_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authority",
+        "registry_surface",
+        "default_behavior",
+        "legacy_tourism_profile_policy",
+        "resolution_order"
+      ],
+      "properties": {
+        "authority": { "const": "business_activity_type_registry_first" },
+        "registry_surface": { "const": "business_activity_types" },
+        "default_behavior": { "const": "no_single_activity_default" },
+        "legacy_tourism_profile_policy": {
+          "type": "string",
+          "enum": ["profile_only", "deprecated_default", "blocked"],
+          "default": "profile_only"
+        },
+        "resolution_order": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [
+            "business_activity_type",
+            "business_type_profile",
+            "brand_path",
+            "brand_core",
+            "logic_pointer",
+            "workflow_route",
+            "action_endpoint_schema"
+          ]
+        },
+        "required_for_business_outputs": { "type": "boolean", "default": true }
+      }
+    },
     "activation_state": { "$ref": "../../schemas/execution.schema.json#/$defs/activation_state" },
     "auto_bootstrap_state": { "$ref": "../../schemas/execution.schema.json#/$defs/auto_bootstrap_state" },
     "hard_activation_wrapper_state": { "$ref": "../../schemas/execution.schema.json#/$defs/hard_activation_wrapper_state" },
