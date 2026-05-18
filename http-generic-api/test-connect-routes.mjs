@@ -345,6 +345,23 @@ section("connect api auth scope");
       browserScale?.type === "number" && browserScale?.minimum === 0.1 && browserScale?.maximum === 1.0);
   }
 
+  section("connector agent heartbeat writeback");
+
+  {
+    const source = readFileSync("routes/connectorAgentRoutes.js", "utf8");
+    assert("connector agent exposes heartbeat endpoint",
+      source.includes('router.post("/connector-agent/heartbeat"'));
+    assert("connector heartbeat writes recovery events and config metadata",
+      source.includes("local_connector_recovery_events") &&
+      source.includes("last_health_at = NOW()") &&
+      source.includes("watchdog_version") &&
+      source.includes("last_repair_status"));
+    assert("connector heartbeat strips secret-like metadata",
+      source.includes("safeJsonObject") &&
+      source.includes("authorization") &&
+      source.includes("secret"));
+  }
+
   section("device-tools route mounting");
 
   {
