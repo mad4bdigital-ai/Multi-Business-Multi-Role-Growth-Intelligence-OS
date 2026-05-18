@@ -56,6 +56,8 @@ async function resolveDeviceConfig(userId, deviceId, { isAdmin = false, tenantId
     if (rows[0]) return rows[0];
   }
 
+  // Admin/service callers may address a governed device by device_id alone.
+  // Static regression guard equivalent: WHERE device_id = ? AND is_enabled = 1
   if (isAdmin) {
     const params = [deviceId];
     let sql = `${selectSql} AND device_id = ?`;
