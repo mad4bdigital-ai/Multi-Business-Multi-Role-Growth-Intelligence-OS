@@ -51,6 +51,8 @@ Recovered classification is forbidden without same-cycle validation.
 
 ## 5. Brand and business context
 
+The platform is multi-business and multi-activity. Tourism/travel is a historical activity profile, not a default operating assumption.
+
 Brand writing requires Brand Core first. Business-type or brand-path mutations require resolver rows first.
 
 Resolution order:
