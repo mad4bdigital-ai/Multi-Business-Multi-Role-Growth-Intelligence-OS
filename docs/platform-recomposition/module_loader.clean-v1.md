@@ -22,7 +22,13 @@ The module loader prepares runtime dependencies before execution. It must not in
 10. Schema contracts from endpoint-local schema, imported action schema, or governed schema asset.
 11. Execution policies and validation/repair rows.
 
-## 3. SQL-first rule
+## 3. Activity-first rule
+
+Runtime loaders must not infer tourism/travel as a default. They must resolve the requested or inferred activity through `business_activity_types` first, then load the matching business type profile, knowledge pack, brand expectations, engines, and workflow variant.
+
+If an activity is absent, the loader returns `validating.activity_unresolved` unless the route is explicitly activity-agnostic.
+
+## 4. SQL-first rule
 
 Runtime loaders must not read Google Sheets directly for registry authority.
 
