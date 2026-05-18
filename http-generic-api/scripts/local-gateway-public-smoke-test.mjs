@@ -92,12 +92,37 @@ async function main() {
       }),
     });
     assertOk(tenantCall.status === 200 && tenantCall.body?.ok === true && tenantCall.body?.local_gateway?.call_id, "tenant_local_gateway_health_call_failed", { status: tenantCall.status, body: tenantCall.body });
+
+    const sensitiveNoConsent = await requestJson(`${base}/local/tools/call`, {
+      method: "POST",
+      headers: { ...tenantHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "local.connector.files",
+        tool_args: { device_id: args.device_id, action: "list_drives" },
+      }),
+    });
+    assertOk(sensitiveNoConsent.status === 403 && sensitiveNoConsent.body?.error?.code === "consent_required", "sensitive_tool_without_consent_should_be_denied", { status: sensitiveNoConsent.status, body: sensitiveNoConsent.body });
+
+    const sensitiveNoEntitlement = await requestJson(`${base}/local/tools/call`, {
+      method: "POST",
+      headers: { ...tenantHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "local.connector.files",
+        tool_args: { device_id: args.device_id, action: "list_drives", consent_accepted: true },
+      }),
+    });
+    assertOk(sensitiveNoEntitlement.status === 403 && sensitiveNoEntitlement.body?.error?.code === "entitlement_required", "sensitive_tool_without_entitlement_should_be_denied", { status: sensitiveNoEntitlement.status, body: sensitiveNoEntitlement.body });
+
     tenantChecks = {
       tenant_tools_status: tenantTools.status,
       tenant_tools_count: tenantTools.body.count,
       tenant_admin_tools_visible: tenantToolKeys.filter((key) => String(key || "").startsWith("local.admin.")).length,
       tenant_call_status: tenantCall.status,
       tenant_call_id: tenantCall.body.local_gateway.call_id,
+      sensitive_no_consent_status: sensitiveNoConsent.status,
+      sensitive_no_consent_code: sensitiveNoConsent.body?.error?.code || null,
+      sensitive_no_entitlement_status: sensitiveNoEntitlement.status,
+      sensitive_no_entitlement_code: sensitiveNoEntitlement.body?.error?.code || null,
     };
   }
 
