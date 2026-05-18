@@ -124,8 +124,10 @@ export function registerRoutes(app, deps) {
   app.use(buildExecuteRoutes(deps));
   app.use(buildTenantCommercialRoutes(deps));
   app.use(buildDispatchRoutes(deps));
-  app.use(buildLocalConnectorRoutes(deps));
+  // Install/download routes include a public short-lived token-gated download path.
+  // Mount them before the protected /local-connector catch-all routes.
   app.use(buildLocalConnectorInstallRoutes(deps));
+  app.use(buildLocalConnectorRoutes(deps));
   app.use(buildMemberGoogleOAuthRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildConnectorProxyRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildConnectApiRoutes(deps));
