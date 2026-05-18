@@ -176,10 +176,6 @@ async function exportManifest(args) {
     tokenVerifyWarning = { status: err.status || null, message: err.message, details: err.details || null };
   }
 
-  const zones = await cfFetch(baseUrl, token, `/zones?name=${encodeURIComponent(zoneName)}&per_page=50`);
-  const zone = zones.result?.[0];
-  if (!zone?.id) throw new Error(`Cloudflare zone not found or not readable: ${zoneName}`);
-
   const dnsRecords = [];
   for (let page = 1; page <= 50; page += 1) {
     const dns = await cfFetch(baseUrl, token, `/zones/${zone.id}/dns_records?per_page=100&page=${page}`);
