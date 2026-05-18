@@ -362,6 +362,16 @@ section("connect api auth scope");
       source.includes("secret"));
   }
 
+  section("local connector install route refactor");
+
+  {
+    const source = readFileSync("routes/localConnectorInstallRoutes.js", "utf8");
+    assert("local connector install effective route calls shared provisioning helper",
+      source.includes('router.post("/local-connector/install"') &&
+      source.includes("provisionLocalConnectorInstall(req, req.body || {})") &&
+      source.includes("shared provisioning helper"));
+  }
+
   section("device-tools route mounting");
 
   {
