@@ -48,7 +48,23 @@ The platform must not default to tourism, travel, destination, or any single his
 - If no activity is supplied and no safe inference is possible, the request is classified `validating.activity_unresolved` or asks the caller/router for a scoped activity instead of silently falling back to tourism.
 - Activity-specific knowledge profiles must be layered under the resolved activity and business type.
 
-## 5. Execution path
+## 5. Tenant, role, service mode, and human oversight contract
+
+Local development documents require the platform to operate as a multi-role, tenant-scoped, commercially gated system.
+
+Required runtime gates before dispatch:
+
+1. `tenant_id` and tenant type resolve from `tenants`.
+2. actor role resolves from `role_assignments` or governed auth context.
+3. tenant/brand/client/review/supervision scope resolves before execution.
+4. service mode resolves as `self_serve`, `assisted`, or `managed`.
+5. commercial entitlements resolve for paid, limited, assisted, or managed features.
+6. human oversight route resolves when policy, risk, package, or workflow requires review/approval.
+7. access gate denies by default when any required scope or entitlement is missing.
+
+Human oversight is not a UI-only feature. It is a runtime layer using assistance roles, review assignments, approval holds, escalation, and supervisor signoff.
+
+## 6. Execution path
 
 All AI-driven execution flows through:
 
