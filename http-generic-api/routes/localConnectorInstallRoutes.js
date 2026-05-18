@@ -60,6 +60,44 @@ function httpError(status, code, message) {
   return err;
 }
 
+function base64url(input) {
+  return Buffer.from(input).toString("base64url");
+}
+
+function publicBaseUrl(req) {
+  const proto = String(req.headers["x-forwarded-proto"] || req.protocol || "https").split(",")[0].trim();
+  const host = String(req.headers["x-forwarded-host"] || req.headers.host || "auth.mad4b.com").split(",")[0].trim();
+  return `${proto}://${host}`;
+}
+
+function installerTokenSecret() {
+  const secret = String(process.env.BACKEND_API_KEY || "").trim();
+  if (!secret) throw httpError(500, "installer_token_secret_missing", "BACKEND_API_KEY is required for installer download links.");
+  return secret;
+}
+
+function signInstallerDownloadToken(payload) {
+  const body = base64url(JSON.stringify(payload));
+  const sig = createHmac("sha256", installerTokenSecret()).update(body).digest("base64url");
+  return `${body}.${sig}`;
+}
+
+function verifyInstallerDownloadToken(token) {
+  const [body, sig] = String(token || "").split(".");
+  if (!body || !sig) throw httpError(401, "invalid_download_token", "Invalid installer download token.");
+  const expected = createHmac("sha256", installerTokenSecret()).update(body).digest("base64url");
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+    throw httpError(401, "invalid_download_token", "Invalid installer download token signature.");
+  }
+  const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+  if (!payload.exp || Number(payload.exp) < Math.floor(Date.now() / 1000)) {
+    throw httpError(401, "download_token_expired", "Installer download token has expired.");
+  }
+  return payload;
+}
+
 async function assertActiveMembership(userId, tenantId) {
   const [rows] = await getPool().query(
     "SELECT 1 FROM `memberships` WHERE user_id = ? AND tenant_id = ? AND status = 'active' LIMIT 1",
