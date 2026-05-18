@@ -353,6 +353,33 @@ async function publishTunnelIngressRoutes(accountId, tunnelId, routes = [], cfTo
   }, cfToken);
 }
 
+async function resolveCloudflareZoneId(zoneName = DNS_DOMAIN, cfToken = null) {
+  const zones = await cfRequest("GET", `/zones?name=${encodeURIComponent(zoneName)}&per_page=50`, null, cfToken);
+  const zone = Array.isArray(zones) ? zones[0] : null;
+  if (!zone?.id) throw new Error(`Cloudflare zone not found: ${zoneName}`);
+  return zone.id;
+}
+
+async function upsertCloudflareCnameRecord(hostname, tunnelId, cfToken = null) {
+  const zoneId = await resolveCloudflareZoneId(DNS_DOMAIN, cfToken);
+  const target = `${tunnelId}.cfargotunnel.com`;
+  const records = await cfRequest("GET", `/zones/${zoneId}/dns_records?type=CNAME&name=${encodeURIComponent(hostname)}&per_page=50`, null, cfToken);
+  const rows = Array.isArray(records) ? records : [];
+  const correct = rows.find((row) => row.type === "CNAME" && row.content === target && row.proxied === true);
+  if (correct) return correct;
+  for (const row of rows) {
+    await cfRequest("DELETE", `/zones/${zoneId}/dns_records/${row.id}`, null, cfToken);
+  }
+  return cfRequest("POST", `/zones/${zoneId}/dns_records`, {
+    type: "CNAME",
+    name: hostname,
+    content: target,
+    proxied: true,
+    ttl: 1,
+    comment: "Managed local connector device runtime hostname",
+  }, cfToken);
+}
+
 function hostingerApiKey(tokenOverride = null) {
   if (tokenOverride) return tokenOverride;
   return (
