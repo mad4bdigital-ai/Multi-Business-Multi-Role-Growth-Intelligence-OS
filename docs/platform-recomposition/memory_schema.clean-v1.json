@@ -88,6 +88,72 @@
         "required_for_business_outputs": { "type": "boolean", "default": true }
       }
     },
+    "tenant_role_access_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "tenant_surface", "role_surface", "decision_policy", "scope_dimensions"],
+      "properties": {
+        "authority": { "const": "deny_by_default_access_gate" },
+        "tenant_surface": { "const": "tenants" },
+        "role_surface": { "const": "role_assignments" },
+        "relationship_surface": { "const": "tenant_relationships" },
+        "decision_policy": { "const": "resolve_before_dispatch" },
+        "scope_dimensions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["tenant", "partner_child", "freelancer", "client", "brand", "review", "supervision", "managed_service"]
+        },
+        "required_before_execution": { "type": "boolean", "default": true }
+      }
+    },
+    "service_mode_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "modes", "mode_classes", "resolution_policy"],
+      "properties": {
+        "authority": { "const": "service_mode_matrix" },
+        "modes": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["self_serve", "assisted", "managed"] },
+          "default": ["self_serve", "assisted", "managed"]
+        },
+        "mode_classes": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["self_serve_capable", "assistance_optional", "assistance_recommended", "assistance_required_by_policy", "managed_service_only"] },
+          "default": ["self_serve_capable", "assistance_optional", "assistance_recommended", "assistance_required_by_policy", "managed_service_only"]
+        },
+        "resolution_policy": { "const": "classify_before_workflow_offer_or_dispatch" }
+      }
+    },
+    "human_oversight_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "role_surface", "approval_surface", "assignment_policy"],
+      "properties": {
+        "authority": { "const": "assisted_operations_layer" },
+        "role_surface": { "const": "assistance_roles" },
+        "approval_surface": { "const": "approval_holds" },
+        "assignment_policy": { "type": "string", "enum": ["required_by_policy", "optional_by_entitlement", "disabled"], "default": "required_by_policy" },
+        "roles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["reviewer", "auditor", "supervisor", "managed_operator", "training_mentor"]
+        },
+        "runtime_status": { "type": "string", "enum": ["active", "validating", "blocked"], "default": "validating" }
+      }
+    },
+    "commercial_entitlement_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "entitlement_surface", "resolution_policy"],
+      "properties": {
+        "authority": { "const": "commercial_eligibility_gate" },
+        "entitlement_surface": { "const": "entitlements" },
+        "usage_surface": { "const": "tenant_usage" },
+        "resolution_policy": { "const": "resolve_before_paid_limited_or_managed_feature" },
+        "runtime_status": { "type": "string", "enum": ["active", "validating", "blocked"], "default": "validating" }
+      }
+    },
     "activation_state": { "$ref": "../../schemas/execution.schema.json#/$defs/activation_state" },
     "auto_bootstrap_state": { "$ref": "../../schemas/execution.schema.json#/$defs/auto_bootstrap_state" },
     "hard_activation_wrapper_state": { "$ref": "../../schemas/execution.schema.json#/$defs/hard_activation_wrapper_state" },
