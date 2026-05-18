@@ -2,9 +2,11 @@ import { Router } from "express";
 import crypto from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { getPool } from "../db.js";
 
 const AGENT_VERSION = "2026.05.18.1";
 const ROOT = process.cwd();
+const CONNECTOR_PORT = 7070;
 
 const FILES = {
   "server.mjs": {
@@ -24,6 +26,14 @@ const FILES = {
   },
 };
 
+const DEFAULT_WINDOWS_ALIASES = [
+  { alias: "node_ver", cmd: "node", args: ["--version"], allow_extra_args: false, description: "Node.js version" },
+  { alias: "git_status", cmd: "git", args: ["status"], allow_extra_args: false, description: "Git status" },
+  { alias: "list_processes", cmd: "tasklist", args: ["/FO", "CSV", "/NH"], allow_extra_args: false, description: "Running processes (CSV)" },
+  { alias: "disk_usage", cmd: "wmic", args: ["logicaldisk", "get", "size,freespace,caption"], allow_extra_args: false, description: "Disk usage" },
+  { alias: "n8n_health", cmd: "curl", args: ["-s", "--max-time", "10", "http://127.0.0.1:5678/"], allow_extra_args: false, description: "n8n health check" },
+];
+
 function sha256(buffer) {
   return crypto.createHash("sha256").update(buffer).digest("hex");
 }
@@ -32,6 +42,141 @@ function publicBaseUrl(req) {
   const proto = String(req.headers["x-forwarded-proto"] || req.protocol || "https").split(",")[0].trim();
   const host = String(req.headers["x-forwarded-host"] || req.headers.host || "auth.mad4b.com").split(",")[0].trim();
   return `${proto}://${host}`;
+}
+
+function httpError(status, code, message) {
+  const err = new Error(message || code);
+  err.status = status;
+  err.code = code;
+  return err;
+}
+
+function installerTokenSecret() {
+  const secret = String(process.env.BACKEND_API_KEY || "").trim();
+  if (!secret) throw httpError(500, "installer_token_secret_missing", "BACKEND_API_KEY is required for installer download links.");
+  return secret;
+}
+
+function verifyInstallerDownloadToken(token) {
+  const [body, sig] = String(token || "").split(".");
+  if (!body || !sig) throw httpError(401, "invalid_download_token", "Invalid installer download token.");
+  const expected = crypto.createHmac("sha256", installerTokenSecret()).update(body).digest("base64url");
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    throw httpError(401, "invalid_download_token", "Invalid installer download token signature.");
+  }
+  const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+  if (!payload.exp || Number(payload.exp) < Math.floor(Date.now() / 1000)) {
+    throw httpError(401, "download_token_expired", "Installer download token has expired.");
+  }
+  return payload;
+}
+
+function psQuote(value) {
+  return String(value ?? "").replace(/'/g, "''");
+}
+
+function buildAllowlistEnvValue(aliases) {
+  const obj = {};
+  for (const a of aliases) {
+    obj[a.alias] = { command: a.cmd, args: a.args || [], display_name: a.description || a.alias, allow_extra_args: !!a.allow_extra_args };
+  }
+  return JSON.stringify(obj);
+}
+
+function buildConnectorEnv({ connectorSecret, aliases, port }) {
+  return [
+    `BACKEND_API_KEY=${connectorSecret}`,
+    "MAIN_API_URL=https://api.mad4b.com",
+    `CONNECTOR_PORT=${port}`,
+    "CONNECTOR_SHELL_ENABLED=true",
+    "CONNECTOR_FILES_ENABLED=true",
+    "CONNECTOR_APPS_ENABLED=true",
+    "CONNECTOR_FETCH_UPLOAD_ENABLED=true",
+    "CONNECTOR_N8N_ENABLED=true",
+    "N8N_COMMAND=D:\\npm-global\\n8n.cmd",
+    "N8N_USER_FOLDER=D:\\n8n-data",
+    "N8N_PORT=5678",
+    "N8N_LISTEN_ADDRESS=127.0.0.1",
+    "N8N_PUBLIC_URL=https://n8n.mad4b.com/",
+    `CONNECTOR_SHELL_ALLOWLIST=${buildAllowlistEnvValue(aliases)}`,
+  ].join("\r\n");
+}
+
+function buildInstallPowerShell({ cfToken, connectorSecret, tunnelUrl, aliases, port }) {
+  const envText = buildConnectorEnv({ connectorSecret, aliases, port });
+  return [
+    "# Mad4B Local Connector — run once as Administrator",
+    "$ErrorActionPreference = 'Stop'",
+    "$Root = Split-Path -Parent $MyInvocation.MyCommand.Path",
+    "$CfService = 'cloudflared'",
+    "$NodeService = 'local-connector'",
+    "$ServerMjs = Join-Path $Root 'server.mjs'",
+    "$ManifestUrl = 'https://auth.mad4b.com/connector-agent/manifest.json'",
+    "$ManifestPath = Join-Path $Root 'connector-agent-manifest.json'",
+    "$WatchdogPs1 = Join-Path $Root 'connector-watchdog.ps1'",
+    "$SafeUpgradePs1 = Join-Path $Root 'connector-safe-upgrade.ps1'",
+    "",
+    "function Get-Mad4BManifestFile {",
+    "  param([Parameter(Mandatory=$true)][string]$Name, [Parameter(Mandatory=$true)][string]$OutFile)",
+    "  $entry = $Manifest.files.$Name",
+    "  if (-not $entry -or -not $entry.url -or -not $entry.sha256) { throw \"Manifest missing file entry: $Name\" }",
+    "  Invoke-WebRequest -Uri $entry.url -OutFile $OutFile -UseBasicParsing -TimeoutSec 90",
+    "  $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $OutFile).Hash.ToLowerInvariant()",
+    "  if ($actual -ne $entry.sha256.ToLowerInvariant()) { throw \"SHA256 mismatch for $Name\" }",
+    "}",
+    "",
+    "if (-not (Get-Command node -ErrorAction SilentlyContinue)) {",
+    "  Write-Host 'Installing Node.js LTS...'",
+    "  winget install OpenJS.NodeJS.LTS -e --silent",
+    "  $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')",
+    "}",
+    "",
+    "Write-Host 'Downloading connector agent manifest...'",
+    "Invoke-WebRequest -Uri $ManifestUrl -OutFile $ManifestPath -UseBasicParsing -TimeoutSec 60",
+    "$Manifest = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json",
+    "if (-not $Manifest.ok -or -not $Manifest.files) { throw 'Invalid connector agent manifest.' }",
+    "Get-Mad4BManifestFile -Name 'server.mjs' -OutFile $ServerMjs",
+    "Get-Mad4BManifestFile -Name 'connector-watchdog.ps1' -OutFile $WatchdogPs1",
+    "Get-Mad4BManifestFile -Name 'connector-safe-upgrade.ps1' -OutFile $SafeUpgradePs1",
+    "Copy-Item -LiteralPath $ServerMjs -Destination (Join-Path $Root 'server.mjs.stable') -Force",
+    "",
+    "$EnvText = @'",
+    envText,
+    "'@",
+    "Set-Content -Path (Join-Path $Root '.env') -Value $EnvText -Encoding ascii",
+    "",
+    "if (-not (Get-Command cloudflared -ErrorAction SilentlyContinue)) { winget install Cloudflare.cloudflared -e --silent }",
+    "$cfSvc = Get-Service -Name $CfService -ErrorAction SilentlyContinue",
+    "if (-not $cfSvc) {",
+    `  cloudflared service install '${psQuote(cfToken)}'`,
+    "}",
+    "Start-Service $CfService -ErrorAction SilentlyContinue",
+    "",
+    "if (-not (Get-Command nssm -ErrorAction SilentlyContinue)) { winget install NSSM.NSSM -e --silent }",
+    "$nodeSvc = Get-Service -Name $NodeService -ErrorAction SilentlyContinue",
+    "if (-not $nodeSvc) {",
+    "  $nodePath = (Get-Command node).Source",
+    "  & nssm install $NodeService $nodePath \"`\"$ServerMjs`\"\"",
+    "  & nssm set $NodeService AppDirectory $Root",
+    "  & nssm set $NodeService AppStdout (Join-Path $Root 'connector.log')",
+    "  & nssm set $NodeService AppStderr (Join-Path $Root 'connector-error.log')",
+    "  & nssm set $NodeService AppRotateFiles 1",
+    "  & nssm set $NodeService AppRotateBytes 5242880",
+    "  & nssm set $NodeService Start SERVICE_AUTO_START",
+    "  & nssm set $NodeService ObjectName LocalSystem",
+    "}",
+    "",
+    "$TaskName = 'Mad4B-LocalConnector-Watchdog'",
+    "$TaskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument \"-NoProfile -ExecutionPolicy Bypass -File `\"$WatchdogPs1`\"\"",
+    "$TaskTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1) -RepetitionDuration (New-TimeSpan -Days 3650)",
+    "$TaskPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -RunLevel Highest",
+    "Register-ScheduledTask -TaskName $TaskName -Action $TaskAction -Trigger $TaskTrigger -Principal $TaskPrincipal -Force | Out-Null",
+    "Start-Service $NodeService -ErrorAction SilentlyContinue",
+    "Start-Sleep -Seconds 3",
+    `Write-Host 'Done. Tunnel: ${psQuote(tunnelUrl)}'`,
+  ].join("\r\n");
 }
 
 async function loadAgentFile(fileName) {
@@ -78,6 +223,33 @@ export function buildConnectorAgentRoutes() {
       });
     } catch (err) {
       return res.status(500).json({ ok: false, error: { code: "connector_agent_manifest_failed", message: err.message } });
+    }
+  });
+
+  router.get("/connector-agent/installer.ps1", async (req, res) => {
+    try {
+      const payload = verifyInstallerDownloadToken(req.query.token);
+      if (payload.format !== "ps1") throw httpError(400, "unsupported_format", "Only ps1 installer downloads are supported.");
+      const [[config]] = await getPool().query(
+        "SELECT config_id, user_id, tenant_id, device_id, tunnel_url, connector_secret, cf_token FROM `local_connector_user_configs` WHERE user_id = ? AND device_id = ? AND is_enabled = 1 LIMIT 1",
+        [payload.user_id, payload.device_id]
+      );
+      if (!config) throw httpError(404, "connector_config_not_found", "No active connector config was found for this download token.");
+      if (!config.cf_token || !config.connector_secret) throw httpError(409, "connector_config_incomplete", "Connector config is missing recovery token or connector secret.");
+      const installer = buildInstallPowerShell({
+        cfToken: config.cf_token,
+        connectorSecret: config.connector_secret,
+        tunnelUrl: config.tunnel_url,
+        aliases: DEFAULT_WINDOWS_ALIASES,
+        port: CONNECTOR_PORT,
+      });
+      const filename = `install-local-connector-${String(config.device_id).replace(/[^a-zA-Z0-9_-]+/g, "-")}.ps1`;
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Content-Disposition", `attachment; filename=\"${filename}\"`);
+      return res.status(200).send(installer);
+    } catch (err) {
+      return res.status(err.status || 500).json({ ok: false, error: { code: err.code || "connector_agent_installer_failed", message: err.message } });
     }
   });
 
