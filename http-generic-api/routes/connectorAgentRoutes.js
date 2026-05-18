@@ -95,39 +95,6 @@ export function buildConnectorAgentRoutes() {
     }
   });
 
-  router.get("/connector-agent/installer.ps1", async (req, res) => {
-    try {
-      const payload = verifyInstallerDownloadToken(req.query.token);
-      if (payload.format !== "ps1") {
-        return res.status(400).json({ ok: false, error: { code: "unsupported_format", message: "Only ps1 installer downloads are supported." } });
-      }
-      const [[config]] = await getPool().query(
-        "SELECT config_id, user_id, tenant_id, device_id, tunnel_url, connector_secret, cf_token FROM `local_connector_user_configs` WHERE user_id = ? AND device_id = ? AND is_enabled = 1 LIMIT 1",
-        [payload.user_id, payload.device_id]
-      );
-      if (!config) {
-        return res.status(404).json({ ok: false, error: { code: "connector_config_not_found", message: "No active connector config was found for this download token." } });
-      }
-      if (!config.cf_token || !config.connector_secret) {
-        return res.status(409).json({ ok: false, error: { code: "connector_config_incomplete", message: "Connector config is missing recovery token or connector secret." } });
-      }
-      const installer = buildInstallPowerShell({
-        cfToken: config.cf_token,
-        connectorSecret: config.connector_secret,
-        tunnelUrl: config.tunnel_url,
-        aliases: DEFAULT_WINDOWS_ALIASES,
-        port: CONNECTOR_PORT,
-      });
-      const filename = `install-local-connector-${String(config.device_id).replace(/[^a-zA-Z0-9_-]+/g, "-")}.ps1`;
-      res.setHeader("Content-Type", "text/plain; charset=utf-8");
-      res.setHeader("Cache-Control", "no-store");
-      res.setHeader("Content-Disposition", `attachment; filename=\"${filename}\"`);
-      return res.status(200).send(installer);
-    } catch (err) {
-      return res.status(err.status || 500).json({ ok: false, error: { code: err.code || "connector_agent_installer_failed", message: err.message } });
-    }
-  });
-
   router.get("/connector-agent/files/:fileName", async (req, res) => {
     try {
       const requested = String(req.params.fileName || "").trim();
