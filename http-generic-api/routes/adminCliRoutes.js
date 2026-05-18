@@ -613,6 +613,15 @@ function builtInShellAllowlist() {
       max_extra_args: 4,
       timeout_ms: 120000,
       built_in: true
+    },
+    local_gateway_sensitive_approval_smoke: {
+      command: process.execPath,
+      args: ["http-generic-api/scripts/local-gateway-sensitive-approval-smoke-test.mjs"],
+      display_name: "Sensitive local gateway approval smoke test",
+      allow_extra_args: true,
+      max_extra_args: 4,
+      timeout_ms: 120000,
+      built_in: true
     }
   };
 }
