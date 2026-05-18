@@ -45,13 +45,23 @@ Runtime routes now resolve aliases before device lookup in:
 
 The canonical `essam-pc` row owns the recovery tunnel metadata, including `cf_token`, `cf_tunnel_id`, `cf_tunnel_name`, `connector_secret`, and `tunnel_url`.
 
-## Public and admin surfaces
+## Public, schema, runtime, and admin surfaces
 
-### Public tenant/member gateway
+### Auth runtime
+
+```text
+https://auth.mad4b.com
+```
+
+This is the primary backend runtime. Tenants can use Auth directly when the schema points there.
+
+### Local GPT schema alias
 
 ```text
 https://local.mad4b.com
 ```
+
+`local.mad4b.com` is not a physical device runtime. It is a separate hostname over the same Auth runtime so a dedicated GPT Action schema can target local gateway tools without duplicating or confusing the main Auth schema.
 
 Flow:
 
@@ -62,8 +72,27 @@ local.mad4b.com
 -> PHP proxy
 -> auth.mad4b.com runtime
 -> /local/tools + DB policy routing
+-> device_runtime_url
 -> local connector/device tools
 ```
+
+### Device runtime URL
+
+The server-to-device URL is separated in DB:
+
+```text
+local_connector_user_configs.device_runtime_url
+```
+
+This is the URL Auth uses internally to reach the local connector. It should not be confused with `local.mad4b.com`.
+
+### Admin / break-glass connector
+
+```text
+https://connector.mad4b.com
+```
+
+This remains an admin/break-glass surface and should not be treated as the tenant-facing public gateway. If used as `device_runtime_url`, that should be treated as a temporary compatibility state until a dedicated device runtime hostname is provisioned.
 
 Validated behavior:
 
