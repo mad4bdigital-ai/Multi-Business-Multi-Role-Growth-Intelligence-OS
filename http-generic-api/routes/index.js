@@ -54,7 +54,6 @@ import { buildConnectorTaxonomyRoutes } from "./connectorTaxonomyRoutes.js";
 import { buildCredentialIntakeRoutes } from "./credentialIntakeRoutes.js";
 import { buildBackupArtifactRoutes } from "./backupArtifactRoutes.js";
 import { buildLocalGatewayToolsRoutes } from "./localGatewayToolsRoutes.js";
-import { buildLocalGatewayToolsRoutes } from "./localGatewayToolsRoutes.js";
 
 function sqlEndpointRegistryRoutesEnabled(env = process.env) {
   return String(env.ENABLE_SQL_ENDPOINT_REGISTRY_ROUTES || "").trim().toLowerCase() === "true";
@@ -134,6 +133,7 @@ export function registerRoutes(app, deps) {
   app.use(buildGptToolsRoutes(deps));
   app.use(buildAdminScopeGrantsRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildDeviceToolsRoutes(deps));
+  app.use(buildLocalGatewayToolsRoutes(deps));
   app.use(buildConnectorTaxonomyRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildBackupArtifactRoutes(deps));
   registerOptionalSqlEndpointRegistryRoutes(app, deps);
