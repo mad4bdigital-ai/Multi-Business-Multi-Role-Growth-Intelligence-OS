@@ -480,9 +480,87 @@ approved_dispatch_status = 200
 approved_dispatch_tool = connector_files
 ```
 
+## Tenant new-device registration flow
+
+When a tenant/member registers a new Windows device, the platform must not ask an operator to manually create `lc-*` hostnames. Provisioning is automatic through the shared function:
+
+```text
+provisionLocalConnectorInstall(req, body)
+```
+
+Used by:
+
+```text
+connectRoutes.js
+ dispatchRoutes.js
+```
+
+The canonical flow is:
+
+1. Resolve the signed-in user and tenant.
+2. Create or reuse `local_connector_user_configs.config_id`.
+3. Generate deterministic device runtime hostname:
+
+```text
+lc-<first-config-id-segment>.mad4b.com
+```
+
+Example:
+
+```text
+config_id = 8db63b00-4fce-11f1-b256-614c56cd019b
+runtime   = lc-8db63b00.mad4b.com
+```
+
+4. Provision or reuse a Cloudflare Tunnel.
+5. Create/update Cloudflare DNS:
+
+```text
+lc-<config>.mad4b.com CNAME <tunnel-id>.cfargotunnel.com
+proxied = true
+```
+
+6. Add Cloudflare Tunnel ingress before the catch-all rule:
+
+```text
+hostname = lc-<config>.mad4b.com
+service  = http://localhost:7070
+```
+
+7. Store separated URLs on the device config:
+
+```text
+public_gateway_url = https://local.mad4b.com
+device_runtime_url = https://lc-<config>.mad4b.com
+admin_recovery_url = https://connector.mad4b.com
+```
+
+8. Seed `local_connector_app_routes` for the runtime hostname.
+9. Generate installer/repair bundle. The installer displays `device_runtime_url`, not raw `*.cfargotunnel.com`.
+10. Later local tool calls route as:
+
+```text
+local.mad4b.com or auth.mad4b.com
+-> Auth runtime
+-> DB policy/approval/entitlement checks
+-> device_runtime_url
+-> local connector
+```
+
+`connector.mad4b.com` remains admin/break-glass only.
+
+Implementation status as of this doc update:
+
+- Shared provisioning function reads/stores separated URL fields.
+- Shared provisioning creates deterministic `lc-*` hostname values.
+- Shared provisioning has helpers to create Cloudflare DNS CNAME and publish tunnel ingress routes.
+- Signed installer generation reads `COALESCE(device_runtime_url, tunnel_url)`.
+- The legacy direct `POST /local-connector/install` route still contains older duplicate provisioning logic and should be refactored to call `provisionLocalConnectorInstall()` directly to avoid drift.
+
 ## Next implementation steps
 
-1. Add a small regression smoke test for token-gated installer route that checks status/headers without printing installer content.
-2. Update `local_connector_user_configs.watchdog_installed`, `watchdog_version`, and `agent_version` after successful install or heartbeat.
-3. Log watchdog/repair events from local agent back to Auth when online.
-4. Build the Desktop Manager as a tray app/bootstrapper on top of watchdog and safe-upgrade.
+1. Refactor legacy direct `POST /local-connector/install` to call `provisionLocalConnectorInstall()` instead of duplicating provisioning logic.
+2. Add a small regression smoke test for token-gated installer route that checks status/headers without printing installer content.
+3. Update `local_connector_user_configs.watchdog_installed`, `watchdog_version`, and `agent_version` after successful install or heartbeat.
+4. Log watchdog/repair events from local agent back to Auth when online.
+5. Build the Desktop Manager as a tray app/bootstrapper on top of watchdog and safe-upgrade.
