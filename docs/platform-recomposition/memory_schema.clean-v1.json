@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://auth.mad4b.com/schemas/platform-memory.clean-v1.json",
+  "title": "Growth Intelligence Platform Memory Schema - Clean Draft v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "purpose",
+    "data_source_state",
+    "activation_state",
+    "auto_bootstrap_state",
+    "hard_activation_wrapper_state",
+    "execution_logging_state",
+    "governance_rules",
+    "governance_drift_state",
+    "variable_contract_state",
+    "http_transport_state",
+    "logic_pointer_state",
+    "logic_knowledge_state",
+    "business_type_knowledge_state",
+    "logical_search_state",
+    "anomaly_cluster_state",
+    "cluster_auto_repair_state",
+    "output_artifacts_state",
+    "sink_dispatch_state",
+    "agent_chain_state",
+    "local_connector_governance_state"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "default": "clean-v1-platform-recomposition",
+      "description": "Schema draft revision for non-destructive platform recomposition staging."
+    },
+    "purpose": {
+      "type": "string",
+      "default": "Clean staging schema for SQL-first governed runtime state, output sinks, agent chain events, and local connector governance."
+    },
+    "data_source_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime_authority", "sheets_role", "mode"],
+      "properties": {
+        "runtime_authority": { "const": "sql" },
+        "sheets_role": { "const": "async_mirror_and_recovery" },
+        "mode": { "type": "string", "enum": ["sql", "degraded_sql", "recovery"] },
+        "sheets_required_for_runtime": { "const": false }
+      }
+    },
+    "activation_state": { "$ref": "../../schemas/execution.schema.json#/$defs/activation_state" },
+    "auto_bootstrap_state": { "$ref": "../../schemas/execution.schema.json#/$defs/auto_bootstrap_state" },
+    "hard_activation_wrapper_state": { "$ref": "../../schemas/execution.schema.json#/$defs/hard_activation_wrapper_state" },
+    "execution_logging_state": { "$ref": "../../schemas/operations.schema.json#/$defs/execution_logging_state" },
+    "governance_rules": { "$ref": "../../schemas/governance.schema.json#/$defs/governance_rules" },
+    "governance_drift_state": { "$ref": "../../schemas/governance.schema.json#/$defs/governance_drift_state" },
+    "variable_contract_state": { "$ref": "../../schemas/governance.schema.json#/$defs/variable_contract_state" },
+    "http_transport_state": { "$ref": "../../schemas/routing_transport.schema.json#/$defs/http_transport_state" },
+    "logic_pointer_state": { "$ref": "../../schemas/logic_knowledge.schema.json#/$defs/logic_pointer_state" },
+    "logic_knowledge_state": { "$ref": "../../schemas/logic_knowledge.schema.json#/$defs/logic_knowledge_state" },
+    "business_type_knowledge_state": { "$ref": "../../schemas/logic_knowledge.schema.json#/$defs/business_type_knowledge_state" },
+    "logical_search_state": { "$ref": "../../schemas/logic_knowledge.schema.json#/$defs/logical_search_state" },
+    "anomaly_cluster_state": { "$ref": "../../schemas/repair_audit.schema.json#/$defs/anomaly_cluster_state" },
+    "cluster_auto_repair_state": { "$ref": "../../schemas/repair_audit.schema.json#/$defs/cluster_auto_repair_state" },
+    "output_artifacts_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "table", "required_keys", "write_policy", "readback_required"],
+      "properties": {
+        "authority": { "const": "canonical_agent_output_store" },
+        "table": { "const": "output_artifacts" },
+        "required_keys": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["artifact_id", "run_id", "tenant_id", "artifact_type", "status"]
+        },
+        "write_policy": { "type": "string", "enum": ["sql_first", "blocked", "diagnostic_only"], "default": "sql_first" },
+        "readback_required": { "type": "boolean", "default": true }
+      }
+    },
+    "sink_dispatch_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "table", "status_contract", "audit_policy"],
+      "properties": {
+        "authority": { "const": "output_sink_router_audit" },
+        "table": { "const": "sink_dispatch_log" },
+        "status_contract": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["queued", "dispatched", "completed", "ok", "failed", "skipped"] },
+          "default": ["ok", "failed", "skipped"]
+        },
+        "audit_policy": { "const": "append_only" }
+      }
+    },
+    "agent_chain_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "table", "lifecycle", "dispatch_policy"],
+      "properties": {
+        "authority": { "const": "agent_event_bus" },
+        "table": { "const": "agent_chain_events" },
+        "lifecycle": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["pending", "dispatched", "consumed", "failed", "skipped", "expired"] },
+          "default": ["pending", "dispatched", "failed", "skipped"]
+        },
+        "dispatch_policy": { "type": "string", "enum": ["manual_or_scheduled", "disabled", "auto"], "default": "manual_or_scheduled" }
+      }
+    },
+    "local_connector_governance_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "route_surface", "config_surface", "skill_grants_required", "device_id_required_for_local_intents"],
+      "properties": {
+        "authority": { "const": "governed_dispatch_layer" },
+        "route_surface": { "const": "task_routes" },
+        "config_surface": { "const": "local_connector_user_configs" },
+        "skill_grants_required": { "type": "boolean", "default": true },
+        "device_id_required_for_local_intents": { "type": "boolean", "default": true },
+        "direct_modules": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["local_connector_shell", "local_connector_health", "local_connector_file", "local_connector_install"]
+        }
+      }
+    }
+  }
+}
