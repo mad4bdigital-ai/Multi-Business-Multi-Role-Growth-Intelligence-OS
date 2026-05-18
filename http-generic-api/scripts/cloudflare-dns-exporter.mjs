@@ -68,17 +68,105 @@ function redactRecord(record) {
 function expected(records, name) {
   return records.filter((r) => r.name === name).map(redactRecord);
 }
-async function exportManifest(args) {
-  if (args.action !== "export") throw new Error("Only --action=export is supported.");
+async function loadCloudflareRuntime(args) {
   const connectionId = requireArg(args, "connection_id");
-  const zoneName = clean(args.zone_name || "mad4b.com");
-  const outputDir = clean(args.output_dir || "");
+  const zoneName = clean(args.zone_name || args.zone || "mad4b.com");
   const conn = await loadConnection(connectionId);
   if (!conn) throw new Error(`Active Cloudflare connection not found: ${connectionId}`);
   const credentials = decryptCredentials(conn.encrypted_credentials) || {};
   const token = credentials.bearer_token || credentials.api_key || credentials.token;
   if (!token) throw new Error("Cloudflare bearer token not found in encrypted credentials.");
   const baseUrl = conn.api_base_url || "https://api.cloudflare.com/client/v4";
+  const zones = await cfFetch(baseUrl, token, `/zones?name=${encodeURIComponent(zoneName)}&per_page=50`);
+  const zone = zones.result?.[0];
+  if (!zone?.id) throw new Error(`Cloudflare zone not found or not readable: ${zoneName}`);
+  return { connectionId, zoneName, conn, token, baseUrl, zone };
+}
+
+async function listDnsRecordsForZone(baseUrl, token, zoneId) {
+  const dnsRecords = [];
+  for (let page = 1; page <= 50; page += 1) {
+    const dns = await cfFetch(baseUrl, token, `/zones/${zoneId}/dns_records?per_page=100&page=${page}`);
+    dnsRecords.push(...(dns.result || []));
+    const info = dns.result_info || {};
+    if (!info.total_pages || page >= info.total_pages) break;
+  }
+  return dnsRecords;
+}
+
+async function repairLocalGatewayDns(args) {
+  const runtime = await loadCloudflareRuntime(args);
+  const recordName = clean(args.record_name || "local.mad4b.com");
+  const desiredType = clean(args.desired_type || "A").toUpperCase();
+  const desiredContent = clean(args.desired_content || "147.93.49.130");
+  const desiredProxied = String(args.proxied ?? "true").toLowerCase() !== "false";
+  const apply = String(args.apply || "false").toLowerCase() === "true";
+  const dnsRecords = await listDnsRecordsForZone(runtime.baseUrl, runtime.token, runtime.zone.id);
+  const existing = dnsRecords.filter((record) => record.name === recordName);
+  const alreadyCorrect = existing.length === 1 &&
+    existing[0].type === desiredType &&
+    existing[0].content === desiredContent &&
+    Boolean(existing[0].proxied) === desiredProxied;
+  const planned_operations = [];
+
+  if (!alreadyCorrect) {
+    for (const record of existing) {
+      planned_operations.push({ action: "delete", id: record.id, name: record.name, type: record.type, content: record.content, proxied: record.proxied });
+    }
+    planned_operations.push({
+      action: "create",
+      name: recordName,
+      type: desiredType,
+      content: desiredContent,
+      proxied: desiredProxied,
+      ttl: 1,
+      comment: "local.mad4b.com public Auth/Hostinger gateway - DB routed local tools",
+    });
+  }
+
+  const applied = [];
+  if (apply && !alreadyCorrect) {
+    for (const op of planned_operations) {
+      if (op.action === "delete") {
+        const deleted = await cfFetch(runtime.baseUrl, runtime.token, `/zones/${runtime.zone.id}/dns_records/${op.id}`, { method: "DELETE" });
+        applied.push({ action: "delete", id: op.id, ok: deleted.success !== false });
+      } else if (op.action === "create") {
+        const created = await cfFetch(runtime.baseUrl, runtime.token, `/zones/${runtime.zone.id}/dns_records`, {
+          method: "POST",
+          body: {
+            name: op.name,
+            type: op.type,
+            content: op.content,
+            proxied: op.proxied,
+            ttl: op.ttl,
+            comment: op.comment,
+          },
+        });
+        applied.push({ action: "create", id: created.result?.id || null, name: op.name, type: op.type, content: op.content, proxied: op.proxied });
+      }
+    }
+  }
+
+  const afterRecords = apply ? (await listDnsRecordsForZone(runtime.baseUrl, runtime.token, runtime.zone.id)).filter((record) => record.name === recordName) : existing;
+  return {
+    ok: true,
+    action: "repair-local-gateway",
+    applied: apply,
+    zone: { id: runtime.zone.id, name: runtime.zone.name },
+    desired: { name: recordName, type: desiredType, content: desiredContent, proxied: desiredProxied, ttl: 1 },
+    already_correct: alreadyCorrect,
+    existing: existing.map(redactRecord),
+    planned_operations,
+    applied_operations: applied,
+    after: afterRecords.map(redactRecord),
+    secrets_included: false,
+  };
+}
+
+async function exportManifest(args) {
+  if (args.action !== "export") throw new Error("Only --action=export is supported.");
+  const outputDir = clean(args.output_dir || "");
+  const { connectionId, zoneName, token, baseUrl, zone } = await loadCloudflareRuntime(args);
 
   let tokenVerification = { result: { status: "not_checked" }, success: null };
   let tokenVerifyWarning = null;
