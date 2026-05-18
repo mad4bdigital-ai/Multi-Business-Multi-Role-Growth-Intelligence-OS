@@ -71,6 +71,17 @@ async function main() {
   const unsignedInstaller = await request(`${base}/connector-agent/installer.ps1`);
   assertOk([400, 401].includes(unsignedInstaller.status), "unsigned_installer_should_be_rejected", { status: unsignedInstaller.status, code: unsignedInstaller.body?.error?.code || null });
 
+  const unauthHeartbeat = await fetch(`${base}/connector-agent/heartbeat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ device_id: "smoke-test" }),
+    signal: AbortSignal.timeout(30000),
+  });
+  const unauthHeartbeatText = await unauthHeartbeat.text();
+  let unauthHeartbeatBody = null;
+  try { unauthHeartbeatBody = JSON.parse(unauthHeartbeatText); } catch { unauthHeartbeatBody = {}; }
+  assertOk(unauthHeartbeat.status === 401, "unauthenticated_heartbeat_should_be_401", { status: unauthHeartbeat.status, code: unauthHeartbeatBody?.error?.code || null });
+
   console.log(JSON.stringify({
     ok: true,
     base_url: base,
@@ -80,6 +91,8 @@ async function main() {
     verified_files: verifiedFiles,
     unsigned_installer_status: unsignedInstaller.status,
     unsigned_installer_code: unsignedInstaller.body?.error?.code || null,
+    unauthenticated_heartbeat_status: unauthHeartbeat.status,
+    unauthenticated_heartbeat_code: unauthHeartbeatBody?.error?.code || null,
     secrets_included: false,
     bodies_printed: false,
   }, null, 2));
