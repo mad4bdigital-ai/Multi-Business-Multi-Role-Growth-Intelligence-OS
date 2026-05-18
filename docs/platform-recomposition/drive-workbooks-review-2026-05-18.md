@@ -17,7 +17,7 @@ It is a staging note, not runtime authority.
 |---|---|---:|---|
 | Growth Intelligence OS - Registry Workbook | `1RV185rQo58pGppg27r81eD9hPE8pXPyBY1pfHANip4o` | 48 | Legacy registry workbook; SQL mirror is runtime authority. Keep as recovery and human audit surface. |
 | Activity Log | `1Ksge5czL99W7nwm8XxNT9X34mBoxWcl4gPOBbgamNDw` | 7 | Operations/audit workbook. SQL `execution_log`, `audit_log`, telemetry, and session tables should remain runtime authority. |
-| Tourism Growth Intelligence Layer | `16uSyKEWEn_vQwfp0Sx393a4hhZhwJfuptYBKrXNurUY` | 0 captured | Workbook exists in folder listing, but no sheet metadata capture was found in SQL evidence. Requires live read or recovery capture. |
+| Tourism Growth Intelligence Layer | `16uSyKEWEn_vQwfp0Sx393a4hhZhwJfuptYBKrXNurUY` | 0 captured | Legacy/activity-specific workbook. Workbook exists in folder listing, but no sheet metadata capture was found in SQL evidence. Requires live read or recovery capture before deciding whether any rows generalize beyond tourism. |
 | AllRoyalEgypt Publish Preparation Store | `1hX7a6RQzaJ1FP0z8xN9Krds4VluqilkSRAxYXHKR4sE` | 15 | Brand/site publishing preparation workbook. Treat as brand-specific planning/import surface, not global runtime authority. |
 | Logic Sanitization Audit & Generalization Registry | `1TUJ92hJW3KR-_73tA7j7Bjli8DtcFTRHJXc-6R5lsBY` | 3 | Logic sanitation/audit workbook. Compare with SQL `logic_definitions`, `logic_packs`, and related governance rows before promotion. |
 | Growth Intelligence OS - Operations Workbook | `1D0uiZteobSqPL9c6zygq3UVWTe56H3R7IHL1yJcwP5k` | 10 | Operations/control workbook. Should become dashboard/review helper, not runtime routing authority. |
