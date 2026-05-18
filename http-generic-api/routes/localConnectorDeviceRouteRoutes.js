@@ -262,7 +262,7 @@ export function buildLocalConnectorDeviceRouteRoutes(deps) {
         `SELECT * FROM \`local_connector_device_routes\`
           WHERE config_id = ? AND route_type = ? AND endpoint_url = ?
           LIMIT 1`,
-        [config.config_id, routeType, parsedUrl.toString().replace(/\/$/, "")]
+        [config.config_id, routeType, endpoint]
       );
       return res.status(200).json({ ok: true, route: routeResponse(rows[0]), secrets_included: false });
     } catch (err) {
