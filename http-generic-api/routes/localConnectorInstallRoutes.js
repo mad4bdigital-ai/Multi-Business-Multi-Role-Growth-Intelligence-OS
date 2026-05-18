@@ -392,6 +392,16 @@ function shortHash(value) {
   return createHash("sha256").update(String(value || "")).digest("hex").slice(0, 10);
 }
 
+function buildDeviceRuntimeHostname(configId) {
+  const firstSegment = String(configId || "").trim().split("-")[0].toLowerCase().replace(/[^a-z0-9-]+/g, "");
+  const suffix = firstSegment || shortHash(configId).slice(0, 8) || "device";
+  return `lc-${suffix}.${DNS_DOMAIN}`;
+}
+
+function buildDeviceRuntimeUrl(configId) {
+  return `https://${buildDeviceRuntimeHostname(configId)}`;
+}
+
 function buildUserDeviceRoute({ userId, deviceId, requestedHostname }) {
   const requested = String(requestedHostname || "").trim().toLowerCase();
   if (requested) {
