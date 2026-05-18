@@ -38,7 +38,17 @@ Activation is active only when the same cycle confirms:
 
 Health/status endpoints are diagnostics and never replace activation bootstrap validation.
 
-## 4. Execution path
+## 4. Multi-business activity contract
+
+The platform must not default to tourism, travel, destination, or any single historical activity.
+
+- `business_activity_types` is the first activity authority surface.
+- Tourism is only one legacy/profiled activity, not the global runtime default.
+- Every business/brand/growth request should resolve `business_activity_type_key` before selecting knowledge, engines, workflow variants, or Brand Core expectations.
+- If no activity is supplied and no safe inference is possible, the request is classified `validating.activity_unresolved` or asks the caller/router for a scoped activity instead of silently falling back to tourism.
+- Activity-specific knowledge profiles must be layered under the resolved activity and business type.
+
+## 5. Execution path
 
 All AI-driven execution flows through:
 
