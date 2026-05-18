@@ -113,9 +113,36 @@ async function listGatewayTools({ callerType, includePlanned = false }) {
     .map(normalizeToolRow);
 }
 
+async function resolveCanonicalDeviceId({ deviceId, userId = null, tenantId = null }) {
+  const requested = String(deviceId || "").trim();
+  if (!requested) return "";
+  try {
+    const [rows] = await getPool().query(
+      `SELECT canonical_device_id
+         FROM \`local_connector_device_aliases\`
+        WHERE alias_device_id = ?
+          AND status = 'active'
+          AND (user_id = ? OR user_id IS NULL)
+          AND (tenant_id = ? OR tenant_id IS NULL)
+        ORDER BY (user_id IS NOT NULL) DESC, (tenant_id IS NOT NULL) DESC, updated_at DESC
+        LIMIT 1`,
+      [requested, userId, tenantId]
+    );
+    return rows[0]?.canonical_device_id || requested;
+  } catch {
+    return requested;
+  }
+}
+
 async function resolveDeviceConfig({ req, args, isAdmin }) {
-  const deviceId = String(args.device_id || "").trim();
-  if (!deviceId) return null;
+  const requestedDeviceId = String(args.device_id || "").trim();
+  if (!requestedDeviceId) return null;
+  const deviceId = await resolveCanonicalDeviceId({
+    deviceId: requestedDeviceId,
+    userId: isAdmin ? String(args.user_id || "").trim() || null : req.auth?.user_id || null,
+    tenantId: isAdmin ? String(args.tenant_id || "").trim() || null : req.auth?.tenant_id || null,
+  });
+  args.device_id = deviceId;
 
   if (!isAdmin) {
     const userId = req.auth?.user_id;
