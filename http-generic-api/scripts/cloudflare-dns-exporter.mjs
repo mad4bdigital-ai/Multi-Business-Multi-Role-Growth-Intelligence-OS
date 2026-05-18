@@ -163,6 +163,77 @@ async function repairLocalGatewayDns(args) {
   };
 }
 
+async function repairLocalOriginRule(args) {
+  const runtime = await loadCloudflareRuntime(args);
+  const host = clean(args.host || "local.mad4b.com");
+  const originHost = clean(args.origin_host || "auth.mad4b.com");
+  const apply = String(args.apply || "false").toLowerCase() === "true";
+  const expression = `(http.host eq \"${host}\")`;
+  const ref = "local_gateway_auth_origin_override";
+  let entrypoint = null;
+  let entrypointError = null;
+  try {
+    const fetched = await cfFetch(runtime.baseUrl, runtime.token, `/zones/${runtime.zone.id}/rulesets/phases/http_request_origin/entrypoint`);
+    entrypoint = fetched.result || null;
+  } catch (err) {
+    if (err.status === 404) entrypointError = { status: 404, message: "entrypoint_not_found" };
+    else throw err;
+  }
+
+  const existingRules = Array.isArray(entrypoint?.rules) ? entrypoint.rules : [];
+  const existingRule = existingRules.find((rule) => rule.ref === ref || rule.description === "local.mad4b.com -> auth.mad4b.com origin host override" || rule.expression === expression);
+  const desiredRule = {
+    ref,
+    ...(existingRule?.id ? { id: existingRule.id } : {}),
+    description: "local.mad4b.com -> auth.mad4b.com origin host override",
+    expression,
+    action: "route",
+    action_parameters: { host_header: originHost },
+    enabled: true,
+  };
+  const alreadyCorrect = Boolean(existingRule && existingRule.action === desiredRule.action && existingRule.enabled !== false && existingRule.action_parameters?.host_header === originHost);
+  const nextRules = existingRule
+    ? existingRules.map((rule) => (rule === existingRule ? { ...rule, ...desiredRule } : rule))
+    : [...existingRules, desiredRule];
+
+  const planned = {
+    action: entrypoint ? "update_ruleset" : "create_ruleset",
+    phase: "http_request_origin",
+    host,
+    origin_host: originHost,
+    existing_rules_count: existingRules.length,
+    rule_was_present: Boolean(existingRule),
+    already_correct: alreadyCorrect,
+  };
+
+  let result = null;
+  if (apply && !alreadyCorrect) {
+    const body = {
+      name: entrypoint?.name || "Local gateway origin overrides",
+      kind: "zone",
+      phase: "http_request_origin",
+      rules: nextRules,
+    };
+    if (entrypoint?.id) {
+      result = await cfFetch(runtime.baseUrl, runtime.token, `/zones/${runtime.zone.id}/rulesets/${entrypoint.id}`, { method: "PUT", body });
+    } else {
+      result = await cfFetch(runtime.baseUrl, runtime.token, `/zones/${runtime.zone.id}/rulesets`, { method: "POST", body });
+    }
+  }
+
+  return {
+    ok: true,
+    action: "repair-local-origin-rule",
+    applied: apply,
+    zone: { id: runtime.zone.id, name: runtime.zone.name },
+    entrypoint: entrypoint ? { id: entrypoint.id, name: entrypoint.name, phase: entrypoint.phase, rules_count: existingRules.length } : entrypointError,
+    planned,
+    desired_rule: desiredRule,
+    applied_result: result ? { id: result.result?.id || null, rules_count: Array.isArray(result.result?.rules) ? result.result.rules.length : null } : null,
+    secrets_included: false,
+  };
+}
+
 async function exportManifest(args) {
   if (args.action !== "export") throw new Error("Only --action=export is supported.");
   const outputDir = clean(args.output_dir || "");
