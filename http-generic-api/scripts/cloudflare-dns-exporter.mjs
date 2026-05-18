@@ -485,6 +485,11 @@ async function main() {
       console.log(JSON.stringify(result, null, 2));
       return;
     }
+    if (args.action === "upsert-tunnel-ingress-hostname") {
+      const result = await upsertTunnelIngressHostname(args);
+      console.log(JSON.stringify(result, null, 2));
+      return;
+    }
 
     const { manifest, summary } = await exportManifest(args);
     const payload = String(args.summary_only).toLowerCase() === "true"
