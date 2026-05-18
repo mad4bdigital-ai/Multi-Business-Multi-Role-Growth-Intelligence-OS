@@ -55,6 +55,8 @@ The platform is multi-business and multi-activity. Tourism/travel is a historica
 
 Brand writing requires Brand Core first. Business-type or brand-path mutations require resolver rows first.
 
+Every business-facing execution must also pass tenant, actor-role, service-mode, entitlement, and human-oversight gates when applicable. UI visibility is not enforcement; backend access must deny by default before dispatch.
+
 Resolution order:
 
 1. business activity type;
