@@ -4,13 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: "Fallback deployment target: auth, connector, or both"
+        description: "Fallback deployment target: auth, connector, dev, or both"
         required: true
         default: "auth"
         type: choice
         options:
           - auth
           - connector
+          - dev
           - both
       run_runtime_verify:
         description: "Run runtime verification after deploy"
