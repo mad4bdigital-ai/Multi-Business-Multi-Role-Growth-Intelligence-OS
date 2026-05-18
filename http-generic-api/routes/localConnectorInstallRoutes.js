@@ -524,6 +524,10 @@ export {
   buildDefaultLocalAppRoutes,
   toCloudflareIngressRoutes,
   upsertIngressRoutes,
+  verifyInstallerDownloadToken,
+  buildInstallPowerShell,
+  DEFAULT_WINDOWS_ALIASES,
+  CONNECTOR_PORT,
 };
 
 // ── Builders ──────────────────────────────────────────────────────────────────
