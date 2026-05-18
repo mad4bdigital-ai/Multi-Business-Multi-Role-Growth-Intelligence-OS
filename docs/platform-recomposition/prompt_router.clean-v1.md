@@ -16,10 +16,12 @@ The prompt router converts user/request intent into a governed route, never into
 4. Resolve workflow execution row.
 5. Resolve business activity type through `business_activity_types` when the request concerns business/brand/growth output.
 6. Resolve business type profile, business path, and brand path under the resolved activity.
-7. Resolve brand and Brand Core when brand-targeted.
-8. Resolve logic pointer and activity-compatible knowledge profile.
-9. Resolve action/endpoint/schema/credential contract.
-10. Run validation and dispatch.
+7. Resolve tenant, actor role, governance level, and scoped access.
+8. Resolve service mode, commercial entitlement, and human oversight requirement.
+9. Resolve brand and Brand Core when brand-targeted.
+10. Resolve logic pointer and activity-compatible knowledge profile.
+11. Resolve action/endpoint/schema/credential contract.
+12. Run validation and dispatch.
 
 ## 3. Multi-business routing rule
 
