@@ -244,7 +244,7 @@ export function buildLocalConnectorDeviceRouteRoutes(deps) {
           config.device_id,
           routeType,
           String(body.route_label || "").trim() || null,
-          parsedUrl.toString().replace(/\/$/, ""),
+          endpoint,
           priority,
           boolInt(body.is_enabled, true),
           isCustomerSelectable,
