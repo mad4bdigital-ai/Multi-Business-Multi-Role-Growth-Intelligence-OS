@@ -68,6 +68,39 @@ async function main() {
   });
   assertOk(call.status === 200 && call.body?.ok === true && call.body?.local_gateway?.call_id, "local_gateway_health_call_failed", { status: call.status, body: call.body });
 
+  let tenantChecks = null;
+  if (process.env.JWT_SECRET) {
+    const tenantId = args.tenant_id || "00000000-0000-0000-0000-000000000000";
+    const tenantJwt = jwt.sign({
+      user_id: args.user_id,
+      tenant_id: tenantId,
+      email: "local-gateway-smoke@mad4b.local",
+      smoke_test: true,
+    }, process.env.JWT_SECRET, { expiresIn: "10m" });
+    const tenantHeaders = { Authorization: `Bearer ${tenantJwt}` };
+    const tenantTools = await requestJson(`${base}/local/tools`, { headers: tenantHeaders });
+    assertOk(tenantTools.status === 200 && tenantTools.body?.caller_type === "tenant", "tenant_tools_list_failed", { status: tenantTools.status, body: tenantTools.body });
+    const tenantToolKeys = Array.isArray(tenantTools.body?.tools) ? tenantTools.body.tools.map((tool) => tool.tool_key || tool.name) : [];
+    assertOk(!tenantToolKeys.some((key) => String(key || "").startsWith("local.admin.")), "tenant_tools_leaked_admin_tools", { tenantToolKeys });
+
+    const tenantCall = await requestJson(`${base}/local/tools/call`, {
+      method: "POST",
+      headers: { ...tenantHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "local.connector.health",
+        tool_args: { device_id: args.device_id },
+      }),
+    });
+    assertOk(tenantCall.status === 200 && tenantCall.body?.ok === true && tenantCall.body?.local_gateway?.call_id, "tenant_local_gateway_health_call_failed", { status: tenantCall.status, body: tenantCall.body });
+    tenantChecks = {
+      tenant_tools_status: tenantTools.status,
+      tenant_tools_count: tenantTools.body.count,
+      tenant_admin_tools_visible: tenantToolKeys.filter((key) => String(key || "").startsWith("local.admin.")).length,
+      tenant_call_status: tenantCall.status,
+      tenant_call_id: tenantCall.body.local_gateway.call_id,
+    };
+  }
+
   console.log(JSON.stringify({
     ok: true,
     base_url: base,
@@ -81,6 +114,7 @@ async function main() {
       dispatch_tool_key: call.body.local_gateway.dispatch_tool_key,
       hostname: call.body.hostname || null,
       platform: call.body.platform || null,
+      tenant_jwt_path: tenantChecks,
     },
     secrets_included: false,
   }, null, 2));
