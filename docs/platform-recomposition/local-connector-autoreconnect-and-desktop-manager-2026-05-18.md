@@ -433,6 +433,53 @@ approved local.connector.files list_drives -> HTTP 200
 second_call_id = 085638c4-31e6-42ea-af66-a0afebe08e8d
 ```
 
+## Dedicated device runtime hostname promotion - 2026-05-18
+
+`connector.mad4b.com` was intentionally kept as admin/break-glass only. A dedicated runtime hostname was provisioned for the canonical Essam device:
+
+```text
+lc-8db63b00.mad4b.com
+```
+
+DNS:
+
+```text
+lc-8db63b00.mad4b.com CNAME f85825dd-5a0d-4e37-ad57-2d229b7eb0d6.cfargotunnel.com
+proxied = true
+```
+
+Cloudflare Tunnel ingress was updated from version 4 to version 5 with this additional rule before the `http_status:404` catch-all:
+
+```text
+hostname = lc-8db63b00.mad4b.com
+service  = http://localhost:7070
+```
+
+The canonical DB row now uses:
+
+```text
+public_gateway_url = https://local.mad4b.com
+device_runtime_url = https://lc-8db63b00.mad4b.com
+admin_recovery_url = https://connector.mad4b.com
+```
+
+Validated after promotion:
+
+```text
+local.connector.health -> HTTP 200
+call_id = 6e94070a-287b-4100-9717-ece6277e9719
+```
+
+Sensitive approval flow revalidated end-to-end on the dedicated runtime hostname:
+
+```text
+approval_hold_id = f4feb96b-19ed-4065-a7e0-30e866c65fb8
+first_call_id = 692d48fa-32c9-4a3e-93cc-e949e9eda0f8
+second_call_id = 3c217925-d668-4b5f-81de-f630e53e6cf7
+approved_dispatch_status = 200
+approved_dispatch_tool = connector_files
+```
+
 ## Next implementation steps
 
 1. Add a small regression smoke test for token-gated installer route that checks status/headers without printing installer content.
