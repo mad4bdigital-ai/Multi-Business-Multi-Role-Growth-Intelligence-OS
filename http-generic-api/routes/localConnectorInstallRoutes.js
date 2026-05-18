@@ -880,16 +880,19 @@ export async function provisionLocalConnectorInstall(req, body = {}) {
     );
   }
 
-  const installPowerShell = buildInstallPowerShell({ cfToken: tunnelToken, connectorSecret, tunnelUrl, aliases: allAliases, port: CONNECTOR_PORT });
+  const installPowerShell = buildInstallPowerShell({ cfToken: tunnelToken, connectorSecret, tunnelUrl: runtimeUrl, aliases: allAliases, port: CONNECTOR_PORT });
   const connectorEnv = buildConnectorEnv({ connectorSecret, aliases: allAliases, port: CONNECTOR_PORT });
   const startConnectorBat = buildStartConnectorBat();
-  const installScript = buildInstallScript({ cfToken: tunnelToken, connectorSecret, tunnelUrl, aliases: allAliases, port: CONNECTOR_PORT });
+  const installScript = buildInstallScript({ cfToken: tunnelToken, connectorSecret, tunnelUrl: runtimeUrl, aliases: allAliases, port: CONNECTOR_PORT });
 
   return {
     ok: true,
     config_id: finalConfigId,
     device_id,
     tunnel_url: tunnelUrl,
+    public_gateway_url: LOCAL_GATEWAY_URL,
+    device_runtime_url: runtimeUrl,
+    admin_recovery_url: ADMIN_RECOVERY_URL,
     connector_secret: connectorSecret,
     cf_tunnel_id: tunnelId,
     credential_source: provisioningCredentials.source,
