@@ -388,6 +388,17 @@ section("connect api auth scope");
       source.includes("WHERE device_id = ? AND is_enabled = 1"));
     assert("auth connector proxy strips admin user_id before forwarding to the device",
       source.includes("delete forwardedQuery.user_id") && source.includes("delete forwardedBody.user_id"));
+    assert("auth connector proxy reads registered device routes before legacy tunnel fallback",
+      source.includes("local_connector_device_routes") &&
+      source.includes("listCandidateRoutes") &&
+      source.includes("legacy_config"));
+    assert("auth connector proxy route selector prefers healthy or unknown routes",
+      source.includes("health_status IN ('healthy','unknown')") &&
+      source.includes("ORDER BY priority ASC"));
+    assert("auth connector proxy writes route health metadata",
+      source.includes("last_success_at = NOW()") &&
+      source.includes("last_failure_at = NOW()") &&
+      source.includes("connector_all_routes_failed"));
   }
 
 {
