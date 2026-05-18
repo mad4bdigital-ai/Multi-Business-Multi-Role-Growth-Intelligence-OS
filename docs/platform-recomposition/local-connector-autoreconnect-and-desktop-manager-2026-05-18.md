@@ -357,11 +357,56 @@ for upgrades, and should call watchdog/service operations for repair.
 4. Do not replace `server.mjs` directly on a live device. Use safe-upgrade and rollback.
 5. Do not expose installer tokens or generated scripts in chat/logs/docs.
 
+## Auth-to-device alignment result - 2026-05-18
+
+After reinstall, Windows services and watchdog were healthy, but Auth-to-device dispatch returned `502` while public `/health` worked. The root cause was not a secret mismatch. The DB `connector_secret` matched the local `.env` `BACKEND_API_KEY`:
+
+```text
+len = 48
+sha256 = e156ef3bbe6b6c25b5a8c37b0e08e87af1a354dd33ecd7b5f2dfd83715bc84db
+```
+
+The mismatch was the URL used by Auth. The canonical DB row was using the raw Cloudflare tunnel target:
+
+```text
+https://f85825dd-5a0d-4e37-ad57-2d229b7eb0d6.cfargotunnel.com
+```
+
+Cloudflare ingress routing requires the configured hostname. DNS showed `connector.mad4b.com` points to the same healthy tunnel:
+
+```text
+connector.mad4b.com CNAME f85825dd-5a0d-4e37-ad57-2d229b7eb0d6.cfargotunnel.com
+```
+
+The canonical config was therefore updated to:
+
+```text
+local_connector_user_configs.tunnel_url = https://connector.mad4b.com
+```
+
+`cf_tunnel_id`, `cf_tunnel_name`, and `cf_token` remain unchanged.
+
+Validated after alignment:
+
+```text
+local.connector.health -> HTTP 200
+call_id = 9cff7a41-bb59-4545-9532-dd73d934748f
+```
+
+Sensitive approval flow validated end-to-end:
+
+```text
+local.connector.files without direct dispatch -> approval_required 202
+approval_hold_id = ab799fb6-b4e8-48ab-8bd6-36ab57e39a9c
+first_call_id = 4bcf8698-6892-4f98-9d43-d19e130eb50a
+
+approved local.connector.files list_drives -> HTTP 200
+second_call_id = 085638c4-31e6-42ea-af66-a0afebe08e8d
+```
+
 ## Next implementation steps
 
-1. Finalize `/connector-agent/installer.ps1` as the canonical token-gated installer surface.
-2. Add a small regression smoke test for token-gated installer route that checks status/headers without printing installer content.
-3. Update `local_connector_user_configs.watchdog_installed`, `watchdog_version`, and `agent_version` after successful install or heartbeat.
-4. Log watchdog/repair events from local agent back to Auth when online.
-5. Complete the sensitive approval end-to-end smoke after Auth-to-device token/tunnel alignment is verified.
-6. Build the Desktop Manager as a tray app/bootstrapper on top of watchdog and safe-upgrade.
+1. Add a small regression smoke test for token-gated installer route that checks status/headers without printing installer content.
+2. Update `local_connector_user_configs.watchdog_installed`, `watchdog_version`, and `agent_version` after successful install or heartbeat.
+3. Log watchdog/repair events from local agent back to Auth when online.
+4. Build the Desktop Manager as a tray app/bootstrapper on top of watchdog and safe-upgrade.
