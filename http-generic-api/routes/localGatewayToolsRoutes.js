@@ -252,9 +252,10 @@ async function insertCallLog({ tool, req, args, deviceConfig, callId, publicHost
   await getPool().query(
     `INSERT INTO \`local_gateway_tool_call_log\`
        (call_id, tool_key, dispatch_tool_key, public_host, public_path,
-        user_id, tenant_id, device_id, config_id, auth_mode, caller_type,
-        request_args_hash, request_args_json, redaction_status, status, trace_id, started_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'redacted', 'started', ?, NOW())`,
+        user_id, tenant_id, device_id, config_id, approval_hold_id, auth_mode, caller_type,
+        service_mode, entitlement_key, request_args_hash, request_args_json,
+        redaction_status, consent_status, status, trace_id, started_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'redacted', ?, 'started', ?, NOW())`,
     [
       callId,
       tool.tool_key,
@@ -265,10 +266,14 @@ async function insertCallLog({ tool, req, args, deviceConfig, callId, publicHost
       deviceConfig?.tenant_id || req.auth?.tenant_id || args.tenant_id || null,
       args.device_id || null,
       deviceConfig?.config_id || null,
+      approvalHoldId,
       req.auth?.mode || null,
       normalizeCallerTypeForGateway(req),
+      serviceMode,
+      entitlementKey,
       hashArgs(redactedArgs),
       JSON.stringify(redactedArgs),
+      consentStatus,
       req.headers?.["x-request-id"] || null,
     ]
   );
