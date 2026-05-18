@@ -604,6 +604,15 @@ function builtInShellAllowlist() {
       max_extra_args: 1,
       timeout_ms: 120000,
       built_in: true
+    },
+    local_gateway_public_smoke: {
+      command: process.execPath,
+      args: ["http-generic-api/scripts/local-gateway-public-smoke-test.mjs"],
+      display_name: "Public local.mad4b.com gateway smoke test",
+      allow_extra_args: true,
+      max_extra_args: 4,
+      timeout_ms: 120000,
+      built_in: true
     }
   };
 }
