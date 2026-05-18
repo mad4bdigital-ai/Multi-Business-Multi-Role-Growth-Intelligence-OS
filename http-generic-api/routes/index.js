@@ -54,6 +54,7 @@ import { buildConnectorTaxonomyRoutes } from "./connectorTaxonomyRoutes.js";
 import { buildCredentialIntakeRoutes } from "./credentialIntakeRoutes.js";
 import { buildBackupArtifactRoutes } from "./backupArtifactRoutes.js";
 import { buildLocalGatewayToolsRoutes } from "./localGatewayToolsRoutes.js";
+import { buildDeploymentInfoRoutes } from "./deploymentInfoRoutes.js";
 
 function sqlEndpointRegistryRoutesEnabled(env = process.env) {
   return String(env.ENABLE_SQL_ENDPOINT_REGISTRY_ROUTES || "").trim().toLowerCase() === "true";
