@@ -361,12 +361,105 @@ export function buildLocalGatewayToolsRoutes(deps) {
         }
       }
 
-      if (!isAdmin && row.requires_approval) {
-        throw httpError(403, "approval_required", `Tool '${toolKey}' requires approval before tenant/member dispatch.`);
-      }
-
+      const serviceMode = normalizeServiceMode(row, args);
+      const entitlementKey = row.required_entitlement_key || null;
+      const consentStatus = consentStatusFor(row, args);
+      const approvalHoldId = String(args.approval_hold_id || "").trim() || null;
       const publicHost = publicHostForRequest(req);
-      await insertCallLog({ tool: row, req, args, deviceConfig, callId, publicHost });
+      await insertCallLog({
+        tool: row,
+        req,
+        args,
+        deviceConfig,
+        callId,
+        publicHost,
+        serviceMode,
+        entitlementKey,
+        consentStatus,
+        approvalHoldId,
+      });
+
+      if (!isAdmin) {
+        if (!serviceModeAllowed(row, serviceMode)) {
+          await completeCallLog({ callId, status: "denied", httpStatus: 403, errorCode: "service_mode_not_allowed", errorMessage: `Service mode '${serviceMode}' is not allowed for '${toolKey}'.`, startedAt });
+          return res.status(403).json({
+            ok: false,
+            error: { code: "service_mode_not_allowed", message: `Service mode '${serviceMode}' is not allowed for this tool.` },
+            local_gateway: { call_id: callId, tool_key: row.tool_key, service_mode: serviceMode },
+          });
+        }
+
+        if (consentStatus === "missing") {
+          await completeCallLog({ callId, status: "denied", httpStatus: 403, errorCode: "consent_required", errorMessage: `Consent is required for '${toolKey}'.`, startedAt });
+          return res.status(403).json({
+            ok: false,
+            error: {
+              code: "consent_required",
+              message: "Explicit consent is required before this local gateway action can run.",
+              details: {
+                risk_label: row.risk_label || null,
+                consent_text: row.consent_text || null,
+                required_field: "tool_args.consent_accepted=true",
+              },
+            },
+            local_gateway: { call_id: callId, tool_key: row.tool_key, consent_status: consentStatus },
+          });
+        }
+
+        if (entitlementKey && !(await tenantHasEntitlement(req.auth?.tenant_id, entitlementKey))) {
+          await completeCallLog({ callId, status: "denied", httpStatus: 403, errorCode: "entitlement_required", errorMessage: `Missing entitlement '${entitlementKey}' for '${toolKey}'.`, startedAt });
+          return res.status(403).json({
+            ok: false,
+            error: {
+              code: "entitlement_required",
+              message: "This local gateway tool requires an active tenant entitlement.",
+              details: { entitlement_key: entitlementKey, service_mode: serviceMode },
+            },
+            local_gateway: { call_id: callId, tool_key: row.tool_key, entitlement_key: entitlementKey },
+          });
+        }
+
+        if (row.requires_approval) {
+          const approvedHold = approvalHoldId ? await getApprovedApprovalHold({ holdId: approvalHoldId, tenantId: req.auth?.tenant_id, row }) : null;
+          if (approvalHoldId && !approvedHold) {
+            await completeCallLog({ callId, status: "denied", httpStatus: 403, errorCode: "approval_hold_not_approved", errorMessage: `Approval hold '${approvalHoldId}' is not approved for '${toolKey}'.`, startedAt });
+            return res.status(403).json({
+              ok: false,
+              error: {
+                code: "approval_hold_not_approved",
+                message: "The supplied approval hold is missing, expired, rejected, or not approved for this tool.",
+                details: { approval_hold_id: approvalHoldId, required_hold_type: row.approval_hold_type || "review" },
+              },
+              local_gateway: { call_id: callId, tool_key: row.tool_key, approval_hold_id: approvalHoldId },
+            });
+          }
+
+          if (!approvedHold) {
+            const createdHoldId = await createApprovalHold({ callId, req, row, tenantId: req.auth?.tenant_id });
+            await getPool().query(
+              "UPDATE `local_gateway_tool_call_log` SET approval_hold_id = ? WHERE call_id = ?",
+              [createdHoldId, callId]
+            );
+            await completeCallLog({ callId, status: "approval_pending", httpStatus: 202, errorCode: "approval_required", errorMessage: `Approval hold '${createdHoldId}' opened for '${toolKey}'.`, startedAt });
+            return res.status(202).json({
+              ok: false,
+              error: {
+                code: "approval_required",
+                message: "This local gateway tool requires approval before dispatch.",
+                details: {
+                  approval_hold_id: createdHoldId,
+                  hold_type: row.approval_hold_type || "review",
+                  required_role: row.approval_required_role || null,
+                  expires_in_minutes: Number(row.approval_ttl_minutes || 1440),
+                  risk_label: row.risk_label || null,
+                  consent_text: row.consent_text || null,
+                },
+              },
+              local_gateway: { call_id: callId, tool_key: row.tool_key, approval_hold_id: createdHoldId, status: "approval_pending" },
+            });
+          }
+        }
+      }
 
       const dispatchArgs = { ...args };
       if (!isAdmin) {
