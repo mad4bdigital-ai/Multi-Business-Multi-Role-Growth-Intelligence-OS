@@ -205,8 +205,15 @@ export function buildLocalConnectorDeviceRouteRoutes(deps) {
       const body = req.body || {};
       const config = await resolveConfig(req, body);
       const { routeType, tlsMode, authMode, healthStatus, parsedUrl } = validateRouteInput(req, body);
-      const routeId = randomUUID();
-      const priority = intOrDefault(body.priority, routeType === "admin_recovery" ? 90 : 50);
+      const priority = intOrDefault(body.priority, DEFAULT_ROUTE_PRIORITIES[routeType] ?? 100);
+      const endpoint = parsedUrl.toString().replace(/\/$/, "");
+      const [existingRouteRows] = await getPool().query(
+        `SELECT route_id FROM \`local_connector_device_routes\`
+          WHERE config_id = ? AND route_type = ? AND endpoint_url = ?
+          LIMIT 1`,
+        [config.config_id, routeType, endpoint]
+      );
+      const routeId = existingRouteRows[0]?.route_id || randomUUID();
       const isCustomerSelectable = routeType === "admin_recovery" ? 0 : boolInt(body.is_customer_selectable, true);
       const metadata = body.route_metadata && typeof body.route_metadata === "object" ? JSON.stringify(body.route_metadata) : null;
 
