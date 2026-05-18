@@ -836,6 +836,63 @@ export function buildLocalConnectorInstallRoutes(deps) {
   const { requireBackendApiKey } = deps;
   const router = Router();
 
+  // ── POST /local-connector/install/download-link ──────────────────────────
+  // Creates a short-lived signed download link for install-local-connector.ps1.
+  // The token is HMAC-signed and contains no connector credentials itself.
+  router.post("/local-connector/install/download-link", requireBackendApiKey, async (req, res) => {
+    try {
+      const { user_id, tenant_id, device_id, ttl_minutes = 30 } = req.body || {};
+      if (!device_id) return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "device_id is required." } });
+      const principal = await resolveRequestedLocalPrincipal(req, { user_id, tenant_id });
+      const [[config]] = await getPool().query(
+        "SELECT config_id, tenant_id FROM `local_connector_user_configs` WHERE user_id = ? AND device_id = ? AND is_enabled = 1 LIMIT 1",
+        [principal.userId, device_id]
+      );
+      if (!config) return res.status(404).json({ ok: false, error: { code: "connector_config_not_found" } });
+      const ttl = Math.max(5, Math.min(120, Number(ttl_minutes || 30)));
+      const token = signInstallerDownloadToken({
+        user_id: principal.userId,
+        tenant_id: config.tenant_id || principal.tenantId,
+        device_id,
+        format: "ps1",
+        exp: Math.floor(Date.now() / 1000) + ttl * 60,
+      });
+      const download_url = `${publicBaseUrl(req)}/local-connector/install/download?token=${encodeURIComponent(token)}`;
+      return res.status(200).json({ ok: true, device_id, config_id: config.config_id, ttl_minutes: ttl, download_url, secrets_included: false });
+    } catch (err) {
+      return res.status(err.status || 500).json({ ok: false, error: { code: err.code || "download_link_failed", message: err.message } });
+    }
+  });
+
+  // ── GET /local-connector/install/download ─────────────────────────────────
+  // Public token-gated download. Use only with short-lived signed links.
+  router.get("/local-connector/install/download", async (req, res) => {
+    try {
+      const payload = verifyInstallerDownloadToken(req.query.token);
+      if (payload.format !== "ps1") throw httpError(400, "unsupported_format", "Only ps1 installer downloads are supported.");
+      const [[config]] = await getPool().query(
+        "SELECT config_id, user_id, tenant_id, device_id, tunnel_url, connector_secret, cf_token FROM `local_connector_user_configs` WHERE user_id = ? AND device_id = ? AND is_enabled = 1 LIMIT 1",
+        [payload.user_id, payload.device_id]
+      );
+      if (!config) throw httpError(404, "connector_config_not_found", "No active connector config was found for this download token.");
+      if (!config.cf_token || !config.connector_secret) throw httpError(409, "connector_config_incomplete", "Connector config is missing recovery token or connector secret.");
+      const installer = buildInstallPowerShell({
+        cfToken: config.cf_token,
+        connectorSecret: config.connector_secret,
+        tunnelUrl: config.tunnel_url,
+        aliases: DEFAULT_WINDOWS_ALIASES,
+        port: CONNECTOR_PORT,
+      });
+      const filename = `install-local-connector-${String(config.device_id).replace(/[^a-zA-Z0-9_-]+/g, "-")}.ps1`;
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Content-Disposition", `attachment; filename=\"${filename}\"`);
+      return res.status(200).send(installer);
+    } catch (err) {
+      return res.status(err.status || 500).json({ ok: false, error: { code: err.code || "installer_download_failed", message: err.message } });
+    }
+  });
+
   // ── POST /local-connector/install ─────────────────────────────────────────
   // Governs the full install lifecycle for any user/device.
   // Creates a Cloudflare tunnel, adds DNS CNAME, seeds DB config + allowlist,
