@@ -278,6 +278,12 @@ async function exportManifest(args) {
 async function main() {
   const args = parseArgs();
   try {
+    if (args.action === "repair-local-gateway") {
+      const result = await repairLocalGatewayDns(args);
+      console.log(JSON.stringify(result, null, 2));
+      return;
+    }
+
     const { manifest, summary } = await exportManifest(args);
     const payload = String(args.summary_only).toLowerCase() === "true"
       ? { ok: true, summary }
