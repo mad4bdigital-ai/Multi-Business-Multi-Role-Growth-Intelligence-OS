@@ -55,7 +55,23 @@ Required injected dependencies:
 - HTTP action dispatcher for action-backed engines
 - MCP dispatcher for MCP-backed engines
 
-## 5. Workflow loading
+## 5. Access and service-mode loading rule
+
+Before execution dispatch, loaders must build a minimum runtime envelope:
+
+- `tenant_id`
+- `tenant_type`
+- `actor_role`
+- `governance_level`
+- `service_mode`
+- `business_activity_type_key` when business-facing
+- `brand_key` or `client_scope` when scoped
+- `entitlement_state` when paid/limited/managed
+- `human_oversight_state` when review/approval is required
+
+Missing required envelope fields classify as `blocked.access_context_unresolved` or `validating.activity_unresolved`; they must not silently fall back to admin/system defaults.
+
+## 6. Workflow loading
 
 Loaders must avoid `workflow_key LIMIT 1` ambiguity.
 
