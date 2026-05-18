@@ -163,6 +163,58 @@ async function repairLocalGatewayDns(args) {
   };
 }
 
+async function upsertCnameRecord(args) {
+  const runtime = await loadCloudflareRuntime(args);
+  const recordName = requireArg(args, "record_name");
+  const content = requireArg(args, "content");
+  const proxied = String(args.proxied ?? "true").toLowerCase() !== "false";
+  const ttl = Math.max(1, Number(args.ttl || 1));
+  const comment = clean(args.comment || "Managed by Growth Intelligence Platform");
+  const apply = String(args.apply || "false").toLowerCase() === "true";
+  const dnsRecords = await listDnsRecordsForZone(runtime.baseUrl, runtime.token, runtime.zone.id);
+  const existing = dnsRecords.filter((record) => record.name === recordName);
+  const alreadyCorrect = existing.length === 1 && existing[0].type === "CNAME" && existing[0].content === content && Boolean(existing[0].proxied) === proxied;
+  const planned_operations = [];
+
+  if (!alreadyCorrect) {
+    for (const record of existing) {
+      planned_operations.push({ action: "delete", id: record.id, name: record.name, type: record.type, content: record.content, proxied: record.proxied });
+    }
+    planned_operations.push({ action: "create", name: recordName, type: "CNAME", content, proxied, ttl, comment });
+  }
+
+  const applied = [];
+  if (apply && !alreadyCorrect) {
+    for (const op of planned_operations) {
+      if (op.action === "delete") {
+        const deleted = await cfFetch(runtime.baseUrl, runtime.token, `/zones/${runtime.zone.id}/dns_records/${op.id}`, { method: "DELETE" });
+        applied.push({ action: "delete", id: op.id, ok: deleted.success !== false });
+      } else if (op.action === "create") {
+        const created = await cfFetch(runtime.baseUrl, runtime.token, `/zones/${runtime.zone.id}/dns_records`, {
+          method: "POST",
+          body: { name: op.name, type: op.type, content: op.content, proxied: op.proxied, ttl: op.ttl, comment: op.comment },
+        });
+        applied.push({ action: "create", id: created.result?.id || null, name: op.name, type: op.type, content: op.content, proxied: op.proxied });
+      }
+    }
+  }
+
+  const afterRecords = apply ? (await listDnsRecordsForZone(runtime.baseUrl, runtime.token, runtime.zone.id)).filter((record) => record.name === recordName) : existing;
+  return {
+    ok: true,
+    action: "upsert-cname",
+    applied: apply,
+    zone: { id: runtime.zone.id, name: runtime.zone.name },
+    desired: { name: recordName, type: "CNAME", content, proxied, ttl, comment },
+    already_correct: alreadyCorrect,
+    existing: existing.map(redactRecord),
+    planned_operations,
+    applied_operations: applied,
+    after: afterRecords.map(redactRecord),
+    secrets_included: false,
+  };
+}
+
 async function repairLocalOriginRule(args) {
   const runtime = await loadCloudflareRuntime(args);
   const host = clean(args.host || "local.mad4b.com");
