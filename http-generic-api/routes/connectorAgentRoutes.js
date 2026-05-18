@@ -2,13 +2,6 @@ import { Router } from "express";
 import crypto from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { getPool } from "../db.js";
-import {
-  verifyInstallerDownloadToken,
-  buildInstallPowerShell,
-  DEFAULT_WINDOWS_ALIASES,
-  CONNECTOR_PORT,
-} from "./localConnectorInstallRoutes.js";
 
 const AGENT_VERSION = "2026.05.18.1";
 const ROOT = process.cwd();
