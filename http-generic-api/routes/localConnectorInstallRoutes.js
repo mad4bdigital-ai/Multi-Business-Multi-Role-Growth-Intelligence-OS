@@ -995,8 +995,9 @@ export function buildLocalConnectorInstallRoutes(deps) {
     }
   });
 
-  // Legacy inline install handler retained temporarily for removal after dev smoke.
-  // It is unreachable because the shared helper route above returns the response first.
+  /* Legacy inline install handler disabled after Sprint 62 smoke.
+     The active /local-connector/install route above delegates to provisionLocalConnectorInstall().
+     Keeping this block commented during one release cycle preserves diff context only.
   router.post("/local-connector/install", requireBackendApiKey, async (req, res) => {
     try {
       const {
@@ -1161,6 +1162,8 @@ export function buildLocalConnectorInstallRoutes(deps) {
       return res.status(err.status || 500).json({ ok: false, error: { code: err.code || "install_failed", message: err.message } });
     }
   });
+
+  */
 
   // ── GET /local-connector/install/status ───────────────────────────────────
   router.get("/local-connector/install/status", requireBackendApiKey, async (req, res) => {
