@@ -22,6 +22,7 @@ const DEFAULT_WINDOWS_ALIASES = [
   { alias: "disk_usage",     cmd: "wmic",     args: ["logicaldisk", "get", "size,freespace,caption"], allow_extra_args: false, description: "Disk usage" },
   { alias: "n8n_health",     cmd: "curl",     args: ["-s", "--max-time", "10", "http://127.0.0.1:5678/"], allow_extra_args: false, description: "n8n health check" },
   { alias: "db_restore_certify_probe", cmd: "node", args: ["db-restore-certifier.mjs"], allow_extra_args: false, description: "Read-only DB restore certification prerequisite probe" },
+  { alias: "n8n_restore_certify_probe", cmd: "node", args: ["n8n-restore-certifier.mjs"], allow_extra_args: false, description: "Read-only n8n restore certification prerequisite probe" },
 ];
 
 function resolveLocalConnectorPrincipalAliases(userId, tenantId) {
