@@ -388,6 +388,70 @@ internal static class Program
             Process.Start(new ProcessStartInfo { FileName = InstallRoot, UseShellExecute = true });
         }
 
+        private async Task CheckAndInstallUpdateAsync(bool userInitiated)
+        {
+            try
+            {
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+                var infoUrl = UpdateInfoUrl + "?current_version=" + Uri.EscapeDataString(Application.ProductVersion ?? "0.0.0");
+                using var response = await client.GetAsync(infoUrl);
+                var text = await response.Content.ReadAsStringAsync();
+                var info = JsonSerializer.Deserialize<WindowsUpdateInfo>(text, _json);
+
+                if (!response.IsSuccessStatusCode || info?.Ok != true)
+                {
+                    if (userInitiated)
+                    {
+                        _status.Text = "Could not check for updates.";
+                        _output.Text = text;
+                    }
+                    return;
+                }
+
+                if (info.UpdateAvailable == true)
+                {
+                    _status.Text = $"Update available: {info.LatestVersion} (current {info.CurrentVersion ?? Application.ProductVersion}).";
+                    _output.Text = JsonSerializer.Serialize(new
+                    {
+                        update_available = true,
+                        current_version = info.CurrentVersion ?? Application.ProductVersion,
+                        latest_version = info.LatestVersion,
+                        release_notes = info.ReleaseNotes,
+                        secrets_included = false
+                    }, _json);
+
+                    var result = MessageBox.Show(
+                        $"Mad4B Local Manager {info.LatestVersion} is available. Download and install now?",
+                        "Update available",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Information);
+                    if (result == DialogResult.Yes) await DownloadAndRunLatestAsync();
+                    return;
+                }
+
+                if (userInitiated)
+                {
+                    _status.Text = $"Local Manager is up to date ({info.LatestVersion}).";
+                    _output.Text = JsonSerializer.Serialize(new
+                    {
+                        update_available = false,
+                        current_version = info.CurrentVersion ?? Application.ProductVersion,
+                        latest_version = info.LatestVersion,
+                        secrets_included = false
+                    }, _json);
+                    MessageBox.Show("Mad4B Local Manager is up to date.", "No update available", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                if (userInitiated)
+                {
+                    _status.Text = "Update check failed: " + ex.Message;
+                    _output.Text = ex.ToString();
+                }
+            }
+        }
+
         private async Task DownloadAndRunLatestAsync()
         {
             try
