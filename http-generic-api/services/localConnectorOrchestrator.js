@@ -193,8 +193,10 @@ async function writeGovernedLocalFile(args) {
     );
     if (!rule) throw new Error(`File path '${path}' not allowed for write access.`);
 
-    const token = userConfig.config.connector_secret || process.env.CONNECTOR_LOCAL_API_KEY || '';
-    const response = await fetch(`${userConfig.config.tunnel_url}/files`, {
+    const runtimeUrl = connectorRuntimeUrl(userConfig.config);
+    if (!runtimeUrl) throw new Error("Local connector runtime URL is not configured for this user/device.");
+    const token = connectorAuthToken(userConfig.config);
+    const response = await fetch(`${runtimeUrl}/files`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ action: "write", path, content }),
