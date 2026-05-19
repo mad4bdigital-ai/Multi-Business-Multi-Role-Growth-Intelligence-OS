@@ -257,7 +257,8 @@ function App() {
         )}
         <main style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 28px 80px' }}>
           {step === 'auth' && <div style={{ paddingTop: 24 }}><AuthStep onSignIn={handleSignIn} error={authError}/></div>}
-          {step === 'tenant' && <TenantPicker memberships={memberships} onPick={handlePickTenant} onCreate={() => setStep('auth')}/>}
+          {step === 'tenant' && session && !tenant && memberships.length === 0 && <CreateWorkspacePanel session={session} onCreate={handleCreateWorkspace}/>} 
+          {step === 'tenant' && !(session && !tenant && memberships.length === 0) && <TenantPicker memberships={memberships} onPick={handlePickTenant} onCreate={handleCreateWorkspace}/>}
           {['hub','credentials','preferences','business','device','launch'].includes(step) && session && tenant && (
             <div className="hub-grid" style={{ display: 'grid', gridTemplateColumns: '260px minmax(0,1fr)', gap: 32, paddingTop: 8 }}>
               <ActivationRail currentStep={step} completed={completed} session={session} tenant={tenant} deviceId={deviceId}/>
