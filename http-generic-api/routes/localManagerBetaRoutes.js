@@ -261,9 +261,139 @@ $('token').value = sessionStorage.getItem('mlm_token') || '';
 </html>`;
 }
 
+function localManagerAppPage() {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mad4B Local Manager</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#08111f; --panel:#111b31; --card:#16233d; --fg:#eff5ff; --muted:#9fb1d1; --line:#2b3d60; --ok:#5fe0ad; --warn:#ffd166; --bad:#ff7b7b; --accent:#6383ff; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif; background:radial-gradient(circle at top left,#1c2b58,#08111f 55%); color:var(--fg); }
+    main { max-width:1180px; margin:0 auto; padding:28px 18px 60px; }
+    header { display:flex; flex-wrap:wrap; justify-content:space-between; gap:18px; align-items:flex-end; margin-bottom:18px; }
+    h1 { font-size:30px; margin:0 0 6px; letter-spacing:-.03em; }
+    h2 { margin:0 0 10px; font-size:18px; }
+    p { color:var(--muted); line-height:1.55; }
+    .pill { display:inline-flex; gap:6px; align-items:center; border:1px solid var(--line); color:var(--muted); border-radius:999px; padding:5px 10px; font-size:12px; margin:2px; }
+    .panel,.card { background:rgba(17,27,49,.92); border:1px solid var(--line); border-radius:18px; box-shadow:0 18px 60px rgba(0,0,0,.28); }
+    .panel { padding:16px; margin-bottom:14px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .card { padding:16px; }
+    .full { grid-column:1/-1; }
+    .controls { display:grid; grid-template-columns:2fr 1fr 1fr 1fr auto; gap:10px; }
+    label { display:block; color:var(--muted); font-size:12px; margin-bottom:5px; }
+    input,button { width:100%; border-radius:12px; border:1px solid var(--line); padding:11px 12px; background:#0d172a; color:var(--fg); }
+    button { cursor:pointer; background:var(--accent); border-color:#86a0ff; font-weight:800; }
+    button.secondary { background:#172642; }
+    button.danger { background:#3a1a2a; border-color:#7c3854; }
+    .actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:10px; }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th,td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+    th { color:var(--muted); font-weight:600; }
+    pre { white-space:pre-wrap; word-break:break-word; background:#071124; border-radius:14px; padding:12px; max-height:360px; overflow:auto; }
+    .ok { color:var(--ok); } .warn,.unknown,.stale { color:var(--warn); } .bad,.degraded,.down { color:var(--bad); }
+    @media (max-width:900px){ .controls,.grid,.actions{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Mad4B Local Manager</h1>
+        <p>Public app shell with platform-auth actions. No platform secrets are sent to the browser.</p>
+      </div>
+      <span class="pill">public app · auth required for actions</span>
+    </header>
+
+    <section class="panel">
+      <div class="controls">
+        <div><label>Platform auth token</label><input id="token" type="password" placeholder="Bearer token" autocomplete="off" /></div>
+        <div><label>Device ID</label><input id="device" value="essam-pc" /></div>
+        <div><label>User ID</label><input id="user" placeholder="optional" /></div>
+        <div><label>Tenant ID</label><input id="tenant" placeholder="optional" /></div>
+        <div><label>&nbsp;</label><button id="load">Load</button></div>
+      </div>
+      <p>Use your own platform/admin token. The token is stored only in this browser tab/session storage.</p>
+    </section>
+
+    <section class="grid">
+      <div class="card"><h2>Status</h2><div id="status"><p>Load a device to begin.</p></div></div>
+      <div class="card"><h2>Install / Upgrade</h2><div id="install"><p>After loading a device, generate a short-lived installer link.</p></div></div>
+      <div class="card full"><h2>Routes</h2><div id="routes"></div></div>
+      <div class="card full"><h2>Recovery events</h2><div id="events"></div></div>
+      <div class="card full"><h2>Diagnostics</h2><pre id="diag">No diagnostics yet.</pre></div>
+    </section>
+  </main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const authHeaders = () => ({ Authorization:'Bearer ' + $('token').value, Accept:'application/json' });
+function saveInputs(){ ['token','device','user','tenant'].forEach(id => sessionStorage.setItem('mlm_'+id, $(id).value)); }
+function loadInputs(){ ['token','device','user','tenant'].forEach(id => { const v=sessionStorage.getItem('mlm_'+id); if(v) $(id).value=v; }); }
+function table(rows){ return '<table><tbody>' + rows.map(([k,v]) => '<tr><th>'+esc(k)+'</th><td>'+esc(v ?? '—')+'</td></tr>').join('') + '</tbody></table>'; }
+function setDiag(obj){ $('diag').textContent = JSON.stringify(obj, null, 2); }
+let loaded = null;
+async function loadDevice(){
+  saveInputs();
+  const p = new URLSearchParams();
+  if($('device').value) p.set('device_id',$('device').value);
+  if($('user').value) p.set('user_id',$('user').value);
+  if($('tenant').value) p.set('tenant_id',$('tenant').value);
+  $('status').innerHTML = '<p>Loading…</p>';
+  try {
+    const res = await fetch('/local-manager/beta/status?' + p.toString(), { headers: authHeaders() });
+    const data = await res.json(); loaded = data; setDiag({ status:res.status, ok:data.ok, beta:data.beta, read_only:data.read_only, secrets_included:data.secrets_included });
+    if(!data.ok) throw new Error(data.error?.message || 'Status failed');
+    const c = data.device?.config || {}; const h = c.health || {};
+    $('status').innerHTML = table([
+      ['device', c.device_id], ['health', (h.status || 'unknown') + ' · ' + (h.reason || '')], ['agent', c.agent_version], ['watchdog', c.watchdog_installed ? 'installed ' + (c.watchdog_version || '') : 'not installed'], ['last health', c.last_health_at], ['last error', c.last_error_code]
+    ]);
+    const routes = data.device?.routes || [];
+    $('routes').innerHTML = '<table><thead><tr><th>type</th><th>priority</th><th>health</th><th>endpoint</th></tr></thead><tbody>' + routes.map(r => '<tr><td>'+esc(r.route_type)+'</td><td>'+esc(r.priority)+'</td><td class="'+esc(r.health_status)+'">'+esc(r.health_status)+'</td><td>'+esc(r.endpoint_url)+'</td></tr>').join('') + '</tbody></table>';
+    const events = data.device?.recovery_events || [];
+    $('events').innerHTML = '<table><thead><tr><th>time</th><th>event</th><th>status</th><th>source</th></tr></thead><tbody>' + events.map(e => '<tr><td>'+esc(e.created_at)+'</td><td>'+esc(e.event_type)+'</td><td>'+esc(e.status)+'</td><td>'+esc(e.source)+'</td></tr>').join('') + '</tbody></table>';
+    const user = c.user_id || $('user').value; const tenant = c.tenant_id || $('tenant').value;
+    $('user').value = user || $('user').value; $('tenant').value = tenant || $('tenant').value; saveInputs();
+    $('install').innerHTML = '<p>Generate a 15-minute installer for this device. The URL is shown only in your browser.</p><div class="actions"><button id="genInstaller">Generate installer</button><button class="secondary" id="copyCurl">Copy PowerShell</button><button class="danger" id="clearToken">Clear token</button></div><div id="installerOut"></div>';
+    $('genInstaller').onclick = generateInstaller;
+    $('copyCurl').onclick = copyPowerShell;
+    $('clearToken').onclick = () => { $('token').value=''; sessionStorage.removeItem('mlm_token'); };
+  } catch(e) { $('status').innerHTML = '<pre>'+esc(e.message)+'</pre>'; setDiag({ ok:false, error:e.message }); }
+}
+async function generateInstaller(){
+  const body = { user_id:$('user').value, tenant_id:$('tenant').value, device_id:$('device').value, ttl_minutes:15 };
+  const res = await fetch('/local-connector/install/download-link', { method:'POST', headers:{...authHeaders(),'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  const data = await res.json();
+  setDiag({ action:'download-link', status:res.status, ok:data.ok, url_received:Boolean(data.download_url), secrets_included:false });
+  if(!data.ok) { $('installerOut').innerHTML = '<pre>'+esc(JSON.stringify(data,null,2))+'</pre>'; return; }
+  $('installerOut').innerHTML = '<p><a href="'+esc(data.download_url)+'" download>Download installer</a></p><p class="warn">Run as Administrator on '+esc($('device').value)+'. Do not share this file.</p>';
+}
+function copyPowerShell(){
+  const script = "$Body = @{ user_id = '"+$('user').value+"'; tenant_id = '"+$('tenant').value+"'; device_id = '"+$('device').value+"'; ttl_minutes = 15 } | ConvertTo-Json`n"+
+    "$Headers = @{ Authorization = 'Bearer <YOUR_PLATFORM_TOKEN>'; 'Content-Type' = 'application/json'; Accept = 'application/json' }`n"+
+    "$Link = Invoke-RestMethod -Method POST -Uri 'https://auth.mad4b.com/local-connector/install/download-link' -Headers $Headers -Body $Body`n"+
+    "$Installer = \"$env:TEMP\\install-connector.bat\"`nInvoke-WebRequest -Uri $Link.download_url -OutFile $Installer`nStart-Process 'cmd.exe' -Verb RunAs -ArgumentList \"/c `\"$Installer`\"\"";
+  navigator.clipboard?.writeText(script);
+  $('installerOut').innerHTML = '<pre>'+esc(script)+'</pre>';
+}
+$('load').onclick = loadDevice; loadInputs();
+</script>
+</body>
+</html>`;
+}
+
 export function buildLocalManagerBetaRoutes(deps) {
   const { requireBackendApiKey, requireAdminPrincipal } = deps;
   const router = Router();
+
+  router.get("/app/local-manager", (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).send(localManagerAppPage());
+  });
 
   router.get("/local-manager/beta", (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
