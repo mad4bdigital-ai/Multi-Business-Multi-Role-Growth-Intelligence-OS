@@ -89,9 +89,7 @@ async function resolveDeviceConfig(userId, deviceId, { isAdmin = false, tenantId
     if (rows[0]) return rows[0];
   }
 
-  // Admin/service callers may address a governed device by device_id alone only
-  // when that device resolves to a single active config. Ambiguous names must be
-  // disambiguated with tenant_id/user_id/config_id before any connector secret is used.
+  /* Admin/service callers may address a governed device by device_id alone only when that device resolves to a single active config. Ambiguous names must be disambiguated with tenant_id/user_id/config_id before any connector secret is used. */
   if (isAdmin) {
     const params = [deviceId];
     let sql = `${selectSql} AND device_id = ?`;
