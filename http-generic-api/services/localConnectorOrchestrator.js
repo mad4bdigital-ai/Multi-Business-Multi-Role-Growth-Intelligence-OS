@@ -34,7 +34,7 @@ function connectorAuthToken(config) {
 async function resolveUserLocalConfig(userId, tenantId, deviceId) {
   const principal = resolveLocalConnectorPrincipalAliases(userId, tenantId);
   const [configs] = await getPool().query(
-    "SELECT * FROM `local_connector_user_configs` WHERE user_id = ? AND tenant_id = ? AND device_id = ? AND is_enabled = TRUE LIMIT 1",
+    "SELECT *, COALESCE(device_runtime_url, tunnel_url) AS runtime_url FROM `local_connector_user_configs` WHERE user_id = ? AND tenant_id = ? AND device_id = ? AND is_enabled = TRUE LIMIT 1",
     [principal.userId, principal.tenantId, deviceId]
   );
   const config = configs[0];
