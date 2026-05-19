@@ -448,12 +448,21 @@ section("connect api auth scope");
       betaSource.includes("function localManagerAdminPage") &&
       betaSource.includes("<YOUR_PLATFORM_TOKEN>") &&
       !betaSource.includes("BACKEND_API_KEY"));
+    const deviceLinkSource = readFileSync("services/localManagerDeviceLinkService.js", "utf8");
     assert("local manager Windows default download redirects to public EXE release asset",
       betaSource.includes("Mad4B-Local-Manager-Setup.exe") &&
       betaSource.includes("releases/download/local-manager-windows-latest") &&
       !betaSource.includes("Mad4B-Local-Manager-Windows-Bootstrap.ps1") &&
       !betaSource.includes("connector_secret") &&
       !betaSource.includes("cf_token"));
+    assert("local manager device-code service stores only hashed poll/display tokens and emits device-scoped token after approval",
+      deviceLinkSource.includes("display_code_hash") &&
+      deviceLinkSource.includes("poll_token_hash") &&
+      deviceLinkSource.includes("device_access_token") &&
+      deviceLinkSource.includes("local_manager_device_access") &&
+      deviceLinkSource.includes("requireLocalManagerUser") &&
+      !deviceLinkSource.includes("connector_secret") &&
+      !deviceLinkSource.includes("cf_token"));
     assert("local manager beta is read-only and redacts secrets",
       betaSource.includes("read_only: true") &&
       betaSource.includes("secrets_included: false") &&
