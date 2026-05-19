@@ -171,6 +171,23 @@ docs/backup-run-2026-05-17-db-primary.md
 docs/backup-run-2026-05-17-n8n-local.md
 ```
 
+## Sprint 63 DR certification probes
+
+Sprint 63 added connector-agent read-only probes for DB and n8n restore certification prerequisites:
+
+```text
+db_restore_certify_probe
+n8n_restore_certify_probe
+```
+
+Canonical delta:
+
+```text
+docs/sprint63-governance-update-2026-05-19.md
+```
+
+These probes are served by `auth.mad4b.com` and included in the installer, but the installed `essam-pc` runtime must be upgraded before they are available on-device. Until then, full isolated DB import and isolated n8n boot certification remain blocked by device update.
+
 ## Final baseline conclusion
 
 The platform has a verified local DR baseline. It is not yet off-device disaster-proof until encrypted artifacts and recovery keys are stored in separate secure locations.
