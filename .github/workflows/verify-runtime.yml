@@ -32,6 +32,11 @@ on:
         required: false
         default: "/governance/execution-log-latest"
         type: string
+      allow_environment_access_blocked:
+        description: "Allow clean skip when GitHub-hosted runner is blocked by hosting bot verification and same-cycle platform evidence exists"
+        required: false
+        default: "false"
+        type: string
 
 jobs:
   verify:
@@ -77,6 +82,7 @@ jobs:
           EXPECT_WORKER_ENABLED: ${{ inputs.expect_worker_enabled }}
           VERIFY_EXECUTION_LOG_ROW: ${{ inputs.verify_execution_log_row }}
           EXECUTION_LOG_VERIFY_PATH: ${{ inputs.execution_log_verify_path }}
+          ALLOW_ENVIRONMENT_ACCESS_BLOCKED: ${{ inputs.allow_environment_access_blocked }}
         run: node verify-runtime.mjs
 
       - name: Confirm parity result

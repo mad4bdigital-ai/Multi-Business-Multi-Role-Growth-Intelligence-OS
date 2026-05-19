@@ -22,6 +22,8 @@ const VERIFY_EXECUTION_LOG_ROW =
 const EXECUTION_LOG_VERIFY_PATH =
   String(process.env.EXECUTION_LOG_VERIFY_PATH || "/governance/execution-log-latest").trim() ||
   "/governance/execution-log-latest";
+const ALLOW_ENVIRONMENT_ACCESS_BLOCKED =
+  String(process.env.ALLOW_ENVIRONMENT_ACCESS_BLOCKED || "FALSE").trim().toUpperCase() === "TRUE";
 
 if (!BASE_URL) {
   console.error("ERROR: RUNTIME_BASE_URL environment variable is required.");
@@ -58,6 +60,30 @@ function skip(label, reason = "") {
 
 function nonEmpty(value) {
   return String(value ?? "").trim().length > 0;
+}
+
+function isBotVerificationResponse(response) {
+  const raw = String(response?.body?._raw || "").toLowerCase();
+  return response?.status === 403 && (
+    raw.includes("bot verification") ||
+    raw.includes("verifying that you are not a robot") ||
+    raw.includes("recaptcha") ||
+    raw.includes("/.lsrecap/recaptcha")
+  );
+}
+
+function finishEnvironmentAccessBlocked(response, path = "/health") {
+  const detail = `Hostinger/LiteSpeed bot challenge blocked GitHub Actions runner for ${path}; status=${response?.status || 0}`;
+  if (ALLOW_ENVIRONMENT_ACCESS_BLOCKED) {
+    skip("runtime verification blocked by hosting bot challenge", detail);
+    console.log(`\nENVIRONMENT ACCESS BLOCKED: ${detail}`);
+    console.log("RUNTIME VERIFICATION SKIPPED BY POLICY");
+    process.exit(0);
+  }
+  assert("runtime verification blocked by hosting bot challenge", false, detail);
+  console.error(`\nENVIRONMENT ACCESS BLOCKED: ${detail}`);
+  console.error("Set ALLOW_ENVIRONMENT_ACCESS_BLOCKED=true only when same-cycle platform-side runtime evidence exists.");
+  process.exit(1);
 }
 
 function isAllowedSentinel(value, allowed = []) {
@@ -113,6 +139,7 @@ async function post(path, payload) {
 section("Layer 3 - Runtime health");
 
 const health = await get("/health");
+if (isBotVerificationResponse(health)) finishEnvironmentAccessBlocked(health, "/health");
 assert("GET /health returns 200", health.status === 200, `got ${health.status} - ${health.error || ""}`);
 assert("health body has ok: true", health.body?.ok === true, JSON.stringify(health.body));
 
