@@ -62,6 +62,30 @@ function nonEmpty(value) {
   return String(value ?? "").trim().length > 0;
 }
 
+function isBotVerificationResponse(response) {
+  const raw = String(response?.body?._raw || "").toLowerCase();
+  return response?.status === 403 && (
+    raw.includes("bot verification") ||
+    raw.includes("verifying that you are not a robot") ||
+    raw.includes("recaptcha") ||
+    raw.includes("/.lsrecap/recaptcha")
+  );
+}
+
+function finishEnvironmentAccessBlocked(response, path = "/health") {
+  const detail = `Hostinger/LiteSpeed bot challenge blocked GitHub Actions runner for ${path}; status=${response?.status || 0}`;
+  if (ALLOW_ENVIRONMENT_ACCESS_BLOCKED) {
+    skip("runtime verification blocked by hosting bot challenge", detail);
+    console.log(`\nENVIRONMENT ACCESS BLOCKED: ${detail}`);
+    console.log("RUNTIME VERIFICATION SKIPPED BY POLICY");
+    process.exit(0);
+  }
+  assert("runtime verification blocked by hosting bot challenge", false, detail);
+  console.error(`\nENVIRONMENT ACCESS BLOCKED: ${detail}`);
+  console.error("Set ALLOW_ENVIRONMENT_ACCESS_BLOCKED=true only when same-cycle platform-side runtime evidence exists.");
+  process.exit(1);
+}
+
 function isAllowedSentinel(value, allowed = []) {
   const normalized = String(value ?? "").trim();
   return allowed.includes(normalized);
