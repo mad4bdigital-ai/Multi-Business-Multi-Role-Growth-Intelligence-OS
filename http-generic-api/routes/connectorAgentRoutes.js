@@ -291,6 +291,31 @@ async function writeHeartbeat(config, body = {}) {
 export function buildConnectorAgentRoutes() {
   const router = Router();
 
+  router.get("/connector-agent/version", async (_req, res) => {
+    try {
+      const server = await loadAgentFile("server.mjs");
+      const watchdog = await loadAgentFile("connector-watchdog.ps1");
+      const safeUpgrade = await loadAgentFile("connector-safe-upgrade.ps1");
+      return res.status(200).json({
+        ok: true,
+        agent: {
+          name: "mad4b-local-connector",
+          version: AGENT_VERSION,
+          sha256: server.sha256,
+          server_sha256: server.sha256,
+          watchdog_sha256: watchdog.sha256,
+          safe_upgrade_sha256: safeUpgrade.sha256,
+          has_watchdog: true,
+          has_safe_upgrade: true,
+          has_n8n_lifecycle: true,
+        },
+        secrets_included: false,
+      });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: { code: "connector_agent_version_failed", message: err.message } });
+    }
+  });
+
   router.get("/connector-agent/manifest.json", async (req, res) => {
     try {
       const base = publicBaseUrl(req);
