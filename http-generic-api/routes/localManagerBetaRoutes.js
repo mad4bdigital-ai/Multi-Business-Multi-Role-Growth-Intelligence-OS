@@ -765,13 +765,13 @@ export function buildLocalManagerBetaRoutes(deps) {
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).send(localManagerShellPage({
       eyebrow: "Account",
-      title: "Sign in to Mad4B",
-      body: "Use your Mad4B account before linking a Windows device. The app generates a short-lived pairing code, then this page approves it after sign-in.",
-      primaryText: "Continue to device linking",
-      primaryHref: "/app/local-manager/link-device",
+      title: "Sign in with the Growth Intelligence Platform",
+      body: "Local Manager uses the same platform /connect sign-in and workspace recovery flow as the rest of Mad4B. Sign in there, then return to approve this device.",
+      primaryText: "Open /connect sign-in",
+      primaryHref: localManagerConnectUrl("/app/local-manager/link-device"),
       cards: [
-        { title: "No admin token", body: "The public app never asks for shared backend keys or shared platform secrets." },
-        { title: "Role-governed access", body: "Device approval is scoped to the signed-in user, tenant, and device permissions." },
+        { title: "Matches /connect", body: "Google sign-in, workspace recovery, and tenant onboarding stay centralized in the platform connect flow." },
+        { title: "Device approval", body: "After sign-in, return to the pairing-code approval page to link this Windows device." },
       ],
     }));
   });
