@@ -372,10 +372,15 @@ async function generateInstaller(){
   $('installerOut').innerHTML = '<p><a href="'+esc(data.download_url)+'" download>Download installer</a></p><p class="warn">Run as Administrator on '+esc($('device').value)+'. Do not share this file.</p>';
 }
 function copyPowerShell(){
-  const script = "$Body = @{ user_id = '"+$('user').value+"'; tenant_id = '"+$('tenant').value+"'; device_id = '"+$('device').value+"'; ttl_minutes = 15 } | ConvertTo-Json`n"+
-    "$Headers = @{ Authorization = 'Bearer <YOUR_PLATFORM_TOKEN>'; 'Content-Type' = 'application/json'; Accept = 'application/json' }`n"+
-    "$Link = Invoke-RestMethod -Method POST -Uri 'https://auth.mad4b.com/local-connector/install/download-link' -Headers $Headers -Body $Body`n"+
-    "$Installer = \"$env:TEMP\\install-connector.bat\"`nInvoke-WebRequest -Uri $Link.download_url -OutFile $Installer`nStart-Process 'cmd.exe' -Verb RunAs -ArgumentList \"/c `\"$Installer`\"\"";
+  const lines = [
+    "$Body = @{ user_id = '"+$('user').value+"'; tenant_id = '"+$('tenant').value+"'; device_id = '"+$('device').value+"'; ttl_minutes = 15 } | ConvertTo-Json",
+    "$Headers = @{ Authorization = 'Bearer <YOUR_PLATFORM_TOKEN>'; 'Content-Type' = 'application/json'; Accept = 'application/json' }",
+    "$Link = Invoke-RestMethod -Method POST -Uri 'https://auth.mad4b.com/local-connector/install/download-link' -Headers $Headers -Body $Body",
+    "$Installer = \"$env:TEMP\\install-connector.bat\"",
+    "Invoke-WebRequest -Uri $Link.download_url -OutFile $Installer",
+    "Start-Process 'cmd.exe' -Verb RunAs -ArgumentList ('/c \"' + $Installer + '\"')"
+  ];
+  const script = lines.join('\\n');
   navigator.clipboard?.writeText(script);
   $('installerOut').innerHTML = '<pre>'+esc(script)+'</pre>';
 }
