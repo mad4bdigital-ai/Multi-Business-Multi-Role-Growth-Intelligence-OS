@@ -174,6 +174,32 @@ async function fetchJwtClientMembership(pool, userId, requestedTenantId) {
   return rows[0] || null;
 }
 
+async function ensureDefaultWorkspaceForUser(connection, { userId, email, displayName, source }) {
+  const [memberships] = await connection.query(
+    `SELECT m.tenant_id
+       FROM \`memberships\` m
+      WHERE m.user_id = ? AND m.status = 'active'
+      ORDER BY m.granted_at ASC
+      LIMIT 1`,
+    [userId]
+  );
+  if (memberships.length) return { created: false, tenant_id: memberships[0].tenant_id };
+
+  const tenantId = randomUUID();
+  const tenantName = `${displayName || email || "User"}'s workspace`;
+  await connection.query(
+    `INSERT INTO \`tenants\` (tenant_id, tenant_type, display_name, status, metadata_json)
+     VALUES (?, 'managed_client_account', ?, 'active', ?)`,
+    [tenantId, tenantName, JSON.stringify({ source, repaired_user_id: userId })]
+  );
+  await connection.query(
+    `INSERT INTO \`memberships\` (user_id, tenant_id, role, status)
+     VALUES (?, ?, 'owner', 'active')`,
+    [userId, tenantId]
+  );
+  return { created: true, tenant_id: tenantId };
+}
+
 function escapeHtmlAttribute(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")
@@ -804,6 +830,13 @@ export function buildAuthRoutes(deps) {
             [user_id, "google", provider_id]
           );
         }
+
+        await ensureDefaultWorkspaceForUser(connection, {
+          userId: user_id,
+          email,
+          displayName: display_name,
+          source: "google_existing_user_workspace_repair",
+        });
 
         await connection.commit();
       } catch (err) {

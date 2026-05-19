@@ -68,7 +68,7 @@ function App() {
     apiFetch('/connect/status').then(({ ok, data }) => {
       if (!ok) { localStorage.removeItem('mad4b_connect_token'); return; }
       const hasTenant = applyStatusData(data);
-      setStep(hasTenant ? 'hub' : 'hub');
+      setStep(hasTenant ? 'hub' : 'tenant');
     }).catch(() => {});
   }, []);
 
@@ -100,16 +100,18 @@ function App() {
     const hasTenant = applyStatusData(data);
     const mems = data.memberships_count > 1 ? SAMPLE_MEMBERSHIPS : [];
     if (mems.length > 1 && !hasTenant) { setMemberships(mems); setStep('tenant'); }
-    else setStep('hub');
+    else setStep(hasTenant ? 'hub' : 'tenant');
     setEvidenceOpen(true);
     setTimeout(() => setEvidenceOpen(false), 2400);
   };
 
-  const handleSignIn = async ({ provider, email, name, mode, password }) => {
+  const handleSignIn = async ({ provider, email, name, mode, password, tenant_display_name }) => {
     setAuthError('');
     if (provider === 'google') return; // handled by GSI callback
     const path = mode === 'signup' ? '/auth/register' : '/auth/login';
-    const body = mode === 'signup' ? { display_name: name || email.split('@')[0], email, password } : { email, password };
+    const body = mode === 'signup'
+      ? { display_name: name || email.split('@')[0], tenant_display_name, email, password }
+      : { email, password };
     const { ok, data } = await apiFetch(path, { method: 'POST', body: JSON.stringify(body) });
     pushLog({ method: 'POST', path, status: ok ? 200 : 401, ms: 184, body: ok ? { ok: true, user_id: data.user_id } : { error: data?.error?.message } });
     if (!ok) { setAuthError(data?.error?.message || 'Authentication failed'); return; }
@@ -125,6 +127,14 @@ function App() {
     pushLog({ method: 'POST', path: '/auth/select-tenant', status: 200, ms: 92, body: { ok: true, tenant_id: m.tenant_id, role: m.role } });
     setCompleted(prev => new Set([...prev, 'tenant']));
     setStep('hub');
+  };
+
+  const handleCreateWorkspace = async () => {
+    const displayName = `${session?.name || 'My'} workspace`;
+    const { ok, status, data } = await apiFetch('/connect/workspace', { method: 'POST', body: JSON.stringify({ display_name: displayName }) });
+    pushLog({ method: 'POST', path: '/connect/workspace', status: status || (ok ? 201 : 500), ms: 118, body: ok ? { ok: true, tenant: data.tenant } : { error: data?.error?.message } });
+    if (!ok) { setAuthError(data?.error?.message || 'Could not create workspace'); return; }
+    await loadSession();
   };
 
   const handleSaveCredentials = async () => {
@@ -247,7 +257,8 @@ function App() {
         )}
         <main style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 28px 80px' }}>
           {step === 'auth' && <div style={{ paddingTop: 24 }}><AuthStep onSignIn={handleSignIn} error={authError}/></div>}
-          {step === 'tenant' && <TenantPicker memberships={memberships} onPick={handlePickTenant} onCreate={() => setStep('auth')}/>}
+          {step === 'tenant' && session && !tenant && memberships.length === 0 && <CreateWorkspacePanel session={session} onCreate={handleCreateWorkspace}/>} 
+          {step === 'tenant' && !(session && !tenant && memberships.length === 0) && <TenantPicker memberships={memberships} onPick={handlePickTenant} onCreate={handleCreateWorkspace}/>}
           {['hub','credentials','preferences','business','device','launch'].includes(step) && session && tenant && (
             <div className="hub-grid" style={{ display: 'grid', gridTemplateColumns: '260px minmax(0,1fr)', gap: 32, paddingTop: 8 }}>
               <ActivationRail currentStep={step} completed={completed} session={session} tenant={tenant} deviceId={deviceId}/>
@@ -301,6 +312,28 @@ function App() {
             options={[{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }]}/>
         </TweakSection>
       </TweaksPanel>
+    </div>
+  );
+}
+
+function CreateWorkspacePanel({ session, onCreate }) {
+  return (
+    <div className="panel" style={{ maxWidth: 720, margin: '24px auto 0', padding: 30, textAlign: 'left', position: 'relative', overflow: 'hidden' }}>
+      <span className="label-eyebrow" style={{ color: 'var(--coral)' }}>/connect · workspace required</span>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 38, lineHeight: 1.08, letterSpacing: '-0.02em', margin: '10px 0 12px' }}>
+        Create a workspace to continue activation.
+      </h1>
+      <p style={{ color: 'var(--ink-soft)', fontSize: 15, lineHeight: 1.55, maxWidth: 560 }}>
+        You are signed in as <strong>{session?.email}</strong>, but this account is not attached to a workspace yet.
+        Create one now so activation, device setup, support escalation, and GPT tools have a tenant context.
+      </p>
+      <div style={{ display: 'flex', gap: 12, marginTop: 22, flexWrap: 'wrap' }}>
+        <button className="btn btn-primary" onClick={onCreate} style={{ height: 44 }}>
+          Create workspace
+          <Icon.arrow width={16} height={16} stroke="currentColor"/>
+        </button>
+      </div>
+      <span style={{ position: 'absolute', top: -28, right: -22, width: 84, height: 84, background: 'var(--lime)', opacity: 0.22, borderRadius: 8, transform: 'rotate(15deg)' }} aria-hidden/>
     </div>
   );
 }

@@ -177,7 +177,7 @@ function AuthStep({ onSignIn, error }) {
           ))}
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); onSignIn({ provider: "email", email, name: name || "Essam Nagy", mode, password }); }}>
+        <form onSubmit={(e) => { e.preventDefault(); onSignIn({ provider: "email", email, name: name || "Essam Nagy", tenant_display_name: tenantName, mode, password }); }}>
           {mode === "signup" && (
             <>
               <label className="field-label">Display name</label>
