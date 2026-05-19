@@ -45,6 +45,9 @@ async function main() {
   const unauthDb = await requestJson(`${base}/dev/db/status`, { timeout_ms: 60000 });
   assertCheck(checks, "dev db status rejects unauthenticated access", unauthDb.status === 401 || unauthDb.status === 403, { status: unauthDb.status, code: unauthDb.body?.error?.code || null });
 
+  const version = await requestJson(`${base}/connector-agent/version`, { timeout_ms: 60000 });
+  assertCheck(checks, "connector-agent version is available", version.status === 200 && version.body?.ok === true, { status: version.status, version: version.body?.agent?.version || null, has_n8n_lifecycle: version.body?.agent?.has_n8n_lifecycle ?? null });
+
   const manifest = await requestJson(`${base}/connector-agent/manifest.json`, { timeout_ms: 60000 });
   assertCheck(checks, "connector-agent manifest is available", manifest.status === 200 && manifest.body?.ok === true, { status: manifest.status, version: manifest.body?.version || null, file_count: Object.keys(manifest.body?.files || {}).length });
   for (const name of ["server.mjs", "connector-watchdog.ps1", "connector-safe-upgrade.ps1"]) {
