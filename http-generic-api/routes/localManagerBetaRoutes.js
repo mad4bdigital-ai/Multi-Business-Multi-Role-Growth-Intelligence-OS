@@ -745,38 +745,16 @@ export function buildLocalManagerBetaRoutes(deps) {
     }));
   });
 
-  router.get("/app/local-manager/link-device", (_req, res) => {
+  router.get("/app/local-manager/link-device", (req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "no-store");
-    return res.status(200).send(localManagerShellPage({
-      eyebrow: "Device linking",
-      title: "Link this Windows device",
-      body: "This is the dedicated device-linking page. The installed app should arrive here after sign-in, then the backend will create device-scoped connector credentials for the current machine.",
-      primaryText: "Open device dashboard",
-      primaryHref: "/app/local-manager/devices",
-      cards: [
-        { title: "Pairing flow", body: "The next backend step is a short-lived device-code or OAuth return flow." },
-        { title: "No shared secrets", body: "The device receives only its own scoped connector credential after consent." },
-      ],
-    }));
+    return res.status(200).send(localManagerLinkDevicePage(req.query.code || ""));
   });
 
   router.get("/app/local-manager/devices", (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "no-store");
-    return res.status(200).send(localManagerShellPage({
-      eyebrow: "Dashboard",
-      title: "My devices",
-      body: "After sign-in, this dashboard will list devices, health, routes, backups, DR probes, and update status for the signed-in account.",
-      primaryText: "Routes",
-      primaryHref: "/app/local-manager/routes",
-      cards: [
-        { title: "Device health", body: "View active connector status, last heartbeat, agent version, and watchdog status." },
-        { title: "Updates", body: "Windows app updates are handled by the installed app's Check / install update control." },
-        { title: "Backups and DR", body: "Open backup probes and restore certification actions after account authorization.", href: "/app/local-manager/backups", cta: "Backups / DR" },
-        { title: "Settings", body: "Manage account, tenant, notification, and device preferences.", href: "/app/local-manager/settings", cta: "Settings" },
-      ],
-    }));
+    return res.status(200).send(localManagerDevicesPage());
   });
 
   router.get("/app/local-manager/routes", (_req, res) => {
