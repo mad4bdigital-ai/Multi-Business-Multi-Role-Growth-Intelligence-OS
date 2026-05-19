@@ -86,6 +86,9 @@ export function registerRoutes(app, deps) {
   app.use(buildBackupArtifactRoutes(deps));
   app.use(buildDevDbRestoreRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildConnectorAgentRoutes());
+  // Local Manager beta includes a public UI shell and protected status API.
+  // Mount before root-level protected routers that can return missing_backend_api_key.
+  app.use(buildLocalManagerBetaRoutes({ ...deps, requireAdminPrincipal }));
   // Public token-gated credential intake pages must mount before any root-level
   // protected routers that call router.use(requireBackendApiKey).
   // The session creation route inside this router remains admin-protected.
@@ -144,7 +147,6 @@ export function registerRoutes(app, deps) {
   app.use(buildDeviceToolsRoutes(deps));
   app.use(buildLocalGatewayToolsRoutes(deps));
   app.use(buildLocalConnectorDeviceRouteRoutes(deps));
-  app.use(buildLocalManagerBetaRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildConnectorTaxonomyRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildBackupArtifactRoutes(deps));
   registerOptionalSqlEndpointRegistryRoutes(app, deps);
