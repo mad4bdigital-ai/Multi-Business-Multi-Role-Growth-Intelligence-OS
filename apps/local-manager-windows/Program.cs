@@ -313,27 +313,52 @@ internal static class Program
 
     private sealed class DeviceLinkStartResponse
     {
+        [JsonPropertyName("ok")]
         public bool Ok { get; set; }
+
+        [JsonPropertyName("device_code")]
         public string? DeviceCode { get; set; }
+
+        [JsonPropertyName("user_code")]
         public string? UserCode { get; set; }
+
+        [JsonPropertyName("verification_uri")]
         public string? VerificationUri { get; set; }
+
+        [JsonPropertyName("verification_uri_complete")]
         public string? VerificationUriComplete { get; set; }
+
+        [JsonPropertyName("poll_token")]
         public string? PollToken { get; set; }
+
+        [JsonPropertyName("interval")]
         public int Interval { get; set; } = 3;
+
+        [JsonPropertyName("error")]
         public DeviceLinkError? Error { get; set; }
     }
 
     private sealed class DeviceLinkPollResponse
     {
+        [JsonPropertyName("ok")]
         public bool Ok { get; set; }
+
+        [JsonPropertyName("status")]
         public string? Status { get; set; }
+
+        [JsonPropertyName("device_access_token")]
         public string? DeviceAccessToken { get; set; }
+
+        [JsonPropertyName("device")]
         public DeviceLinkDevice? Device { get; set; }
+
+        [JsonPropertyName("error")]
         public DeviceLinkError? Error { get; set; }
     }
 
     private sealed class DeviceLinkDevice
     {
+        [JsonPropertyName("device_id")]
         public string? DeviceId { get; set; }
     }
 }
