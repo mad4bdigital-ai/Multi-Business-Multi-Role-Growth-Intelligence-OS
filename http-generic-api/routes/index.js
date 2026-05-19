@@ -55,6 +55,7 @@ import { buildCredentialIntakeRoutes } from "./credentialIntakeRoutes.js";
 import { buildBackupArtifactRoutes } from "./backupArtifactRoutes.js";
 import { buildLocalGatewayToolsRoutes } from "./localGatewayToolsRoutes.js";
 import { buildLocalConnectorDeviceRouteRoutes } from "./localConnectorDeviceRouteRoutes.js";
+import { buildLocalManagerBetaRoutes } from "./localManagerBetaRoutes.js";
 import { buildDeploymentInfoRoutes } from "./deploymentInfoRoutes.js";
 import { buildDevDbRestoreRoutes } from "./devDbRestoreRoutes.js";
 
@@ -143,6 +144,7 @@ export function registerRoutes(app, deps) {
   app.use(buildDeviceToolsRoutes(deps));
   app.use(buildLocalGatewayToolsRoutes(deps));
   app.use(buildLocalConnectorDeviceRouteRoutes(deps));
+  app.use(buildLocalManagerBetaRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildConnectorTaxonomyRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildBackupArtifactRoutes(deps));
   registerOptionalSqlEndpointRegistryRoutes(app, deps);

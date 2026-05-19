@@ -1,0 +1,297 @@
+import { Router } from "express";
+import { getPool } from "../db.js";
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function bool(value) {
+  return Boolean(Number(value || 0));
+}
+
+function parseJsonMaybe(value) {
+  if (!value) return null;
+  if (typeof value === "object") return value;
+  try { return JSON.parse(value); } catch { return null; }
+}
+
+function asIso(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+function redactUrl(value) {
+  if (!value) return null;
+  try {
+    const url = new URL(String(value));
+    url.username = "";
+    url.password = "";
+    for (const key of [...url.searchParams.keys()]) {
+      if (/token|secret|key|signature|password|auth/i.test(key)) url.searchParams.set(key, "<redacted>");
+    }
+    return url.toString();
+  } catch {
+    return String(value).slice(0, 200);
+  }
+}
+
+function classifyHealth(config) {
+  const lastHealth = config?.last_health_at ? new Date(config.last_health_at).getTime() : 0;
+  if (!lastHealth) return { status: "unknown", reason: "no heartbeat recorded" };
+  const ageMs = Date.now() - lastHealth;
+  if (ageMs < 10 * 60 * 1000) return { status: "healthy", reason: "heartbeat within 10 minutes", age_ms: ageMs };
+  if (ageMs < 60 * 60 * 1000) return { status: "stale", reason: "heartbeat older than 10 minutes", age_ms: ageMs };
+  return { status: "degraded", reason: "heartbeat older than 1 hour", age_ms: ageMs };
+}
+
+function sanitizeConfig(row) {
+  if (!row) return null;
+  return {
+    config_id: row.config_id,
+    user_id: row.user_id,
+    tenant_id: row.tenant_id,
+    device_id: row.device_id,
+    hostname: row.hostname || null,
+    is_enabled: bool(row.is_enabled),
+    public_gateway_url: redactUrl(row.public_gateway_url),
+    device_runtime_url: redactUrl(row.device_runtime_url || row.tunnel_url),
+    admin_recovery_url: redactUrl(row.admin_recovery_url),
+    agent_version: row.agent_version || null,
+    watchdog_installed: bool(row.watchdog_installed),
+    watchdog_version: row.watchdog_version || null,
+    active_slot: row.active_slot || null,
+    last_health_at: asIso(row.last_health_at),
+    last_reconnect_at: asIso(row.last_reconnect_at),
+    last_repair_at: asIso(row.last_repair_at),
+    last_repair_status: row.last_repair_status || null,
+    last_error_code: row.last_error_code || null,
+    last_error_message: row.last_error_message || null,
+    health: classifyHealth(row),
+  };
+}
+
+function sanitizeRoute(row) {
+  return {
+    route_id: row.route_id,
+    route_type: row.route_type,
+    route_label: row.route_label || null,
+    endpoint_url: redactUrl(row.endpoint_url),
+    priority: row.priority,
+    is_enabled: bool(row.is_enabled),
+    is_customer_selectable: bool(row.is_customer_selectable),
+    requires_admin_setup: bool(row.requires_admin_setup),
+    requires_router_config: bool(row.requires_router_config),
+    requires_vpn_agent: bool(row.requires_vpn_agent),
+    tls_mode: row.tls_mode,
+    auth_mode: row.auth_mode,
+    health_status: row.health_status,
+    last_health_at: asIso(row.last_health_at),
+    last_success_at: asIso(row.last_success_at),
+    last_failure_at: asIso(row.last_failure_at),
+    last_error_code: row.last_error_code || null,
+    last_error_message: row.last_error_message || null,
+    route_metadata: parseJsonMaybe(row.route_metadata),
+  };
+}
+
+function sanitizeEvent(row) {
+  return {
+    event_id: row.event_id,
+    event_type: row.event_type,
+    status: row.status,
+    source: row.source,
+    agent_version: row.agent_version || null,
+    active_slot: row.active_slot || null,
+    error_code: row.error_code || null,
+    error_message: row.error_message || null,
+    metadata: parseJsonMaybe(row.metadata_json),
+    created_at: asIso(row.created_at),
+  };
+}
+
+async function listConfigs({ deviceId = null, userId = null, tenantId = null, limit = 20 } = {}) {
+  const params = [];
+  let sql = `SELECT * FROM \`local_connector_user_configs\` WHERE is_enabled = 1`;
+  if (deviceId) { sql += " AND device_id = ?"; params.push(deviceId); }
+  if (userId) { sql += " AND user_id = ?"; params.push(userId); }
+  if (tenantId) { sql += " AND tenant_id = ?"; params.push(tenantId); }
+  sql += " ORDER BY COALESCE(last_health_at, updated_at, created_at) DESC LIMIT ?";
+  params.push(Math.max(1, Math.min(Number(limit) || 20, 50)));
+  const [rows] = await getPool().query(sql, params);
+  return rows;
+}
+
+async function loadDeviceDetails(config) {
+  const [routes] = await getPool().query(
+    `SELECT * FROM \`local_connector_device_routes\`
+      WHERE config_id = ?
+      ORDER BY is_enabled DESC, priority ASC, route_type ASC`,
+    [config.config_id]
+  );
+  const [events] = await getPool().query(
+    `SELECT * FROM \`local_connector_recovery_events\`
+      WHERE config_id = ?
+      ORDER BY created_at DESC
+      LIMIT 20`,
+    [config.config_id]
+  );
+  return {
+    config: sanitizeConfig(config),
+    routes: routes.map(sanitizeRoute),
+    recovery_events: events.map(sanitizeEvent),
+    screens: {
+      status: {
+        title: "Status",
+        fields: ["health", "agent_version", "watchdog_installed", "active_slot", "last_health_at", "last_error_code"],
+      },
+      routes: {
+        title: "Routes",
+        order: routes.map((route) => ({ route_type: route.route_type, priority: route.priority, health_status: route.health_status })),
+      },
+      repairs: {
+        title: "Repairs",
+        mode: "read_only_beta",
+        allowed_next_actions: ["restart_connector_service", "restart_cloudflared_service", "reinstall_watchdog", "safe_upgrade", "rollback"],
+        note: "Repair execution is not enabled in beta. Actions must route through governed backend tools and consent/entitlement checks.",
+      },
+      logs: {
+        title: "Logs",
+        mode: "bounded_redacted_events",
+        event_count: events.length,
+      },
+    },
+  };
+}
+
+function betaPage() {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mad4B Local Manager Beta</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0b1020; --panel:#121a33; --card:#18213d; --fg:#edf2ff; --muted:#9fb0d9; --line:#2e3d66; --ok:#65d6ad; --warn:#ffd166; --bad:#ff7b7b; }
+    body { margin:0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif; background:linear-gradient(135deg,#08101f,#101936); color:var(--fg); }
+    main { max-width:1120px; margin:0 auto; padding:32px 18px 64px; }
+    header { display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; align-items:flex-end; margin-bottom:22px; }
+    h1 { font-size:28px; margin:0 0 6px; }
+    p { color:var(--muted); line-height:1.5; }
+    .panel { background:rgba(18,26,51,.92); border:1px solid var(--line); border-radius:18px; padding:18px; box-shadow:0 18px 60px rgba(0,0,0,.25); }
+    .controls { display:grid; grid-template-columns:2fr 1fr 1fr auto; gap:10px; margin-bottom:18px; }
+    input, button { border-radius:12px; border:1px solid var(--line); padding:12px 13px; background:#0e162d; color:var(--fg); }
+    button { cursor:pointer; font-weight:700; background:#4c6fff; border-color:#6f89ff; }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .card { background:rgba(24,33,61,.92); border:1px solid var(--line); border-radius:16px; padding:16px; }
+    .full { grid-column:1/-1; }
+    .pill { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:4px 9px; color:var(--muted); font-size:12px; margin:2px; }
+    .healthy { color:var(--ok); } .stale,.unknown { color:var(--warn); } .degraded,.down { color:var(--bad); }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th, td { text-align:left; border-bottom:1px solid var(--line); padding:8px 6px; vertical-align:top; }
+    th { color:var(--muted); }
+    pre { white-space:pre-wrap; word-break:break-word; background:#081126; border-radius:12px; padding:12px; color:#c9d6ff; }
+    @media (max-width: 780px) { .controls { grid-template-columns:1fr; } .grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Mad4B Local Manager Beta</h1>
+        <p>Read-only connector status, routes, repairs preview, and redacted recovery events. No secrets are displayed.</p>
+      </div>
+      <span class="pill">beta · read only</span>
+    </header>
+    <section class="panel">
+      <div class="controls">
+        <input id="token" type="password" placeholder="Admin bearer token" autocomplete="off" />
+        <input id="device" placeholder="device_id e.g. essam-pc" />
+        <input id="user" placeholder="optional user_id" />
+        <button id="load">Load</button>
+      </div>
+      <div id="out"><p>Enter an admin bearer token and device id, then load.</p></div>
+    </section>
+  </main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+function row(k,v){ return '<tr><th>'+esc(k)+'</th><td>'+esc(v ?? '—')+'</td></tr>'; }
+function render(data){
+  if (!data.ok) { $('out').innerHTML = '<pre>'+esc(JSON.stringify(data,null,2))+'</pre>'; return; }
+  const d = data.device || {};
+  const c = d.config || {};
+  const health = c.health || {};
+  const routes = d.routes || [];
+  const events = d.recovery_events || [];
+  $('out').innerHTML = '<div class="grid">'
+    + '<div class="card"><h2>Status</h2><table>'
+    + row('device', c.device_id) + row('health', health.status + ' · ' + (health.reason || '')) + row('agent', c.agent_version)
+    + row('watchdog', c.watchdog_installed ? 'installed ' + (c.watchdog_version || '') : 'not installed') + row('active slot', c.active_slot)
+    + row('last health', c.last_health_at) + row('last repair', c.last_repair_at) + row('last error', c.last_error_code)
+    + '</table></div>'
+    + '<div class="card"><h2>Repairs Preview</h2><p>Repair execution is disabled in beta. Actions must go through governed backend checks.</p>'
+    + (d.screens?.repairs?.allowed_next_actions || []).map(x=>'<span class="pill">'+esc(x)+'</span>').join('') + '</div>'
+    + '<div class="card full"><h2>Routes</h2><table><thead><tr><th>type</th><th>priority</th><th>health</th><th>endpoint</th><th>last error</th></tr></thead><tbody>'
+    + routes.map(r=>'<tr><td>'+esc(r.route_type)+'</td><td>'+esc(r.priority)+'</td><td class="'+esc(r.health_status)+'">'+esc(r.health_status)+'</td><td>'+esc(r.endpoint_url)+'</td><td>'+esc(r.last_error_code || '')+'</td></tr>').join('')
+    + '</tbody></table></div>'
+    + '<div class="card full"><h2>Redacted Recovery Events</h2><table><thead><tr><th>time</th><th>event</th><th>status</th><th>source</th><th>error</th></tr></thead><tbody>'
+    + events.map(e=>'<tr><td>'+esc(e.created_at)+'</td><td>'+esc(e.event_type)+'</td><td>'+esc(e.status)+'</td><td>'+esc(e.source)+'</td><td>'+esc(e.error_code || '')+'</td></tr>').join('')
+    + '</tbody></table></div></div>';
+}
+$('load').onclick = async () => {
+  sessionStorage.setItem('mlm_token', $('token').value);
+  const params = new URLSearchParams();
+  if ($('device').value) params.set('device_id', $('device').value);
+  if ($('user').value) params.set('user_id', $('user').value);
+  $('out').innerHTML = '<p>Loading…</p>';
+  try {
+    const res = await fetch('/local-manager/beta/status?' + params.toString(), { headers:{ Authorization:'Bearer ' + $('token').value, Accept:'application/json' }});
+    render(await res.json());
+  } catch (e) { render({ ok:false, error:{ message:e.message }}); }
+};
+$('token').value = sessionStorage.getItem('mlm_token') || '';
+</script>
+</body>
+</html>`;
+}
+
+export function buildLocalManagerBetaRoutes(deps) {
+  const { requireBackendApiKey, requireAdminPrincipal } = deps;
+  const router = Router();
+
+  router.get("/local-manager/beta", (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).send(betaPage());
+  });
+
+  router.get("/local-manager/beta/status", requireBackendApiKey, requireAdminPrincipal, async (req, res) => {
+    try {
+      const deviceId = String(req.query.device_id || "").trim() || null;
+      const userId = String(req.query.user_id || "").trim() || null;
+      const tenantId = String(req.query.tenant_id || "").trim() || null;
+      const configs = await listConfigs({ deviceId, userId, tenantId, limit: deviceId ? 1 : 20 });
+      const devices = configs.map(sanitizeConfig);
+      const device = configs[0] ? await loadDeviceDetails(configs[0]) : null;
+      return res.status(200).json({
+        ok: true,
+        beta: true,
+        read_only: true,
+        secrets_included: false,
+        filters: { device_id: deviceId, user_id: userId, tenant_id: tenantId },
+        devices,
+        device,
+      });
+    } catch (err) {
+      return res.status(err.status || 500).json({ ok: false, error: { code: err.code || "local_manager_beta_status_failed", message: err.message }, secrets_included: false });
+    }
+  });
+
+  return router;
+}
