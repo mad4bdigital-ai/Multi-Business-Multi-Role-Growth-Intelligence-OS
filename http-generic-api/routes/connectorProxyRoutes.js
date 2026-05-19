@@ -298,14 +298,28 @@ async function proxyToDevice(req, res, deviceId, targetPath) {
     return res.status(401).json({ ok: false, error: { code: "user_identity_required", message: "Sign-in or pass user_id for admin callers." } });
   }
 
-  const device = await resolveDeviceConfig(userId, deviceId, { isAdmin, tenantId });
+  let device;
+  try {
+    device = await resolveDeviceConfig(userId, deviceId, { isAdmin, tenantId });
+  } catch (err) {
+    return res.status(err.status || 500).json({
+      ok: false,
+      error: {
+        code: err.code || "device_config_resolution_failed",
+        message: err.message,
+        details: err.details || undefined,
+      },
+    });
+  }
   if (!device) {
     return res.status(404).json({ ok: false, error: { code: "device_not_found", message: `No active connector found for device '${deviceId}'.` } });
   }
 
-  const candidateTokens = uniqueTruthy([device.connector_secret, process.env.BACKEND_API_KEY]);
+  const candidateTokens = isAdmin
+    ? uniqueTruthy([device.connector_secret, process.env.BACKEND_API_KEY])
+    : uniqueTruthy([device.connector_secret]);
   if (!candidateTokens.length) {
-    return res.status(503).json({ ok: false, error: { code: "connector_auth_unconfigured", message: "No connector auth token is configured for this device proxy." } });
+    return res.status(503).json({ ok: false, error: { code: "connector_auth_unconfigured", message: "No per-device connector auth token is configured for this device proxy." } });
   }
 
   const forwardedQuery = { ...req.query };
