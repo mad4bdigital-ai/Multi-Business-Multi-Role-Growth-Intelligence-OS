@@ -32,6 +32,11 @@ on:
         required: false
         default: "/governance/execution-log-latest"
         type: string
+      allow_environment_access_blocked:
+        description: "Allow clean skip when GitHub-hosted runner is blocked by hosting bot verification and same-cycle platform evidence exists"
+        required: false
+        default: "false"
+        type: string
 
 jobs:
   verify:
