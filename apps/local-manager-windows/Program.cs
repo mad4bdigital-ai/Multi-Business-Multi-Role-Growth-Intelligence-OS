@@ -122,6 +122,14 @@ internal static class Program
                 Text = "No device control response yet."
             };
 
+            _notifyIcon = new NotifyIcon
+            {
+                Icon = SystemIcons.Application,
+                Text = "Mad4B Local Manager",
+                Visible = true
+            };
+            _notifyIcon.BalloonTipClicked += async (_, _) => await DownloadAndRunLatestAsync();
+
             Controls.AddRange(new Control[]
             {
                 title, body,
