@@ -345,6 +345,18 @@ section("connect api auth scope");
       browserScale?.type === "number" && browserScale?.minimum === 0.1 && browserScale?.maximum === 1.0);
   }
 
+  section("deployment info evidence fields");
+
+  {
+    const source = readFileSync("routes/deploymentInfoRoutes.js", "utf8");
+    assert("deployment info exposes branch and branch_source",
+      source.includes("branch_source") && source.includes("dev_hostname_fallback"));
+    assert("deployment info exposes commit and commit_sha aliases",
+      source.includes("commit_sha: commitSha") && source.includes("commit_source"));
+    assert("deployment info does not fabricate commit sha fallback",
+      source.includes('return "unavailable"') && source.includes("process.env.GITHUB_SHA"));
+  }
+
   section("connector agent heartbeat writeback");
 
   {
