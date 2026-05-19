@@ -314,7 +314,7 @@ function localManagerAppPage() {
     </header>
 
     <section id="download" class="grid">
-      <div class="card"><h2>Windows</h2><p>Download the Local Manager installer, then sign in after installation.</p><p><button disabled>Windows installer coming next</button></p></div>
+      <div class="card"><h2>Windows</h2><p>Download the Local Manager bootstrap, then sign in after installation.</p><p><a class="button" href="/app/local-manager/download/windows" download>Download for Windows</a></p><p>This bootstrap contains no device credentials and no platform secrets.</p></div>
       <div class="card"><h2>macOS</h2><p>Desktop packaging is planned after the Windows connector flow is completed.</p><p><button disabled>Planned</button></p></div>
       <div class="card"><h2>Linux</h2><p>Agent packaging is planned for server and workstation installs.</p><p><button disabled>Planned</button></p></div>
     </section>
@@ -467,6 +467,40 @@ $('load').onclick = loadDevice; loadInputs();
 </html>`;
 }
 
+function localManagerWindowsBootstrapScript(req) {
+  const proto = String(req.get("x-forwarded-proto") || req.protocol || "https").split(",")[0].trim() || "https";
+  const host = req.get("host") || "auth.mad4b.com";
+  const baseUrl = process.env.PUBLIC_BASE_URL || `${proto}://${host}`;
+  return [
+    "# Mad4B Local Manager Windows Bootstrap",
+    "# Public bootstrap: no backend key, no platform token, no device credential.",
+    "$ErrorActionPreference = \"Stop\"",
+    `$BaseUrl = \"${baseUrl.replace(/\"/g, "")}\"`,
+    "$InstallRoot = Join-Path $env:LOCALAPPDATA \"Mad4B\\LocalManager\"",
+    "$Desktop = [Environment]::GetFolderPath(\"Desktop\")",
+    "$Shortcut = Join-Path $Desktop \"Mad4B Local Manager.url\"",
+    "$Readme = Join-Path $InstallRoot \"README.txt\"",
+    "$LaunchUrl = $BaseUrl + \"/app/local-manager\"",
+    "New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null",
+    "$ReadmeText = @("
+      + "\"Mad4B Local Manager\","
+      + "\"\","
+      + "\"This public Windows bootstrap does not contain credentials.\","
+      + "\"Open the Local Manager URL, sign in, and link this device when device-linking is available.\","
+      + "\"\","
+      + "\"Local Manager URL: $LaunchUrl\","
+      + "\"Installed at: $InstallRoot\""
+      + ")",
+    "Set-Content -LiteralPath $Readme -Value $ReadmeText -Encoding UTF8",
+    "$UrlContent = \"[InternetShortcut]`r`nURL=$LaunchUrl`r`nIconIndex=0`r`n\"",
+    "Set-Content -LiteralPath $Shortcut -Value $UrlContent -Encoding ASCII",
+    "Write-Host \"Mad4B Local Manager bootstrap installed.\"",
+    "Write-Host \"Shortcut: $Shortcut\"",
+    "Write-Host \"No secrets were installed by this bootstrap.\"",
+    "Start-Process $LaunchUrl",
+  ].join("\r\n") + "\r\n";
+}
+
 export function buildLocalManagerBetaRoutes(deps) {
   const { requireBackendApiKey, requireAdminPrincipal } = deps;
   const router = Router();
@@ -475,6 +509,13 @@ export function buildLocalManagerBetaRoutes(deps) {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).send(localManagerAppPage());
+  });
+
+  router.get("/app/local-manager/download/windows", (req, res) => {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Content-Disposition", "attachment; filename=Mad4B-Local-Manager-Windows-Bootstrap.ps1");
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).send(localManagerWindowsBootstrapScript(req));
   });
 
   router.get("/app/local-manager/admin", (_req, res) => {
