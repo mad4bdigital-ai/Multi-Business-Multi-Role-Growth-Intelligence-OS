@@ -2,6 +2,8 @@ import { Router } from "express";
 import { getPool } from "../db.js";
 import {
   approveDeviceLinkSession,
+  getDeviceControls,
+  getDeviceSession,
   listLinkedDevices,
   pollDeviceLinkSession,
   startDeviceLinkSession,
