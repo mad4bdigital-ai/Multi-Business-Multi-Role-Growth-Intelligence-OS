@@ -400,7 +400,7 @@ internal static class Program
             try
             {
                 using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-                var infoUrl = UpdateInfoUrl + "?current_version=" + Uri.EscapeDataString(Application.ProductVersion ?? "0.0.0");
+                var infoUrl = UpdateInfoUrl + "?current_version=" + Uri.EscapeDataString(CurrentSemVer());
                 using var response = await client.GetAsync(infoUrl);
                 var text = await response.Content.ReadAsStringAsync();
                 var info = JsonSerializer.Deserialize<WindowsUpdateInfo>(text, _json);
