@@ -21,10 +21,20 @@ function resolveLocalConnectorPrincipalAliases(userId, tenantId) {
   };
 }
 
+function connectorRuntimeUrl(config) {
+  return String(config?.runtime_url || config?.device_runtime_url || config?.tunnel_url || "").replace(/\/$/, "");
+}
+
+function connectorAuthToken(config) {
+  const token = String(config?.connector_secret || "").trim();
+  if (!token) throw new Error("Per-device connector_secret is not configured for this local connector.");
+  return token;
+}
+
 async function resolveUserLocalConfig(userId, tenantId, deviceId) {
   const principal = resolveLocalConnectorPrincipalAliases(userId, tenantId);
   const [configs] = await getPool().query(
-    "SELECT * FROM `local_connector_user_configs` WHERE user_id = ? AND tenant_id = ? AND device_id = ? AND is_enabled = TRUE LIMIT 1",
+    "SELECT *, COALESCE(device_runtime_url, tunnel_url) AS runtime_url FROM `local_connector_user_configs` WHERE user_id = ? AND tenant_id = ? AND device_id = ? AND is_enabled = TRUE LIMIT 1",
     [principal.userId, principal.tenantId, deviceId]
   );
   const config = configs[0];
@@ -59,8 +69,10 @@ async function executeGovernedShellCommand(args) {
       throw new Error(`Command alias '${alias}' does not allow extra arguments.`);
     }
 
-    const token = userConfig.config.connector_secret || process.env.CONNECTOR_LOCAL_API_KEY || '';
-    const response = await fetch(`${userConfig.config.tunnel_url}/shell`, {
+    const runtimeUrl = connectorRuntimeUrl(userConfig.config);
+    if (!runtimeUrl) throw new Error("Local connector runtime URL is not configured for this user/device.");
+    const token = connectorAuthToken(userConfig.config);
+    const response = await fetch(`${runtimeUrl}/shell`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ action: "run", alias, extra_args: extraArgs }),
@@ -119,8 +131,10 @@ async function readGovernedLocalFile(args) {
     );
     if (!rule) throw new Error(`File path '${path}' not allowed for read access.`);
 
-    const token = userConfig.config.connector_secret || process.env.CONNECTOR_LOCAL_API_KEY || '';
-    const response = await fetch(`${userConfig.config.tunnel_url}/files`, {
+    const runtimeUrl = connectorRuntimeUrl(userConfig.config);
+    if (!runtimeUrl) throw new Error("Local connector runtime URL is not configured for this user/device.");
+    const token = connectorAuthToken(userConfig.config);
+    const response = await fetch(`${runtimeUrl}/files`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ action: "read", path }),
@@ -179,8 +193,10 @@ async function writeGovernedLocalFile(args) {
     );
     if (!rule) throw new Error(`File path '${path}' not allowed for write access.`);
 
-    const token = userConfig.config.connector_secret || process.env.CONNECTOR_LOCAL_API_KEY || '';
-    const response = await fetch(`${userConfig.config.tunnel_url}/files`, {
+    const runtimeUrl = connectorRuntimeUrl(userConfig.config);
+    if (!runtimeUrl) throw new Error("Local connector runtime URL is not configured for this user/device.");
+    const token = connectorAuthToken(userConfig.config);
+    const response = await fetch(`${runtimeUrl}/files`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ action: "write", path, content }),
