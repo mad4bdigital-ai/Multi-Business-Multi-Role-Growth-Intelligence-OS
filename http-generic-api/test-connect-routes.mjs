@@ -355,6 +355,11 @@ section("connect api auth scope");
       source.includes("commit_sha: commitSha") && source.includes("commit_source"));
     assert("deployment info does not fabricate commit sha fallback",
       source.includes('return "unavailable"') && source.includes("process.env.GITHUB_SHA"));
+    assert("deployment info can derive commit from git checkout when env metadata is absent",
+      source.includes("readGitCheckoutInfo") &&
+      source.includes("git_checkout") &&
+      source.includes("git_packed_refs") &&
+      source.includes("git_ref_file"));
   }
 
   section("connector agent heartbeat writeback");
