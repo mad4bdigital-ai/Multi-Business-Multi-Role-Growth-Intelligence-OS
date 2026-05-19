@@ -485,6 +485,16 @@ section("connect api auth scope");
       betaSource.includes("function localManagerAdminPage") &&
       betaSource.includes("<YOUR_PLATFORM_TOKEN>") &&
       !betaSource.includes("BACKEND_API_KEY"));
+    assert("local manager auth pages align with shared /connect flow",
+      betaSource.includes("localManagerConnectUrl") &&
+      betaSource.includes("Open /connect sign-in") &&
+      betaSource.includes("Open /connect onboarding") &&
+      betaSource.includes("/connect?return_to="));
+    assert("local manager Windows update metadata is secret-free",
+      betaSource.includes("LOCAL_MANAGER_WINDOWS_LATEST_VERSION") &&
+      betaSource.includes("localManagerWindowsUpdateInfo") &&
+      betaSource.includes("update_available") &&
+      betaSource.includes("secrets_included: false"));
     const deviceLinkSource = readFileSync("services/localManagerDeviceLinkService.js", "utf8");
     assert("local manager Windows default download redirects to public EXE release asset",
       betaSource.includes("Mad4B-Local-Manager-Setup.exe") &&
