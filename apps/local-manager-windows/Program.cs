@@ -155,6 +155,13 @@ internal static class Program
         private static string LinkStatusPath => Path.Combine(InstallRoot, "device-link-status.json");
         private static string ProtectedTokenPath => Path.Combine(InstallRoot, "device-token.dpapi");
 
+        private static string CurrentSemVer()
+        {
+            var raw = Application.ProductVersion ?? "0.0.0";
+            var core = raw.Split(new[] { '-', '+' }, 2)[0];
+            return string.IsNullOrWhiteSpace(core) ? raw : core;
+        }
+
         private static void EnsureLocalFiles(Label? status = null)
         {
             Directory.CreateDirectory(InstallRoot);
