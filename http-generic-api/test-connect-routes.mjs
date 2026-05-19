@@ -345,6 +345,47 @@ section("connect api auth scope");
       browserScale?.type === "number" && browserScale?.minimum === 0.1 && browserScale?.maximum === 1.0);
   }
 
+  section("deployment info evidence fields");
+
+  {
+    const source = readFileSync("routes/deploymentInfoRoutes.js", "utf8");
+    assert("deployment info exposes branch and branch_source",
+      source.includes("branch_source") && source.includes("dev_hostname_fallback"));
+    assert("deployment info exposes commit and commit_sha aliases",
+      source.includes("commit_sha: commitSha") && source.includes("commit_source"));
+    assert("deployment info does not fabricate commit sha fallback",
+      source.includes('return "unavailable"') && source.includes("process.env.GITHUB_SHA"));
+  }
+
+  section("connector agent heartbeat writeback");
+
+  {
+    const source = readFileSync("routes/connectorAgentRoutes.js", "utf8");
+    assert("connector agent exposes version endpoint",
+      source.includes('router.get("/connector-agent/version"') && source.includes("has_n8n_lifecycle"));
+    assert("connector agent exposes heartbeat endpoint",
+      source.includes('router.post("/connector-agent/heartbeat"'));
+    assert("connector heartbeat writes recovery events and config metadata",
+      source.includes("local_connector_recovery_events") &&
+      source.includes("last_health_at = NOW()") &&
+      source.includes("watchdog_version") &&
+      source.includes("last_repair_status"));
+    assert("connector heartbeat strips secret-like metadata",
+      source.includes("safeJsonObject") &&
+      source.includes("authorization") &&
+      source.includes("secret"));
+  }
+
+  section("local connector install route refactor");
+
+  {
+    const source = readFileSync("routes/localConnectorInstallRoutes.js", "utf8");
+    assert("local connector install effective route calls shared provisioning helper",
+      source.includes('router.post("/local-connector/install"') &&
+      source.includes("provisionLocalConnectorInstall(req, req.body || {})") &&
+      source.includes("shared provisioning helper"));
+  }
+
   section("device-tools route mounting");
 
   {
@@ -388,6 +429,17 @@ section("connect api auth scope");
       source.includes("WHERE device_id = ? AND is_enabled = 1"));
     assert("auth connector proxy strips admin user_id before forwarding to the device",
       source.includes("delete forwardedQuery.user_id") && source.includes("delete forwardedBody.user_id"));
+    assert("auth connector proxy reads registered device routes before legacy tunnel fallback",
+      source.includes("local_connector_device_routes") &&
+      source.includes("listCandidateRoutes") &&
+      source.includes("legacy_config"));
+    assert("auth connector proxy route selector prefers healthy or unknown routes",
+      source.includes("health_status IN ('healthy','unknown')") &&
+      source.includes("ORDER BY priority ASC"));
+    assert("auth connector proxy writes route health metadata",
+      source.includes("last_success_at = NOW()") &&
+      source.includes("last_failure_at = NOW()") &&
+      source.includes("connector_all_routes_failed"));
   }
 
 {

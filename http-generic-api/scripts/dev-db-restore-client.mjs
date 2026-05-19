@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 function parseArgs(argv = process.argv.slice(2)) {
-  const out = { base_url: "https://dev.mad4b.com" };
+  const out = { base_url: "https://dev.mad4b.com", action: "restore" };
   for (const arg of argv) {
     const m = arg.match(/^--([^=]+)=(.*)$/);
     if (m) out[m[1].replace(/-/g, "_")] = m[2];
@@ -40,19 +40,50 @@ async function requestJson(url, options = {}) {
   return { status: res.status, ok: res.ok, body };
 }
 
+function summarizeStatus(result) {
+  return {
+    status: result.status,
+    ok: result.body?.ok === true,
+    db_name: result.body?.db_name || null,
+    table_count: result.body?.table_count ?? null,
+    row_count: result.body?.row_count ?? null,
+    branch: result.body?.branch || null,
+    commit_sha: result.body?.commit_sha || null,
+    error_code: result.body?.error?.code || null,
+  };
+}
+
 async function main() {
   const args = parseArgs();
   const apiKey = process.env.BACKEND_API_KEY;
   if (!apiKey) throw new Error("BACKEND_API_KEY is not configured in caller environment.");
   const base = String(args.base_url || "https://dev.mad4b.com").replace(/\/$/, "");
-  const artifactUrl = required(args, "artifact_url");
-  const manifestUrl = required(args, "manifest_url");
-  const keyUrl = required(args, "key_url");
+  const action = String(args.action || "restore").trim().toLowerCase();
 
   const statusBefore = await requestJson(`${base}/dev/db/status`, {
     headers: { Authorization: `Bearer ${apiKey}` },
     timeout_ms: 60000,
   });
+
+  if (action === "status") {
+    const ok = statusBefore.status === 200 && statusBefore.body?.ok === true;
+    console.log(JSON.stringify({
+      ok,
+      action,
+      base_url: base,
+      status: summarizeStatus(statusBefore),
+      restore_attempted: false,
+      secrets_included: false,
+    }, null, 2));
+    if (!ok) process.exitCode = 1;
+    return;
+  }
+
+  if (action !== "restore") throw new Error("Unsupported --action. Use --action=status or --action=restore.");
+
+  const artifactUrl = required(args, "artifact_url");
+  const manifestUrl = required(args, "manifest_url");
+  const keyUrl = required(args, "key_url");
 
   const restore = await requestJson(`${base}/dev/db/restore-from-backup`, {
     method: "POST",
@@ -74,15 +105,9 @@ async function main() {
   const ok = restore.status === 200 && restore.body?.ok === true;
   console.log(JSON.stringify({
     ok,
+    action,
     base_url: base,
-    status_before: {
-      status: statusBefore.status,
-      ok: statusBefore.body?.ok === true,
-      db_name: statusBefore.body?.db_name || null,
-      table_count: statusBefore.body?.table_count ?? null,
-      row_count: statusBefore.body?.row_count ?? null,
-      error_code: statusBefore.body?.error?.code || null,
-    },
+    status_before: summarizeStatus(statusBefore),
     restore: {
       status: restore.status,
       ok: restore.body?.ok === true,
@@ -98,19 +123,13 @@ async function main() {
       error_code: restore.body?.error?.code || null,
       error_message: restore.body?.error?.message || null,
     },
-    status_after: {
-      status: statusAfter.status,
-      ok: statusAfter.body?.ok === true,
-      db_name: statusAfter.body?.db_name || null,
-      table_count: statusAfter.body?.table_count ?? null,
-      row_count: statusAfter.body?.row_count ?? null,
-      error_code: statusAfter.body?.error?.code || null,
-    },
+    status_after: summarizeStatus(statusAfter),
     requested_urls: {
       artifact_url: redactUrl(artifactUrl),
       manifest_url: redactUrl(manifestUrl),
       key_url: redactUrl(keyUrl),
     },
+    restore_attempted: true,
     secrets_included: false,
   }, null, 2));
 

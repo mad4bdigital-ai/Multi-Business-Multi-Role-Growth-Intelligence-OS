@@ -54,6 +54,9 @@ import { buildConnectorTaxonomyRoutes } from "./connectorTaxonomyRoutes.js";
 import { buildCredentialIntakeRoutes } from "./credentialIntakeRoutes.js";
 import { buildBackupArtifactRoutes } from "./backupArtifactRoutes.js";
 import { buildLocalGatewayToolsRoutes } from "./localGatewayToolsRoutes.js";
+import { buildLocalConnectorDeviceRouteRoutes } from "./localConnectorDeviceRouteRoutes.js";
+import { buildDeploymentInfoRoutes } from "./deploymentInfoRoutes.js";
+import { buildDevDbRestoreRoutes } from "./devDbRestoreRoutes.js";
 
 function sqlEndpointRegistryRoutesEnabled(env = process.env) {
   return String(env.ENABLE_SQL_ENDPOINT_REGISTRY_ROUTES || "").trim().toLowerCase() === "true";
@@ -78,7 +81,9 @@ function registerOptionalSqlEndpointRegistryRoutes(app, deps) {
 }
 
 export function registerRoutes(app, deps) {
+  app.use(buildDeploymentInfoRoutes());
   app.use(buildBackupArtifactRoutes(deps));
+  app.use(buildDevDbRestoreRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildConnectorAgentRoutes());
   // Public token-gated credential intake pages must mount before any root-level
   // protected routers that call router.use(requireBackendApiKey).
@@ -137,6 +142,7 @@ export function registerRoutes(app, deps) {
   app.use(buildAdminScopeGrantsRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildDeviceToolsRoutes(deps));
   app.use(buildLocalGatewayToolsRoutes(deps));
+  app.use(buildLocalConnectorDeviceRouteRoutes(deps));
   app.use(buildConnectorTaxonomyRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildBackupArtifactRoutes(deps));
   registerOptionalSqlEndpointRegistryRoutes(app, deps);
