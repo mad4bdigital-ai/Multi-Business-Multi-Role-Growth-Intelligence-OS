@@ -438,6 +438,8 @@ section("connect api auth scope");
       betaSource.includes('router.post("/local-manager/device-link/poll"') &&
       betaSource.includes('router.post("/local-manager/device-link/approve"') &&
       betaSource.includes('router.get("/local-manager/device-link/devices"') &&
+      betaSource.includes('router.get("/local-manager/device/session"') &&
+      betaSource.includes('router.get("/local-manager/device/controls"') &&
       betaSource.includes('router.get("/app/local-manager/admin"') &&
       betaSource.includes('router.get("/local-manager/beta"') &&
       betaSource.includes('router.get("/local-manager/beta/status", requireBackendApiKey, requireAdminPrincipal'));
@@ -461,6 +463,8 @@ section("connect api auth scope");
       deviceLinkSource.includes("device_access_token") &&
       deviceLinkSource.includes("local_manager_device_access") &&
       deviceLinkSource.includes("requireLocalManagerUser") &&
+      deviceLinkSource.includes("requireLocalManagerDevice") &&
+      deviceLinkSource.includes("getDeviceControls") &&
       !deviceLinkSource.includes("connector_secret") &&
       !deviceLinkSource.includes("cf_token"));
     assert("local manager beta is read-only and redacts secrets",
