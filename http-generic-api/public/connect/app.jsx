@@ -100,7 +100,7 @@ function App() {
     const hasTenant = applyStatusData(data);
     const mems = data.memberships_count > 1 ? SAMPLE_MEMBERSHIPS : [];
     if (mems.length > 1 && !hasTenant) { setMemberships(mems); setStep('tenant'); }
-    else setStep('hub');
+    else setStep(hasTenant ? 'hub' : 'tenant');
     setEvidenceOpen(true);
     setTimeout(() => setEvidenceOpen(false), 2400);
   };
