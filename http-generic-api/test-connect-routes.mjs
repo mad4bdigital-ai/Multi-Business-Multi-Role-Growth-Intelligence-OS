@@ -360,6 +360,16 @@ section("connect api auth scope");
       source.includes("git_checkout") &&
       source.includes("git_packed_refs") &&
       source.includes("git_ref_file"));
+    assert("deployment info exposes deployed_at provenance and availability evidence",
+      source.includes("deployed_at: deployedAt") &&
+      source.includes("deployed_at_source") &&
+      source.includes("deployed_at_available") &&
+      source.includes("git_head_mtime"));
+    assert("deployment info sanitizes deployment manifest path details",
+      source.includes("sanitizeDeploymentManifest") &&
+      source.includes("delete safe._source_file") &&
+      source.includes("source_file_detected") &&
+      source.includes("secrets_included: false"));
   }
 
   section("connector agent heartbeat writeback");
