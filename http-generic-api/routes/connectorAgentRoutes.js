@@ -24,6 +24,11 @@ const FILES = {
     contentType: "text/plain; charset=utf-8",
     executable: false,
   },
+  "db-restore-certifier.mjs": {
+    relativePath: "local-connector/db-restore-certifier.mjs",
+    contentType: "text/javascript; charset=utf-8",
+    executable: false,
+  },
 };
 
 const DEFAULT_WINDOWS_ALIASES = [
