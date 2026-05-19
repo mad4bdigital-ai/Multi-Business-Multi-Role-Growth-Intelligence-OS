@@ -424,13 +424,15 @@ section("connect api auth scope");
       indexSource.indexOf("buildLocalManagerBetaRoutes({ ...deps, requireAdminPrincipal })") < indexSource.indexOf("buildLocalConnectorInstallRoutes(deps)") &&
       indexSource.indexOf("buildLocalConnectorInstallRoutes(deps)") < indexSource.indexOf("buildLocalConnectorRoutes(deps)") &&
       indexSource.indexOf("buildLocalConnectorInstallRoutes(deps)") < indexSource.indexOf("buildDeviceToolsRoutes(deps)"));
-    assert("local manager public app and beta expose pages plus protected status API",
+    assert("local manager public app, admin bridge, beta page, and protected status API are exposed",
       betaSource.includes('router.get("/app/local-manager"') &&
+      betaSource.includes('router.get("/app/local-manager/admin"') &&
       betaSource.includes('router.get("/local-manager/beta"') &&
       betaSource.includes('router.get("/local-manager/beta/status", requireBackendApiKey, requireAdminPrincipal'));
-    assert("local manager public app uses platform token client-side but no backend secret",
-      betaSource.includes("Mad4B Local Manager") &&
-      betaSource.includes("/local-connector/install/download-link") &&
+    assert("local manager public app is true public UX while admin bridge holds token installer flow",
+      betaSource.includes("Download, sign in, and link this device") &&
+      betaSource.includes("No token fields here") &&
+      betaSource.includes("function localManagerAdminPage") &&
       betaSource.includes("<YOUR_PLATFORM_TOKEN>") &&
       !betaSource.includes("BACKEND_API_KEY"));
     assert("local manager beta is read-only and redacts secrets",
