@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -15,7 +16,6 @@ internal static class Program
     private const string LocalManagerUrl = BaseUrl + "/app/local-manager";
     private const string SignInUrl = BaseUrl + "/app/local-manager/sign-in?source=windows-app";
     private const string SignUpUrl = BaseUrl + "/app/local-manager/sign-up?source=windows-app";
-    private const string PairingUrl = BaseUrl + "/app/local-manager/link-device?platform=windows&source=windows-app";
     private const string DevicesUrl = BaseUrl + "/app/local-manager/devices?source=windows-app";
     private const string RoutesUrl = BaseUrl + "/app/local-manager/routes?source=windows-app";
     private const string BackupsUrl = BaseUrl + "/app/local-manager/backups?source=windows-app";
@@ -23,6 +23,8 @@ internal static class Program
     private const string UpdateUrl = BaseUrl + "/app/local-manager/download/windows";
     private const string DeviceLinkStartUrl = BaseUrl + "/local-manager/device-link/start";
     private const string DeviceLinkPollUrl = BaseUrl + "/local-manager/device-link/poll";
+    private const string DeviceSessionUrl = BaseUrl + "/local-manager/device/session";
+    private const string DeviceControlsUrl = BaseUrl + "/local-manager/device/controls";
 
     [STAThread]
     private static void Main()
@@ -36,12 +38,13 @@ internal static class Program
         private readonly Label _status;
         private readonly Label _pairingCode;
         private readonly ProgressBar _progress;
-        private readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web);
+        private readonly TextBox _output;
+        private readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
         public MainForm()
         {
             Text = "Mad4B Local Manager";
-            MinimumSize = new Size(800, 610);
+            MinimumSize = new Size(860, 720);
             StartPosition = FormStartPosition.CenterScreen;
             Font = new Font("Segoe UI", 10);
 
@@ -55,16 +58,17 @@ internal static class Program
 
             var body = new Label
             {
-                Text = "Sign in with Mad4B, link this Windows device, then manage routes, backups, DR probes, and settings.\n\nThis app starts a short-lived pairing code and contains no shared backend key, platform token, or preloaded device credential.",
+                Text = "Sign in with Mad4B, link this Windows device, then use the stored device-scoped token for controls.\n\nThe token is protected with Windows DPAPI for the current Windows user and is not written in plaintext.",
                 AutoSize = false,
                 Location = new Point(28, 72),
-                Size = new Size(720, 82)
+                Size = new Size(780, 82)
             };
 
-            var signInButton = MakeButton("Sign in", 28, 164, 150, (_, _) => OpenUrl(SignInUrl));
-            var signUpButton = MakeButton("Create account", 194, 164, 160, (_, _) => OpenUrl(SignUpUrl));
-            var linkButton = MakeButton("Link this device", 370, 164, 170, async (_, _) => await StartDeviceLinkAsync());
-            var openButton = MakeButton("Open Local Manager", 556, 164, 180, (_, _) => OpenUrl(LocalManagerUrl));
+            var signInButton = MakeButton("Sign in", 28, 164, 140, (_, _) => OpenUrl(SignInUrl));
+            var signUpButton = MakeButton("Create account", 184, 164, 150, (_, _) => OpenUrl(SignUpUrl));
+            var linkButton = MakeButton("Link this device", 350, 164, 160, async (_, _) => await StartDeviceLinkAsync());
+            var openButton = MakeButton("Open web app", 526, 164, 140, (_, _) => OpenUrl(LocalManagerUrl));
+            var forgetButton = MakeButton("Forget device", 682, 164, 140, (_, _) => ForgetDeviceToken());
 
             _pairingCode = new Label
             {
@@ -72,55 +76,64 @@ internal static class Program
                 Font = new Font("Segoe UI", 14, FontStyle.Bold),
                 AutoSize = false,
                 Location = new Point(28, 218),
-                Size = new Size(708, 38)
+                Size = new Size(780, 38)
             };
 
-            var devicesButton = MakeButton("My devices", 28, 272, 150, (_, _) => OpenUrl(DevicesUrl));
-            var routesButton = MakeButton("Routes", 194, 272, 150, (_, _) => OpenUrl(RoutesUrl));
-            var backupsButton = MakeButton("Backups / DR", 360, 272, 160, (_, _) => OpenUrl(BackupsUrl));
-            var settingsButton = MakeButton("Settings", 536, 272, 150, (_, _) => OpenUrl(SettingsUrl));
+            var devicesButton = MakeButton("Device session", 28, 272, 150, async (_, _) => await LoadDeviceSessionAsync());
+            var routesButton = MakeButton("Routes", 194, 272, 140, async (_, _) => await LoadDeviceControlsAsync("routes", RoutesUrl));
+            var backupsButton = MakeButton("Backups / DR", 350, 272, 150, async (_, _) => await LoadDeviceControlsAsync("backups", BackupsUrl));
+            var settingsButton = MakeButton("Settings", 516, 272, 140, async (_, _) => await LoadDeviceControlsAsync("settings", SettingsUrl));
+            var webDevicesButton = MakeButton("Web devices", 672, 272, 150, (_, _) => OpenUrl(DevicesUrl));
 
-            var shortcutButton = MakeButton("Create desktop shortcut", 28, 346, 210, (_, _) => CreateShortcut());
-            var folderButton = MakeButton("Open local folder", 254, 346, 170, (_, _) => OpenLocalFolder());
-            var updateButton = MakeButton("Check / install update", 440, 346, 200, async (_, _) => await DownloadAndRunLatestAsync());
+            var shortcutButton = MakeButton("Create desktop shortcut", 28, 336, 210, (_, _) => CreateShortcut());
+            var folderButton = MakeButton("Open local folder", 254, 336, 170, (_, _) => OpenLocalFolder());
+            var updateButton = MakeButton("Check / install update", 440, 336, 200, async (_, _) => await DownloadAndRunLatestAsync());
+            var tokenStatusButton = MakeButton("Token status", 656, 336, 160, (_, _) => ShowTokenStatus());
 
             _status = new Label
             {
                 Name = "StatusLabel",
-                Text = "Ready. No secrets are stored before device approval.",
+                Text = "Ready. No plaintext device token is stored.",
                 AutoSize = false,
-                Location = new Point(28, 420),
-                Size = new Size(720, 50)
+                Location = new Point(28, 406),
+                Size = new Size(780, 48)
             };
 
             _progress = new ProgressBar
             {
-                Location = new Point(28, 480),
-                Size = new Size(720, 22),
+                Location = new Point(28, 464),
+                Size = new Size(780, 22),
                 Minimum = 0,
                 Maximum = 100,
                 Value = 0
             };
 
-            var note = new Label
+            _output = new TextBox
             {
-                Text = "After sign-in, the web dashboard controls access by your Mad4B account role. Device-scoped access is issued only after the link-device consent flow.",
-                AutoSize = false,
-                Location = new Point(28, 518),
-                Size = new Size(720, 44)
+                Location = new Point(28, 506),
+                Size = new Size(780, 150),
+                Multiline = true,
+                ScrollBars = ScrollBars.Vertical,
+                ReadOnly = true,
+                Font = new Font("Consolas", 9),
+                Text = "No device control response yet."
             };
 
             Controls.AddRange(new Control[]
             {
                 title, body,
-                signInButton, signUpButton, linkButton, openButton,
+                signInButton, signUpButton, linkButton, openButton, forgetButton,
                 _pairingCode,
-                devicesButton, routesButton, backupsButton, settingsButton,
-                shortcutButton, folderButton, updateButton,
-                _status, _progress, note
+                devicesButton, routesButton, backupsButton, settingsButton, webDevicesButton,
+                shortcutButton, folderButton, updateButton, tokenStatusButton,
+                _status, _progress, _output
             });
 
-            Shown += (_, _) => EnsureLocalFiles(_status);
+            Shown += (_, _) =>
+            {
+                EnsureLocalFiles(_status);
+                ShowTokenStatus();
+            };
         }
 
         private static Button MakeButton(string text, int x, int y, int width, EventHandler onClick)
@@ -138,6 +151,7 @@ internal static class Program
         private static string InstallRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Mad4B", "LocalManager");
         private static string UpdatesRoot => Path.Combine(InstallRoot, "updates");
         private static string LinkStatusPath => Path.Combine(InstallRoot, "device-link-status.json");
+        private static string ProtectedTokenPath => Path.Combine(InstallRoot, "device-token.dpapi");
 
         private static void EnsureLocalFiles(Label? status = null)
         {
@@ -147,13 +161,81 @@ internal static class Program
             File.WriteAllText(readme,
                 "Mad4B Local Manager\r\n\r\n" +
                 "This app contains no shared backend key, platform token, or preloaded device credential.\r\n" +
-                "Open Local Manager, sign in, and link this device through the platform flow.\r\n\r\n" +
+                "After device linking, the device-scoped token is protected with Windows DPAPI CurrentUser and saved as device-token.dpapi.\r\n\r\n" +
                 $"Local Manager URL: {LocalManagerUrl}\r\n" +
                 $"Sign in URL: {SignInUrl}\r\n" +
-                $"Link-device URL: {PairingUrl}\r\n" +
                 $"Update URL: {UpdateUrl}\r\n" +
                 $"Installed at: {InstallRoot}\r\n");
             if (status is not null) status.Text = $"Local files prepared at {InstallRoot}";
+        }
+
+        private void SaveDeviceToken(string token, string? deviceId, string? status)
+        {
+            EnsureLocalFiles(_status);
+            var plaintext = Encoding.UTF8.GetBytes(token);
+            var entropy = Encoding.UTF8.GetBytes("mad4b-local-manager-device-token-v1");
+            var protectedBytes = ProtectedData.Protect(plaintext, entropy, DataProtectionScope.CurrentUser);
+            File.WriteAllBytes(ProtectedTokenPath, protectedBytes);
+            File.WriteAllText(LinkStatusPath, JsonSerializer.Serialize(new
+            {
+                linked = true,
+                linked_at = DateTimeOffset.UtcNow,
+                device_id = deviceId,
+                status,
+                token_persisted = true,
+                token_storage = "Windows DPAPI CurrentUser",
+                token_file = ProtectedTokenPath,
+                secrets_included = false
+            }, _json));
+            _status.Text = "Device token saved with Windows DPAPI CurrentUser.";
+        }
+
+        private string? LoadDeviceToken(bool showErrors = true)
+        {
+            try
+            {
+                if (!File.Exists(ProtectedTokenPath)) return null;
+                var protectedBytes = File.ReadAllBytes(ProtectedTokenPath);
+                var entropy = Encoding.UTF8.GetBytes("mad4b-local-manager-device-token-v1");
+                var plaintext = ProtectedData.Unprotect(protectedBytes, entropy, DataProtectionScope.CurrentUser);
+                return Encoding.UTF8.GetString(plaintext);
+            }
+            catch (Exception ex)
+            {
+                if (showErrors) _status.Text = "Could not read DPAPI token: " + ex.Message;
+                return null;
+            }
+        }
+
+        private void ShowTokenStatus()
+        {
+            EnsureLocalFiles(_status);
+            var hasFile = File.Exists(ProtectedTokenPath);
+            var token = LoadDeviceToken(false);
+            _status.Text = token is not null
+                ? "Linked. Device token is available from DPAPI for this Windows user."
+                : hasFile
+                    ? "Device token file exists but could not be unprotected for this Windows user."
+                    : "Not linked. No DPAPI device token is stored.";
+            _output.Text = JsonSerializer.Serialize(new
+            {
+                linked = token is not null,
+                token_file_exists = hasFile,
+                token_storage = "Windows DPAPI CurrentUser",
+                token_plaintext_shown = false,
+                local_folder = InstallRoot,
+                secrets_included = false
+            }, _json);
+        }
+
+        private void ForgetDeviceToken()
+        {
+            if (File.Exists(ProtectedTokenPath)) File.Delete(ProtectedTokenPath);
+            if (File.Exists(LinkStatusPath)) File.Delete(LinkStatusPath);
+            _pairingCode.Text = "Pairing code: not started";
+            _progress.Value = 0;
+            _status.Text = "Device token removed from this Windows profile.";
+            _output.Text = "Device token removed. Link this device again to restore controls.";
         }
 
         private async Task StartDeviceLinkAsync()
@@ -164,6 +246,7 @@ internal static class Program
                 _progress.Value = 0;
                 _status.Text = "Creating pairing code…";
                 _pairingCode.Text = "Pairing code: creating…";
+                _output.Text = "Waiting for pairing code…";
 
                 using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
                 var payload = new
@@ -182,13 +265,15 @@ internal static class Program
                 {
                     _status.Text = "Could not create pairing code: " + (start?.Error?.Message ?? response.ReasonPhrase ?? "unknown error");
                     _pairingCode.Text = "Pairing code: failed";
+                    _output.Text = text;
                     return;
                 }
 
                 _pairingCode.Text = "Pairing code: " + start.UserCode;
                 _status.Text = "Pairing code created. Browser opened for approval.";
                 _progress.Value = 10;
-                OpenUrl(start.VerificationUriComplete ?? start.VerificationUri ?? PairingUrl);
+                _output.Text = JsonSerializer.Serialize(new { pairing_code = start.UserCode, expires_in = start.ExpiresIn, secrets_included = false }, _json);
+                OpenUrl(start.VerificationUriComplete ?? start.VerificationUri ?? (BaseUrl + "/app/local-manager/link-device"));
                 await PollDeviceLinkAsync(start.UserCode, start.PollToken, Math.Max(2, start.Interval));
             }
             catch (Exception ex)
@@ -221,25 +306,69 @@ internal static class Program
 
                 if (response.IsSuccessStatusCode && poll?.Ok == true && !string.IsNullOrWhiteSpace(poll.DeviceAccessToken))
                 {
+                    SaveDeviceToken(poll.DeviceAccessToken, poll.Device?.DeviceId, poll.Status);
                     _progress.Value = 100;
-                    _status.Text = "Device approved and linked. Device-scoped token received.";
-                    File.WriteAllText(LinkStatusPath, JsonSerializer.Serialize(new
+                    _status.Text = "Device approved, linked, and token saved with DPAPI.";
+                    _output.Text = JsonSerializer.Serialize(new
                     {
                         linked = true,
-                        linked_at = DateTimeOffset.UtcNow,
                         device_id = poll.Device?.DeviceId,
-                        status = poll.Status,
-                        token_persisted = false,
-                        note = "Device access token was received but not written to disk by this preview build."
-                    }, _json));
+                        token_saved_with_dpapi = true,
+                        token_plaintext_shown = false,
+                        secrets_included = false
+                    }, _json);
                     return;
                 }
 
                 _status.Text = "Pairing stopped: " + (poll?.Error?.Message ?? poll?.Status ?? response.ReasonPhrase ?? "unknown status");
+                _output.Text = text;
                 return;
             }
 
             _status.Text = "Pairing timed out. Start a new code to try again.";
+        }
+
+        private async Task LoadDeviceSessionAsync()
+        {
+            var token = LoadDeviceToken();
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                _output.Text = "No linked device token. Use 'Link this device' first.";
+                return;
+            }
+            await CallDeviceApiAsync(DeviceSessionUrl, token, "Device session");
+        }
+
+        private async Task LoadDeviceControlsAsync(string section, string fallbackUrl)
+        {
+            var token = LoadDeviceToken(false);
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                _status.Text = "No device token yet; opening web page instead.";
+                OpenUrl(fallbackUrl);
+                return;
+            }
+            await CallDeviceApiAsync(DeviceControlsUrl + "?section=" + Uri.EscapeDataString(section), token, section);
+        }
+
+        private async Task CallDeviceApiAsync(string url, string token, string label)
+        {
+            try
+            {
+                _status.Text = "Loading " + label + " using DPAPI-protected device token…";
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+                using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                req.Headers.Accept.ParseAdd("application/json");
+                using var response = await client.SendAsync(req);
+                var text = await response.Content.ReadAsStringAsync();
+                _status.Text = response.IsSuccessStatusCode ? label + " loaded." : label + " failed: " + response.StatusCode;
+                _output.Text = text;
+            }
+            catch (Exception ex)
+            {
+                _status.Text = label + " failed: " + ex.Message;
+            }
         }
 
         private void CreateShortcut()
@@ -307,7 +436,10 @@ internal static class Program
 
     private sealed class DeviceLinkError
     {
+        [JsonPropertyName("code")]
         public string? Code { get; set; }
+
+        [JsonPropertyName("message")]
         public string? Message { get; set; }
     }
 
@@ -333,6 +465,9 @@ internal static class Program
 
         [JsonPropertyName("interval")]
         public int Interval { get; set; } = 3;
+
+        [JsonPropertyName("expires_in")]
+        public int ExpiresIn { get; set; }
 
         [JsonPropertyName("error")]
         public DeviceLinkError? Error { get; set; }
