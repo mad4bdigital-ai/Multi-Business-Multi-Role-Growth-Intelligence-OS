@@ -1171,26 +1171,91 @@ export function buildLocalConnectorInstallRoutes(deps) {
       const { user_id, tenant_id, device_id } = req.query;
       const isUserAuthStatus = req.auth?.mode === "user_jwt" || req.auth?.mode === "api_credential";
       if (!device_id) {
-        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "device_id is required." } });
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "device_id is required." }, secrets_included: false });
       }
       if (!isUserAuthStatus && (!user_id || !tenant_id)) {
-        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "user_id and tenant_id are required for admin/service calls." } });
+        return res.status(400).json({ ok: false, error: { code: "missing_fields", message: "user_id and tenant_id are required for admin/service calls." }, secrets_included: false });
       }
       const principal = await resolveRequestedLocalPrincipal(req, { user_id, tenant_id });
       const [[config]] = await getPool().query(
-        "SELECT config_id, tunnel_url, cf_tunnel_id, cf_tunnel_name, is_enabled, created_at, updated_at FROM `local_connector_user_configs` WHERE user_id = ? AND tenant_id = ? AND device_id = ? LIMIT 1",
+        `SELECT config_id, device_id, tunnel_url, public_gateway_url, device_runtime_url, admin_recovery_url,
+                cf_tunnel_id, cf_tunnel_name, is_enabled, agent_version, watchdog_installed,
+                watchdog_version, active_slot, last_health_at, last_reconnect_at, last_repair_at,
+                last_repair_status, last_error_code, last_error_message, created_at, updated_at
+           FROM \`local_connector_user_configs\`
+          WHERE user_id = ? AND tenant_id = ? AND device_id = ?
+          LIMIT 1`,
         [principal.userId, principal.tenantId, device_id]
       );
-      if (!config) return res.status(200).json({ ok: true, installed: false });
+      if (!config) return res.status(200).json({ ok: true, installed: false, device_id, secrets_included: false });
 
       const [aliases] = await getPool().query(
-        "SELECT alias, command_template, allow_extra_args, description FROM `local_connector_shell_allowlists` WHERE config_id = ?",
+        "SELECT alias, allow_extra_args, description FROM `local_connector_shell_allowlists` WHERE config_id = ? ORDER BY alias",
         [config.config_id]
       );
       const appRoutes = await loadLocalAppRoutes(getPool(), config.config_id);
-      return res.status(200).json({ ok: true, installed: true, config, aliases, app_routes: appRoutes });
+      const downloadLinkAvailable = Boolean(config.is_enabled);
+      const healthAgeMs = config.last_health_at ? Date.now() - new Date(config.last_health_at).getTime() : null;
+      return res.status(200).json({
+        ok: true,
+        installed: true,
+        read_only: true,
+        secrets_included: false,
+        device_id: config.device_id || device_id,
+        config_id: config.config_id,
+        is_enabled: Boolean(Number(config.is_enabled || 0)),
+        urls: {
+          tunnel_url: config.tunnel_url || null,
+          public_gateway_url: config.public_gateway_url || null,
+          device_runtime_url: config.device_runtime_url || null,
+          admin_recovery_url: config.admin_recovery_url || null,
+        },
+        cloudflare: {
+          tunnel_id: config.cf_tunnel_id || null,
+          tunnel_name: config.cf_tunnel_name || null,
+        },
+        agent: {
+          version: config.agent_version || null,
+          watchdog_installed: Boolean(Number(config.watchdog_installed || 0)),
+          watchdog_version: config.watchdog_version || null,
+          active_slot: config.active_slot || null,
+        },
+        health: {
+          last_health_at: config.last_health_at || null,
+          last_reconnect_at: config.last_reconnect_at || null,
+          last_repair_at: config.last_repair_at || null,
+          last_repair_status: config.last_repair_status || null,
+          last_error_code: config.last_error_code || null,
+          last_error_message: config.last_error_message || null,
+          health_age_ms: Number.isFinite(healthAgeMs) ? healthAgeMs : null,
+        },
+        install: {
+          download_link_available: downloadLinkAvailable,
+          download_link_endpoint: "/local-connector/install/download-link",
+          installer_download_endpoint: "/local-connector/install/download",
+          reprovision_supported: true,
+          reprovision_requires_explicit_flag: true,
+          dry_run_supported: false,
+        },
+        aliases: aliases.map((alias) => ({
+          alias: alias.alias,
+          allow_extra_args: Boolean(Number(alias.allow_extra_args || 0)),
+          description: alias.description || null,
+        })),
+        app_routes: appRoutes.map((route) => ({
+          app_key: route.app_key,
+          route_mode: route.route_mode,
+          hostname: route.hostname,
+          path_prefix: route.path_prefix,
+          local_port: route.local_port,
+          public_url: route.public_url,
+          status: route.status,
+        })),
+        created_at: config.created_at || null,
+        updated_at: config.updated_at || null,
+      });
     } catch (err) {
-      return res.status(err.status || 500).json({ ok: false, error: { code: err.code || "status_failed", message: err.message } });
+      return res.status(err.status || 500).json({ ok: false, error: { code: err.code || "status_failed", message: err.message }, secrets_included: false });
     }
   });
 
