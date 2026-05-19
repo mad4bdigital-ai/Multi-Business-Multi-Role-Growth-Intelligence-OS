@@ -450,6 +450,26 @@ section("connect api auth scope");
       /app\.use\(buildLocalGatewayToolsRoutes\(deps\)\)/.test(indexSource));
   }
 
+  section("route selector runtime smoke coverage");
+
+  {
+    const scriptSource = readFileSync("scripts/route-selector-runtime-smoke.mjs", "utf8");
+    const packageSource = readFileSync("package.json", "utf8");
+    assert("route selector smoke script covers all registered route types",
+      scriptSource.includes("vpn_private_ip") &&
+      scriptSource.includes("lan_private_ip") &&
+      scriptSource.includes("direct_public_ip") &&
+      scriptSource.includes("dynamic_public_ip") &&
+      scriptSource.includes("cloudflare_tunnel") &&
+      scriptSource.includes("admin_recovery"));
+    assert("route selector smoke is dry-run and non-secret by default",
+      scriptSource.includes("dry_run: true") &&
+      scriptSource.includes("writes_attempted: false") &&
+      scriptSource.includes("secrets_included: false"));
+    assert("route selector smoke has npm entry",
+      packageSource.includes('"smoke:route-selector": "node scripts/route-selector-runtime-smoke.mjs"'));
+  }
+
   section("auth-host connector proxy admin-only enforcement");
 
   {
