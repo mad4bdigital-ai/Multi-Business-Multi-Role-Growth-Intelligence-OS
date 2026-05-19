@@ -147,7 +147,6 @@ export function registerRoutes(app, deps) {
   app.use(buildDeviceToolsRoutes(deps));
   app.use(buildLocalGatewayToolsRoutes(deps));
   app.use(buildLocalConnectorDeviceRouteRoutes(deps));
-  app.use(buildLocalManagerBetaRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildConnectorTaxonomyRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildBackupArtifactRoutes(deps));
   registerOptionalSqlEndpointRegistryRoutes(app, deps);
