@@ -500,6 +500,24 @@ internal static class Program
         }
     }
 
+    private sealed class WindowsUpdateInfo
+    {
+        [JsonPropertyName("ok")]
+        public bool Ok { get; set; }
+
+        [JsonPropertyName("latest_version")]
+        public string? LatestVersion { get; set; }
+
+        [JsonPropertyName("current_version")]
+        public string? CurrentVersion { get; set; }
+
+        [JsonPropertyName("update_available")]
+        public bool? UpdateAvailable { get; set; }
+
+        [JsonPropertyName("release_notes")]
+        public string[]? ReleaseNotes { get; set; }
+    }
+
     private sealed class DeviceLinkError
     {
         [JsonPropertyName("code")]
