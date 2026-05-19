@@ -831,6 +831,13 @@ export function buildAuthRoutes(deps) {
           );
         }
 
+        await ensureDefaultWorkspaceForUser(connection, {
+          userId: user_id,
+          email,
+          displayName: display_name,
+          source: "google_existing_user_workspace_repair",
+        });
+
         await connection.commit();
       } catch (err) {
         await connection.rollback();
