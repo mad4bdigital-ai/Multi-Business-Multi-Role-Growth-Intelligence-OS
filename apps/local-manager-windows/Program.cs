@@ -130,10 +130,11 @@ internal static class Program
                 _status, _progress, _output
             });
 
-            Shown += (_, _) =>
+            Shown += async (_, _) =>
             {
                 EnsureLocalFiles(_status);
                 ShowTokenStatus();
+                await CheckAndInstallUpdateAsync(false);
             };
         }
 
