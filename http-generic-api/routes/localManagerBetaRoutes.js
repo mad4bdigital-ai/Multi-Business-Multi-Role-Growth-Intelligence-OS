@@ -564,7 +564,7 @@ export function buildLocalManagerBetaRoutes(deps) {
       primaryText: "Continue to device linking",
       primaryHref: "/app/local-manager/link-device",
       cards: [
-        { title: "No admin token", body: "The public app never asks for BACKEND_API_KEY or shared platform secrets." },
+        { title: "No admin token", body: "The public app never asks for shared backend keys or shared platform secrets." },
         { title: "Role-governed access", body: "After authentication, controls are scoped to the signed-in user, tenant, and device permissions." },
       ],
     }));
