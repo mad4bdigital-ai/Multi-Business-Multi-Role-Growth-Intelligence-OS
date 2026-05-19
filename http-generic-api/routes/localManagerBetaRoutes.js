@@ -809,6 +809,8 @@ export function buildLocalManagerBetaRoutes(deps) {
   router.post("/local-manager/device-link/poll", pollDeviceLinkSession);
   router.post("/local-manager/device-link/approve", approveDeviceLinkSession);
   router.get("/local-manager/device-link/devices", listLinkedDevices);
+  router.get("/local-manager/device/session", getDeviceSession);
+  router.get("/local-manager/device/controls", getDeviceControls);
 
   router.get("/app/local-manager/admin", (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
