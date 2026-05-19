@@ -641,9 +641,22 @@ Autopilot behavior expected from the desktop app/bootstrapper:
 9. Keep Cloudflare tunnel as fallback unless customer explicitly disables it.
 10. Never use `connector.mad4b.com` for tenant/customer runtime.
 
+## Sprint 63 runtime governance update
+
+Sprint 63 added Local Manager beta status, route selector smoke, installer/reprovision smoke, GitHub tooling schema smoke, and DB/n8n restore certifier probe aliases.
+
+Canonical delta:
+
+```text
+docs/sprint63-governance-update-2026-05-19.md
+```
+
+The installed `essam-pc` runtime still needs the updated connector installer or safe upgrade before the new restore probe aliases appear on-device.
+
 ## Next implementation steps
 
-1. Refactor legacy direct `POST /local-connector/install` to call `provisionLocalConnectorInstall()` instead of duplicating provisioning logic.
+1. Run updated installer/safe-upgrade on `essam-pc`, then verify `db_restore_certify_probe` and `n8n_restore_certify_probe` appear in `connector_shell list`.
+2. Refactor legacy direct `POST /local-connector/install` to call `provisionLocalConnectorInstall()` instead of duplicating provisioning logic.
 2. Implement route selector in `connectorProxyRoutes.js` using `local_connector_device_routes` with fallback.
 3. Add route registration/update endpoints for Desktop Manager.
 4. Add a small regression smoke test for token-gated installer route that checks status/headers without printing installer content.
