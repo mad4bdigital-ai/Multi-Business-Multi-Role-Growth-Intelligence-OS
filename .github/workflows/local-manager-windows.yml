@@ -14,7 +14,7 @@ on:
       - '.github/workflows/local-manager-windows.yml'
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 jobs:
