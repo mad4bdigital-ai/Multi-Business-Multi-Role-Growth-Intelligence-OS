@@ -650,10 +650,11 @@ export function buildConnectRoutes(deps) {
   router.post("/connect/device-install", requireUserJwt, async (req, res) => {
     try {
       const { user_id, tenant_id } = req.auth;
-      const { device_id, hostname = null, cloudflare_connection_id = null, hostinger_connection_id = null, local_apps = [] } = req.body || {};
+      const { hostname = null, cloudflare_connection_id = null, hostinger_connection_id = null, local_apps = [] } = req.body || {};
+      const device_id = String(req.body?.device_id || "").trim().toLowerCase();
 
-      if (!device_id || !/^[a-zA-Z0-9_-]{2,64}$/.test(device_id)) {
-        return res.status(400).json({ ok: false, error: { code: "invalid_device_id", message: "device_id must be 2-64 alphanumeric/dash/underscore characters." } });
+      if (!device_id || !/^[a-z0-9-]{2,32}$/.test(device_id)) {
+        return res.status(400).json({ ok: false, error: { code: "invalid_device_id", message: "device_id must be 2-32 lowercase letters, numbers, or hyphens." } });
       }
 
       // Validate tenant membership
