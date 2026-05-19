@@ -139,6 +139,7 @@ async function post(path, payload) {
 section("Layer 3 - Runtime health");
 
 const health = await get("/health");
+if (isBotVerificationResponse(health)) finishEnvironmentAccessBlocked(health, "/health");
 assert("GET /health returns 200", health.status === 200, `got ${health.status} - ${health.error || ""}`);
 assert("health body has ok: true", health.body?.ok === true, JSON.stringify(health.body));
 
