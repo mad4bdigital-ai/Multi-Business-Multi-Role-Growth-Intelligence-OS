@@ -40,7 +40,8 @@ jobs:
         working-directory: http-generic-api
         run: |
           set -e
-          for f in *.js *.mjs wordpress/*.js; do
+          shopt -s nullglob
+          for f in *.js *.mjs routes/*.js scripts/*.mjs wordpress/*.js; do
             node --check "$f" || { echo "SYNTAX ERROR: $f"; exit 1; }
           done
 
