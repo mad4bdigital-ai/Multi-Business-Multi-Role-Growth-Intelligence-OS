@@ -21,6 +21,16 @@ function resolveLocalConnectorPrincipalAliases(userId, tenantId) {
   };
 }
 
+function connectorRuntimeUrl(config) {
+  return String(config?.runtime_url || config?.device_runtime_url || config?.tunnel_url || "").replace(/\/$/, "");
+}
+
+function connectorAuthToken(config) {
+  const token = String(config?.connector_secret || "").trim();
+  if (!token) throw new Error("Per-device connector_secret is not configured for this local connector.");
+  return token;
+}
+
 async function resolveUserLocalConfig(userId, tenantId, deviceId) {
   const principal = resolveLocalConnectorPrincipalAliases(userId, tenantId);
   const [configs] = await getPool().query(
