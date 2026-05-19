@@ -410,9 +410,10 @@ section("connect api auth scope");
       indexSource.includes("buildLocalManagerBetaRoutes") &&
       indexSource.includes("./localManagerBetaRoutes.js") &&
       indexSource.includes("buildLocalManagerBetaRoutes({ ...deps, requireAdminPrincipal })"));
-    assert("local manager beta mounts before protected local connector and device-tool routes",
+    assert("local manager beta and installer routes mount before protected local connector and device-tool routes",
       indexSource.indexOf("buildLocalManagerBetaRoutes({ ...deps, requireAdminPrincipal })") < indexSource.indexOf("buildLocalConnectorInstallRoutes(deps)") &&
-      indexSource.indexOf("buildLocalManagerBetaRoutes({ ...deps, requireAdminPrincipal })") < indexSource.indexOf("buildDeviceToolsRoutes(deps)"));
+      indexSource.indexOf("buildLocalConnectorInstallRoutes(deps)") < indexSource.indexOf("buildLocalConnectorRoutes(deps)") &&
+      indexSource.indexOf("buildLocalConnectorInstallRoutes(deps)") < indexSource.indexOf("buildDeviceToolsRoutes(deps)"));
     assert("local manager beta exposes page and protected status API",
       betaSource.includes('router.get("/local-manager/beta"') &&
       betaSource.includes('router.get("/local-manager/beta/status", requireBackendApiKey, requireAdminPrincipal'));

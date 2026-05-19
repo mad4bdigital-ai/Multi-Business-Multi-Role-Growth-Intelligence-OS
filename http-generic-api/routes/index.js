@@ -86,9 +86,10 @@ export function registerRoutes(app, deps) {
   app.use(buildBackupArtifactRoutes(deps));
   app.use(buildDevDbRestoreRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildConnectorAgentRoutes());
-  // Local Manager beta includes a public UI shell and protected status API.
+  // Local Manager beta and installer download include public UI/token-gated paths.
   // Mount before root-level protected routers that can return missing_backend_api_key.
   app.use(buildLocalManagerBetaRoutes({ ...deps, requireAdminPrincipal }));
+  app.use(buildLocalConnectorInstallRoutes(deps));
   // Public token-gated credential intake pages must mount before any root-level
   // protected routers that call router.use(requireBackendApiKey).
   // The session creation route inside this router remains admin-protected.
@@ -134,9 +135,6 @@ export function registerRoutes(app, deps) {
   app.use(buildExecuteRoutes(deps));
   app.use(buildTenantCommercialRoutes(deps));
   app.use(buildDispatchRoutes(deps));
-  // Install/download routes include a public short-lived token-gated download path.
-  // Mount them before the protected /local-connector catch-all routes.
-  app.use(buildLocalConnectorInstallRoutes(deps));
   app.use(buildLocalConnectorRoutes(deps));
   app.use(buildMemberGoogleOAuthRoutes({ ...deps, requireAdminPrincipal }));
   app.use(buildConnectorProxyRoutes({ ...deps, requireAdminPrincipal }));
