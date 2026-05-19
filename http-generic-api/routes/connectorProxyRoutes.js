@@ -74,15 +74,24 @@ async function resolveDeviceConfig(userId, deviceId, { isAdmin = false, tenantId
                      WHERE is_enabled = 1`;
 
   if (userId) {
-    const [rows] = await getPool().query(
-      `${selectSql} AND user_id = ? AND device_id = ? ORDER BY updated_at DESC LIMIT 1`,
-      [userId, deviceId]
-    );
+    if (!tenantId && !isAdmin) {
+      throw httpError(403, "tenant_context_required", "Tenant context is required for user-scoped connector routing.");
+    }
+    const params = [userId, deviceId];
+    let sql = `${selectSql} AND user_id = ? AND device_id = ?`;
+    if (tenantId) {
+      sql += " AND tenant_id = ?";
+      params.push(tenantId);
+    }
+    sql += " ORDER BY updated_at DESC LIMIT 2";
+    const [rows] = await getPool().query(sql, params);
+    if (rows.length > 1) throw ambiguousDeviceError(deviceId, rows);
     if (rows[0]) return rows[0];
   }
 
-  // Admin/service callers may address a governed device by device_id alone.
-  // Static regression guard equivalent: WHERE device_id = ? AND is_enabled = 1
+  // Admin/service callers may address a governed device by device_id alone only
+  // when that device resolves to a single active config. Ambiguous names must be
+  // disambiguated with tenant_id/user_id/config_id before any connector secret is used.
   if (isAdmin) {
     const params = [deviceId];
     let sql = `${selectSql} AND device_id = ?`;
@@ -90,8 +99,9 @@ async function resolveDeviceConfig(userId, deviceId, { isAdmin = false, tenantId
       sql += " AND tenant_id = ?";
       params.push(tenantId);
     }
-    sql += " ORDER BY updated_at DESC LIMIT 1";
+    sql += " ORDER BY updated_at DESC LIMIT 2";
     const [rows] = await getPool().query(sql, params);
+    if (rows.length > 1) throw ambiguousDeviceError(deviceId, rows);
     if (rows[0]) return rows[0];
   }
 
