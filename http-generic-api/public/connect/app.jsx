@@ -105,11 +105,13 @@ function App() {
     setTimeout(() => setEvidenceOpen(false), 2400);
   };
 
-  const handleSignIn = async ({ provider, email, name, mode, password }) => {
+  const handleSignIn = async ({ provider, email, name, mode, password, tenant_display_name }) => {
     setAuthError('');
     if (provider === 'google') return; // handled by GSI callback
     const path = mode === 'signup' ? '/auth/register' : '/auth/login';
-    const body = mode === 'signup' ? { display_name: name || email.split('@')[0], email, password } : { email, password };
+    const body = mode === 'signup'
+      ? { display_name: name || email.split('@')[0], tenant_display_name, email, password }
+      : { email, password };
     const { ok, data } = await apiFetch(path, { method: 'POST', body: JSON.stringify(body) });
     pushLog({ method: 'POST', path, status: ok ? 200 : 401, ms: 184, body: ok ? { ok: true, user_id: data.user_id } : { error: data?.error?.message } });
     if (!ok) { setAuthError(data?.error?.message || 'Authentication failed'); return; }
