@@ -467,6 +467,44 @@ $('load').onclick = loadDevice; loadInputs();
 </html>`;
 }
 
+function localManagerShellPage({ title, eyebrow, body, primaryText, primaryHref, secondaryText = "Back to Local Manager", secondaryHref = "/app/local-manager", cards = [] }) {
+  const cardHtml = cards.map((card) => `<div class="card"><h2>${escapeHtml(card.title)}</h2><p>${escapeHtml(card.body)}</p>${card.href ? `<p><a class="button secondary" href="${escapeHtml(card.href)}">${escapeHtml(card.cta || "Open")}</a></p>` : ""}</div>`).join("");
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(title)} · Mad4B Local Manager</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#07111f; --card:#14213a; --fg:#f0f5ff; --muted:#a8b6d8; --line:#2d3f62; --accent:#6383ff; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif; background:radial-gradient(circle at top left,#1f3265,#07111f 58%); color:var(--fg); }
+    main { max-width:980px; margin:0 auto; padding:48px 20px 70px; }
+    .badge { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:6px 11px; color:var(--muted); font-size:13px; margin-bottom:16px; }
+    h1 { font-size:42px; line-height:1.05; margin:0 0 14px; letter-spacing:-.04em; }
+    p { color:var(--muted); line-height:1.6; font-size:16px; }
+    .panel,.card { background:rgba(16,26,48,.92); border:1px solid var(--line); border-radius:24px; box-shadow:0 24px 70px rgba(0,0,0,.28); }
+    .panel { padding:26px; margin-bottom:16px; }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .card { padding:18px; }
+    .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:20px; }
+    a.button { border-radius:14px; border:1px solid #87a0ff; padding:12px 16px; color:white; background:var(--accent); text-decoration:none; font-weight:800; }
+    a.secondary { background:#14213a; border-color:var(--line); }
+    code { background:#0b1428; border:1px solid var(--line); border-radius:8px; padding:2px 6px; color:#dce7ff; }
+    @media (max-width:760px){ .grid{grid-template-columns:1fr;} h1{font-size:34px;} }
+  </style>
+</head>
+<body><main>
+  <section class="panel">
+    <span class="badge">${escapeHtml(eyebrow)}</span>
+    <h1>${escapeHtml(title)}</h1>
+    <p>${escapeHtml(body)}</p>
+    <div class="actions"><a class="button" href="${escapeHtml(primaryHref)}">${escapeHtml(primaryText)}</a><a class="button secondary" href="${escapeHtml(secondaryHref)}">${escapeHtml(secondaryText)}</a></div>
+  </section>
+  <section class="grid">${cardHtml}</section>
+</main></body></html>`;
+}
+
 function localManagerWindowsBootstrapScript(req) {
   const proto = String(req.get("x-forwarded-proto") || req.protocol || "https").split(",")[0].trim() || "https";
   const host = req.get("host") || "auth.mad4b.com";
