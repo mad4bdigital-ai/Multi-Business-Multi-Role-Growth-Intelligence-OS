@@ -467,6 +467,44 @@ $('load').onclick = loadDevice; loadInputs();
 </html>`;
 }
 
+function localManagerShellPage({ title, eyebrow, body, primaryText, primaryHref, secondaryText = "Back to Local Manager", secondaryHref = "/app/local-manager", cards = [] }) {
+  const cardHtml = cards.map((card) => `<div class="card"><h2>${escapeHtml(card.title)}</h2><p>${escapeHtml(card.body)}</p>${card.href ? `<p><a class="button secondary" href="${escapeHtml(card.href)}">${escapeHtml(card.cta || "Open")}</a></p>` : ""}</div>`).join("");
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(title)} · Mad4B Local Manager</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#07111f; --card:#14213a; --fg:#f0f5ff; --muted:#a8b6d8; --line:#2d3f62; --accent:#6383ff; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif; background:radial-gradient(circle at top left,#1f3265,#07111f 58%); color:var(--fg); }
+    main { max-width:980px; margin:0 auto; padding:48px 20px 70px; }
+    .badge { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:6px 11px; color:var(--muted); font-size:13px; margin-bottom:16px; }
+    h1 { font-size:42px; line-height:1.05; margin:0 0 14px; letter-spacing:-.04em; }
+    p { color:var(--muted); line-height:1.6; font-size:16px; }
+    .panel,.card { background:rgba(16,26,48,.92); border:1px solid var(--line); border-radius:24px; box-shadow:0 24px 70px rgba(0,0,0,.28); }
+    .panel { padding:26px; margin-bottom:16px; }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .card { padding:18px; }
+    .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:20px; }
+    a.button { border-radius:14px; border:1px solid #87a0ff; padding:12px 16px; color:white; background:var(--accent); text-decoration:none; font-weight:800; }
+    a.secondary { background:#14213a; border-color:var(--line); }
+    code { background:#0b1428; border:1px solid var(--line); border-radius:8px; padding:2px 6px; color:#dce7ff; }
+    @media (max-width:760px){ .grid{grid-template-columns:1fr;} h1{font-size:34px;} }
+  </style>
+</head>
+<body><main>
+  <section class="panel">
+    <span class="badge">${escapeHtml(eyebrow)}</span>
+    <h1>${escapeHtml(title)}</h1>
+    <p>${escapeHtml(body)}</p>
+    <div class="actions"><a class="button" href="${escapeHtml(primaryHref)}">${escapeHtml(primaryText)}</a><a class="button secondary" href="${escapeHtml(secondaryHref)}">${escapeHtml(secondaryText)}</a></div>
+  </section>
+  <section class="grid">${cardHtml}</section>
+</main></body></html>`;
+}
+
 function localManagerWindowsBootstrapScript(req) {
   const proto = String(req.get("x-forwarded-proto") || req.protocol || "https").split(",")[0].trim() || "https";
   const host = req.get("host") || "auth.mad4b.com";
@@ -514,6 +552,120 @@ export function buildLocalManagerBetaRoutes(deps) {
   router.get("/app/local-manager/download/windows", (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
     return res.redirect(302, "https://github.com/mad4bdigital-ai/multi-business-multi-role-growth-intelligence-os/releases/download/local-manager-windows-latest/Mad4B-Local-Manager-Setup.exe");
+  });
+
+  router.get("/app/local-manager/sign-in", (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).send(localManagerShellPage({
+      eyebrow: "Account",
+      title: "Sign in to Mad4B",
+      body: "Use your Mad4B account before linking a device. The production OAuth/device-code backend is the next integration step; this page is the dedicated sign-in destination for the Windows app and public flow.",
+      primaryText: "Continue to device linking",
+      primaryHref: "/app/local-manager/link-device",
+      cards: [
+        { title: "No admin token", body: "The public app never asks for shared backend keys or shared platform secrets." },
+        { title: "Role-governed access", body: "After authentication, controls are scoped to the signed-in user, tenant, and device permissions." },
+      ],
+    }));
+  });
+
+  router.get("/app/local-manager/sign-up", (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).send(localManagerShellPage({
+      eyebrow: "Account",
+      title: "Create your Mad4B account",
+      body: "Create an account, then link this device from the installed Local Manager app. Account creation will route through the platform auth provider when OAuth onboarding is enabled.",
+      primaryText: "Go to sign in",
+      primaryHref: "/app/local-manager/sign-in",
+      cards: [
+        { title: "Device consent", body: "A device is registered only after the signed-in user approves linking." },
+        { title: "Scoped credentials", body: "The backend issues device-scoped credentials only after linking succeeds." },
+      ],
+    }));
+  });
+
+  router.get("/app/local-manager/link-device", (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).send(localManagerShellPage({
+      eyebrow: "Device linking",
+      title: "Link this Windows device",
+      body: "This is the dedicated device-linking page. The installed app should arrive here after sign-in, then the backend will create device-scoped connector credentials for the current machine.",
+      primaryText: "Open device dashboard",
+      primaryHref: "/app/local-manager/devices",
+      cards: [
+        { title: "Pairing flow", body: "The next backend step is a short-lived device-code or OAuth return flow." },
+        { title: "No shared secrets", body: "The device receives only its own scoped connector credential after consent." },
+      ],
+    }));
+  });
+
+  router.get("/app/local-manager/devices", (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).send(localManagerShellPage({
+      eyebrow: "Dashboard",
+      title: "My devices",
+      body: "After sign-in, this dashboard will list devices, health, routes, backups, DR probes, and update status for the signed-in account.",
+      primaryText: "Routes",
+      primaryHref: "/app/local-manager/routes",
+      cards: [
+        { title: "Device health", body: "View active connector status, last heartbeat, agent version, and watchdog status." },
+        { title: "Updates", body: "Windows app updates are handled by the installed app's Check / install update control." },
+        { title: "Backups and DR", body: "Open backup probes and restore certification actions after account authorization.", href: "/app/local-manager/backups", cta: "Backups / DR" },
+        { title: "Settings", body: "Manage account, tenant, notification, and device preferences.", href: "/app/local-manager/settings", cta: "Settings" },
+      ],
+    }));
+  });
+
+  router.get("/app/local-manager/routes", (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).send(localManagerShellPage({
+      eyebrow: "Controls",
+      title: "Routes",
+      body: "View and manage connector route options after sign-in: Cloudflare tunnel, admin recovery, LAN, VPN, direct public IP, and dynamic public IP where provisioned.",
+      primaryText: "My devices",
+      primaryHref: "/app/local-manager/devices",
+      cards: [
+        { title: "Current live route", body: "The runtime selector chooses the highest-priority healthy route." },
+        { title: "Optional routes", body: "LAN/VPN/direct/dynamic routes are shown as not provisioned until configured." },
+      ],
+    }));
+  });
+
+  router.get("/app/local-manager/backups", (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).send(localManagerShellPage({
+      eyebrow: "Controls",
+      title: "Backups and DR",
+      body: "After sign-in, users can view backup policy status, restore probe readiness, DB restore certification, and n8n restore certification for their authorized devices.",
+      primaryText: "My devices",
+      primaryHref: "/app/local-manager/devices",
+      cards: [
+        { title: "DB restore probe", body: "Runs only through the governed device alias after connector upgrade." },
+        { title: "n8n restore probe", body: "Runs only through the governed device alias after connector upgrade." },
+      ],
+    }));
+  });
+
+  router.get("/app/local-manager/settings", (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).send(localManagerShellPage({
+      eyebrow: "Controls",
+      title: "Settings",
+      body: "After sign-in, manage profile, tenant, device notifications, update preferences, and permissions for Local Manager.",
+      primaryText: "My devices",
+      primaryHref: "/app/local-manager/devices",
+      cards: [
+        { title: "Notifications", body: "Configure backup and route health alerts when notification targets are available." },
+        { title: "Security", body: "Review linked devices and revoke device credentials." },
+      ],
+    }));
   });
 
   router.get("/app/local-manager/admin", (_req, res) => {
